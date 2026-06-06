@@ -49,6 +49,7 @@ public class CreateBatchUseCase {
      * Creates the use case.
      *
      * @param dependencies use case dependencies
+     * @param transactionRunner transaction runner
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -1,13 +1,13 @@
 package com.doclens.processing.infrastructure;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.doclens.processing.domain.OcrEvent;
 import com.doclens.processing.domain.OcrEventRepository;
 import com.doclens.shared.domain.DocLensConstants;
 import com.doclens.shared.domain.JsonPayload;
 import com.doclens.shared.infrastructure.JsonCodec;
+import com.doclens.shared.infrastructure.MybatisPlusPages;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -36,26 +36,55 @@ public class MybatisPlusOcrEventRepository
         this.jsonCodec = jsonCodec;
     }
 
+    /**
+     * Saves one OCR event.
+     *
+     * @param event OCR event
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void save(OcrEvent event) {
         super.save(toEntity(event));
     }
 
+    /**
+     * Saves OCR events in batch.
+     *
+     * @param events OCR events
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void saveAll(List<OcrEvent> events) {
         saveBatch(events.stream().map(this::toEntity).toList());
     }
 
+    /**
+     * Lists OCR events by occurrence order with bounded page size.
+     *
+     * @param batchId batch id
+     * @return OCR events
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public List<OcrEvent> listByBatchId(String batchId) {
         LambdaQueryWrapper<OcrEventEntity> wrapper = new LambdaQueryWrapper<OcrEventEntity>()
                 .eq(OcrEventEntity::getBatchId, batchId)
                 .orderByAsc(OcrEventEntity::getOccurredAt)
                 .orderByAsc(OcrEventEntity::getEventId);
-        Page<OcrEventEntity> page = Page.of(DocLensConstants.FIRST_PAGE_NO, DocLensConstants.DEFAULT_QUERY_LIMIT);
-        return page(page, wrapper).getRecords().stream().map(this::toDomain).toList();
+        return page(MybatisPlusPages.listLimit(), wrapper).getRecords().stream().map(this::toDomain).toList();
     }
 
+    /**
+     * Converts domain OCR event to persistence entity.
+     *
+     * @param event OCR event
+     * @return OCR event persistence entity
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private OcrEventEntity toEntity(OcrEvent event) {
         OcrEventEntity entity = new OcrEventEntity();
         entity.setEventId(event.eventId());
@@ -73,6 +102,14 @@ public class MybatisPlusOcrEventRepository
         return entity;
     }
 
+    /**
+     * Converts persistence entity to domain OCR event.
+     *
+     * @param entity OCR event persistence entity
+     * @return OCR event
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private OcrEvent toDomain(OcrEventEntity entity) {
         return new OcrEvent(entity.getEventId(), entity.getEventType(), entity.getBatchId(),
                 Optional.ofNullable(entity.getDocumentId()), entity.getStatus(), entity.getStage(),
@@ -81,6 +118,14 @@ public class MybatisPlusOcrEventRepository
                 parseNullableObject(entity.getError()), entity.getOccurredAt());
     }
 
+    /**
+     * Parses optional JSON object payload.
+     *
+     * @param payload JSON object payload
+     * @return parsed object map
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private java.util.Map<String, Object> parseNullableObject(String payload) {
         if (payload == null || payload.isBlank()) {
             return java.util.Map.of();

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.doclens.processing.domain.OcrResult;
 import com.doclens.processing.domain.OcrResultRepository;
 import com.doclens.shared.infrastructure.JsonCodec;
+import com.doclens.shared.infrastructure.MybatisPlusPages;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,23 +46,53 @@ public class MybatisPlusOcrResultRepository
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Saves one OCR result.
+     *
+     * @param result OCR result
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void save(OcrResult result) {
         super.save(toEntity(result));
     }
 
+    /**
+     * Saves OCR results in batch.
+     *
+     * @param results OCR results
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void saveAll(List<OcrResult> results) {
         saveBatch(results.stream().map(this::toEntity).toList());
     }
 
+    /**
+     * Finds one OCR result by document id with explicit single-row limit.
+     *
+     * @param documentId document id
+     * @return optional OCR result
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public Optional<OcrResult> findByDocumentId(String documentId) {
         LambdaQueryWrapper<OcrResultEntity> wrapper = new LambdaQueryWrapper<OcrResultEntity>()
                 .eq(OcrResultEntity::getDocumentId, documentId);
-        return Optional.ofNullable(getOne(wrapper, false)).map(this::toDomain);
+        return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
     }
 
+    /**
+     * Converts domain OCR result to persistence entity.
+     *
+     * @param result OCR result
+     * @return OCR result persistence entity
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private OcrResultEntity toEntity(OcrResult result) {
         OcrResultEntity entity = new OcrResultEntity();
         entity.setResultId(result.resultId());
@@ -78,6 +109,14 @@ public class MybatisPlusOcrResultRepository
         return entity;
     }
 
+    /**
+     * Converts persistence entity to domain OCR result.
+     *
+     * @param entity OCR result persistence entity
+     * @return OCR result
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private OcrResult toDomain(OcrResultEntity entity) {
         return new OcrResult(entity.getResultId(), entity.getDocumentId(),
                 jsonCodec.parseObject(entity.getRawVendorOutput()),
@@ -89,6 +128,16 @@ public class MybatisPlusOcrResultRepository
                 entity.getConfidence(), readValue(entity.getWarnings(), LIST_OF_STRINGS), entity.getCreatedAt());
     }
 
+    /**
+     * Reads JSON payload as the requested type.
+     *
+     * @param payload JSON payload
+     * @param typeReference target type reference
+     * @param <T> target type
+     * @return parsed value
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private <T> T readValue(String payload, TypeReference<T> typeReference) {
         try {
             return objectMapper.readValue(payload, typeReference);

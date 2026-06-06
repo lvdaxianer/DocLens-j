@@ -9,6 +9,7 @@ import com.doclens.ingestion.domain.BatchStatus;
 import com.doclens.shared.domain.DocLensConstants;
 import com.doclens.shared.domain.JsonPayload;
 import com.doclens.shared.infrastructure.JsonCodec;
+import com.doclens.shared.infrastructure.MybatisPlusPages;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -35,23 +36,56 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
         this.jsonCodec = jsonCodec;
     }
 
+    /**
+     * Saves a batch aggregate.
+     *
+     * @param batch batch aggregate
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void save(Batch batch) {
         super.save(toEntity(batch));
     }
 
+    /**
+     * Finds a batch by id.
+     *
+     * @param batchId batch id
+     * @return optional batch aggregate
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public Optional<Batch> findById(String batchId) {
         return Optional.ofNullable(getById(batchId)).map(this::toDomain);
     }
 
+    /**
+     * Finds a batch by idempotency key with explicit single-row limit.
+     *
+     * @param idempotencyKey idempotency key
+     * @return optional batch aggregate
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
         LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
                 .eq(BatchEntity::getIdempotencyKey, idempotencyKey);
-        return Optional.ofNullable(getOne(wrapper, false)).map(this::toDomain);
+        return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
     }
 
+    /**
+     * Updates batch completion summary.
+     *
+     * @param batchId batch id
+     * @param completedFiles completed file count
+     * @param failedFiles failed file count
+     * @param status final batch status
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     @Override
     public void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status) {
         LambdaUpdateWrapper<BatchEntity> wrapper = new LambdaUpdateWrapper<BatchEntity>()
@@ -66,6 +100,14 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
         update(wrapper);
     }
 
+    /**
+     * Converts domain batch to persistence entity.
+     *
+     * @param batch batch aggregate
+     * @return batch persistence entity
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private BatchEntity toEntity(Batch batch) {
         BatchEntity entity = new BatchEntity();
         entity.setBatchId(batch.batchId());
@@ -84,6 +126,14 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
         return entity;
     }
 
+    /**
+     * Converts persistence entity to domain batch.
+     *
+     * @param entity batch persistence entity
+     * @return batch aggregate
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private Batch toDomain(BatchEntity entity) {
         return new Batch(entity.getBatchId(), BatchStatus.valueOf(entity.getStatus().toUpperCase()),
                 entity.getTotalFiles(), entity.getCompletedFiles(), entity.getFailedFiles(),

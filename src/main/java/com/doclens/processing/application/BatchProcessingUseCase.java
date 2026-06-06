@@ -49,6 +49,7 @@ public class BatchProcessingUseCase {
      * Creates batch processing use case.
      *
      * @param dependencies use case dependencies
+     * @param transactionRunner transaction runner
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
