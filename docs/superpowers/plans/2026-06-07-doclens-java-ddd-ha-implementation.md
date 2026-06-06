@@ -4,9 +4,9 @@
 
 **Goal:** Rebuild DocLens as a Java 21 + Spring Boot 3 service using DDD boundaries and an architecture that can evolve from local single-node operation to highly available deployment.
 
-**Architecture:** Phase 1 is a modular monolith with DDD package boundaries, JDBC persistence, local object storage, and in-process workers. Phase 2 separates API, Worker, and Callback Worker processes over PostgreSQL HA, object storage, and an outbox-driven event pipeline.
+**Architecture:** Phase 1 is a modular monolith with DDD package boundaries, MyBatis-Plus persistence adapters, local object storage, and in-process workers. Phase 2 separates API, Worker, and Callback Worker processes over PostgreSQL HA, object storage, and an outbox-driven event pipeline.
 
-**Tech Stack:** Java 21, Spring Boot 3.5.x, Maven, Spring MVC, Spring JDBC, Flyway, Actuator, H2 for tests, PostgreSQL-ready schema, local/S3-compatible storage abstraction.
+**Tech Stack:** Java 21, Spring Boot 3.5.x, Maven, Spring MVC, MyBatis-Plus, Flyway, Actuator, H2 for tests, PostgreSQL-ready schema, local/S3-compatible storage abstraction.
 
 ---
 
@@ -20,7 +20,7 @@
 - Create: `src/main/resources/application.yml`
 - Create: `src/test/java/com/doclens/DocLensApplicationTests.java`
 
-- [x] Add Spring Boot parent `3.5.14`, Java `21`, and dependencies for web, validation, jdbc, actuator, flyway, H2 tests, and PostgreSQL runtime.
+- [x] Add Spring Boot parent `3.5.14`, Java `21`, and dependencies for web, validation, MyBatis-Plus, actuator, flyway, H2 tests, and PostgreSQL runtime.
 - [x] Configure local defaults so the app can run without external services.
 - [x] Add a smoke test that loads the Spring context.
 
@@ -42,12 +42,15 @@
 
 **Files:**
 - Create: `src/main/resources/db/migration/V1__doclens_ocr_schema.sql`
-- Create: `src/main/java/com/doclens/*/infrastructure/*JdbcRepository.java`
+- Create: `src/main/java/com/doclens/*/infrastructure/*Entity.java`
+- Create: `src/main/java/com/doclens/*/infrastructure/*Mapper.java`
+- Create: `src/main/java/com/doclens/*/infrastructure/*MybatisPlusRepository.java`
 - Create: `src/main/java/com/doclens/storage/*`
 
 - [x] Create OCR batch, document, result, event, and callback tables.
 - [x] Add future HA fields such as `locked_by`, `locked_until`, and retry state.
 - [x] Store JSON as text in phase 1 to keep H2 and PostgreSQL compatible.
+- [x] Keep MyBatis-Plus inside infrastructure adapters so domain and application layers depend only on repository interfaces.
 - [x] Use `ObjectStorage` abstraction with local filesystem implementation.
 
 ### Task 4: Implement API Vertical Slice

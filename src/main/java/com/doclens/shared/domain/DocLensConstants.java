@@ -13,6 +13,7 @@ public final class DocLensConstants {
     public static final int MAX_PROCESSING_PROGRESS_PERCENT = 95;
     public static final int COMPLETED_PROGRESS_PERCENT = 100;
     public static final int DEFAULT_PAGE_NO = 1;
+    public static final long FIRST_PAGE_NO = 1L;
     public static final int DEFAULT_PAGE_COUNT = 1;
     public static final int DEFAULT_BLOCK_COUNT = 1;
     public static final int DEFAULT_TABLE_COUNT = 0;

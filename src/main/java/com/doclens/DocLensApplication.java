@@ -1,5 +1,6 @@
 package com.doclens;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
@@ -14,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @EnableAsync
 @EnableScheduling
+@MapperScan("com.doclens.**.infrastructure")
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class DocLensApplication {

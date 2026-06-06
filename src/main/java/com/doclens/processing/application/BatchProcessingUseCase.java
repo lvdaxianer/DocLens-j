@@ -13,6 +13,7 @@ import com.doclens.processing.domain.OcrEventFactory;
 import com.doclens.processing.domain.OcrEventRepository;
 import com.doclens.processing.domain.OcrResult;
 import com.doclens.processing.domain.OcrResultRepository;
+import com.doclens.shared.application.TransactionRunner;
 import com.doclens.shared.domain.DocLensConstants;
 import com.doclens.shared.infrastructure.IdGenerator;
 import java.time.OffsetDateTime;
@@ -23,7 +24,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Use case for processing one batch in document order.
@@ -43,6 +43,7 @@ public class BatchProcessingUseCase {
     private final DefaultAdapterRegistry adapterRegistry;
     private final IdGenerator idGenerator;
     private final OcrEventFactory eventFactory;
+    private final TransactionRunner transactionRunner;
 
     /**
      * Creates batch processing use case.
@@ -51,7 +52,7 @@ public class BatchProcessingUseCase {
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
-    public BatchProcessingUseCase(BatchProcessingDependencies dependencies) {
+    public BatchProcessingUseCase(BatchProcessingDependencies dependencies, TransactionRunner transactionRunner) {
         this.documentRepository = dependencies.documentRepository();
         this.resultRepository = dependencies.resultRepository();
         this.eventRepository = dependencies.eventRepository();
@@ -59,6 +60,7 @@ public class BatchProcessingUseCase {
         this.adapterRegistry = dependencies.adapterRegistry();
         this.idGenerator = dependencies.idGenerator();
         this.eventFactory = dependencies.eventFactory();
+        this.transactionRunner = transactionRunner;
     }
 
     /**
@@ -71,7 +73,7 @@ public class BatchProcessingUseCase {
     public void processBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         List<DocumentProcessingResult> results = documents.stream().map(this::processDocument).toList();
-        persistBatchProcessing(batchId, results);
+        transactionRunner.requiredVoid(() -> persistBatchProcessing(batchId, results));
     }
 
     private DocumentProcessingResult processDocument(DocumentJob document) {
@@ -152,7 +154,6 @@ public class BatchProcessingUseCase {
                 "tableCount", DocLensConstants.DEFAULT_TABLE_COUNT, "confidence", DocLensConstants.STUB_CONFIDENCE);
     }
 
-    @Transactional
     public void persistBatchProcessing(String batchId, List<DocumentProcessingResult> results) {
         documentRepository.updateAll(results.stream().map(DocumentProcessingResult::document).toList());
         resultRepository.saveAll(results.stream().flatMap(result -> result.result().stream()).toList());

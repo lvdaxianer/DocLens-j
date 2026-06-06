@@ -12,6 +12,7 @@ import com.doclens.processing.domain.OcrEvent;
 import com.doclens.processing.domain.OcrEventFactory;
 import com.doclens.processing.domain.OcrEventRepository;
 import com.doclens.processing.domain.PdfMode;
+import com.doclens.shared.application.TransactionRunner;
 import com.doclens.shared.config.DocLensProperties;
 import com.doclens.shared.domain.DocLensConstants;
 import com.doclens.shared.domain.DuplicateResourceException;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Use case for creating OCR batches.
@@ -43,6 +43,7 @@ public class CreateBatchUseCase {
     private final DocLensProperties properties;
     private final BatchProcessingUseCase batchProcessingUseCase;
     private final OcrEventFactory eventFactory;
+    private final TransactionRunner transactionRunner;
 
     /**
      * Creates the use case.
@@ -51,7 +52,7 @@ public class CreateBatchUseCase {
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
-    public CreateBatchUseCase(CreateBatchDependencies dependencies) {
+    public CreateBatchUseCase(CreateBatchDependencies dependencies, TransactionRunner transactionRunner) {
         this.batchRepository = dependencies.batchRepository();
         this.documentRepository = dependencies.documentRepository();
         this.eventRepository = dependencies.eventRepository();
@@ -60,6 +61,7 @@ public class CreateBatchUseCase {
         this.properties = dependencies.properties();
         this.batchProcessingUseCase = dependencies.batchProcessingUseCase();
         this.eventFactory = dependencies.eventFactory();
+        this.transactionRunner = transactionRunner;
     }
 
     /**
@@ -72,7 +74,7 @@ public class CreateBatchUseCase {
      */
     public Map<String, Object> create(CreateBatchCommand command) {
         validateCommand(command);
-        Map<String, Object> response = createBatchRecords(command);
+        Map<String, Object> response = transactionRunner.requiredResult(() -> createBatchRecords(command));
         triggerProcessing(String.valueOf(response.get("batch_id")));
         return response;
     }
@@ -85,7 +87,6 @@ public class CreateBatchUseCase {
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
-    @Transactional
     public Map<String, Object> createBatchRecords(CreateBatchCommand command) {
         checkIdempotency(command);
         OffsetDateTime now = OffsetDateTime.now();
