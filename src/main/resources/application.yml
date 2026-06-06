@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: doclens-j
+  datasource:
+    url: jdbc:h2:file:./var/db/doclens;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 200MB
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+doclens:
+  storage-root: ./var/storage
+  auto-process-on-upload: true
+  worker-id: local-worker
+  callback:
+    max-retries: 3
+    timeout-seconds: 10
