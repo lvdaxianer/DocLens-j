@@ -27,6 +27,40 @@
 
     <properties>
         <java.version>21</java.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <mybatis-plus.version>3.5.16</mybatis-plus.version>
     </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>ban-sdk-web-dependencies</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <bannedDependencies>
+                                        <searchTransitive>true</searchTransitive>
+                                        <excludes>
+                                            <exclude>org.springframework.boot:spring-boot-starter-web</exclude>
+                                            <exclude>org.springframework.boot:spring-boot-starter-tomcat</exclude>
+                                            <exclude>org.springframework:spring-web</exclude>
+                                            <exclude>org.springframework:spring-webmvc</exclude>
+                                        </excludes>
+                                    </bannedDependencies>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>

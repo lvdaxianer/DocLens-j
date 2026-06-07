@@ -154,6 +154,22 @@ mvn test -q
 - Core 架构边界测试：验证 `doclens-core` 不依赖 Spring/Web/MyBatis。
 - HTTP 边界测试：验证 Controller 不直接依赖内部用例、领域对象或仓储。
 
+## 打包
+
+打包 SDK Starter：
+
+```bash
+mvn -pl doclens-spring-boot-starter -am clean package
+```
+
+打包 HTTP 服务：
+
+```bash
+mvn -pl doclens-server -am clean package
+```
+
+SDK 相关模块会通过 Maven Enforcer 禁止引入 Spring Web 相关依赖。更多说明见 [打包指南](docs/packaging.md)。
+
 ## 当前限制
 
 - 默认 OCR 适配器仍是 Stub 实现，用于打通垂直切片。
@@ -164,4 +180,5 @@ mvn test -q
 ## 更多文档
 
 - [SDK and HTTP Delivery](docs/sdk-http-delivery.md)
+- [打包指南](docs/packaging.md)
 - [DDD HA Implementation Plan](docs/superpowers/plans/2026-06-07-doclens-java-ddd-ha-implementation.md)

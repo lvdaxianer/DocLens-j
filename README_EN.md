@@ -143,6 +143,22 @@ Important test coverage:
 - Core architecture test preventing Spring/Web/MyBatis dependencies from entering `doclens-core`.
 - HTTP boundary test preventing controllers from depending directly on internal use cases, domains, or repositories.
 
+## Packaging
+
+Package SDK Starter:
+
+```bash
+mvn -pl doclens-spring-boot-starter -am clean package
+```
+
+Package HTTP service:
+
+```bash
+mvn -pl doclens-server -am clean package
+```
+
+SDK-related modules are protected by Maven Enforcer rules that ban Spring Web dependencies. See [Packaging Guide](docs/packaging_en.md) for details.
+
 ## Current Limitations
 
 - The default OCR adapter is a Stub implementation for vertical-slice verification.
@@ -153,4 +169,5 @@ Important test coverage:
 ## More Documentation
 
 - [SDK and HTTP Delivery](docs/sdk-http-delivery.md)
+- [Packaging Guide](docs/packaging_en.md)
 - [DDD HA Implementation Plan](docs/superpowers/plans/2026-06-07-doclens-java-ddd-ha-implementation.md)
