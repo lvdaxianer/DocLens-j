@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.api;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -59,4 +60,13 @@ public interface DocLensEngine {
      * @date 2026-06-07
      */
     Map<String, Object> getEvents(String batchId);
+
+    /**
+     * Lists OCR adapter capabilities.
+     *
+     * @return adapter response
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
+    Map<String, List<AdapterCapability>> listAdapters();
 }

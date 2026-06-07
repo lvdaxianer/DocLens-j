@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.StubOcrAdapter;
 import io.github.lvdaxianer.doclens.j.api.DefaultDocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEventSink;
@@ -10,12 +11,16 @@ import io.github.lvdaxianer.doclens.j.api.NoopDocLensEventSink;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.MybatisPlusBatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -24,6 +29,7 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.shared.config.MybatisPlusConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.config.WorkerConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.application.SpringTransactionRunner;
+import io.github.lvdaxianer.doclens.j.storage.LocalObjectStorage;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.util.List;
 import org.mybatis.spring.annotation.MapperScan;
@@ -46,7 +52,16 @@ import org.springframework.transaction.support.TransactionTemplate;
         "io.github.lvdaxianer.doclens.j.ingestion.infrastructure",
         "io.github.lvdaxianer.doclens.j.processing.infrastructure"
 })
-@Import({MybatisPlusConfiguration.class, WorkerConfiguration.class})
+@Import({
+        MybatisPlusConfiguration.class,
+        WorkerConfiguration.class,
+        StubOcrAdapter.class,
+        MybatisPlusBatchRepository.class,
+        MybatisPlusDocumentJobRepository.class,
+        MybatisPlusOcrEventRepository.class,
+        MybatisPlusOcrResultRepository.class,
+        LocalObjectStorage.class
+})
 public class DocLensAutoConfiguration {
 
     /**
@@ -76,6 +91,19 @@ public class DocLensAutoConfiguration {
     @ConditionalOnMissingBean
     IdGenerator idGenerator() {
         return new IdGenerator();
+    }
+
+    /**
+     * Creates default object mapper for non-web embedded hosts.
+     *
+     * @return Jackson object mapper
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 
     /**
@@ -273,7 +301,11 @@ public class DocLensAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    DocLensEngine docLensEngine(CreateBatchUseCase createBatchUseCase, OcrQueryService queryService) {
-        return new DefaultDocLensEngine(createBatchUseCase, queryService);
+    DocLensEngine docLensEngine(
+            CreateBatchUseCase createBatchUseCase,
+            OcrQueryService queryService,
+            DefaultAdapterRegistry adapterRegistry
+    ) {
+        return new DefaultDocLensEngine(createBatchUseCase, queryService, adapterRegistry);
     }
 }

@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.adapter.domain;
 
+import io.github.lvdaxianer.doclens.j.api.AdapterCapability;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import java.util.Map;
 

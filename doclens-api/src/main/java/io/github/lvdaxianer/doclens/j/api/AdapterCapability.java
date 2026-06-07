@@ -1,9 +1,9 @@
-package io.github.lvdaxianer.doclens.j.adapter.domain;
+package io.github.lvdaxianer.doclens.j.api;
 
 import java.util.List;
 
 /**
- * OCR adapter capability description.
+ * Public OCR adapter capability description.
  *
  * @param adapterKey adapter key
  * @param supportedFileTypes supported file types

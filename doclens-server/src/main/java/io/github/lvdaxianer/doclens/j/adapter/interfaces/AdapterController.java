@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 
-import io.github.lvdaxianer.doclens.j.adapter.domain.AdapterCapability;
-import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
+import io.github.lvdaxianer.doclens.j.api.AdapterCapability;
+import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,17 +18,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class AdapterController {
 
-    private final DefaultAdapterRegistry adapterRegistry;
+    private final DocLensEngine docLensEngine;
 
     /**
      * Creates adapter controller.
      *
-     * @param adapterRegistry adapter registry
+     * @param docLensEngine DocLens engine
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
-    public AdapterController(DefaultAdapterRegistry adapterRegistry) {
-        this.adapterRegistry = adapterRegistry;
+    public AdapterController(DocLensEngine docLensEngine) {
+        this.docLensEngine = docLensEngine;
     }
 
     /**
@@ -40,6 +40,6 @@ public class AdapterController {
      */
     @GetMapping("/adapters")
     public Map<String, List<AdapterCapability>> listAdapters() {
-        return Map.of("adapters", adapterRegistry.listCapabilities());
+        return docLensEngine.listAdapters();
     }
 }

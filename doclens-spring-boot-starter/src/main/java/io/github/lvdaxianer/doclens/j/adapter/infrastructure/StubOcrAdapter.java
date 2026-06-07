@@ -1,6 +1,6 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
-import io.github.lvdaxianer.doclens.j.adapter.domain.AdapterCapability;
+import io.github.lvdaxianer.doclens.j.api.AdapterCapability;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;

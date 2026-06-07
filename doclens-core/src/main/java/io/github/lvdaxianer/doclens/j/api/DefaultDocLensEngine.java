@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.api;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.AdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchCommand;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.application.UploadFileCommand;
@@ -17,18 +18,25 @@ public class DefaultDocLensEngine implements DocLensEngine {
 
     private final CreateBatchUseCase createBatchUseCase;
     private final OcrQueryService queryService;
+    private final AdapterRegistry adapterRegistry;
 
     /**
      * Creates DocLens engine.
      *
      * @param createBatchUseCase create batch use case
      * @param queryService OCR query service
+     * @param adapterRegistry adapter registry
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
-    public DefaultDocLensEngine(CreateBatchUseCase createBatchUseCase, OcrQueryService queryService) {
+    public DefaultDocLensEngine(
+            CreateBatchUseCase createBatchUseCase,
+            OcrQueryService queryService,
+            AdapterRegistry adapterRegistry
+    ) {
         this.createBatchUseCase = createBatchUseCase;
         this.queryService = queryService;
+        this.adapterRegistry = adapterRegistry;
     }
 
     @Override
@@ -54,6 +62,11 @@ public class DefaultDocLensEngine implements DocLensEngine {
     @Override
     public Map<String, Object> getEvents(String batchId) {
         return queryService.getEvents(batchId);
+    }
+
+    @Override
+    public Map<String, List<AdapterCapability>> listAdapters() {
+        return Map.of("adapters", adapterRegistry.listCapabilities());
     }
 
     private CreateBatchCommand toCommand(CreateBatchRequest request) {
