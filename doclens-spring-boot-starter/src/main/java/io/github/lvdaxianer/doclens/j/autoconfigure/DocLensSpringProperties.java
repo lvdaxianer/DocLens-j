@@ -3,12 +3,12 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Spring-bound DocLens configuration properties.
+ * 绑定到 Spring 的 DocLens 配置属性。
  *
- * @param storageRoot storage root
- * @param autoProcessOnUpload auto process flag
- * @param workerId worker identifier
- * @param callback callback configuration
+ * @param storageRoot 存储根目录
+ * @param autoProcessOnUpload 自动处理标志
+ * @param workerId Worker 标识
+ * @param callback 回调配置
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -21,10 +21,10 @@ public record DocLensSpringProperties(
 ) {
 
     /**
-     * Callback retry and timeout properties.
+     * 回调重试与超时属性。
      *
-     * @param maxRetries max retry count
-     * @param timeoutSeconds timeout seconds
+     * @param maxRetries 最大重试次数
+     * @param timeoutSeconds 超时秒数
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -5,19 +5,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OCR structured result aggregate.
+ * OCR 结构化结果聚合。
  *
- * @param resultId result id
- * @param documentId document id
- * @param rawVendorOutput raw vendor output
- * @param structuredDocument normalized structured document
- * @param pageText page text records
- * @param layoutBlocks layout blocks
- * @param tables table records
- * @param images image records
- * @param confidence OCR confidence
- * @param warnings normalization warnings
- * @param createdAt creation time
+ * @param resultId 结果 ID
+ * @param documentId 文档 ID
+ * @param rawVendorOutput 厂商原始输出
+ * @param structuredDocument 归一化结构化文档
+ * @param pageText 页面文本记录集合
+ * @param layoutBlocks 版面块集合
+ * @param tables 表格记录集合
+ * @param images 图片记录集合
+ * @param confidence OCR 置信度
+ * @param warnings 归一化警告集合
+ * @param createdAt 创建时间
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * Application smoke tests.
+ * 应用冒烟测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -20,7 +20,7 @@ class DocLensApplicationTests {
     private DocLensEngine docLensEngine;
 
     /**
-     * Verifies Spring context can start.
+     * 验证 Spring 上下文可以启动。
      *
      * @author lvdaxianerplus
      * @date 2026-06-07

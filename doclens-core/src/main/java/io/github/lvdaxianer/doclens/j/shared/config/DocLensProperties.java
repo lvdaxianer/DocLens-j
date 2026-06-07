@@ -1,12 +1,12 @@
 package io.github.lvdaxianer.doclens.j.shared.config;
 
 /**
- * Runtime configuration for DocLens core.
+ * DocLens core 运行时配置。
  *
- * @param storageRoot storage root for local object storage
- * @param autoProcessOnUpload whether upload requests trigger in-process worker execution
- * @param workerId local worker identifier used for future task acquisition
- * @param callback callback delivery configuration
+ * @param storageRoot 本地对象存储根目录
+ * @param autoProcessOnUpload 上传请求是否触发进程内 Worker 执行
+ * @param workerId 用于后续任务获取的本地 Worker 标识
+ * @param callback 回调投递配置
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -18,10 +18,10 @@ public record DocLensProperties(
 ) {
 
     /**
-     * Callback retry and timeout configuration.
+     * 回调重试与超时配置。
      *
-     * @param maxRetries maximum callback retry count
-     * @param timeoutSeconds callback request timeout in seconds
+     * @param maxRetries 最大回调重试次数
+     * @param timeoutSeconds 回调请求超时时间，单位秒
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

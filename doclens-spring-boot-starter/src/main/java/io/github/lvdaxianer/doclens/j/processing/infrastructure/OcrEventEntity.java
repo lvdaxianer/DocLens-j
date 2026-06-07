@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * MyBatis-Plus entity for OCR lifecycle events.
+ * OCR 生命周期事件的 MyBatis-Plus 实体。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

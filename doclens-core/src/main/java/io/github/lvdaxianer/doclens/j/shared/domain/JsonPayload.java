@@ -4,18 +4,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Immutable JSON object payload represented as a map.
+ * 以 Map 表示的不可变 JSON 对象载荷。
  *
- * @param values JSON object values
+ * @param values JSON 对象值
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
 public record JsonPayload(Map<String, Object> values) {
 
     /**
-     * Creates a JSON payload and copies input values.
+     * 创建 JSON 载荷并复制输入值。
      *
-     * @param values JSON object values
+     * @param values JSON 对象值
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -28,9 +28,9 @@ public record JsonPayload(Map<String, Object> values) {
     }
 
     /**
-     * Creates an empty payload.
+     * 创建空载荷。
      *
-     * @return empty JSON payload
+     * @return 空 JSON 载荷
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * MyBatis-Plus entity for OCR structured results.
+ * OCR 结构化结果的 MyBatis-Plus 实体。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

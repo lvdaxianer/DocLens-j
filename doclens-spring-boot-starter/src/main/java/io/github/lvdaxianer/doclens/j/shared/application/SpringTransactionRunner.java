@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Spring transaction runner adapter for DocLens core.
+ * DocLens core 的 Spring 事务执行器适配器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -15,9 +15,9 @@ public class SpringTransactionRunner implements TransactionRunner {
     private final TransactionTemplate transactionTemplate;
 
     /**
-     * Creates Spring transaction runner.
+     * 创建 Spring 事务执行器。
      *
-     * @param transactionTemplate Spring transaction template
+     * @param transactionTemplate Spring 事务模板
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

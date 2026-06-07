@@ -4,7 +4,7 @@ import java.security.SecureRandom;
 import java.util.HexFormat;
 
 /**
- * Domain identifier generator.
+ * 领域标识生成器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -15,9 +15,9 @@ public class IdGenerator {
     private final SecureRandom random = new SecureRandom();
 
     /**
-     * Creates a batch identifier.
+     * 创建批次标识。
      *
-     * @return batch id
+     * @return 批次 ID
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -26,9 +26,9 @@ public class IdGenerator {
     }
 
     /**
-     * Creates a document identifier.
+     * 创建文档标识。
      *
-     * @return document id
+     * @return 文档 ID
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -37,9 +37,9 @@ public class IdGenerator {
     }
 
     /**
-     * Creates a result identifier.
+     * 创建结果标识。
      *
-     * @return result id
+     * @return 结果 ID
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -48,9 +48,9 @@ public class IdGenerator {
     }
 
     /**
-     * Creates an event identifier.
+     * 创建事件标识。
      *
-     * @return event id
+     * @return 事件 ID
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

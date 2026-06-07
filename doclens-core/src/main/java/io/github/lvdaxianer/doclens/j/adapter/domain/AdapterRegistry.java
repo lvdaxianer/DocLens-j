@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Registry port for OCR adapters.
+ * OCR 适配器注册表端口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -13,19 +13,19 @@ import java.util.Optional;
 public interface AdapterRegistry {
 
     /**
-     * Finds an OCR adapter by key.
+     * 根据键查找 OCR 适配器。
      *
-     * @param adapterKey adapter key
-     * @return optional OCR adapter
+     * @param adapterKey 适配器键
+     * @return 可选 OCR 适配器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Optional<OcrAdapter> find(String adapterKey);
 
     /**
-     * Lists public adapter capabilities.
+     * 列出公开的适配器能力。
      *
-     * @return adapter capabilities
+     * @return 适配器能力集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

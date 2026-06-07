@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Public API contract tests for DocLens OCR service.
+ * DocLens OCR 服务的公开 API 契约测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -40,9 +40,9 @@ class DocLensOcrApiContractTest {
     private ObjectMapper objectMapper;
 
     /**
-     * Configures isolated test storage and database.
+     * 配置隔离的测试存储与数据库。
      *
-     * @param registry dynamic property registry
+     * @param registry 动态属性注册表
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -54,9 +54,9 @@ class DocLensOcrApiContractTest {
     }
 
     /**
-     * Verifies upload, query, result, events, adapters, and health contracts.
+     * 验证上传、查询、结果、事件、适配器和健康检查契约。
      *
-     * @throws Exception when request execution fails
+     * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -102,9 +102,9 @@ class DocLensOcrApiContractTest {
     }
 
     /**
-     * Verifies invalid metadata is rejected.
+     * 验证非法元数据会被拒绝。
      *
-     * @throws Exception when request execution fails
+     * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

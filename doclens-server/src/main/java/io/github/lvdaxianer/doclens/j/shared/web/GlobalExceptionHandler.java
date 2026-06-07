@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
- * Maps application exceptions to stable API error responses.
+ * 将应用异常映射为稳定的 API 错误响应。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -20,10 +20,10 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 public class GlobalExceptionHandler {
 
     /**
-     * Handles validation failures.
+     * 处理参数校验失败。
      *
-     * @param ex validation exception
-     * @return error response
+     * @param ex 校验异常
+     * @return 错误响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -37,10 +37,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles missing resources.
+     * 处理资源不存在异常。
      *
-     * @param ex not-found exception
-     * @return error response
+     * @param ex 资源不存在异常
+     * @return 错误响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -50,10 +50,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles duplicate resources.
+     * 处理资源重复异常。
      *
-     * @param ex duplicate exception
-     * @return error response
+     * @param ex 资源重复异常
+     * @return 错误响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Use case for processing one batch in document order.
+ * 按文档顺序处理单个批次的用例。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -44,10 +44,10 @@ public class BatchProcessingUseCase {
     private final TransactionRunner transactionRunner;
 
     /**
-     * Creates batch processing use case.
+     * 创建批次处理用例。
      *
-     * @param dependencies use case dependencies
-     * @param transactionRunner transaction runner
+     * @param dependencies 用例依赖
+     * @param transactionRunner 事务执行器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -63,9 +63,9 @@ public class BatchProcessingUseCase {
     }
 
     /**
-     * Processes every document in a batch.
+     * 处理批次中的每个文档。
      *
-     * @param batchId batch id
+     * @param batchId 批次 ID
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -176,7 +176,7 @@ public class BatchProcessingUseCase {
             DocumentJob first = documents.getFirst();
             eventRepository.save(batchFinishedEvent(batchId, status, first));
         } else {
-            // Empty batch cannot be created by the ingestion use case.
+            // 接收入库用例不会创建空批次。
         }
     }
 

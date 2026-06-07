@@ -13,7 +13,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 /**
- * MyBatis-Plus implementation of OCR event repository.
+ * OCR 事件仓储的 MyBatis-Plus 实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -26,9 +26,9 @@ public class MybatisPlusOcrEventRepository
     private final JsonCodec jsonCodec;
 
     /**
-     * Creates MyBatis-Plus OCR event repository.
+     * 创建 MyBatis-Plus OCR 事件仓储。
      *
-     * @param jsonCodec JSON codec
+     * @param jsonCodec JSON 编解码器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -37,9 +37,9 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Saves one OCR event.
+     * 保存单个 OCR 事件。
      *
-     * @param event OCR event
+     * @param event OCR 事件
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -49,9 +49,9 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Saves OCR events in batch.
+     * 批量保存 OCR 事件。
      *
-     * @param events OCR events
+     * @param events OCR 事件集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -61,10 +61,10 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Lists OCR events by occurrence order with bounded page size.
+     * 按发生顺序列出 OCR 事件，并限制分页大小。
      *
-     * @param batchId batch id
-     * @return OCR events
+     * @param batchId 批次 ID
+     * @return OCR 事件集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -78,10 +78,10 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Converts domain OCR event to persistence entity.
+     * 将领域 OCR 事件转换为持久化实体。
      *
-     * @param event OCR event
-     * @return OCR event persistence entity
+     * @param event OCR 事件
+     * @return OCR 事件持久化实体
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -103,10 +103,10 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Converts persistence entity to domain OCR event.
+     * 将持久化实体转换为领域 OCR 事件。
      *
-     * @param entity OCR event persistence entity
-     * @return OCR event
+     * @param entity OCR 事件持久化实体
+     * @return OCR 事件
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -119,10 +119,10 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
-     * Parses optional JSON object payload.
+     * 解析可选 JSON 对象载荷。
      *
-     * @param payload JSON object payload
-     * @return parsed object map
+     * @param payload JSON 对象载荷
+     * @return 解析后的对象 Map
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

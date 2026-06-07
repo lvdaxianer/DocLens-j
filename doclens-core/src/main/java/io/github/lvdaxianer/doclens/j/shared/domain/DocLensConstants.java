@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.shared.domain;
 
 /**
- * Shared constants for DocLens domain and API contracts.
+ * DocLens 领域和 API 契约共享常量。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

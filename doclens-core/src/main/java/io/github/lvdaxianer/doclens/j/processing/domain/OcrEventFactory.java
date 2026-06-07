@@ -4,7 +4,7 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import java.time.OffsetDateTime;
 
 /**
- * Factory for OCR lifecycle events.
+ * OCR 生命周期事件工厂。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -14,9 +14,9 @@ public class OcrEventFactory {
     private final IdGenerator idGenerator;
 
     /**
-     * Creates OCR event factory.
+     * 创建 OCR 事件工厂。
      *
-     * @param idGenerator id generator
+     * @param idGenerator ID 生成器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -25,10 +25,10 @@ public class OcrEventFactory {
     }
 
     /**
-     * Creates an OCR lifecycle event.
+     * 创建 OCR 生命周期事件。
      *
-     * @param request event creation request
-     * @return OCR lifecycle event
+     * @param request 事件创建请求
+     * @return OCR 生命周期事件
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

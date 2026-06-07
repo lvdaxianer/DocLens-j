@@ -5,17 +5,17 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Public DocLens lifecycle event for callback and embedded listeners.
+ * 面向回调和嵌入式监听器的公开 DocLens 生命周期事件。
  *
- * @param eventId event identifier
- * @param eventType event type
- * @param batchId batch identifier
- * @param documentId optional document identifier
- * @param status public status
- * @param stage public stage
- * @param progress progress payload
- * @param metadata business metadata
- * @param occurredAt event time
+ * @param eventId 事件标识
+ * @param eventType 事件类型
+ * @param batchId 批次标识
+ * @param documentId 可选文档标识
+ * @param status 公开状态
+ * @param stage 公开阶段
+ * @param progress 进度载荷
+ * @param metadata 业务元数据
+ * @param occurredAt 事件时间
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

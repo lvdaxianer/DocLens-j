@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
- * MyBatis-Plus mapper for OCR structured results.
+ * OCR 结构化结果的 MyBatis-Plus Mapper。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

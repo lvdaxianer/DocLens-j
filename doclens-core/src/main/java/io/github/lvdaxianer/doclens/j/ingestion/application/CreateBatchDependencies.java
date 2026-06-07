@@ -10,16 +10,16 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 
 /**
- * Dependency holder for batch creation use case.
+ * 批次创建用例的依赖持有对象。
  *
- * @param batchRepository batch repository
- * @param documentRepository document repository
- * @param eventRepository event repository
- * @param objectStorage object storage
- * @param idGenerator id generator
- * @param properties runtime properties
- * @param batchProcessingUseCase batch processing use case
- * @param eventFactory OCR event factory
+ * @param batchRepository 批次仓储
+ * @param documentRepository 文档仓储
+ * @param eventRepository 事件仓储
+ * @param objectStorage 对象存储
+ * @param idGenerator ID 生成器
+ * @param properties 运行时属性
+ * @param batchProcessingUseCase 批次处理用例
+ * @param eventFactory OCR 事件工厂
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

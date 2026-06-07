@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 /**
- * Document processing stage.
+ * 文档处理阶段。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

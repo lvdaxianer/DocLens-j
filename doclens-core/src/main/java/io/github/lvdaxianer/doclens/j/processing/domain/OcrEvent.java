@@ -6,20 +6,20 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * OCR lifecycle event.
+ * OCR 生命周期事件。
  *
- * @param eventId event id
- * @param eventType event type
- * @param batchId batch id
- * @param documentId optional document id
- * @param status related status
- * @param stage related stage
- * @param progress progress payload
- * @param metadata metadata payload
- * @param resultId optional result id
- * @param resultSummary optional result summary
- * @param error optional error payload
- * @param occurredAt occurrence time
+ * @param eventId 事件 ID
+ * @param eventType 事件类型
+ * @param batchId 批次 ID
+ * @param documentId 可选文档 ID
+ * @param status 关联状态
+ * @param stage 关联阶段
+ * @param progress 进度载荷
+ * @param metadata 元数据载荷
+ * @param resultId 可选结果 ID
+ * @param resultSummary 可选结果摘要
+ * @param error 可选错误载荷
+ * @param occurredAt 发生时间
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -38,20 +38,20 @@ public record OcrEvent(
         OffsetDateTime occurredAt
 ) {
     /**
-     * Creates an OCR event with safe defaults.
+     * 创建带安全默认值的 OCR 事件。
      *
-     * @param eventId event id
-     * @param eventType event type
-     * @param batchId batch id
-     * @param documentId optional document id
-     * @param status event status
-     * @param stage event stage
-     * @param progress progress payload
-     * @param metadata metadata payload
-     * @param resultId optional result id
-     * @param resultSummary result summary payload
-     * @param error error payload
-     * @param occurredAt occurrence time
+     * @param eventId 事件 ID
+     * @param eventType 事件类型
+     * @param batchId 批次 ID
+     * @param documentId 可选文档 ID
+     * @param status 事件状态
+     * @param stage 事件阶段
+     * @param progress 进度载荷
+     * @param metadata 元数据载荷
+     * @param resultId 可选结果 ID
+     * @param resultSummary 结果摘要载荷
+     * @param error 错误载荷
+     * @param occurredAt 发生时间
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Stable embedded entrypoint for DocLens OCR capabilities.
+ * DocLens OCR 能力的稳定嵌入式入口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -12,59 +12,59 @@ import java.util.Map;
 public interface DocLensEngine {
 
     /**
-     * Creates an OCR batch from embedded SDK input.
+     * 根据嵌入式 SDK 输入创建 OCR 批次。
      *
-     * @param request create batch request
-     * @return batch creation response
+     * @param request 创建批次请求
+     * @return 批次创建响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Map<String, Object> createBatch(CreateBatchRequest request);
 
     /**
-     * Gets batch status and progress.
+     * 获取批次状态和进度。
      *
-     * @param batchId batch identifier
-     * @return batch view
+     * @param batchId 批次标识
+     * @return 批次视图
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Map<String, Object> getBatch(String batchId);
 
     /**
-     * Gets one document status and progress.
+     * 获取单个文档的状态和进度。
      *
-     * @param documentId document identifier
-     * @return document view
+     * @param documentId 文档标识
+     * @return 文档视图
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Map<String, Object> getDocument(String documentId);
 
     /**
-     * Gets OCR result for one document.
+     * 获取单个文档的 OCR 结果。
      *
-     * @param documentId document identifier
-     * @return OCR result view
+     * @param documentId 文档标识
+     * @return OCR 结果视图
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Map<String, Object> getDocumentResult(String documentId);
 
     /**
-     * Gets event timeline for one batch.
+     * 获取单个批次的事件时间线。
      *
-     * @param batchId batch identifier
-     * @return event timeline
+     * @param batchId 批次标识
+     * @return 事件时间线
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Map<String, Object> getEvents(String batchId);
 
     /**
-     * Lists OCR adapter capabilities.
+     * 列出 OCR 适配器能力。
      *
-     * @return adapter response
+     * @return 适配器响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * OCR batch upload API controller.
+ * OCR 批次上传 API 控制器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -28,10 +28,10 @@ public class OcrBatchController {
     private final CreateBatchRequestMapper requestMapper;
 
     /**
-     * Creates OCR batch controller.
+     * 创建 OCR 批次控制器。
      *
-     * @param docLensEngine DocLens engine
-     * @param requestMapper multipart request mapper
+     * @param docLensEngine DocLens 引擎
+     * @param requestMapper multipart 请求映射器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -41,11 +41,11 @@ public class OcrBatchController {
     }
 
     /**
-     * Creates an OCR batch from multipart upload.
+     * 根据 multipart 上传创建 OCR 批次。
      *
-     * @param files uploaded files
-     * @param request servlet request carrying optional form fields
-     * @return upload response
+     * @param files 已上传文件集合
+     * @param request 携带可选表单字段的 Servlet 请求
+     * @return 上传响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

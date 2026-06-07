@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.storage;
 
 /**
- * Object storage abstraction for uploaded files and generated artifacts.
+ * 上传文件和生成产物的对象存储抽象。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -9,21 +9,21 @@ package io.github.lvdaxianer.doclens.j.storage;
 public interface ObjectStorage {
 
     /**
-     * Writes bytes under a relative object key.
+     * 按相对对象键写入字节。
      *
-     * @param objectKey object key
-     * @param content bytes to store
-     * @return storage URI
+     * @param objectKey 对象键
+     * @param content 待存储字节
+     * @return 存储 URI
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     String writeBytes(String objectKey, byte[] content);
 
     /**
-     * Reads bytes from a storage URI.
+     * 从存储 URI 读取字节。
      *
-     * @param storageUri storage URI
-     * @return stored bytes
+     * @param storageUri 存储 URI
+     * @return 已存储字节
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

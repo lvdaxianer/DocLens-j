@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * Worker executor configuration with business-specific thread names.
+ * 带业务专用线程名的 Worker 执行器配置。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -19,9 +19,9 @@ public class WorkerConfiguration {
     private static final int QUEUE_CAPACITY = 100;
 
     /**
-     * Creates the OCR processing executor.
+     * 创建 OCR 处理执行器。
      *
-     * @return worker executor
+     * @return Worker 执行器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

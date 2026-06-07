@@ -1,10 +1,10 @@
 package io.github.lvdaxianer.doclens.j.ingestion.application;
 
 /**
- * Uploaded file command.
+ * 上传文件命令。
  *
- * @param fileName uploaded file name
- * @param content uploaded bytes
+ * @param fileName 上传文件名
+ * @param content 上传字节
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

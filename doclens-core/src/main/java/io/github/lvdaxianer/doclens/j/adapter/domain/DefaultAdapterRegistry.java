@@ -8,7 +8,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * In-process OCR adapter registry.
+ * 进程内 OCR 适配器注册表。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -18,9 +18,9 @@ public class DefaultAdapterRegistry implements AdapterRegistry {
     private final Map<String, OcrAdapter> adapters;
 
     /**
-     * Creates adapter registry.
+     * 创建适配器注册表。
      *
-     * @param adapters OCR adapters
+     * @param adapters OCR 适配器集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

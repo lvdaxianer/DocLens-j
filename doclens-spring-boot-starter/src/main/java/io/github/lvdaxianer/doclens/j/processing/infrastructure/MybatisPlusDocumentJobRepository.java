@@ -17,7 +17,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 /**
- * MyBatis-Plus implementation of document job repository.
+ * 文档任务仓储的 MyBatis-Plus 实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -30,9 +30,9 @@ public class MybatisPlusDocumentJobRepository
     private final JsonCodec jsonCodec;
 
     /**
-     * Creates MyBatis-Plus document job repository.
+     * 创建 MyBatis-Plus 文档任务仓储。
      *
-     * @param jsonCodec JSON codec
+     * @param jsonCodec JSON 编解码器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -41,9 +41,9 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Saves one document job.
+     * 保存单个文档任务。
      *
-     * @param document document job
+     * @param document 文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -53,9 +53,9 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Saves document jobs in batch.
+     * 批量保存文档任务。
      *
-     * @param documents document jobs
+     * @param documents 文档任务集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -65,9 +65,9 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Updates one document job.
+     * 更新单个文档任务。
      *
-     * @param document document job
+     * @param document 文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -77,9 +77,9 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Updates document jobs in batch.
+     * 批量更新文档任务。
      *
-     * @param documents document jobs
+     * @param documents 文档任务集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -89,10 +89,10 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Finds one document job by id.
+     * 根据 ID 查找单个文档任务。
      *
-     * @param documentId document id
-     * @return optional document job
+     * @param documentId 文档 ID
+     * @return 可选文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -102,10 +102,10 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Lists document jobs in upload order with bounded page size.
+     * 按上传顺序列出文档任务，并限制分页大小。
      *
-     * @param batchId batch id
-     * @return document jobs
+     * @param batchId 批次 ID
+     * @return 文档任务集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -119,10 +119,10 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Converts domain document job to persistence entity.
+     * 将领域文档任务转换为持久化实体。
      *
-     * @param document document job
-     * @return document persistence entity
+     * @param document 文档任务
+     * @return 文档持久化实体
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -153,10 +153,10 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
-     * Converts persistence entity to domain document job.
+     * 将持久化实体转换为领域文档任务。
      *
-     * @param entity document persistence entity
-     * @return document job
+     * @param entity 文档持久化实体
+     * @return 文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

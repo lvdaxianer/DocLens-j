@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
- * Document job aggregate root.
+ * 文档任务聚合根。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -35,29 +35,29 @@ public record DocumentJob(
         OffsetDateTime updatedAt
 ) {
     /**
-     * Creates a document job with safe optional defaults.
+     * 创建带安全可选默认值的文档任务。
      *
-     * @param documentId document id
-     * @param batchId batch id
-     * @param fileName file name
-     * @param fileType file type
-     * @param fileSize file size
-     * @param pageCount page count
-     * @param storageUri storage URI
-     * @param status document status
-     * @param stage processing stage
-     * @param progressPercent progress percent
-     * @param currentPage current page
-     * @param totalPages total pages
-     * @param adapterName adapter key
-     * @param pdfMode optional PDF mode
-     * @param metadata metadata payload
-     * @param resultId optional result id
-     * @param errorCode optional error code
-     * @param errorMessage optional error message
-     * @param sortOrder upload order
-     * @param createdAt creation time
-     * @param updatedAt update time
+     * @param documentId 文档 ID
+     * @param batchId 批次 ID
+     * @param fileName 文件名
+     * @param fileType 文件类型
+     * @param fileSize 文件大小
+     * @param pageCount 页数
+     * @param storageUri 存储 URI
+     * @param status 文档状态
+     * @param stage 处理阶段
+     * @param progressPercent 进度百分比
+     * @param currentPage 当前页
+     * @param totalPages 总页数
+     * @param adapterName 适配器键
+     * @param pdfMode 可选 PDF 模式
+     * @param metadata 元数据载荷
+     * @param resultId 可选结果 ID
+     * @param errorCode 可选错误码
+     * @param errorMessage 可选错误消息
+     * @param sortOrder 上传顺序
+     * @param createdAt 创建时间
+     * @param updatedAt 更新时间
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -70,10 +70,10 @@ public record DocumentJob(
     }
 
     /**
-     * Creates a queued document job.
+     * 创建排队中的文档任务。
      *
-     * @param request document creation request
-     * @return queued document job
+     * @param request 文档创建请求
+     * @return 排队中的文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -87,10 +87,10 @@ public record DocumentJob(
     }
 
     /**
-     * Marks the document as processing.
+     * 将文档标记为处理中。
      *
-     * @param now current time
-     * @return updated document
+     * @param now 当前时间
+     * @return 更新后的文档
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -100,12 +100,12 @@ public record DocumentJob(
     }
 
     /**
-     * Updates document page progress.
+     * 更新文档页进度。
      *
-     * @param currentPage current completed page
-     * @param totalPages total pages
-     * @param now current time
-     * @return updated document
+     * @param currentPage 当前已完成页
+     * @param totalPages 总页数
+     * @param now 当前时间
+     * @return 更新后的文档
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -119,11 +119,11 @@ public record DocumentJob(
     }
 
     /**
-     * Marks the document as completed.
+     * 将文档标记为已完成。
      *
-     * @param resultId OCR result id
-     * @param now current time
-     * @return updated document
+     * @param resultId OCR 结果 ID
+     * @param now 当前时间
+     * @return 更新后的文档
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -133,12 +133,12 @@ public record DocumentJob(
     }
 
     /**
-     * Marks the document as failed.
+     * 将文档标记为失败。
      *
-     * @param code error code
-     * @param message error message
-     * @param now current time
-     * @return updated document
+     * @param code 错误码
+     * @param message 错误消息
+     * @param now 当前时间
+     * @return 更新后的文档
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

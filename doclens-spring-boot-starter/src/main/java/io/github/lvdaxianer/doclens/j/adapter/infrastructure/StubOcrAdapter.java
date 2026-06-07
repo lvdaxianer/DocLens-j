@@ -9,7 +9,7 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * Stub OCR adapter used for the phase-1 executable vertical slice.
+ * 阶段一可执行垂直切片使用的 Stub OCR 适配器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

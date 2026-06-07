@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import org.springframework.stereotype.Component;
 
 /**
- * Local filesystem implementation of object storage.
+ * 对象存储的本地文件系统实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -19,9 +19,9 @@ public class LocalObjectStorage implements ObjectStorage {
     private final Path storageRoot;
 
     /**
-     * Creates local object storage.
+     * 创建本地对象存储。
      *
-     * @param properties DocLens runtime properties
+     * @param properties DocLens 运行时属性
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

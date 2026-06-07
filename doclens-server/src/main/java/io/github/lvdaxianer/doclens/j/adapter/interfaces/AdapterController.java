@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Adapter capability API controller.
+ * 适配器能力 API 控制器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -21,9 +21,9 @@ public class AdapterController {
     private final DocLensEngine docLensEngine;
 
     /**
-     * Creates adapter controller.
+     * 创建适配器控制器。
      *
-     * @param docLensEngine DocLens engine
+     * @param docLensEngine DocLens 引擎
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -32,9 +32,9 @@ public class AdapterController {
     }
 
     /**
-     * Lists OCR adapter capabilities.
+     * 列出 OCR 适配器能力。
      *
-     * @return adapter response
+     * @return 适配器响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

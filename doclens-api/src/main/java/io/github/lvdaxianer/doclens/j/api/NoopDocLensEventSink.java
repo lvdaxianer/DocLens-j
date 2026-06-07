@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.api;
 
 /**
- * No-op event sink used when host applications do not subscribe to events.
+ * 宿主应用未订阅事件时使用的空操作事件接收器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -11,9 +11,9 @@ public final class NoopDocLensEventSink implements DocLensEventSink {
     @Override
     public void publish(DocLensEvent event) {
         if (event == null) {
-            // Null events are ignored to keep the no-op sink side-effect free.
+            // 忽略空事件，确保空操作接收器没有副作用。
         } else {
-            // Valid events are intentionally dropped by this implementation.
+            // 该实现会有意丢弃有效事件。
         }
     }
 }

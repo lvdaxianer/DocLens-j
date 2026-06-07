@@ -5,7 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
- * Batch aggregate root for one upload request.
+ * 一次上传请求对应的批次聚合根。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -26,21 +26,21 @@ public record Batch(
         OffsetDateTime updatedAt
 ) {
     /**
-     * Creates a batch with safe optional defaults.
+     * 创建带安全可选默认值的批次。
      *
-     * @param batchId batch id
-     * @param status batch status
-     * @param totalFiles total file count
-     * @param completedFiles completed file count
-     * @param failedFiles failed file count
-     * @param currentDocumentId current document id
-     * @param currentDocumentName current document name
-     * @param currentStage current processing stage
-     * @param metadata metadata payload
-     * @param callbackUrl callback URL
-     * @param idempotencyKey idempotency key
-     * @param createdAt creation time
-     * @param updatedAt update time
+     * @param batchId 批次 ID
+     * @param status 批次状态
+     * @param totalFiles 文件总数
+     * @param completedFiles 已完成文件数
+     * @param failedFiles 失败文件数
+     * @param currentDocumentId 当前文档 ID
+     * @param currentDocumentName 当前文档名称
+     * @param currentStage 当前处理阶段
+     * @param metadata 元数据载荷
+     * @param callbackUrl 回调 URL
+     * @param idempotencyKey 幂等键
+     * @param createdAt 创建时间
+     * @param updatedAt 更新时间
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -53,15 +53,15 @@ public record Batch(
     }
 
     /**
-     * Creates a queued batch.
+     * 创建排队中的批次。
      *
-     * @param batchId batch id
-     * @param totalFiles total file count
-     * @param metadata metadata payload
-     * @param callbackUrl callback URL
-     * @param idempotencyKey idempotency key
-     * @param now current time
-     * @return queued batch
+     * @param batchId 批次 ID
+     * @param totalFiles 文件总数
+     * @param metadata 元数据载荷
+     * @param callbackUrl 回调 URL
+     * @param idempotencyKey 幂等键
+     * @param now 当前时间
+     * @return 排队中的批次
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

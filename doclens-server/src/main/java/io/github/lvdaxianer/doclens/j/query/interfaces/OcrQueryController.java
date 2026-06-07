@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * OCR query API controller.
+ * OCR 查询 API 控制器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -20,9 +20,9 @@ public class OcrQueryController {
     private final DocLensEngine docLensEngine;
 
     /**
-     * Creates OCR query controller.
+     * 创建 OCR 查询控制器。
      *
-     * @param docLensEngine DocLens engine
+     * @param docLensEngine DocLens 引擎
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -31,10 +31,10 @@ public class OcrQueryController {
     }
 
     /**
-     * Gets batch status.
+     * 获取批次状态。
      *
-     * @param batchId batch id
-     * @return batch status
+     * @param batchId 批次 ID
+     * @return 批次状态
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -44,10 +44,10 @@ public class OcrQueryController {
     }
 
     /**
-     * Gets document status.
+     * 获取文档状态。
      *
-     * @param documentId document id
-     * @return document status
+     * @param documentId 文档 ID
+     * @return 文档状态
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -57,10 +57,10 @@ public class OcrQueryController {
     }
 
     /**
-     * Gets document OCR result.
+     * 获取文档 OCR 结果。
      *
-     * @param documentId document id
-     * @return OCR result
+     * @param documentId 文档 ID
+     * @return OCR 结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -70,10 +70,10 @@ public class OcrQueryController {
     }
 
     /**
-     * Gets batch events.
+     * 获取批次事件。
      *
-     * @param batchId batch id
-     * @return event timeline
+     * @param batchId 批次 ID
+     * @return 事件时间线
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

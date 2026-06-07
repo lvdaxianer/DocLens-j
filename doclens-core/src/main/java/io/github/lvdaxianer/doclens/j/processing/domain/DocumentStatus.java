@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 /**
- * Document job lifecycle status.
+ * 文档任务生命周期状态。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

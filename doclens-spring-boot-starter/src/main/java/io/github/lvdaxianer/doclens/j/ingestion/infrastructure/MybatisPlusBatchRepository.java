@@ -15,7 +15,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 /**
- * MyBatis-Plus implementation of batch repository.
+ * 批次仓储的 MyBatis-Plus 实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -26,9 +26,9 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     private final JsonCodec jsonCodec;
 
     /**
-     * Creates MyBatis-Plus batch repository.
+     * 创建 MyBatis-Plus 批次仓储。
      *
-     * @param jsonCodec JSON codec
+     * @param jsonCodec JSON 编解码器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -37,9 +37,9 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Saves a batch aggregate.
+     * 保存批次聚合。
      *
-     * @param batch batch aggregate
+     * @param batch 批次聚合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -49,10 +49,10 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Finds a batch by id.
+     * 根据 ID 查找批次。
      *
-     * @param batchId batch id
-     * @return optional batch aggregate
+     * @param batchId 批次 ID
+     * @return 可选批次聚合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -62,10 +62,10 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Finds a batch by idempotency key with explicit single-row limit.
+     * 按幂等键查找批次，并显式限制单行结果。
      *
-     * @param idempotencyKey idempotency key
-     * @return optional batch aggregate
+     * @param idempotencyKey 幂等键
+     * @return 可选批次聚合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -77,12 +77,12 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Updates batch completion summary.
+     * 更新批次完成摘要。
      *
-     * @param batchId batch id
-     * @param completedFiles completed file count
-     * @param failedFiles failed file count
-     * @param status final batch status
+     * @param batchId 批次 ID
+     * @param completedFiles 已完成文件数
+     * @param failedFiles 失败文件数
+     * @param status 最终批次状态
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -101,10 +101,10 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Converts domain batch to persistence entity.
+     * 将领域批次转换为持久化实体。
      *
-     * @param batch batch aggregate
-     * @return batch persistence entity
+     * @param batch 批次聚合
+     * @return 批次持久化实体
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -127,10 +127,10 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
-     * Converts persistence entity to domain batch.
+     * 将持久化实体转换为领域批次。
      *
-     * @param entity batch persistence entity
-     * @return batch aggregate
+     * @param entity 批次持久化实体
+     * @return 批次聚合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

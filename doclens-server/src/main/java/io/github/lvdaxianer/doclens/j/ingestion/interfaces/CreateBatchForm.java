@@ -4,14 +4,14 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Multipart form object for creating OCR batches.
+ * 用于创建 OCR 批次的 multipart 表单对象。
  *
- * @param files uploaded files
- * @param metadata metadata JSON
- * @param callbackUrl callback URL
- * @param idempotencyKey idempotency key
- * @param adapterOverride adapter override
- * @param pdfMode PDF mode
+ * @param files 已上传文件集合
+ * @param metadata 元数据 JSON
+ * @param callbackUrl 回调 URL
+ * @param idempotencyKey 幂等键
+ * @param adapterOverride 适配器覆盖值
+ * @param pdfMode PDF 模式
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

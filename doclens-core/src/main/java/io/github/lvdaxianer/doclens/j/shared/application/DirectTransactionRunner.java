@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.shared.application;
 import java.util.function.Supplier;
 
 /**
- * Direct transaction runner for embedded non-Spring usage and tests.
+ * 用于非 Spring 嵌入式使用和测试的直接事务执行器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

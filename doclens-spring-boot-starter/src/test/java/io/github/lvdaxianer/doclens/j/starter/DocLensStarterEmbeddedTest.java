@@ -17,7 +17,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * Embedded Spring Boot starter tests for SDK-style usage.
+ * 面向 SDK 使用方式的嵌入式 Spring Boot Starter 测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -32,9 +32,9 @@ class DocLensStarterEmbeddedTest {
     private DocLensEngine docLensEngine;
 
     /**
-     * Configures isolated starter test runtime.
+     * 配置隔离的 Starter 测试运行环境。
      *
-     * @param registry dynamic property registry
+     * @param registry 动态属性注册表
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -50,7 +50,7 @@ class DocLensStarterEmbeddedTest {
     }
 
     /**
-     * Verifies a host Spring Boot app can inject and call DocLensEngine.
+     * 验证宿主 Spring Boot 应用可以注入并调用 DocLensEngine。
      *
      * @author lvdaxianerplus
      * @date 2026-06-07
@@ -83,7 +83,7 @@ class DocLensStarterEmbeddedTest {
     }
 
     /**
-     * Minimal host application used to activate Spring Boot auto-configuration.
+     * 用于激活 Spring Boot 自动配置的最小宿主应用。
      *
      * @author lvdaxianerplus
      * @date 2026-06-07

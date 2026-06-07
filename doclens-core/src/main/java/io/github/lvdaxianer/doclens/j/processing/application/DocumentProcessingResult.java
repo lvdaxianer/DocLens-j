@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Result of processing one document in memory.
+ * 内存中处理单个文档的结果。
  *
- * @param document final document state
- * @param result optional OCR result
- * @param events lifecycle events
+ * @param document 最终文档状态
+ * @param result 可选 OCR 结果
+ * @param events 生命周期事件集合
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

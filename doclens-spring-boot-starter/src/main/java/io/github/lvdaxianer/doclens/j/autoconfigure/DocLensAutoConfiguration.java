@@ -41,7 +41,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Spring Boot auto-configuration for embedded DocLens runtime.
+ * 嵌入式 DocLens 运行时的 Spring Boot 自动配置。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -65,10 +65,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class DocLensAutoConfiguration {
 
     /**
-     * Adapts Spring configuration properties to core runtime properties.
+     * 将 Spring 配置属性适配为核心运行时属性。
      *
-     * @param properties Spring-bound properties
-     * @return core runtime properties
+     * @param properties 绑定到 Spring 的属性
+     * @return 核心运行时属性
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -81,9 +81,9 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates default identifier generator.
+     * 创建默认标识生成器。
      *
-     * @return identifier generator
+     * @return 标识生成器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -94,9 +94,9 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates default object mapper for non-web embedded hosts.
+     * 为非 Web 嵌入式宿主创建默认对象映射器。
      *
-     * @return Jackson object mapper
+     * @return Jackson 对象映射器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -107,10 +107,10 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates shared JSON codec.
+     * 创建共享 JSON 编解码器。
      *
-     * @param objectMapper Jackson object mapper
-     * @return JSON codec
+     * @param objectMapper Jackson 对象映射器
+     * @return JSON 编解码器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -121,10 +121,10 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates Spring transaction adapter.
+     * 创建 Spring 事务适配器。
      *
-     * @param transactionTemplate Spring transaction template
-     * @return transaction runner
+     * @param transactionTemplate Spring 事务模板
+     * @return 事务执行器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -135,10 +135,10 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates event factory.
+     * 创建事件工厂。
      *
-     * @param idGenerator identifier generator
-     * @return OCR event factory
+     * @param idGenerator 标识生成器
+     * @return OCR 事件工厂
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -149,9 +149,9 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates default event sink.
+     * 创建默认事件接收器。
      *
-     * @return no-op event sink
+     * @return 空操作事件接收器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -162,10 +162,10 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates OCR adapter registry.
+     * 创建 OCR 适配器注册表。
      *
-     * @param adapters OCR adapters
-     * @return adapter registry
+     * @param adapters OCR 适配器集合
+     * @return 适配器注册表
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -176,11 +176,11 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates batch processing use case.
+     * 创建批次处理用例。
      *
-     * @param dependencies use case dependencies
-     * @param transactionRunner transaction runner
-     * @return batch processing use case
+     * @param dependencies 用例依赖
+     * @param transactionRunner 事务执行器
+     * @return 批次处理用例
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -194,16 +194,16 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates batch processing dependency holder.
+     * 创建批次处理用例的依赖持有对象。
      *
-     * @param documentRepository document repository
-     * @param resultRepository result repository
-     * @param eventRepository event repository
-     * @param batchRepository batch repository
-     * @param adapterRegistry adapter registry
-     * @param idGenerator id generator
-     * @param eventFactory event factory
-     * @return dependency holder
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param adapterRegistry 适配器注册表
+     * @param idGenerator ID 生成器
+     * @param eventFactory 事件工厂
+     * @return 依赖持有对象
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -223,11 +223,11 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates batch creation use case.
+     * 创建批次创建用例。
      *
-     * @param dependencies use case dependencies
-     * @param transactionRunner transaction runner
-     * @return create batch use case
+     * @param dependencies 用例依赖
+     * @param transactionRunner 事务执行器
+     * @return 创建批次用例
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -238,17 +238,17 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates batch creation dependency holder.
+     * 创建批次创建用例的依赖持有对象。
      *
-     * @param batchRepository batch repository
-     * @param documentRepository document repository
-     * @param eventRepository event repository
-     * @param objectStorage object storage
-     * @param idGenerator id generator
-     * @param properties runtime properties
-     * @param batchProcessingUseCase batch processing use case
-     * @param eventFactory event factory
-     * @return dependency holder
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param objectStorage 对象存储
+     * @param idGenerator ID 生成器
+     * @param properties 运行时属性
+     * @param batchProcessingUseCase 批次处理用例
+     * @param eventFactory 事件工厂
+     * @return 依赖持有对象
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -269,13 +269,13 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates query service.
+     * 创建查询服务。
      *
-     * @param batchRepository batch repository
-     * @param documentRepository document repository
-     * @param resultRepository result repository
-     * @param eventRepository event repository
-     * @return OCR query service
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @return OCR 查询服务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -291,11 +291,11 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * Creates public DocLens engine.
+     * 创建公开的 DocLens 引擎。
      *
-     * @param createBatchUseCase create batch use case
-     * @param queryService query service
-     * @return DocLens engine
+     * @param createBatchUseCase 创建批次用例
+     * @param queryService 查询服务
+     * @return DocLens 引擎
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

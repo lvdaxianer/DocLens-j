@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * JSON serialization helper for persistence and HTTP form payloads.
+ * 用于持久化和 HTTP 表单载荷的 JSON 序列化辅助类。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -19,9 +19,9 @@ public class JsonCodec {
     private final ObjectMapper objectMapper;
 
     /**
-     * Creates a JSON codec.
+     * 创建 JSON 编解码器。
      *
-     * @param objectMapper shared Jackson mapper
+     * @param objectMapper 共享 Jackson 映射器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -30,10 +30,10 @@ public class JsonCodec {
     }
 
     /**
-     * Serializes any object to JSON text.
+     * 将任意对象序列化为 JSON 文本。
      *
-     * @param value object value
-     * @return JSON text
+     * @param value 对象值
+     * @return JSON 文本
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -48,10 +48,10 @@ public class JsonCodec {
     }
 
     /**
-     * Parses object JSON text.
+     * 解析对象 JSON 文本。
      *
-     * @param payload JSON text
-     * @return JSON object map
+     * @param payload JSON 文本
+     * @return JSON 对象 Map
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

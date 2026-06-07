@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * DocLens OCR service application entrypoint.
+ * DocLens OCR 服务应用入口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -17,9 +17,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DocLensApplication {
 
     /**
-     * Starts the DocLens OCR service.
+     * 启动 DocLens OCR 服务。
      *
-     * @param args command line arguments
+     * @param args 命令行参数
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

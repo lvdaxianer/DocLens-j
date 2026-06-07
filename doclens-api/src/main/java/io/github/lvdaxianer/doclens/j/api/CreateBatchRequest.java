@@ -4,14 +4,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Embedded SDK request for creating an OCR batch.
+ * 用于创建 OCR 批次的嵌入式 SDK 请求。
  *
- * @param files upload files
- * @param metadata business metadata
- * @param callbackUrl optional callback URL
- * @param idempotencyKey optional idempotency key
- * @param adapterOverride optional OCR adapter key
- * @param pdfMode optional PDF processing mode
+ * @param files 上传文件集合
+ * @param metadata 业务元数据
+ * @param callbackUrl 可选回调 URL
+ * @param idempotencyKey 可选幂等键
+ * @param adapterOverride 可选 OCR 适配器键
+ * @param pdfMode 可选 PDF 处理模式
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

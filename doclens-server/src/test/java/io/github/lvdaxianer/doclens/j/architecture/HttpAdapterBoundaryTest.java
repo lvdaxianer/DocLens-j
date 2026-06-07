@@ -9,7 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Architecture boundary tests for HTTP adapter module.
+ * HTTP 适配器模块的架构边界测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -27,9 +27,9 @@ class HttpAdapterBoundaryTest {
     );
 
     /**
-     * Verifies HTTP controllers enter business capabilities through DocLensEngine.
+     * 验证 HTTP 控制器通过 DocLensEngine 进入业务能力。
      *
-     * @throws IOException when source files cannot be read
+     * @throws IOException 无法读取源文件时抛出
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -5,7 +5,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import java.util.Map;
 
 /**
- * OCR adapter anti-corruption interface.
+ * OCR 适配器防腐接口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -13,19 +13,19 @@ import java.util.Map;
 public interface OcrAdapter {
 
     /**
-     * Returns adapter capability.
+     * 返回适配器能力。
      *
-     * @return adapter capability
+     * @return 适配器能力
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     AdapterCapability capability();
 
     /**
-     * Parses a document job into a vendor-neutral raw output.
+     * 将文档任务解析为厂商无关的原始输出。
      *
-     * @param document document job
-     * @return vendor output
+     * @param document 文档任务
+     * @return 厂商输出
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

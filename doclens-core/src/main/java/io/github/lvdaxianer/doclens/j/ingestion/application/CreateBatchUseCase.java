@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Use case for creating OCR batches.
+ * 创建 OCR 批次的用例。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -44,10 +44,10 @@ public class CreateBatchUseCase {
     private final TransactionRunner transactionRunner;
 
     /**
-     * Creates the use case.
+     * 创建用例。
      *
-     * @param dependencies use case dependencies
-     * @param transactionRunner transaction runner
+     * @param dependencies 用例依赖
+     * @param transactionRunner 事务执行器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -64,10 +64,10 @@ public class CreateBatchUseCase {
     }
 
     /**
-     * Creates a batch and its document jobs.
+     * 创建批次及其文档任务。
      *
-     * @param command create batch command
-     * @return upload response
+     * @param command 创建批次命令
+     * @return 上传响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -79,10 +79,10 @@ public class CreateBatchUseCase {
     }
 
     /**
-     * Creates batch database records in a short transaction.
+     * 在短事务中创建批次数据库记录。
      *
-     * @param command create batch command
-     * @return upload response
+     * @param command 创建批次命令
+     * @return 上传响应
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -105,7 +105,7 @@ public class CreateBatchUseCase {
         if (properties.autoProcessOnUpload()) {
             batchProcessingUseCase.processBatch(batchId);
         } else {
-            // Configuration intentionally leaves the batch queued for external workers.
+            // 配置明确要求批次保持排队状态，等待外部 Worker 处理。
         }
     }
 
@@ -117,7 +117,7 @@ public class CreateBatchUseCase {
                 if (file.content() == null || file.content().length == 0) {
                     throw new IllegalArgumentException("uploaded file is empty");
                 } else {
-                    // File payload is present.
+                    // 文件载荷已存在。
                 }
             });
         }
@@ -128,7 +128,7 @@ public class CreateBatchUseCase {
                 && batchRepository.findByIdempotencyKey(command.idempotencyKey()).isPresent()) {
             throw new DuplicateResourceException("duplicate idempotency key");
         } else {
-            // Empty idempotency key means normal non-idempotent creation.
+            // 空幂等键表示按普通非幂等流程创建。
         }
     }
 

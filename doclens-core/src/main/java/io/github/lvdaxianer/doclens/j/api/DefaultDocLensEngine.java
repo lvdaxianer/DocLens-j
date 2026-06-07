@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Default DocLens engine implementation shared by SDK and HTTP modes.
+ * SDK 与 HTTP 模式共享的默认 DocLens 引擎实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -21,11 +21,11 @@ public class DefaultDocLensEngine implements DocLensEngine {
     private final AdapterRegistry adapterRegistry;
 
     /**
-     * Creates DocLens engine.
+     * 创建 DocLens 引擎。
      *
-     * @param createBatchUseCase create batch use case
-     * @param queryService OCR query service
-     * @param adapterRegistry adapter registry
+     * @param createBatchUseCase 创建批次用例
+     * @param queryService OCR 查询服务
+     * @param adapterRegistry 适配器注册表
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

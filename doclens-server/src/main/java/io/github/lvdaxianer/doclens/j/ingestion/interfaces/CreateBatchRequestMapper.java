@@ -11,7 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Maps multipart HTTP requests to batch creation commands.
+ * 将 multipart HTTP 请求映射为批次创建命令。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -29,9 +29,9 @@ public class CreateBatchRequestMapper {
     private final JsonCodec jsonCodec;
 
     /**
-     * Creates request mapper.
+     * 创建请求映射器。
      *
-     * @param jsonCodec JSON codec
+     * @param jsonCodec JSON 编解码器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -40,11 +40,11 @@ public class CreateBatchRequestMapper {
     }
 
     /**
-     * Converts multipart input into an application command.
+     * 将 multipart 输入转换为应用命令。
      *
-     * @param files uploaded files
-     * @param request servlet request carrying optional form fields
-     * @return create batch request
+     * @param files 已上传文件集合
+     * @param request 携带可选表单字段的 Servlet 请求
+     * @return 创建批次请求
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -70,7 +70,7 @@ public class CreateBatchRequestMapper {
         } else if (StringUtils.hasText(form.callbackUrl()) && !form.callbackUrl().startsWith("http")) {
             throw new IllegalArgumentException("callback_url must be http or https URL");
         } else {
-            // Form contains files and optional callback URL is acceptable.
+            // 表单包含文件，且可接受可选回调地址。
         }
     }
 

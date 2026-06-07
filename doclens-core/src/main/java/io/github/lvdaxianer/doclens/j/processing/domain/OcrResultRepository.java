@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 import java.util.Optional;
 
 /**
- * Repository interface for OCR results.
+ * OCR 结果仓储接口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -11,28 +11,28 @@ import java.util.Optional;
 public interface OcrResultRepository {
 
     /**
-     * Saves an OCR result.
+     * 保存 OCR 结果。
      *
-     * @param result OCR result
+     * @param result OCR 结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void save(OcrResult result);
 
     /**
-     * Saves OCR results in batch.
+     * 批量保存 OCR 结果。
      *
-     * @param results OCR results
+     * @param results OCR 结果集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void saveAll(java.util.List<OcrResult> results);
 
     /**
-     * Finds OCR result by document id.
+     * 根据文档 ID 查找 OCR 结果。
      *
-     * @param documentId document id
-     * @return optional result
+     * @param documentId 文档 ID
+     * @return 可选结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

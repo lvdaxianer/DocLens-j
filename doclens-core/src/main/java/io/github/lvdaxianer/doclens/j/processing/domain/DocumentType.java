@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 /**
- * Supported uploaded document categories.
+ * 支持的上传文档类别。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

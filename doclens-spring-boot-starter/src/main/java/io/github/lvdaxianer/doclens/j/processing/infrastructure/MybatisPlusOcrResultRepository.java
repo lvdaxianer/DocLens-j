@@ -15,7 +15,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 /**
- * MyBatis-Plus implementation of OCR result repository.
+ * OCR 结果仓储的 MyBatis-Plus 实现。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -34,10 +34,10 @@ public class MybatisPlusOcrResultRepository
     private final ObjectMapper objectMapper;
 
     /**
-     * Creates MyBatis-Plus OCR result repository.
+     * 创建 MyBatis-Plus OCR 结果仓储。
      *
-     * @param jsonCodec JSON codec
-     * @param objectMapper Jackson mapper
+     * @param jsonCodec JSON 编解码器
+     * @param objectMapper Jackson 映射器
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -47,9 +47,9 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Saves one OCR result.
+     * 保存单个 OCR 结果。
      *
-     * @param result OCR result
+     * @param result OCR 结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -59,9 +59,9 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Saves OCR results in batch.
+     * 批量保存 OCR 结果。
      *
-     * @param results OCR results
+     * @param results OCR 结果集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -71,10 +71,10 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Finds one OCR result by document id with explicit single-row limit.
+     * 根据文档 ID 查找单个 OCR 结果，并显式限制单行结果。
      *
-     * @param documentId document id
-     * @return optional OCR result
+     * @param documentId 文档 ID
+     * @return 可选 OCR 结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -86,10 +86,10 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Converts domain OCR result to persistence entity.
+     * 将领域 OCR 结果转换为持久化实体。
      *
-     * @param result OCR result
-     * @return OCR result persistence entity
+     * @param result OCR 结果
+     * @return OCR 结果持久化实体
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -110,10 +110,10 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Converts persistence entity to domain OCR result.
+     * 将持久化实体转换为领域 OCR 结果。
      *
-     * @param entity OCR result persistence entity
-     * @return OCR result
+     * @param entity OCR 结果持久化实体
+     * @return OCR 结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -129,12 +129,12 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
-     * Reads JSON payload as the requested type.
+     * 按请求类型读取 JSON 载荷。
      *
-     * @param payload JSON payload
-     * @param typeReference target type reference
-     * @param <T> target type
-     * @return parsed value
+     * @param payload JSON 载荷
+     * @param typeReference 目标类型引用
+     * @param <T> 目标类型
+     * @return 解析后的值
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

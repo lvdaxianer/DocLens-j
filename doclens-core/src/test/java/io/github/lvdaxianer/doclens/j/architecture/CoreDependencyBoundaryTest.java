@@ -9,7 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Architecture boundary tests for DocLens core module.
+ * DocLens core 模块的架构边界测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -25,9 +25,9 @@ class CoreDependencyBoundaryTest {
     );
 
     /**
-     * Verifies core module stays independent from Spring, Web, and MyBatis.
+     * 验证 core 模块保持对 Spring、Web 和 MyBatis 的独立性。
      *
-     * @throws IOException when source files cannot be read
+     * @throws IOException 无法读取源文件时抛出
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 
 /**
- * Factory for MyBatis-Plus page requests used by repositories.
+ * 仓储使用的 MyBatis-Plus 分页请求工厂。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -12,7 +12,7 @@ import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 public final class MybatisPlusPages {
 
     /**
-     * Hides utility constructor.
+     * 隐藏工具类构造器。
      *
      * @author lvdaxianerplus
      * @date 2026-06-07
@@ -21,10 +21,10 @@ public final class MybatisPlusPages {
     }
 
     /**
-     * Creates a page request limited to a single record.
+     * 创建限制为单条记录的分页请求。
      *
-     * @param <T> entity type
-     * @return single-record page request
+     * @param <T> 实体类型
+     * @return 单条记录分页请求
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -33,10 +33,10 @@ public final class MybatisPlusPages {
     }
 
     /**
-     * Creates a default bounded list page request.
+     * 创建默认有界列表分页请求。
      *
-     * @param <T> entity type
-     * @return default list page request
+     * @param <T> 实体类型
+     * @return 默认列表分页请求
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.shared.domain;
 
 /**
- * Exception thrown when a requested resource does not exist.
+ * 请求资源不存在时抛出的异常。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -9,9 +9,9 @@ package io.github.lvdaxianer.doclens.j.shared.domain;
 public class ResourceNotFoundException extends RuntimeException {
 
     /**
-     * Creates a not-found exception.
+     * 创建资源不存在异常。
      *
-     * @param message exception message
+     * @param message 异常消息
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

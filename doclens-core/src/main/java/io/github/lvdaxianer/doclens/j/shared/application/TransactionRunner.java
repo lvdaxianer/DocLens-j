@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.shared.application;
 import java.util.function.Supplier;
 
 /**
- * Executes application use case fragments inside explicit transactions.
+ * 在显式事务中执行应用用例片段。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -11,20 +11,20 @@ import java.util.function.Supplier;
 public interface TransactionRunner {
 
     /**
-     * Executes a value-returning action in a transaction.
+     * 在事务中执行有返回值的动作。
      *
-     * @param action transactional action
-     * @param <T> result type
-     * @return action result
+     * @param action 事务动作
+     * @param <T> 结果类型
+     * @return 动作结果
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     <T> T requiredResult(Supplier<T> action);
 
     /**
-     * Executes a void action in a transaction.
+     * 在事务中执行无返回值的动作。
      *
-     * @param action transactional action
+     * @param action 事务动作
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Query service for OCR public read models.
+ * OCR 公开读模型查询服务。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -27,12 +27,12 @@ public class OcrQueryService {
     private final OcrEventRepository eventRepository;
 
     /**
-     * Creates OCR query service.
+     * 创建 OCR 查询服务。
      *
-     * @param batchRepository batch repository
-     * @param documentRepository document repository
-     * @param resultRepository result repository
-     * @param eventRepository event repository
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -49,10 +49,10 @@ public class OcrQueryService {
     }
 
     /**
-     * Gets a batch read model.
+     * 获取批次读模型。
      *
-     * @param batchId batch id
-     * @return batch read model
+     * @param batchId 批次 ID
+     * @return 批次读模型
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -73,10 +73,10 @@ public class OcrQueryService {
     }
 
     /**
-     * Gets a document read model.
+     * 获取文档读模型。
      *
-     * @param documentId document id
-     * @return document read model
+     * @param documentId 文档 ID
+     * @return 文档读模型
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -103,10 +103,10 @@ public class OcrQueryService {
     }
 
     /**
-     * Gets OCR result read model.
+     * 获取 OCR 结果读模型。
      *
-     * @param documentId document id
-     * @return result read model
+     * @param documentId 文档 ID
+     * @return 结果读模型
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -135,10 +135,10 @@ public class OcrQueryService {
     }
 
     /**
-     * Gets event timeline for a batch.
+     * 获取批次事件时间线。
      *
-     * @param batchId batch id
-     * @return event timeline
+     * @param batchId 批次 ID
+     * @return 事件时间线
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

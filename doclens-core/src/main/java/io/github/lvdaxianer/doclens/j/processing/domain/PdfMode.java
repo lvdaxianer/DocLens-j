@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 /**
- * PDF processing mode.
+ * PDF 处理模式。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07

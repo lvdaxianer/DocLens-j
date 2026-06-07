@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository interface for document jobs.
+ * 文档任务仓储接口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -12,56 +12,56 @@ import java.util.Optional;
 public interface DocumentJobRepository {
 
     /**
-     * Saves a new document job.
+     * 保存新的文档任务。
      *
-     * @param document document job
+     * @param document 文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void save(DocumentJob document);
 
     /**
-     * Saves document jobs in batch.
+     * 批量保存文档任务。
      *
-     * @param documents document jobs
+     * @param documents 文档任务集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void saveAll(List<DocumentJob> documents);
 
     /**
-     * Updates an existing document job.
+     * 更新已有文档任务。
      *
-     * @param document document job
+     * @param document 文档任务
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void update(DocumentJob document);
 
     /**
-     * Updates document jobs in batch.
+     * 批量更新文档任务。
      *
-     * @param documents document jobs
+     * @param documents 文档任务集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void updateAll(List<DocumentJob> documents);
 
     /**
-     * Finds a document by id.
+     * 根据 ID 查找文档。
      *
-     * @param documentId document id
-     * @return optional document
+     * @param documentId 文档 ID
+     * @return 可选文档
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Optional<DocumentJob> findById(String documentId);
 
     /**
-     * Lists documents by batch ordered by upload order.
+     * 按上传顺序列出批次内文档。
      *
-     * @param batchId batch id
-     * @return ordered documents
+     * @param batchId 批次 ID
+     * @return 有序文档集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

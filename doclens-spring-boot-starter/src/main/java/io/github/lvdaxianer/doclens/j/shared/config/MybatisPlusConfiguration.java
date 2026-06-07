@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * MyBatis-Plus infrastructure configuration.
+ * MyBatis-Plus 基础设施配置。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -16,9 +16,9 @@ import org.springframework.context.annotation.Configuration;
 public class MybatisPlusConfiguration {
 
     /**
-     * Registers pagination support for repository query limits.
+     * 注册仓储查询限制所需的分页支持。
      *
-     * @return MyBatis-Plus interceptor chain
+     * @return MyBatis-Plus 拦截器链
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

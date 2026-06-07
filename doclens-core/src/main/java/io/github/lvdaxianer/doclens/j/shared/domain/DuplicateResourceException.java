@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.shared.domain;
 
 /**
- * Exception thrown when a uniqueness constraint is violated.
+ * 违反唯一性约束时抛出的异常。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -9,9 +9,9 @@ package io.github.lvdaxianer.doclens.j.shared.domain;
 public class DuplicateResourceException extends RuntimeException {
 
     /**
-     * Creates a duplicate-resource exception.
+     * 创建资源重复异常。
      *
-     * @param message exception message
+     * @param message 异常消息
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

@@ -4,12 +4,12 @@ import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.time.OffsetDateTime;
 
 /**
- * Context for creating document jobs within a batch.
+ * 批次内创建文档任务所需的上下文。
  *
- * @param command create batch command
- * @param batchId batch id
- * @param metadata metadata payload
- * @param now creation time
+ * @param command 创建批次命令
+ * @param batchId 批次 ID
+ * @param metadata 元数据载荷
+ * @param now 创建时间
  * @author lvdaxianerplus
  * @date 2026-06-07
  */

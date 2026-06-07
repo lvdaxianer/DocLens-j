@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.shared.domain;
 
 /**
- * Base exception for domain rule violations.
+ * 领域规则违反场景的基础异常。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -9,9 +9,9 @@ package io.github.lvdaxianer.doclens.j.shared.domain;
 public class DomainException extends RuntimeException {
 
     /**
-     * Creates a domain exception.
+     * 创建领域异常。
      *
-     * @param message exception message
+     * @param message 异常消息
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

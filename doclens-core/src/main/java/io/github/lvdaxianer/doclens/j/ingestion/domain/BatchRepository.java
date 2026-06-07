@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.ingestion.domain;
 import java.util.Optional;
 
 /**
- * Repository interface for batch aggregate.
+ * 批次聚合仓储接口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -11,41 +11,41 @@ import java.util.Optional;
 public interface BatchRepository {
 
     /**
-     * Saves a batch.
+     * 保存批次。
      *
-     * @param batch batch aggregate
+     * @param batch 批次聚合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void save(Batch batch);
 
     /**
-     * Finds a batch by id.
+     * 根据 ID 查找批次。
      *
-     * @param batchId batch id
-     * @return optional batch
+     * @param batchId 批次 ID
+     * @return 可选批次
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Optional<Batch> findById(String batchId);
 
     /**
-     * Finds a batch by idempotency key.
+     * 根据幂等键查找批次。
      *
-     * @param idempotencyKey idempotency key
-     * @return optional batch
+     * @param idempotencyKey 幂等键
+     * @return 可选批次
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     Optional<Batch> findByIdempotencyKey(String idempotencyKey);
 
     /**
-     * Updates batch processing summary.
+     * 更新批次处理摘要。
      *
-     * @param batchId batch id
-     * @param completedFiles completed file count
-     * @param failedFiles failed file count
-     * @param status final status
+     * @param batchId 批次 ID
+     * @param completedFiles 已完成文件数
+     * @param failedFiles 失败文件数
+     * @param status 最终状态
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

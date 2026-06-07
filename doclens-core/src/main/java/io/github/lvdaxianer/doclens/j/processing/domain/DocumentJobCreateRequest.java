@@ -5,20 +5,20 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
- * Request object for creating document jobs.
+ * 创建文档任务的请求对象。
  *
- * @param documentId document id
- * @param batchId batch id
- * @param fileName original file name
- * @param fileType detected file type
- * @param fileSize file size
- * @param pageCount detected page count
- * @param storageUri upload storage URI
- * @param adapterName adapter key
- * @param pdfMode PDF processing mode
- * @param metadata metadata payload
- * @param sortOrder upload order
- * @param now current time
+ * @param documentId 文档 ID
+ * @param batchId 批次 ID
+ * @param fileName 原始文件名
+ * @param fileType 检测出的文件类型
+ * @param fileSize 文件大小
+ * @param pageCount 检测出的页数
+ * @param storageUri 上传存储 URI
+ * @param adapterName 适配器键
+ * @param pdfMode PDF 处理模式
+ * @param metadata 元数据载荷
+ * @param sortOrder 上传顺序
+ * @param now 当前时间
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -37,20 +37,20 @@ public record DocumentJobCreateRequest(
         OffsetDateTime now
 ) {
     /**
-     * Creates a document job request with safe defaults.
+     * 创建带安全默认值的文档任务请求。
      *
-     * @param documentId document id
-     * @param batchId batch id
-     * @param fileName file name
-     * @param fileType file type
-     * @param fileSize file size
-     * @param pageCount page count
-     * @param storageUri storage URI
-     * @param adapterName adapter key
-     * @param pdfMode optional PDF mode
-     * @param metadata metadata payload
-     * @param sortOrder upload order
-     * @param now current time
+     * @param documentId 文档 ID
+     * @param batchId 批次 ID
+     * @param fileName 文件名
+     * @param fileType 文件类型
+     * @param fileSize 文件大小
+     * @param pageCount 页数
+     * @param storageUri 存储 URI
+     * @param adapterName 适配器键
+     * @param pdfMode 可选 PDF 模式
+     * @param metadata 元数据载荷
+     * @param sortOrder 上传顺序
+     * @param now 当前时间
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

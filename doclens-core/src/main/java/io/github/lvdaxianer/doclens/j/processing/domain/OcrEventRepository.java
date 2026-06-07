@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 import java.util.List;
 
 /**
- * Repository interface for OCR lifecycle events.
+ * OCR 生命周期事件仓储接口。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -11,28 +11,28 @@ import java.util.List;
 public interface OcrEventRepository {
 
     /**
-     * Saves an event.
+     * 保存事件。
      *
-     * @param event OCR event
+     * @param event OCR 事件
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void save(OcrEvent event);
 
     /**
-     * Saves events in batch.
+     * 批量保存事件。
      *
-     * @param events OCR events
+     * @param events OCR 事件集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     void saveAll(List<OcrEvent> events);
 
     /**
-     * Lists events by batch id.
+     * 根据批次 ID 列出事件。
      *
-     * @param batchId batch id
-     * @return ordered events
+     * @param batchId 批次 ID
+     * @return 有序事件集合
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

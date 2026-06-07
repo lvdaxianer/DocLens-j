@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * System health API controller compatible with the Python service contract.
+ * 兼容 Python 服务契约的系统健康 API 控制器。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     /**
-     * Returns lightweight service health.
+     * 返回轻量级服务健康信息。
      *
-     * @return health payload
+     * @return 健康载荷
      * @author lvdaxianerplus
      * @date 2026-06-07
      */

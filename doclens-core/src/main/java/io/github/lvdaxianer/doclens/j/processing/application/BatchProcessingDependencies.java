@@ -9,15 +9,15 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 
 /**
- * Dependency holder for batch processing use case.
+ * 批次处理用例的依赖持有对象。
  *
- * @param documentRepository document repository
- * @param resultRepository OCR result repository
- * @param eventRepository OCR event repository
- * @param batchRepository batch repository
- * @param adapterRegistry adapter registry
- * @param idGenerator id generator
- * @param eventFactory OCR event factory
+ * @param documentRepository 文档仓储
+ * @param resultRepository OCR 结果仓储
+ * @param eventRepository OCR 事件仓储
+ * @param batchRepository 批次仓储
+ * @param adapterRegistry 适配器注册表
+ * @param idGenerator ID 生成器
+ * @param eventFactory OCR 事件工厂
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
