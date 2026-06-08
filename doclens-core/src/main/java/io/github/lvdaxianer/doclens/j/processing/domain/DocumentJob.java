@@ -34,7 +34,8 @@ public record DocumentJob(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
-    private static final int IMAGE_PROGRESS_WEIGHT = 90;
+    private static final int OCR_PROGRESS_RANGE = DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT
+            - DocLensConstants.START_PROGRESS_PERCENT;
 
     /**
      * 创建带安全可选默认值的文档任务。
@@ -136,11 +137,7 @@ public record DocumentJob(
      * @date 2026-06-07
      */
     public DocumentJob markPageCompleted(int currentPage, int totalPages, OffsetDateTime now) {
-        int percent = Math.min(
-                DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT,
-                Math.max(DocLensConstants.START_PROGRESS_PERCENT,
-                        (int) Math.round(currentPage * (double) IMAGE_PROGRESS_WEIGHT / totalPages))
-        );
+        int percent = pageProgressPercent(currentPage, totalPages);
         return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_IMAGES, percent, currentPage, totalPages,
                 resultId, errorCode, errorMessage, now);
     }
@@ -184,12 +181,28 @@ public record DocumentJob(
 
     private int processingProgressPercent(ProcessingStage nextStage, int nextCurrentPage, int nextTotalPages) {
         if (nextStage == ProcessingStage.OCR_IMAGES) {
-            return Math.min(DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT,
-                    Math.max(DocLensConstants.START_PROGRESS_PERCENT,
-                            (int) Math.round(nextCurrentPage * (double) IMAGE_PROGRESS_WEIGHT / nextTotalPages)));
+            return pageProgressPercent(nextCurrentPage, nextTotalPages);
         } else {
             return Math.max(progressPercent, DocLensConstants.START_PROGRESS_PERCENT);
         }
+    }
+
+    /**
+     * 按 OCR 页完成比例计算平滑进度。
+     *
+     * @param nextCurrentPage 当前已完成页
+     * @param nextTotalPages 总页数
+     * @return 处理中的进度百分比
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private int pageProgressPercent(int nextCurrentPage, int nextTotalPages) {
+        int safeTotalPages = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, nextTotalPages);
+        int safeCurrentPage = Math.max(0, Math.min(nextCurrentPage, safeTotalPages));
+        int percent = DocLensConstants.START_PROGRESS_PERCENT
+                + (int) Math.round(safeCurrentPage * (double) OCR_PROGRESS_RANGE / safeTotalPages);
+        return Math.min(DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT,
+                Math.max(DocLensConstants.START_PROGRESS_PERCENT, percent));
     }
 
     private DocumentJob withState(
