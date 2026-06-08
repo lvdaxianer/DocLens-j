@@ -105,6 +105,30 @@ class DashboardQueryServiceTest {
     }
 
     /**
+     * 最近批次应使用文档实时状态修正展示状态和进度。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void summaryShowsProcessingBatchWhenDocumentIsProcessing() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(queuedBatch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                stagedDocument("doc-processing", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 541, 677, 0)
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> summary = service.summary();
+
+        assertThat(summary.get("recent_batches")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("status", "processing")
+                .containsEntry("progress_percent", 77);
+    }
+
+    /**
      * 批次详情应按上传顺序返回文档，并包含文件类型对应的处理轨道。
      *
      * @author lvdaxianerplus
@@ -232,6 +256,18 @@ class DashboardQueryServiceTest {
     private Batch batch() {
         return new Batch("batch-test", BatchStatus.COMPLETED, 3, 1, 1, Optional.empty(), Optional.empty(),
                 "completed", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME, BASE_TIME.plusMinutes(5));
+    }
+
+    /**
+     * 创建排队中的测试批次。
+     *
+     * @return 排队中的测试批次
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private Batch queuedBatch() {
+        return new Batch("batch-test", BatchStatus.QUEUED, 1, 0, 0, Optional.empty(), Optional.empty(),
+                "queued", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME, BASE_TIME.plusMinutes(21));
     }
 
     /**
