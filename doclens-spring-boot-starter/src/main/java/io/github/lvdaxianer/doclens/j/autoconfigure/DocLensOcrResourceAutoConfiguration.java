@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServicePrope
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckProperties;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
@@ -67,10 +68,13 @@ public class DocLensOcrResourceAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    OcrRoutingService ocrRoutingService(OcrRoutingAutoConfigurationDependencies dependencies) {
+    OcrRoutingService ocrRoutingService(
+            OcrRoutingAutoConfigurationDependencies dependencies,
+            DocLensSpringProperties properties
+    ) {
         return new OcrRoutingService(new OcrRoutingDependencies(dependencies.nodePool(), dependencies.nodeSelector(),
                 dependencies.nodeExecutor(), dependencies.callRepository(), dependencies.callIdGenerator(),
-                new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)));
+                routingProperties(properties.ocr())));
     }
 
     /**
@@ -83,8 +87,8 @@ public class DocLensOcrResourceAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    OcrHealthClient ocrHealthClient(DocLensProperties properties) {
-        return new PaddleOcrHealthClient(properties.paddleOcr().timeoutSeconds());
+    OcrHealthClient ocrHealthClient(DocLensSpringProperties properties) {
+        return new PaddleOcrHealthClient(properties.ocr().healthCheckTimeoutSeconds());
     }
 
     /**
@@ -104,11 +108,40 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrNodeRepository nodeRepository,
             OcrHealthClient healthClient,
             @Qualifier("doclensOcrHealthExecutor") ExecutorService healthExecutor,
-            DocLensProperties properties
+            DocLensSpringProperties properties
     ) {
         return new OcrHealthChecker(nodeRepository, healthClient, healthExecutor,
-                new OcrHealthCheckProperties(properties.ocrHealth().healthFailureThreshold(),
-                        properties.ocrHealth().recoverySuccessThreshold()));
+                new OcrHealthCheckProperties(properties.ocr().healthFailureThreshold(),
+                        properties.ocr().recoverySuccessThreshold()));
+    }
+
+    /**
+     * 创建 OCR 路由服务配置。
+     *
+     * @param properties OCR 配置属性
+     * @return OCR 路由服务配置
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrRoutingServiceProperties routingProperties(DocLensSpringProperties.OcrProperties properties) {
+        return new OcrRoutingServiceProperties(defaultPolicy(properties), properties.requestRetryTimes(),
+                properties.specificNodeFallbackEnabled());
+    }
+
+    /**
+     * 创建默认 OCR 路由策略。
+     *
+     * @param properties OCR 配置属性
+     * @return 默认 OCR 路由策略
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrRoutePolicy defaultPolicy(DocLensSpringProperties.OcrProperties properties) {
+        if (properties.defaultRoutingMode() == OcrRoutingMode.DEFAULT) {
+            return OcrRoutePolicy.defaultPolicy();
+        } else {
+            return OcrRoutePolicy.globalLoadBalance(properties.loadBalanceStrategy());
+        }
     }
 
     /**

@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -10,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param workerId Worker 标识
  * @param callback 回调配置
  * @param adapter 适配器配置
+ * @param ocr OCR 路由配置
  * @param paddleOcr PaddleOCR 配置
  * @param ocrHealth OCR 健康检查配置
  * @param extraction 提取配置
@@ -26,6 +29,7 @@ public record DocLensSpringProperties(
         String workerId,
         CallbackProperties callback,
         AdapterProperties adapter,
+        OcrProperties ocr,
         PaddleOcrProperties paddleOcr,
         OcrHealthProperties ocrHealth,
         ExtractionProperties extraction,
@@ -38,14 +42,36 @@ public record DocLensSpringProperties(
     public DocLensSpringProperties {
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
         adapter = adapter == null ? new AdapterProperties("paddle_ocr") : adapter;
-        paddleOcr = paddleOcr == null
-                ? new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false)
-                : paddleOcr;
+        ocr = ocr == null ? new OcrProperties(OcrRoutingMode.GLOBAL_LOAD_BALANCE, "least-inflight", 3, 30, 5,
+                3, 2, false) : ocr;
+        paddleOcr = paddleOcr == null ? defaultPaddleOcr() : paddleOcr;
         ocrHealth = ocrHealth == null ? new OcrHealthProperties(3, 2) : ocrHealth;
         extraction = extraction == null ? new ExtractionProperties(1) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
         threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
+    }
+
+    /**
+     * 创建默认 PaddleOCR 配置。
+     *
+     * @return PaddleOCR 配置
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static PaddleOcrProperties defaultPaddleOcr() {
+        return new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false, List.of(defaultPaddleNode()));
+    }
+
+    /**
+     * 创建默认 PaddleOCR 启动节点。
+     *
+     * @return PaddleOCR 启动节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static PaddleOcrNodeProperties defaultPaddleNode() {
+        return new PaddleOcrNodeProperties("paddle-215", "10.100.30.215", 8080, true, true, 100, 4);
     }
 
     /**
@@ -70,16 +96,77 @@ public record DocLensSpringProperties(
     }
 
     /**
+     * OCR 路由与健康检查属性。
+     *
+     * @param defaultRoutingMode 默认路由模式
+     * @param loadBalanceStrategy 默认负载均衡策略
+     * @param requestRetryTimes 请求重试次数
+     * @param healthCheckIntervalSeconds 健康检查间隔秒数
+     * @param healthCheckTimeoutSeconds 健康检查超时秒数
+     * @param healthFailureThreshold 健康失败摘除阈值
+     * @param recoverySuccessThreshold 恢复成功阈值
+     * @param specificNodeFallbackEnabled 指定节点是否允许回退
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public record OcrProperties(
+            OcrRoutingMode defaultRoutingMode,
+            String loadBalanceStrategy,
+            int requestRetryTimes,
+            int healthCheckIntervalSeconds,
+            int healthCheckTimeoutSeconds,
+            int healthFailureThreshold,
+            int recoverySuccessThreshold,
+            boolean specificNodeFallbackEnabled
+    ) {
+    }
+
+    /**
      * PaddleOCR 属性。
      *
      * @param enabled 是否启用
      * @param endpoint 接口地址
      * @param timeoutSeconds 超时秒数
      * @param visualize 是否请求可视化
+     * @param bootstrapNodes 启动初始化节点
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    public record PaddleOcrProperties(boolean enabled, String endpoint, int timeoutSeconds, boolean visualize) {
+    public record PaddleOcrProperties(
+            boolean enabled,
+            String endpoint,
+            int timeoutSeconds,
+            boolean visualize,
+            List<PaddleOcrNodeProperties> bootstrapNodes
+    ) {
+
+        public PaddleOcrProperties {
+            bootstrapNodes = bootstrapNodes == null ? List.of() : List.copyOf(bootstrapNodes);
+        }
+    }
+
+    /**
+     * PaddleOCR 启动节点属性。
+     *
+     * @param name 节点名称
+     * @param host 节点主机
+     * @param port 节点端口
+     * @param enabled 是否启用
+     * @param participateGlobal 是否参与全局负载均衡
+     * @param weight 权重
+     * @param maxConcurrency 最大并发
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public record PaddleOcrNodeProperties(
+            String name,
+            String host,
+            int port,
+            boolean enabled,
+            boolean participateGlobal,
+            int weight,
+            int maxConcurrency
+    ) {
     }
 
     /**

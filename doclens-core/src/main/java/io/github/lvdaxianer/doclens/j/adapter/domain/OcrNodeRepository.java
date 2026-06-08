@@ -21,6 +21,15 @@ public interface OcrNodeRepository {
     void save(OcrNode node);
 
     /**
+     * 批量保存新的 OCR 节点。
+     *
+     * @param nodes OCR 节点集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    void saveAll(List<OcrNode> nodes);
+
+    /**
      * 更新已有 OCR 节点。
      *
      * @param node OCR 节点

@@ -2,13 +2,18 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeBootstrapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeResponseMapper;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import java.time.OffsetDateTime;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -90,5 +95,42 @@ public class DocLensPaddleOcrAutoConfiguration {
             PaddleOcrNativeResponseMapper responseMapper
     ) {
         return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper);
+    }
+
+    /**
+     * 创建 PaddleOCR 节点启动初始化器。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param properties Spring 配置属性
+     * @return OCR 节点启动初始化器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "doclens.paddle-ocr", name = "enabled", havingValue = "true", matchIfMissing = true)
+    OcrNodeBootstrapper ocrNodeBootstrapper(
+            OcrNodeRepository nodeRepository,
+            DocLensSpringProperties properties
+    ) {
+        return new OcrNodeBootstrapper(nodeRepository, properties.paddleOcr().bootstrapNodes());
+    }
+
+    /**
+     * 应用启动完成后初始化 PaddleOCR 节点并刷新运行时池。
+     *
+     * @param bootstrapper OCR 节点启动初始化器
+     * @param nodePool OCR 运行时节点池
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "paddleOcrBootstrapRunner")
+    @ConditionalOnBean(OcrNodeBootstrapper.class)
+    ApplicationRunner paddleOcrBootstrapRunner(OcrNodeBootstrapper bootstrapper, OcrRuntimeNodePool nodePool) {
+        return args -> {
+            bootstrapper.bootstrap(OffsetDateTime.now());
+            nodePool.refresh();
+        };
     }
 }

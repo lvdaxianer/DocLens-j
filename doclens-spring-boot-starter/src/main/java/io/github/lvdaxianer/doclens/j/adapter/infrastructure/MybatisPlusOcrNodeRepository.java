@@ -34,6 +34,18 @@ public class MybatisPlusOcrNodeRepository
     }
 
     /**
+     * 批量保存 OCR 节点。
+     *
+     * @param nodes OCR 节点集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Override
+    public void saveAll(List<OcrNode> nodes) {
+        super.saveBatch(nodes.stream().map(this::toEntity).toList());
+    }
+
+    /**
      * 更新 OCR 节点。
      *
      * @param node OCR 节点

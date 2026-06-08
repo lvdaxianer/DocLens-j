@@ -189,6 +189,11 @@ class OcrHealthCheckerTest {
         }
 
         @Override
+        public void saveAll(List<OcrNode> nodes) {
+            nodes.forEach(this::save);
+        }
+
+        @Override
         public void update(OcrNode node) {
             nodes.put(node.id(), node);
         }
