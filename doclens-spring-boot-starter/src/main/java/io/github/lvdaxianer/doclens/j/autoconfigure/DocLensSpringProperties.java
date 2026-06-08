@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param callback 回调配置
  * @param adapter 适配器配置
  * @param paddleOcr PaddleOCR 配置
+ * @param ocrHealth OCR 健康检查配置
  * @param extraction 提取配置
  * @param pdfRender PDF 渲染配置
  * @param wordConversion Word 转 PDF 配置
@@ -26,6 +27,7 @@ public record DocLensSpringProperties(
         CallbackProperties callback,
         AdapterProperties adapter,
         PaddleOcrProperties paddleOcr,
+        OcrHealthProperties ocrHealth,
         ExtractionProperties extraction,
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion,
@@ -39,6 +41,7 @@ public record DocLensSpringProperties(
         paddleOcr = paddleOcr == null
                 ? new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false)
                 : paddleOcr;
+        ocrHealth = ocrHealth == null ? new OcrHealthProperties(3, 2) : ocrHealth;
         extraction = extraction == null ? new ExtractionProperties(1) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
@@ -77,6 +80,17 @@ public record DocLensSpringProperties(
      * @date 2026-06-08
      */
     public record PaddleOcrProperties(boolean enabled, String endpoint, int timeoutSeconds, boolean visualize) {
+    }
+
+    /**
+     * OCR 健康检查属性。
+     *
+     * @param healthFailureThreshold 健康检查失败摘除阈值
+     * @param recoverySuccessThreshold 恢复成功阈值
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record OcrHealthProperties(int healthFailureThreshold, int recoverySuccessThreshold) {
     }
 
     /**

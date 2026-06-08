@@ -7,6 +7,9 @@ package io.github.lvdaxianer.doclens.j.shared.config;
  * @param autoProcessOnUpload 上传请求是否触发进程内 Worker 执行
  * @param workerId 用于后续任务获取的本地 Worker 标识
  * @param callback 回调投递配置
+ * @param adapter 适配器配置
+ * @param paddleOcr PaddleOCR 配置
+ * @param ocrHealth OCR 健康检查配置
  * @param threadPools 线程池隔离配置
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -18,6 +21,7 @@ public record DocLensProperties(
         CallbackProperties callback,
         AdapterProperties adapter,
         PaddleOcrProperties paddleOcr,
+        OcrHealthProperties ocrHealth,
         ExtractionProperties extraction,
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion,
@@ -56,6 +60,17 @@ public record DocLensProperties(
      * @date 2026-06-08
      */
     public record PaddleOcrProperties(boolean enabled, String endpoint, int timeoutSeconds, boolean visualize) {
+    }
+
+    /**
+     * OCR 健康检查配置。
+     *
+     * @param healthFailureThreshold 健康检查失败摘除阈值
+     * @param recoverySuccessThreshold 恢复成功阈值
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record OcrHealthProperties(int healthFailureThreshold, int recoverySuccessThreshold) {
     }
 
     /**

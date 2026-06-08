@@ -99,6 +99,7 @@ class CreateBatchUseCaseTest {
                 new DocLensProperties.CallbackProperties(1, 5),
                 new DocLensProperties.AdapterProperties("stub_ocr"),
                 new DocLensProperties.PaddleOcrProperties(false, "http://127.0.0.1:8080/ocr", 5, false),
+                new DocLensProperties.OcrHealthProperties(3, 2),
                 new DocLensProperties.ExtractionProperties(1),
                 new DocLensProperties.PdfRenderProperties(72, "png"),
                 new DocLensProperties.WordConversionProperties("soffice", 5),
