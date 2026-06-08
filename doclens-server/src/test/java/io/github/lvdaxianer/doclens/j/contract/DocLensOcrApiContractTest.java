@@ -8,12 +8,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -41,6 +43,9 @@ class DocLensOcrApiContractTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     /**
      * 配置隔离的测试存储与数据库。
@@ -163,6 +168,44 @@ class DocLensOcrApiContractTest {
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("invalid metadata json")));
     }
 
+    /**
+     * 验证 multipart OCR 路由字段会持久化到文档任务快照。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void batchUploadPersistsOcrRoutePolicy() throws Exception {
+        MvcResult created = uploadBatchWithOcrRoutePolicy();
+        JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
+        String documentId = body.get("documents").get(0).get("document_id").asText();
+
+        Map<String, Object> routeColumns = loadRouteColumns(documentId);
+
+        assertThat(routeColumns)
+                .containsEntry("OCR_ROUTING_MODE", "MODEL_LOAD_BALANCE")
+                .containsEntry("OCR_MODEL_KEY", "paddle_ocr")
+                .containsEntry("OCR_LOAD_BALANCE_STRATEGY", "least-inflight");
+    }
+
+    /**
+     * 查询文档任务 OCR 路由字段。
+     *
+     * @param documentId 文档 ID
+     * @return OCR 路由字段
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private Map<String, Object> loadRouteColumns(String documentId) {
+        return jdbcTemplate.queryForMap("""
+                SELECT ocr_routing_mode, ocr_model_key, ocr_load_balance_strategy
+                FROM ocr_documents
+                WHERE document_id = ?
+                LIMIT 1
+                """, documentId);
+    }
+
     private MvcResult uploadBatch() throws Exception {
         MockMultipartFile first = new MockMultipartFile("files", "a.md", "text/markdown", "# A\n正文".getBytes());
         MockMultipartFile second = new MockMultipartFile("files", "b.png", "image/png", "png-bytes".getBytes());
@@ -175,6 +218,27 @@ class DocLensOcrApiContractTest {
                         .param("pdf_mode", "page_image_fallback"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("queued"))
+                .andReturn();
+    }
+
+    /**
+     * 上传携带 OCR 路由策略的测试批次。
+     *
+     * @return 创建批次响应
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private MvcResult uploadBatchWithOcrRoutePolicy() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("files", "route.png", "image/png", "png-bytes".getBytes());
+        return mockMvc.perform(multipart("/api/v1/batches")
+                        .file(file)
+                        .param("metadata", "{\"bizId\":\"OCR-ROUTE\"}")
+                        .param("idempotency_key", "idem-ocr-route-" + UUID.randomUUID())
+                        .param("ocrRoutingMode", "MODEL_LOAD_BALANCE")
+                        .param("ocrModelKey", "paddle_ocr")
+                        .param("ocrLoadBalanceStrategy", "least-inflight"))
+                .andExpect(status().isAccepted())
                 .andReturn();
     }
 }

@@ -19,7 +19,11 @@ const EMPTY_UPLOAD_OPTIONS: UploadBatchOptions = {
   callbackUrl: '',
   idempotencyKey: '',
   adapterOverride: '',
-  pdfMode: ''
+  pdfMode: '',
+  ocrRoutingMode: '',
+  ocrModelKey: '',
+  ocrNodeId: '',
+  ocrLoadBalanceStrategy: ''
 }
 
 const emit = defineEmits<{
@@ -100,7 +104,11 @@ function submitUpload(): void {
     callbackUrl: form.callbackUrl,
     idempotencyKey: form.idempotencyKey,
     adapterOverride: form.adapterOverride,
-    pdfMode: form.pdfMode
+    pdfMode: form.pdfMode,
+    ocrRoutingMode: EMPTY_UPLOAD_OPTIONS.ocrRoutingMode,
+    ocrModelKey: EMPTY_UPLOAD_OPTIONS.ocrModelKey,
+    ocrNodeId: EMPTY_UPLOAD_OPTIONS.ocrNodeId,
+    ocrLoadBalanceStrategy: EMPTY_UPLOAD_OPTIONS.ocrLoadBalanceStrategy
   })
 }
 

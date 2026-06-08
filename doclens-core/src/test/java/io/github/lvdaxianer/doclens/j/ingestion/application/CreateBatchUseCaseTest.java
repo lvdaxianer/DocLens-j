@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.ingestion.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -33,6 +35,8 @@ class CreateBatchUseCaseTest {
     private static final int TEST_EVENT_CAPACITY = 8;
     private static final int TEST_OBJECT_CAPACITY = 4;
 
+    private InMemoryDocumentJobRepository lastDocumentRepository;
+
     /**
      * 自动处理应只提交后台调度，避免上传请求等待 OCR 完成。
      *
@@ -53,6 +57,29 @@ class CreateBatchUseCaseTest {
     }
 
     /**
+     * 上传时选择的 OCR 路由策略应快照到每个文档任务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void createPersistsUploadOcrRoutePolicyOnDocuments() {
+        RecordingBatchProcessingScheduler scheduler = new RecordingBatchProcessingScheduler();
+        CreateBatchUseCase useCase = createUseCase(scheduler, false);
+        CreateBatchCommand command = modelRouteCommand();
+
+        useCase.create(command);
+
+        assertThat(lastDocumentRepository.documents.values())
+                .extracting(DocumentJob::ocrRoutePolicy)
+                .allSatisfy(policy -> {
+                    assertThat(policy.routingMode()).isEqualTo(OcrRoutingMode.MODEL_LOAD_BALANCE);
+                    assertThat(policy.modelKey()).contains("paddle_ocr");
+                    assertThat(policy.loadBalanceStrategy()).contains("least-inflight");
+                });
+    }
+
+    /**
      * 创建批次测试用例。
      *
      * @param scheduler 批次处理调度器
@@ -67,6 +94,7 @@ class CreateBatchUseCaseTest {
     ) {
         InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        lastDocumentRepository = documentRepository;
         InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
         CreateBatchDependencies dependencies = new CreateBatchDependencies(batchRepository, documentRepository,
                 eventRepository, new InMemoryObjectStorage(), new IdGenerator(), properties(autoProcessOnUpload),
@@ -84,6 +112,20 @@ class CreateBatchUseCaseTest {
     private CreateBatchCommand commandWithTextFile() {
         UploadFileCommand file = new UploadFileCommand("hello.txt", "hello".getBytes());
         return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null, "idem-test", null, null);
+    }
+
+    /**
+     * 创建指定 OCR 模型负载均衡的测试命令。
+     *
+     * @return 创建批次命令
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private CreateBatchCommand modelRouteCommand() {
+        UploadFileCommand file = new UploadFileCommand("hello.png", "image".getBytes());
+        OcrRoutePolicy routePolicy = OcrRoutePolicy.modelLoadBalance("paddle_ocr", "least-inflight");
+        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null,
+                "idem-route-test", null, null, routePolicy);
     }
 
     /**

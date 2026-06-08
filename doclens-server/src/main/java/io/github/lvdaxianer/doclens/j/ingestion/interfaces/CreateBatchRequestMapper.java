@@ -24,6 +24,14 @@ public class CreateBatchRequestMapper {
     private static final String IDEMPOTENCY_KEY_PARAM = "idempotency_key";
     private static final String ADAPTER_OVERRIDE_PARAM = "adapter_override";
     private static final String PDF_MODE_PARAM = "pdf_mode";
+    private static final String OCR_ROUTING_MODE_PARAM = "ocrRoutingMode";
+    private static final String OCR_MODEL_KEY_PARAM = "ocrModelKey";
+    private static final String OCR_NODE_ID_PARAM = "ocrNodeId";
+    private static final String OCR_LOAD_BALANCE_STRATEGY_PARAM = "ocrLoadBalanceStrategy";
+    private static final String OCR_ROUTING_MODE_SNAKE_PARAM = "ocr_routing_mode";
+    private static final String OCR_MODEL_KEY_SNAKE_PARAM = "ocr_model_key";
+    private static final String OCR_NODE_ID_SNAKE_PARAM = "ocr_node_id";
+    private static final String OCR_LOAD_BALANCE_STRATEGY_SNAKE_PARAM = "ocr_load_balance_strategy";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
     private final JsonCodec jsonCodec;
@@ -55,13 +63,37 @@ public class CreateBatchRequestMapper {
                 .map(this::toDocumentInput)
                 .toList();
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
-                form.idempotencyKey(), form.adapterOverride(), form.pdfMode());
+                form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.ocrRoutingMode(),
+                form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy());
     }
 
     private CreateBatchForm toForm(List<MultipartFile> files, HttpServletRequest request) {
         return new CreateBatchForm(files, request.getParameter(METADATA_PARAM),
                 request.getParameter(CALLBACK_URL_PARAM), request.getParameter(IDEMPOTENCY_KEY_PARAM),
-                request.getParameter(ADAPTER_OVERRIDE_PARAM), request.getParameter(PDF_MODE_PARAM));
+                request.getParameter(ADAPTER_OVERRIDE_PARAM), request.getParameter(PDF_MODE_PARAM),
+                parameter(request, OCR_ROUTING_MODE_PARAM, OCR_ROUTING_MODE_SNAKE_PARAM),
+                parameter(request, OCR_MODEL_KEY_PARAM, OCR_MODEL_KEY_SNAKE_PARAM),
+                parameter(request, OCR_NODE_ID_PARAM, OCR_NODE_ID_SNAKE_PARAM),
+                parameter(request, OCR_LOAD_BALANCE_STRATEGY_PARAM, OCR_LOAD_BALANCE_STRATEGY_SNAKE_PARAM));
+    }
+
+    /**
+     * 读取兼容 camelCase 与 snake_case 的表单参数。
+     *
+     * @param request HTTP 请求
+     * @param primaryName 首选参数名
+     * @param fallbackName 兼容参数名
+     * @return 表单参数值
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private String parameter(HttpServletRequest request, String primaryName, String fallbackName) {
+        String value = request.getParameter(primaryName);
+        if (StringUtils.hasText(value)) {
+            return value;
+        } else {
+            return request.getParameter(fallbackName);
+        }
     }
 
     private void validateForm(CreateBatchForm form) {

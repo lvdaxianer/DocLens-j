@@ -5,6 +5,10 @@ export interface UploadBatchOptions {
   idempotencyKey: string
   adapterOverride: string
   pdfMode: string
+  ocrRoutingMode: string
+  ocrModelKey: string
+  ocrNodeId: string
+  ocrLoadBalanceStrategy: string
 }
 
 export interface UploadDocumentSummary {

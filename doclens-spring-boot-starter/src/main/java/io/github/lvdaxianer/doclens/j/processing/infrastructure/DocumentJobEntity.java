@@ -32,6 +32,10 @@ public class DocumentJobEntity {
     private int totalPages;
     private String adapterName;
     private String pdfMode;
+    private String ocrRoutingMode;
+    private String ocrModelKey;
+    private String ocrNodeId;
+    private String ocrLoadBalanceStrategy;
     private String metadata;
     private String resultId;
     private String errorCode;

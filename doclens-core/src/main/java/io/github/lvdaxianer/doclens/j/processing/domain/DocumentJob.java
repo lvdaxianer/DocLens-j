@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.time.OffsetDateTime;
@@ -26,6 +27,7 @@ public record DocumentJob(
         int totalPages,
         String adapterName,
         Optional<PdfMode> pdfMode,
+        OcrRoutePolicy ocrRoutePolicy,
         JsonPayload metadata,
         Optional<String> resultId,
         Optional<String> errorCode,
@@ -54,6 +56,7 @@ public record DocumentJob(
      * @param totalPages 总页数
      * @param adapterName 适配器键
      * @param pdfMode 可选 PDF 模式
+     * @param ocrRoutePolicy OCR 路由策略快照
      * @param metadata 元数据载荷
      * @param resultId 可选结果 ID
      * @param errorCode 可选错误码
@@ -62,10 +65,15 @@ public record DocumentJob(
      * @param createdAt 创建时间
      * @param updatedAt 更新时间
      * @author lvdaxianerplus
-     * @date 2026-06-07
+     * @date 2026-06-09
      */
     public DocumentJob {
         pdfMode = pdfMode == null ? Optional.empty() : pdfMode;
+        if (ocrRoutePolicy == null) {
+            ocrRoutePolicy = OcrRoutePolicy.defaultPolicy();
+        } else {
+            // 调用方已提供文档级 OCR 路由策略快照。
+        }
         metadata = metadata == null ? JsonPayload.empty() : metadata;
         resultId = resultId == null ? Optional.empty() : resultId;
         errorCode = errorCode == null ? Optional.empty() : errorCode;
@@ -84,8 +92,9 @@ public record DocumentJob(
         return new DocumentJob(
                 request.documentId(), request.batchId(), request.fileName(), request.fileType(), request.fileSize(),
                 request.pageCount(), request.storageUri(), DocumentStatus.QUEUED, ProcessingStage.QUEUED, 0, 0,
-                request.pageCount(), request.adapterName(), request.pdfMode(), request.metadata(), Optional.empty(), Optional.empty(), Optional.empty(),
-                request.sortOrder(), request.now(), request.now()
+                request.pageCount(), request.adapterName(), request.pdfMode(), request.ocrRoutePolicy(),
+                request.metadata(), Optional.empty(), Optional.empty(), Optional.empty(), request.sortOrder(),
+                request.now(), request.now()
         );
     }
 
@@ -217,7 +226,7 @@ public record DocumentJob(
             OffsetDateTime now
     ) {
         return new DocumentJob(documentId, batchId, fileName, fileType, fileSize, pageCount, storageUri, nextStatus,
-                nextStage, nextProgress, nextCurrentPage, nextTotalPages, adapterName, pdfMode, metadata, nextResultId,
-                nextErrorCode, nextErrorMessage, sortOrder, createdAt, now);
+                nextStage, nextProgress, nextCurrentPage, nextTotalPages, adapterName, pdfMode, ocrRoutePolicy,
+                metadata, nextResultId, nextErrorCode, nextErrorMessage, sortOrder, createdAt, now);
     }
 }

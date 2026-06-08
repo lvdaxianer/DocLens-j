@@ -7,6 +7,10 @@ const CALLBACK_URL_FIELD = 'callback_url'
 const IDEMPOTENCY_KEY_FIELD = 'idempotency_key'
 const ADAPTER_OVERRIDE_FIELD = 'adapter_override'
 const PDF_MODE_FIELD = 'pdf_mode'
+const OCR_ROUTING_MODE_FIELD = 'ocrRoutingMode'
+const OCR_MODEL_KEY_FIELD = 'ocrModelKey'
+const OCR_NODE_ID_FIELD = 'ocrNodeId'
+const OCR_LOAD_BALANCE_STRATEGY_FIELD = 'ocrLoadBalanceStrategy'
 
 function appendOptional(formData: FormData, fieldName: string, value: string): void {
   const trimmedValue = value.trim()
@@ -27,6 +31,10 @@ function createUploadFormData(options: UploadBatchOptions): FormData {
   appendOptional(formData, IDEMPOTENCY_KEY_FIELD, options.idempotencyKey)
   appendOptional(formData, ADAPTER_OVERRIDE_FIELD, options.adapterOverride)
   appendOptional(formData, PDF_MODE_FIELD, options.pdfMode)
+  appendOptional(formData, OCR_ROUTING_MODE_FIELD, options.ocrRoutingMode)
+  appendOptional(formData, OCR_MODEL_KEY_FIELD, options.ocrModelKey)
+  appendOptional(formData, OCR_NODE_ID_FIELD, options.ocrNodeId)
+  appendOptional(formData, OCR_LOAD_BALANCE_STRATEGY_FIELD, options.ocrLoadBalanceStrategy)
   return formData
 }
 

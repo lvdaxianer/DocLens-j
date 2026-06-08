@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
@@ -12,8 +14,11 @@ import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -26,6 +31,9 @@ import org.springframework.stereotype.Repository;
 public class MybatisPlusDocumentJobRepository
         extends ServiceImpl<DocumentJobMapper, DocumentJobEntity>
         implements DocumentJobRepository {
+
+    private static final Map<OcrRoutingMode, Function<DocumentJobEntity, OcrRoutePolicy>> ROUTE_POLICY_FACTORIES =
+            routePolicyFactories();
 
     private final JsonCodec jsonCodec;
 
@@ -180,6 +188,10 @@ public class MybatisPlusDocumentJobRepository
         entity.setTotalPages(document.totalPages());
         entity.setAdapterName(document.adapterName());
         entity.setPdfMode(document.pdfMode().map(mode -> mode.name().toLowerCase()).orElse(null));
+        entity.setOcrRoutingMode(document.ocrRoutePolicy().routingMode().name());
+        entity.setOcrModelKey(document.ocrRoutePolicy().modelKey().orElse(null));
+        entity.setOcrNodeId(document.ocrRoutePolicy().nodeId().orElse(null));
+        entity.setOcrLoadBalanceStrategy(document.ocrRoutePolicy().loadBalanceStrategy().orElse(null));
         entity.setMetadata(jsonCodec.toJson(document.metadata().values()));
         entity.setResultId(document.resultId().orElse(null));
         entity.setErrorCode(document.errorCode().orElse(null));
@@ -206,8 +218,59 @@ public class MybatisPlusDocumentJobRepository
                 ProcessingStage.valueOf(entity.getStage().toUpperCase()), entity.getProgressPercent(),
                 entity.getCurrentPage(), entity.getTotalPages(), entity.getAdapterName(),
                 Optional.ofNullable(pdfMode).map(value -> PdfMode.valueOf(value.toUpperCase())),
+                toOcrRoutePolicy(entity),
                 new JsonPayload(jsonCodec.parseObject(entity.getMetadata())), Optional.ofNullable(entity.getResultId()),
                 Optional.ofNullable(entity.getErrorCode()), Optional.ofNullable(entity.getErrorMessage()),
                 entity.getSortOrder(), entity.getCreatedAt(), entity.getUpdatedAt());
+    }
+
+    /**
+     * 将实体中的 OCR 路由字段还原为领域策略。
+     *
+     * @param entity 文档持久化实体
+     * @return OCR 路由策略
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrRoutePolicy toOcrRoutePolicy(DocumentJobEntity entity) {
+        OcrRoutingMode routingMode = toOcrRoutingMode(entity.getOcrRoutingMode());
+        return ROUTE_POLICY_FACTORIES.get(routingMode).apply(entity);
+    }
+
+    /**
+     * 解析持久化 OCR 路由模式。
+     *
+     * @param routingMode OCR 路由模式文本
+     * @return OCR 路由模式
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrRoutingMode toOcrRoutingMode(String routingMode) {
+        if (routingMode == null || routingMode.isBlank()) {
+            return OcrRoutingMode.DEFAULT;
+        } else {
+            return OcrRoutingMode.valueOf(routingMode);
+        }
+    }
+
+    /**
+     * 创建 OCR 路由策略还原工厂。
+     *
+     * @return OCR 路由策略还原工厂
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static Map<OcrRoutingMode, Function<DocumentJobEntity, OcrRoutePolicy>> routePolicyFactories() {
+        Map<OcrRoutingMode, Function<DocumentJobEntity, OcrRoutePolicy>> factories =
+                new EnumMap<>(OcrRoutingMode.class);
+        factories.put(OcrRoutingMode.DEFAULT, entity -> OcrRoutePolicy.defaultPolicy());
+        factories.put(OcrRoutingMode.GLOBAL_LOAD_BALANCE,
+                entity -> OcrRoutePolicy.globalLoadBalance(entity.getOcrLoadBalanceStrategy()));
+        factories.put(OcrRoutingMode.MODEL_LOAD_BALANCE,
+                entity -> OcrRoutePolicy.modelLoadBalance(entity.getOcrModelKey(),
+                        entity.getOcrLoadBalanceStrategy()));
+        factories.put(OcrRoutingMode.SPECIFIC_NODE,
+                entity -> OcrRoutePolicy.specificNode(entity.getOcrModelKey(), entity.getOcrNodeId()));
+        return Map.copyOf(factories);
     }
 }
