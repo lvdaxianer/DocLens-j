@@ -3,6 +3,10 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeCallRepository;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeCallMapper;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeMapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.StubOcrAdapter;
 import io.github.lvdaxianer.doclens.j.api.DefaultDocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
@@ -54,7 +58,9 @@ import org.springframework.transaction.support.TransactionTemplate;
         BatchMapper.class,
         DocumentJobMapper.class,
         OcrEventMapper.class,
-        OcrResultMapper.class
+        OcrResultMapper.class,
+        OcrNodeMapper.class,
+        OcrNodeCallMapper.class
 }, annotationClass = Mapper.class)
 @Import({
         MybatisPlusConfiguration.class,
@@ -64,6 +70,8 @@ import org.springframework.transaction.support.TransactionTemplate;
         MybatisPlusDocumentJobRepository.class,
         MybatisPlusOcrEventRepository.class,
         MybatisPlusOcrResultRepository.class,
+        MybatisPlusOcrNodeRepository.class,
+        MybatisPlusOcrNodeCallRepository.class,
         LocalObjectStorage.class
 })
 public class DocLensAutoConfiguration {
