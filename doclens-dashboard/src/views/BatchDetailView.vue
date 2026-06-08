@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, watch } from 'vue'
+import { computed, h, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import type { DataTableColumns } from 'naive-ui'
@@ -10,8 +10,9 @@ import {
   NProgress
 } from 'naive-ui'
 
-import ProcessingRail from '@/components/dashboard/ProcessingRail.vue'
+import DocumentTrackCards from '@/components/dashboard/DocumentTrackCards.vue'
 import StatusTag from '@/components/dashboard/StatusTag.vue'
+import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
 import type { DocumentRow } from '@/types/dashboard'
 import {
@@ -56,12 +57,6 @@ const columns: DataTableColumns<DocumentRow> = [
     render: (row) => h('span', { class: 'stage-label' }, stageLabel(row.stage))
   },
   {
-    title: '处理轨道',
-    key: 'track',
-    minWidth: 410,
-    render: (row) => h(ProcessingRail, { track: row.track, failed: row.status === 'failed' })
-  },
-  {
     title: '图片进度',
     key: 'image_progress',
     width: 130,
@@ -95,14 +90,23 @@ const columns: DataTableColumns<DocumentRow> = [
   }
 ]
 
-function refresh(): void {
+/**
+ * 刷新当前批次详情。
+ *
+ * @returns 刷新完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+function refresh(): Promise<void> {
   if (batchId.value) {
-    void store.loadBatchDetail(batchId.value)
+    return store.loadBatchDetail(batchId.value)
+  } else {
+    return Promise.resolve()
   }
 }
 
-onMounted(refresh)
 watch(batchId, refresh)
+useAutoRefresh(refresh)
 </script>
 
 <template>
@@ -126,6 +130,10 @@ watch(batchId, refresh)
         <span>平均耗时</span>
         <strong>{{ formatDuration(selectedBatch.batch.average_duration_ms) }}</strong>
       </article>
+      <article class="batch-summary__item batch-summary__item--refresh">
+        <span>局部刷新</span>
+        <strong>{{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒</strong>
+      </article>
       <NButton size="small" :loading="detailState.loading" @click="refresh">
         刷新
       </NButton>
@@ -135,10 +143,11 @@ watch(batchId, refresh)
       <div class="panel__header">
         <div>
           <h2 class="panel__title">文档处理轨道</h2>
-          <span class="panel__hint">{{ batchId }}</span>
+          <span class="panel__hint">{{ batchId }} · 每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新</span>
         </div>
         <StatusTag v-if="selectedBatch" :status="selectedBatch.batch.status" />
       </div>
+      <DocumentTrackCards :documents="selectedBatch?.documents ?? []" />
       <NDataTable
         :columns="columns"
         :data="selectedBatch?.documents ?? []"
@@ -154,7 +163,7 @@ watch(batchId, refresh)
 <style scoped>
 .batch-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   gap: 12px;
   align-items: stretch;
 }
@@ -179,6 +188,10 @@ watch(batchId, refresh)
   overflow-wrap: anywhere;
   color: var(--ink-strong);
   font-size: 20px;
+}
+
+.batch-summary__item--refresh strong {
+  color: var(--active-strong);
 }
 
 :deep(.document-name) {

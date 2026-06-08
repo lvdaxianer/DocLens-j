@@ -78,7 +78,9 @@ class DashboardQueryServiceTest {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
                 stagedDocument("doc-word", DocumentType.WORD, ProcessingStage.WORD_TO_PDF_COMPLETED, 0, 1, 0),
                 stagedDocument("doc-pdf", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 3, 8, 1),
-                stagedDocument("doc-save", DocumentType.IMAGE, ProcessingStage.SAVE_TEXT, 1, 1, 2)
+                stagedDocument("doc-save", DocumentType.IMAGE, ProcessingStage.SAVE_TEXT, 1, 1, 2),
+                stagedDocument("doc-failed", DocumentType.WORD, ProcessingStage.WORD_TO_PDF, 0, 1, 3)
+                        .fail("WORD_TO_PDF_FAILED", "convert failed", BASE_TIME.plusSeconds(8))
         ));
         DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
                 new InMemoryOcrEventRepository());
@@ -93,7 +95,10 @@ class DashboardQueryServiceTest {
                 .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                         .containsEntry("stage", "ocr_images")
                         .containsEntry("completed_images", 3L)
-                        .containsEntry("total_images", 8L));
+                        .containsEntry("total_images", 8L))
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("stage", "failed")
+                        .containsEntry("document_count", 1L));
         assertThat(summary.get("image_progress")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("completed_images", 4L)
                 .containsEntry("total_images", 9L);
@@ -125,6 +130,96 @@ class DashboardQueryServiceTest {
         List<?> track = (List<?>) wordDocument.get("track");
         List<Boolean> activeNodes = track.stream().map(node -> (Boolean) ((Map<?, ?>) node).get("active")).toList();
         assertThat(activeNodes).containsExactly(true, true, true, true, true, true, true);
+        List<String> wordStates = track.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
+        assertThat(wordStates).containsExactly("done", "done", "done", "done", "done", "done", "done");
+        Map<?, ?> textDocument = (Map<?, ?>) documents.get(0);
+        List<?> textTrack = (List<?>) textDocument.get("track");
+        List<String> textStates = textTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
+        assertThat(textStates).containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "done");
+    }
+
+    /**
+     * 批次详情应展示待解析文档的当前步骤和未执行步骤。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void batchDetailShowsQueuedDocumentTrackStates() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                queuedDocument("doc-pdf", DocumentType.PDF, 0)
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        List<?> documents = (List<?>) detail.get("documents");
+        Map<?, ?> document = (Map<?, ?>) documents.getFirst();
+        List<?> track = (List<?>) document.get("track");
+        List<String> states = track.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
+        assertThat(states).containsExactly("done", "current", "skipped", "pending", "pending", "pending", "pending");
+    }
+
+    /**
+     * 批次详情应展示 OCR 处理中和 OCR 失败节点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void batchDetailShowsOcrProcessingAndFailedTrackStates() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                stagedDocument("doc-processing", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 2, 5, 0),
+                stagedDocument("doc-failed", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 2, 5, 1)
+                        .fail("OCR_FAILED", "ocr failed", BASE_TIME.plusSeconds(7))
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        List<?> documents = (List<?>) detail.get("documents");
+        Map<?, ?> processingDocument = (Map<?, ?>) documents.get(0);
+        List<?> processingTrack = (List<?>) processingDocument.get("track");
+        List<String> processingStates = processingTrack.stream()
+                .map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
+        assertThat(processingStates).containsExactly("done", "done", "skipped", "done", "current", "pending",
+                "pending");
+        Map<?, ?> failedDocument = (Map<?, ?>) documents.get(1);
+        List<?> failedTrack = (List<?>) failedDocument.get("track");
+        List<String> failedStates = failedTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state"))
+                .toList();
+        assertThat(failedStates).containsExactly("done", "done", "skipped", "done", "failed", "pending", "pending");
+    }
+
+    /**
+     * 批次详情应按失败前阶段展示转换失败节点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void batchDetailShowsConversionFailedTrackState() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                stagedDocument("doc-failed", DocumentType.WORD, ProcessingStage.WORD_TO_PDF, 0, 1, 0)
+                        .fail("WORD_TO_PDF_FAILED", "convert failed", BASE_TIME.plusSeconds(7))
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        List<?> documents = (List<?>) detail.get("documents");
+        Map<?, ?> failedDocument = (Map<?, ?>) documents.getFirst();
+        List<?> failedTrack = (List<?>) failedDocument.get("track");
+        List<String> failedStates = failedTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state"))
+                .toList();
+        assertThat(failedStates).containsExactly("done", "done", "failed", "pending", "pending", "pending",
+                "pending");
     }
 
     /**

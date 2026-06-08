@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { NAlert, NButton, NSpin } from 'naive-ui'
 
@@ -8,17 +7,25 @@ import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
 import MetricStrip from '@/components/dashboard/MetricStrip.vue'
 import StageStatusBoard from '@/components/dashboard/StageStatusBoard.vue'
+import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
 import { formatDateTime } from '@/utils/formatters'
 
 const store = useDashboardStore()
 const { summary, summaryState } = storeToRefs(store)
 
-function refresh(): void {
-  void store.loadSummary()
+/**
+ * 刷新运行总览数据。
+ *
+ * @returns 刷新完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+function refresh(): Promise<void> {
+  return store.loadSummary()
 }
 
-onMounted(refresh)
+useAutoRefresh(refresh)
 </script>
 
 <template>
@@ -29,6 +36,7 @@ onMounted(refresh)
       <span class="overview-toolbar__time">
         最后刷新：{{ formatDateTime(summaryState.lastUpdated) }}
       </span>
+      <span class="overview-toolbar__auto">每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新</span>
       <NButton size="small" :loading="summaryState.loading" @click="refresh">
         刷新
       </NButton>
@@ -69,6 +77,12 @@ onMounted(refresh)
 .overview-toolbar__time {
   color: var(--ink-muted);
   font-size: 12px;
+}
+
+.overview-toolbar__auto {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .overview-grid {

@@ -104,6 +104,7 @@ class BatchProcessingUseCaseTest {
 
         assertThat(documentRepository.findById("doc-1")).get().satisfies(document -> {
             assertThat(document.status()).isEqualTo(DocumentStatus.FAILED);
+            assertThat(document.stage()).isEqualTo(ProcessingStage.OCR_IMAGES);
             assertThat(document.currentPage()).isEqualTo(2);
             assertThat(document.totalPages()).isEqualTo(5);
         });

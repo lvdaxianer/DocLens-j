@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { NAlert, NButton } from 'naive-ui'
 
 import BatchTable from '@/components/dashboard/BatchTable.vue'
+import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
 import { formatDateTime, formatNumber } from '@/utils/formatters'
 
 const store = useDashboardStore()
 const { batches, batchesState } = storeToRefs(store)
 
-function refresh(): void {
-  void store.loadBatches()
+/**
+ * 刷新批次列表数据。
+ *
+ * @returns 刷新完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+function refresh(): Promise<void> {
+  return store.loadBatches()
 }
 
-onMounted(refresh)
+useAutoRefresh(refresh)
 </script>
 
 <template>
@@ -27,6 +34,7 @@ onMounted(refresh)
           <h2 class="panel__title">批次扫描</h2>
           <span class="panel__hint">
             共 {{ formatNumber(batches.total) }} 个批次 · 最后刷新 {{ formatDateTime(batchesState.lastUpdated) }}
+            · 每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新
           </span>
         </div>
         <NButton size="small" :loading="batchesState.loading" @click="refresh">

@@ -5,15 +5,12 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
-import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
-import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,11 +27,12 @@ public class DashboardQueryService {
     private static final int RECENT_DOCUMENT_LIMIT = 100;
     private static final int RECENT_EVENT_LIMIT = 50;
     private static final int MILLIS_PER_SECOND = 1000;
-    private static final Map<DocumentType, ProcessingTrack> PROCESSING_TRACKS = processingTracks();
 
     private final BatchRepository batchRepository;
     private final DocumentJobRepository documentRepository;
     private final OcrEventRepository eventRepository;
+    private final ProcessingTrackAssembler processingTrackAssembler;
+    private final DashboardStageMetricsAssembler stageMetricsAssembler;
 
     /**
      * 创建 Dashboard 查询服务。
@@ -53,6 +51,8 @@ public class DashboardQueryService {
         this.batchRepository = batchRepository;
         this.documentRepository = documentRepository;
         this.eventRepository = eventRepository;
+        this.processingTrackAssembler = new ProcessingTrackAssembler();
+        this.stageMetricsAssembler = new DashboardStageMetricsAssembler();
     }
 
     /**
@@ -69,8 +69,8 @@ public class DashboardQueryService {
         return Map.ofEntries(
                 Map.entry("overview", overview(batches, documents)),
                 Map.entry("throughput", throughput(documents)),
-                Map.entry("stage_status_counts", stageStatusCounts(documents)),
-                Map.entry("image_progress", imageProgress(documents)),
+                Map.entry("stage_status_counts", stageMetricsAssembler.stageStatusCounts(documents)),
+                Map.entry("image_progress", stageMetricsAssembler.imageProgress(documents)),
                 Map.entry("recent_batches", batchRows(batches, documents)),
                 Map.entry("recent_failures", failureRows(documents)),
                 Map.entry("recent_events", eventRows(events))
@@ -213,64 +213,13 @@ public class DashboardQueryService {
                 .map(this::documentRow).toList();
     }
 
-    private List<Map<String, Object>> stageStatusCounts(List<DocumentJob> documents) {
-        return List.of(
-                stageStatusRow("queued", "待解析", List.of(ProcessingStage.QUEUED), documents),
-                stageStatusRow("direct_text_saved", "直通文本保存", List.of(ProcessingStage.DIRECT_TEXT_SAVED),
-                        documents),
-                stageStatusRow("word_to_pdf", "Word 转 PDF", List.of(ProcessingStage.WORD_TO_PDF), documents),
-                stageStatusRow("word_to_pdf_completed", "Word 转 PDF 完成",
-                        List.of(ProcessingStage.WORD_TO_PDF_COMPLETED), documents),
-                stageStatusRow("pdf_to_images", "PDF 转图片", List.of(ProcessingStage.PDF_TO_IMAGES), documents),
-                stageStatusRow("pdf_to_images_completed", "PDF 转图片完成",
-                        List.of(ProcessingStage.PDF_TO_IMAGES_COMPLETED), documents),
-                stageStatusRow("ocr_images", "OCR 图片解析", List.of(ProcessingStage.OCR_IMAGES), documents),
-                stageStatusRow("merge_text", "文本合并", List.of(ProcessingStage.MERGE_TEXT), documents),
-                stageStatusRow("save_text", "文本保存", List.of(ProcessingStage.SAVE_TEXT), documents),
-                stageStatusRow("completed", "解析完成", List.of(ProcessingStage.COMPLETED), documents),
-                stageStatusRow("failed", "解析失败", List.of(ProcessingStage.FAILED), documents)
-        );
-    }
-
-    private Map<String, Object> stageStatusRow(
-            String stage,
-            String label,
-            List<ProcessingStage> stages,
-            List<DocumentJob> documents
-    ) {
-        List<DocumentJob> matchedDocuments = documents.stream()
-                .filter(document -> stages.contains(normalizedStage(document.stage())))
-                .toList();
-        List<DocumentJob> imageDocuments = matchedDocuments.stream()
-                .filter(document -> isImageProgressStage(normalizedStage(document.stage())))
-                .toList();
-        long completedImages = imageDocuments.stream().mapToLong(DocumentJob::currentPage).sum();
-        long totalImages = imageDocuments.stream().mapToLong(DocumentJob::totalPages).sum();
-        return Map.of("stage", stage, "label", label, "document_count", (long) matchedDocuments.size(),
-                "completed_images", completedImages, "total_images", totalImages);
-    }
-
-    private Map<String, Object> imageProgress(List<DocumentJob> documents) {
-        List<DocumentJob> imageDocuments = documents.stream()
-                .filter(document -> isImageProgressStage(normalizedStage(document.stage())))
-                .toList();
-        long completedImages = imageDocuments.stream().mapToLong(DocumentJob::currentPage).sum();
-        long totalImages = imageDocuments.stream().mapToLong(DocumentJob::totalPages).sum();
-        return Map.of("completed_images", completedImages, "total_images", totalImages,
-                "progress_percent", ratio(completedImages, totalImages));
-    }
-
     private Map<String, Long> failureSummary(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
                 .collect(Collectors.groupingBy(document -> document.errorCode().orElse("UNKNOWN"), Collectors.counting()));
     }
 
     private List<Map<String, Object>> processingTrack(DocumentJob document) {
-        ProcessingTrack track = ProcessingTrack.from(document);
-        return List.of(track.node("上传", true), track.node("类型识别", true),
-                track.node("转换", track.hasConversion()), track.node("渲染页图", track.hasPageRendering()),
-                track.node("OCR", track.hasOcr()), track.node("合并文本", track.hasMerge()),
-                track.node("入库/落盘", document.status() == DocumentStatus.COMPLETED));
+        return processingTrackAssembler.assemble(document);
     }
 
     private List<String> batchIds(List<Batch> batches) {
@@ -279,8 +228,10 @@ public class DashboardQueryService {
 
     private int batchProgress(Batch batch) {
         if (batch.totalFiles() > 0) {
+            // 有文件时按已完成和失败文件计算批次终态进度。
             return (int) Math.round((batch.completedFiles() + batch.failedFiles()) * 100.0 / batch.totalFiles());
         } else {
+            // 空批次保持 0 进度。
             return DocLensConstants.ZERO_PROGRESS_PERCENT;
         }
     }
@@ -297,34 +248,12 @@ public class DashboardQueryService {
         return documents.stream().filter(document -> document.status() == DocumentStatus.PROCESSING).count();
     }
 
-    private ProcessingStage normalizedStage(ProcessingStage stage) {
-        if (stage == ProcessingStage.OCR_PROCESSING) {
-            return ProcessingStage.OCR_IMAGES;
-        } else if (stage == ProcessingStage.OCR_COMPLETED) {
-            return ProcessingStage.COMPLETED;
-        } else if (stage == ProcessingStage.OCR_FAILED) {
-            return ProcessingStage.FAILED;
-        } else if (stage == ProcessingStage.RENDERING) {
-            return ProcessingStage.PDF_TO_IMAGES;
-        } else if (stage == ProcessingStage.NORMALIZING) {
-            return ProcessingStage.MERGE_TEXT;
-        } else {
-            return stage;
-        }
-    }
-
-    private boolean isImageProgressStage(ProcessingStage stage) {
-        return stage == ProcessingStage.PDF_TO_IMAGES_COMPLETED
-                || stage == ProcessingStage.OCR_IMAGES
-                || stage == ProcessingStage.MERGE_TEXT
-                || stage == ProcessingStage.SAVE_TEXT
-                || stage == ProcessingStage.COMPLETED;
-    }
-
     private double ratio(long numerator, long denominator) {
         if (denominator > 0) {
+            // 有分母时按百分比保留两位小数。
             return Math.round(numerator * 10000D / denominator) / 100D;
         } else {
+            // 空集合场景展示 0，避免除零异常。
             return 0D;
         }
     }
@@ -338,24 +267,4 @@ public class DashboardQueryService {
         return Duration.between(document.createdAt(), end).toMillis();
     }
 
-    private record ProcessingTrack(boolean hasConversion, boolean hasPageRendering, boolean hasOcr, boolean hasMerge) {
-
-        private static ProcessingTrack from(DocumentJob document) {
-            return PROCESSING_TRACKS.get(document.fileType());
-        }
-
-        private Map<String, Object> node(String name, boolean active) {
-            return Map.of("name", name, "active", active);
-        }
-    }
-
-    private static Map<DocumentType, ProcessingTrack> processingTracks() {
-        EnumMap<DocumentType, ProcessingTrack> tracks = new EnumMap<>(DocumentType.class);
-        tracks.put(DocumentType.MARKDOWN, new ProcessingTrack(false, false, false, false));
-        tracks.put(DocumentType.TEXT, new ProcessingTrack(false, false, false, false));
-        tracks.put(DocumentType.IMAGE, new ProcessingTrack(false, false, true, true));
-        tracks.put(DocumentType.PDF, new ProcessingTrack(false, true, true, true));
-        tracks.put(DocumentType.WORD, new ProcessingTrack(true, true, true, true));
-        return Map.copyOf(tracks);
-    }
 }

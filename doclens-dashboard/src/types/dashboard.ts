@@ -45,6 +45,8 @@ export interface BatchRow {
 export interface ProcessingTrackNode {
   name: string
   active: boolean
+  state?: 'done' | 'current' | 'pending' | 'skipped' | 'failed'
+  description?: string
 }
 
 export interface DocumentRow {

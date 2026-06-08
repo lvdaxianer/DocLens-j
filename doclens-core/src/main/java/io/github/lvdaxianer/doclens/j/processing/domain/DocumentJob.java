@@ -160,7 +160,7 @@ public record DocumentJob(
     }
 
     /**
-     * 将文档标记为失败。
+     * 将文档标记为失败，并保留失败发生前的处理阶段。
      *
      * @param code 错误码
      * @param message 错误消息
@@ -170,7 +170,7 @@ public record DocumentJob(
      * @date 2026-06-07
      */
     public DocumentJob fail(String code, String message, OffsetDateTime now) {
-        return withState(DocumentStatus.FAILED, ProcessingStage.FAILED, DocLensConstants.COMPLETED_PROGRESS_PERCENT, currentPage, totalPages, resultId,
+        return withState(DocumentStatus.FAILED, stage, DocLensConstants.COMPLETED_PROGRESS_PERCENT, currentPage, totalPages, resultId,
                 Optional.of(code), Optional.ofNullable(message), now);
     }
 

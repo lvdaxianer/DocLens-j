@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Cpu, Gauge, Timer, TriangleAlert } from '@lucide/vue'
 import { NAlert, NButton, NIcon } from 'naive-ui'
 
 import FailureList from '@/components/dashboard/FailureList.vue'
+import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
 import { formatDateTime, formatDuration, formatPercent } from '@/utils/formatters'
 
@@ -18,24 +18,38 @@ const cards = [
   { key: 'duration', label: '平均请求耗时', icon: Timer }
 ]
 
+/**
+ * 获取健康卡片展示值。
+ *
+ * @param key - 卡片键
+ * @returns 卡片展示文本
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
 function cardValue(key: string): string {
   if (key === 'adapter') {
     return ocrHealth.value?.adapter_key ?? 'paddle_ocr'
-  }
-  if (key === 'success') {
+  } else if (key === 'success') {
     return formatPercent(ocrHealth.value?.success_rate)
-  }
-  if (key === 'failure') {
+  } else if (key === 'failure') {
     return formatPercent(ocrHealth.value?.failure_rate)
+  } else {
+    return formatDuration(ocrHealth.value?.average_duration_ms)
   }
-  return formatDuration(ocrHealth.value?.average_duration_ms)
 }
 
-function refresh(): void {
-  void store.loadOcrHealth()
+/**
+ * 刷新 OCR 健康摘要。
+ *
+ * @returns 刷新完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+function refresh(): Promise<void> {
+  return store.loadOcrHealth()
 }
 
-onMounted(refresh)
+useAutoRefresh(refresh)
 </script>
 
 <template>
@@ -44,6 +58,7 @@ onMounted(refresh)
 
     <section class="health-toolbar">
       <span>最后刷新：{{ formatDateTime(ocrHealthState.lastUpdated) }}</span>
+      <span>每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新</span>
       <NButton size="small" :loading="ocrHealthState.loading" @click="refresh">
         刷新
       </NButton>
