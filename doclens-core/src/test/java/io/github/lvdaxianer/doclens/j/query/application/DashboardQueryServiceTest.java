@@ -1,26 +1,26 @@
 package io.github.lvdaxianer.doclens.j.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.BASE_TIME;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.dashboardServiceWithOcrMetrics;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.failedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.processingDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.queuedBatch;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.queuedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.routedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.stagedDocument;
 
-import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
-import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
-import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TestDashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
-import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
-import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
-import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
-import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
-import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
-import io.github.lvdaxianer.doclens.j.processing.domain.PdfMode;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
-import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
-import java.time.OffsetDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,10 +30,6 @@ import org.junit.jupiter.api.Test;
  * @date 2026-06-08
  */
 class DashboardQueryServiceTest {
-
-    private static final int TEST_BATCH_CAPACITY = 4;
-    private static final int TEST_DOCUMENT_CAPACITY = 8;
-    private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T12:00:00+08:00");
 
     /**
      * 总览应聚合批次、文档状态和最近失败任务。
@@ -105,6 +101,27 @@ class DashboardQueryServiceTest {
     }
 
     /**
+     * 总览应返回 OCR 节点和线程池指标。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void summaryExposesOcrResourceAndThreadPoolMetrics() {
+        DashboardQueryService service = dashboardServiceWithOcrMetrics();
+
+        Map<String, Object> summary = service.summary();
+
+        assertThat(summary.get("ocr_resources")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("healthy_node_count", 2L)
+                .containsEntry("down_node_count", 1L)
+                .containsEntry("global_inflight_images", 7L);
+        Map<?, ?> ocrResources = (Map<?, ?>) summary.get("ocr_resources");
+        assertThat(ocrResources.get("thread_pools")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsKeys("ocr_request", "ocr_health");
+    }
+
+    /**
      * 最近批次应使用文档实时状态修正展示状态和进度。
      *
      * @author lvdaxianerplus
@@ -160,6 +177,32 @@ class DashboardQueryServiceTest {
         List<?> textTrack = (List<?>) textDocument.get("track");
         List<String> textStates = textTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
         assertThat(textStates).containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "done");
+    }
+
+    /**
+     * 批次详情应返回 OCR 路由策略和实际命中节点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void batchDetailExposesOcrRoutePolicyAndHitNodes() {
+        DocumentJob document = routedDocument();
+        DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
+                new InMemoryDocumentJobRepository(List.of(document)), new InMemoryOcrEventRepository(),
+                new TestDashboardOcrMetricsProvider());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        assertThat(detail.get("ocr_route_policy")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("routing_mode", "MODEL_LOAD_BALANCE")
+                .containsEntry("model_key", "paddle_ocr")
+                .containsEntry("load_balance_strategy", "least-inflight");
+        assertThat(detail.get("ocr_hit_nodes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("node_id", "node-1")
+                .containsEntry("image_count", 2L);
     }
 
     /**
@@ -246,256 +289,4 @@ class DashboardQueryServiceTest {
                 "pending");
     }
 
-    /**
-     * 创建测试批次。
-     *
-     * @return 测试批次
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private Batch batch() {
-        return new Batch("batch-test", BatchStatus.COMPLETED, 3, 1, 1, Optional.empty(), Optional.empty(),
-                "completed", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME, BASE_TIME.plusMinutes(5));
-    }
-
-    /**
-     * 创建排队中的测试批次。
-     *
-     * @return 排队中的测试批次
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private Batch queuedBatch() {
-        return new Batch("batch-test", BatchStatus.QUEUED, 1, 0, 0, Optional.empty(), Optional.empty(),
-                "queued", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME, BASE_TIME.plusMinutes(21));
-    }
-
-    /**
-     * 创建已完成测试文档。
-     *
-     * @param documentId 文档 ID
-     * @param fileType 文件类型
-     * @param sortOrder 排序
-     * @return 已完成测试文档
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocumentJob completedDocument(String documentId, DocumentType fileType, int sortOrder) {
-        return queuedDocument(documentId, fileType, sortOrder).complete("result-" + documentId, BASE_TIME.plusSeconds(10));
-    }
-
-    /**
-     * 创建失败测试文档。
-     *
-     * @param documentId 文档 ID
-     * @param fileType 文件类型
-     * @param sortOrder 排序
-     * @return 失败测试文档
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocumentJob failedDocument(String documentId, DocumentType fileType, int sortOrder) {
-        return queuedDocument(documentId, fileType, sortOrder)
-                .fail("OCR_ERROR", "recognize failed", BASE_TIME.plusSeconds(20));
-    }
-
-    /**
-     * 创建处理中测试文档。
-     *
-     * @param documentId 文档 ID
-     * @param fileType 文件类型
-     * @param sortOrder 排序
-     * @return 处理中测试文档
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocumentJob processingDocument(String documentId, DocumentType fileType, int sortOrder) {
-        return queuedDocument(documentId, fileType, sortOrder).startProcessing(BASE_TIME.plusSeconds(5));
-    }
-
-    /**
-     * 创建指定阶段的测试文档。
-     *
-     * @param documentId 文档 ID
-     * @param fileType 文件类型
-     * @param stage 处理阶段
-     * @param currentPage 当前图片页
-     * @param totalPages 总图片页
-     * @param sortOrder 排序
-     * @return 指定阶段的测试文档
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocumentJob stagedDocument(
-            String documentId,
-            DocumentType fileType,
-            ProcessingStage stage,
-            int currentPage,
-            int totalPages,
-            int sortOrder
-    ) {
-        return queuedDocument(documentId, fileType, sortOrder)
-                .startProcessing(BASE_TIME.plusSeconds(5))
-                .advanceStage(stage, currentPage, totalPages, BASE_TIME.plusSeconds(6));
-    }
-
-    /**
-     * 创建排队测试文档。
-     *
-     * @param documentId 文档 ID
-     * @param fileType 文件类型
-     * @param sortOrder 排序
-     * @return 排队测试文档
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocumentJob queuedDocument(String documentId, DocumentType fileType, int sortOrder) {
-        Optional<PdfMode> pdfMode = fileType == DocumentType.PDF
-                ? Optional.of(PdfMode.PAGE_IMAGE_FALLBACK) : Optional.empty();
-        DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
-                documentId + ".dat", fileType, 10, 1, "local://" + documentId, "stub_ocr", pdfMode,
-                JsonPayload.empty(), sortOrder, BASE_TIME);
-        return DocumentJob.create(request);
-    }
-
-    /**
-     * 内存批次仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static class InMemoryBatchRepository implements BatchRepository {
-
-        private final Map<String, Batch> batches = new HashMap<>(TEST_BATCH_CAPACITY);
-
-        /**
-         * 创建内存批次仓储。
-         *
-         * @param seedBatches 初始批次集合
-         * @author lvdaxianerplus
-         * @date 2026-06-08
-         */
-        InMemoryBatchRepository(List<Batch> seedBatches) {
-            seedBatches.forEach(this::save);
-        }
-
-        @Override
-        public void save(Batch batch) {
-            batches.put(batch.batchId(), batch);
-        }
-
-        @Override
-        public Optional<Batch> findById(String batchId) {
-            return Optional.ofNullable(batches.get(batchId));
-        }
-
-        @Override
-        public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
-            return Optional.empty();
-        }
-
-        @Override
-        public List<Batch> listRecent(int limit) {
-            return batches.values().stream().sorted(Comparator.comparing(Batch::updatedAt).reversed())
-                    .limit(limit).toList();
-        }
-
-        @Override
-        public void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status) {
-            // 当前测试只读取 Dashboard 读模型。
-        }
-    }
-
-    /**
-     * 内存文档仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static class InMemoryDocumentJobRepository implements DocumentJobRepository {
-
-        private final Map<String, DocumentJob> documents = new HashMap<>(TEST_DOCUMENT_CAPACITY);
-
-        /**
-         * 创建内存文档仓储。
-         *
-         * @param seedDocuments 初始文档集合
-         * @author lvdaxianerplus
-         * @date 2026-06-08
-         */
-        InMemoryDocumentJobRepository(List<DocumentJob> seedDocuments) {
-            seedDocuments.forEach(this::save);
-        }
-
-        @Override
-        public void save(DocumentJob document) {
-            documents.put(document.documentId(), document);
-        }
-
-        @Override
-        public void saveAll(List<DocumentJob> documents) {
-            documents.forEach(this::save);
-        }
-
-        @Override
-        public void update(DocumentJob document) {
-            documents.put(document.documentId(), document);
-        }
-
-        @Override
-        public void updateAll(List<DocumentJob> documents) {
-            documents.forEach(this::update);
-        }
-
-        @Override
-        public Optional<DocumentJob> findById(String documentId) {
-            return Optional.ofNullable(documents.get(documentId));
-        }
-
-        @Override
-        public List<DocumentJob> listByBatchId(String batchId) {
-            return documents.values().stream().filter(document -> batchId.equals(document.batchId()))
-                    .sorted(Comparator.comparing(DocumentJob::sortOrder)).toList();
-        }
-
-        @Override
-        public List<DocumentJob> listByBatchIds(List<String> batchIds) {
-            return documents.values().stream().filter(document -> batchIds.contains(document.batchId())).toList();
-        }
-
-        @Override
-        public List<DocumentJob> listRecent(int limit) {
-            return documents.values().stream().sorted(Comparator.comparing(DocumentJob::updatedAt).reversed())
-                    .limit(limit).toList();
-        }
-    }
-
-    /**
-     * 空 OCR 事件仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static class InMemoryOcrEventRepository implements OcrEventRepository {
-
-        @Override
-        public void save(OcrEvent event) {
-            // 当前测试不写入 OCR 事件。
-        }
-
-        @Override
-        public void saveAll(List<OcrEvent> events) {
-            // 当前测试不写入 OCR 事件。
-        }
-
-        @Override
-        public List<OcrEvent> listByBatchId(String batchId) {
-            return List.of();
-        }
-
-        @Override
-        public List<OcrEvent> listRecent(int limit) {
-            return List.of();
-        }
-    }
 }

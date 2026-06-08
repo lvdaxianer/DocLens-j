@@ -6,6 +6,7 @@ import BatchTable from '@/components/dashboard/BatchTable.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
 import MetricStrip from '@/components/dashboard/MetricStrip.vue'
+import OcrResourceMetricCards from '@/components/dashboard/OcrResourceMetricCards.vue'
 import StageStatusBoard from '@/components/dashboard/StageStatusBoard.vue'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -50,6 +51,8 @@ useAutoRefresh(refresh)
       :stages="summary?.stage_status_counts ?? []"
       :image-progress="summary?.image_progress ?? null"
     />
+
+    <OcrResourceMetricCards :metrics="summary?.ocr_resources ?? null" />
 
     <section class="overview-grid">
       <LatencyChart :batches="summary?.recent_batches ?? []" />

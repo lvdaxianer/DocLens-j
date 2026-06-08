@@ -2,7 +2,6 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
-import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
@@ -14,7 +13,6 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Dashboard 控制台读模型查询服务。
@@ -32,8 +30,9 @@ public class DashboardQueryService {
     private final BatchRepository batchRepository;
     private final DocumentJobRepository documentRepository;
     private final OcrEventRepository eventRepository;
-    private final ProcessingTrackAssembler processingTrackAssembler;
+    private final DashboardRowAssembler rowAssembler;
     private final DashboardStageMetricsAssembler stageMetricsAssembler;
+    private final DashboardOcrMetricsProvider ocrMetricsProvider;
 
     /**
      * 创建 Dashboard 查询服务。
@@ -49,10 +48,30 @@ public class DashboardQueryService {
             DocumentJobRepository documentRepository,
             OcrEventRepository eventRepository
     ) {
+        this(batchRepository, documentRepository, eventRepository, new EmptyDashboardOcrMetricsProvider());
+    }
+
+    /**
+     * 创建 Dashboard 查询服务。
+     *
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param ocrMetricsProvider OCR 指标提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public DashboardQueryService(
+            BatchRepository batchRepository,
+            DocumentJobRepository documentRepository,
+            OcrEventRepository eventRepository,
+            DashboardOcrMetricsProvider ocrMetricsProvider
+    ) {
         this.batchRepository = batchRepository;
         this.documentRepository = documentRepository;
         this.eventRepository = eventRepository;
-        this.processingTrackAssembler = new ProcessingTrackAssembler();
+        this.ocrMetricsProvider = ocrMetricsProvider;
+        this.rowAssembler = new DashboardRowAssembler();
         this.stageMetricsAssembler = new DashboardStageMetricsAssembler();
     }
 
@@ -72,9 +91,10 @@ public class DashboardQueryService {
                 Map.entry("throughput", throughput(documents)),
                 Map.entry("stage_status_counts", stageMetricsAssembler.stageStatusCounts(documents)),
                 Map.entry("image_progress", stageMetricsAssembler.imageProgress(documents)),
-                Map.entry("recent_batches", batchRows(batches, documents)),
-                Map.entry("recent_failures", failureRows(documents)),
-                Map.entry("recent_events", eventRows(events))
+                Map.entry("ocr_resources", ocrMetricsProvider.ocrResources()),
+                Map.entry("recent_batches", rowAssembler.batchRows(batches, documents)),
+                Map.entry("recent_failures", rowAssembler.failureRows(documents)),
+                Map.entry("recent_events", rowAssembler.eventRows(events))
         );
     }
 
@@ -88,7 +108,7 @@ public class DashboardQueryService {
     public Map<String, Object> batches() {
         List<Batch> batches = batchRepository.listRecent(RECENT_BATCH_LIMIT);
         List<DocumentJob> documents = documentRepository.listByBatchIds(batchIds(batches));
-        return Map.of("items", batchRows(batches, documents), "total", batches.size());
+        return Map.of("items", rowAssembler.batchRows(batches, documents), "total", batches.size());
     }
 
     /**
@@ -105,10 +125,12 @@ public class DashboardQueryService {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         List<OcrEvent> events = eventRepository.listByBatchId(batchId);
         return Map.ofEntries(
-                Map.entry("batch", batchRow(batch, documents)),
-                Map.entry("documents", documentRows(documents)),
-                Map.entry("events", eventRows(events)),
-                Map.entry("failure_summary", failureSummary(documents))
+                Map.entry("batch", rowAssembler.batchRow(batch, documents)),
+                Map.entry("documents", rowAssembler.documentRows(documents)),
+                Map.entry("events", rowAssembler.eventRows(events)),
+                Map.entry("ocr_route_policy", rowAssembler.batchRoutePolicy(documents)),
+                Map.entry("ocr_hit_nodes", ocrMetricsProvider.hitNodesByBatch(batchId)),
+                Map.entry("failure_summary", rowAssembler.failureSummary(documents))
         );
     }
 
@@ -126,7 +148,7 @@ public class DashboardQueryService {
                 Map.entry("success_rate", ratio(completedCount(documents), documents.size())),
                 Map.entry("failure_rate", ratio(failedCount(documents), documents.size())),
                 Map.entry("average_duration_ms", averageDurationMillis(documents)),
-                Map.entry("recent_failures", failureRows(documents))
+                Map.entry("recent_failures", rowAssembler.failureRows(documents))
         );
     }
 
@@ -147,264 +169,8 @@ public class DashboardQueryService {
         return Map.of("completed_last_window", completedCount(documents), "window_size", documents.size());
     }
 
-    private List<Map<String, Object>> batchRows(List<Batch> batches, List<DocumentJob> documents) {
-        Map<String, List<DocumentJob>> documentsByBatch = documents.stream()
-                .collect(Collectors.groupingBy(DocumentJob::batchId));
-        return batches.stream().map(batch -> batchRow(batch,
-                documentsByBatch.getOrDefault(batch.batchId(), List.of()))).toList();
-    }
-
-    private Map<String, Object> batchRow(Batch batch, List<DocumentJob> documents) {
-        BatchStatus displayStatus = batchDisplayStatus(batch, documents);
-        int completedFiles = batchCompletedFiles(batch, documents);
-        int failedFiles = batchFailedFiles(batch, documents);
-        return Map.ofEntries(
-                Map.entry("batch_id", batch.batchId()),
-                Map.entry("status", displayStatus.name().toLowerCase()),
-                Map.entry("total_files", batch.totalFiles()),
-                Map.entry("completed_files", completedFiles),
-                Map.entry("failed_files", failedFiles),
-                Map.entry("progress_percent", batchProgress(batch, documents)),
-                Map.entry("success_rate", ratio(completedFiles, batch.totalFiles())),
-                Map.entry("failure_rate", ratio(failedFiles, batch.totalFiles())),
-                Map.entry("average_duration_ms", averageDurationMillis(documents)),
-                Map.entry("created_at", batch.createdAt().toString()),
-                Map.entry("updated_at", batch.updatedAt().toString())
-        );
-    }
-
-    private List<Map<String, Object>> documentRows(List<DocumentJob> documents) {
-        return documents.stream().map(this::documentRow).toList();
-    }
-
-    private Map<String, Object> documentRow(DocumentJob document) {
-        return Map.ofEntries(
-                Map.entry("document_id", document.documentId()),
-                Map.entry("batch_id", document.batchId()),
-                Map.entry("file_name", document.fileName()),
-                Map.entry("file_type", document.fileType().name().toLowerCase()),
-                Map.entry("status", document.status().name().toLowerCase()),
-                Map.entry("stage", document.stage().name().toLowerCase()),
-                Map.entry("progress_percent", document.progressPercent()),
-                Map.entry("current_page", document.currentPage()),
-                Map.entry("total_pages", document.totalPages()),
-                Map.entry("duration_ms", durationMillis(document)),
-                Map.entry("track", processingTrack(document)),
-                Map.entry("error_code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE)),
-                Map.entry("error_message", document.errorMessage().orElse(DocLensConstants.EMPTY_VALUE)),
-                Map.entry("updated_at", document.updatedAt().toString())
-        );
-    }
-
-    private List<Map<String, Object>> eventRows(List<OcrEvent> events) {
-        return events.stream().map(this::eventRow).toList();
-    }
-
-    private Map<String, Object> eventRow(OcrEvent event) {
-        return Map.ofEntries(
-                Map.entry("event_id", event.eventId()),
-                Map.entry("event_type", event.eventType()),
-                Map.entry("batch_id", event.batchId()),
-                Map.entry("document_id", event.documentId().orElse(DocLensConstants.EMPTY_VALUE)),
-                Map.entry("status", event.status()),
-                Map.entry("stage", event.stage()),
-                Map.entry("occurred_at", event.occurredAt().toString())
-        );
-    }
-
-    private List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
-        return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
-                .map(this::documentRow).toList();
-    }
-
-    private Map<String, Long> failureSummary(List<DocumentJob> documents) {
-        return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
-                .collect(Collectors.groupingBy(document -> document.errorCode().orElse("UNKNOWN"), Collectors.counting()));
-    }
-
-    private List<Map<String, Object>> processingTrack(DocumentJob document) {
-        return processingTrackAssembler.assemble(document);
-    }
-
     private List<String> batchIds(List<Batch> batches) {
         return batches.stream().map(Batch::batchId).toList();
-    }
-
-    /**
-     * 计算批次在 Dashboard 中的展示状态。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return Dashboard 展示状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private BatchStatus batchDisplayStatus(Batch batch, List<DocumentJob> documents) {
-        if (documents.isEmpty()) {
-            // 暂无文档读模型时使用批次表持久状态。
-            return batch.status();
-        } else {
-            // 有文档读模型时用实时文档状态修正批次展示状态。
-            return batchStatusFromDocuments(batch, documents);
-        }
-    }
-
-    /**
-     * 从文档状态聚合批次展示状态。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return 文档聚合后的批次展示状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private BatchStatus batchStatusFromDocuments(Batch batch, List<DocumentJob> documents) {
-        long processing = statusCount(documents, DocumentStatus.PROCESSING);
-        if (processing > 0) {
-            // 任一文档处理中时，批次在控制台应显示处理中。
-            return BatchStatus.PROCESSING;
-        } else {
-            // 没有处理中任务时，继续按终态和排队态聚合。
-            return nonProcessingBatchStatus(batch, documents);
-        }
-    }
-
-    /**
-     * 计算没有处理中任务时的批次展示状态。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return 非处理中场景的批次展示状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private BatchStatus nonProcessingBatchStatus(Batch batch, List<DocumentJob> documents) {
-        long queued = statusCount(documents, DocumentStatus.QUEUED);
-        long completed = statusCount(documents, DocumentStatus.COMPLETED);
-        long failed = statusCount(documents, DocumentStatus.FAILED);
-        if (queued > 0 && (completed > 0 || failed > 0)) {
-            // 已有终态文档且仍有排队文档时，批次实际处于处理中。
-            return BatchStatus.PROCESSING;
-        } else {
-            // 没有交错状态时按终态优先级聚合。
-            return terminalBatchStatus(batch, queued, completed, failed);
-        }
-    }
-
-    /**
-     * 计算终态优先的批次展示状态。
-     *
-     * @param batch 批次聚合
-     * @param queued 排队文档数量
-     * @param completed 完成文档数量
-     * @param failed 失败文档数量
-     * @return 终态优先的批次展示状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private BatchStatus terminalBatchStatus(Batch batch, long queued, long completed, long failed) {
-        BatchStatus status;
-        if (failed > 0 && completed > 0) {
-            // 成功和失败并存时展示部分失败。
-            status = BatchStatus.PARTIAL_FAILED;
-        } else if (failed > 0) {
-            // 只有失败终态时展示失败。
-            status = BatchStatus.FAILED;
-        } else if (completed > 0 && queued == 0) {
-            // 全部进入完成终态时展示成功。
-            status = BatchStatus.COMPLETED;
-        } else {
-            // 其余场景沿用批次自身状态。
-            status = batch.status();
-        }
-        return status;
-    }
-
-    /**
-     * 计算批次在 Dashboard 中的展示进度。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return Dashboard 展示进度
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private int batchProgress(Batch batch, List<DocumentJob> documents) {
-        if (documents.isEmpty()) {
-            // 暂无文档读模型时按批次摘要计算进度。
-            return batchProgressFromSummary(batch);
-        } else {
-            // 有文档读模型时按文档实时进度计算平均进度。
-            return documentAverageProgress(documents);
-        }
-    }
-
-    /**
-     * 从批次摘要字段计算展示进度。
-     *
-     * @param batch 批次聚合
-     * @return 批次摘要进度
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private int batchProgressFromSummary(Batch batch) {
-        if (batch.totalFiles() > 0) {
-            // 有文件时按已完成和失败文件计算批次终态进度。
-            return (int) Math.round((batch.completedFiles() + batch.failedFiles()) * 100.0 / batch.totalFiles());
-        } else {
-            // 空批次保持 0 进度。
-            return DocLensConstants.ZERO_PROGRESS_PERCENT;
-        }
-    }
-
-    /**
-     * 从文档进度计算批次平均展示进度。
-     *
-     * @param documents 批次内文档任务
-     * @return 文档平均进度
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private int documentAverageProgress(List<DocumentJob> documents) {
-        return (int) Math.round(documents.stream().mapToInt(DocumentJob::progressPercent).average().orElse(0D));
-    }
-
-    /**
-     * 计算批次展示已完成文件数。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return Dashboard 展示已完成文件数
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private int batchCompletedFiles(Batch batch, List<DocumentJob> documents) {
-        if (documents.isEmpty()) {
-            // 暂无文档读模型时使用批次摘要字段。
-            return batch.completedFiles();
-        } else {
-            // 有文档读模型时使用实时文档状态统计。
-            return Math.toIntExact(statusCount(documents, DocumentStatus.COMPLETED));
-        }
-    }
-
-    /**
-     * 计算批次展示失败文件数。
-     *
-     * @param batch 批次聚合
-     * @param documents 批次内文档任务
-     * @return Dashboard 展示失败文件数
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private int batchFailedFiles(Batch batch, List<DocumentJob> documents) {
-        if (documents.isEmpty()) {
-            // 暂无文档读模型时使用批次摘要字段。
-            return batch.failedFiles();
-        } else {
-            // 有文档读模型时使用实时文档状态统计。
-            return Math.toIntExact(statusCount(documents, DocumentStatus.FAILED));
-        }
     }
 
     private long completedCount(List<DocumentJob> documents) {

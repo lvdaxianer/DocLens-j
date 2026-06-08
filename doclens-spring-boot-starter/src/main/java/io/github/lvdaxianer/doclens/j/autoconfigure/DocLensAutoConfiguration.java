@@ -31,6 +31,7 @@ import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrRe
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrEventMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrResultMapper;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -300,9 +301,10 @@ public class DocLensAutoConfiguration {
     DashboardQueryService dashboardQueryService(
             BatchRepository batchRepository,
             DocumentJobRepository documentRepository,
-            OcrEventRepository eventRepository
+            OcrEventRepository eventRepository,
+            DashboardOcrMetricsProvider ocrMetricsProvider
     ) {
-        return new DashboardQueryService(batchRepository, documentRepository, eventRepository);
+        return new DashboardQueryService(batchRepository, documentRepository, eventRepository, ocrMetricsProvider);
     }
 
     /**

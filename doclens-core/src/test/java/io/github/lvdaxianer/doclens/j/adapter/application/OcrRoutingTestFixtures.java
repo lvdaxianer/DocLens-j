@@ -174,6 +174,11 @@ final class OcrRoutingTestFixtures {
         }
 
         @Override
+        public List<OcrNodeCall> listByBatchId(String batchId) {
+            return calls.stream().filter(call -> batchId.equals(call.batchId())).toList();
+        }
+
+        @Override
         public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
             return calls.stream().filter(call -> nodeId.equals(call.nodeId())).limit(limit).toList();
         }

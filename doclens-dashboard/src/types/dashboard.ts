@@ -28,6 +28,31 @@ export interface ImageProgressSummary {
   progress_percent: number
 }
 
+export interface DashboardThreadPoolMetrics {
+  active_count: number
+  queue_size: number
+  pool_size?: number
+  completed_task_count?: number
+}
+
+export interface DashboardOcrResources {
+  healthy_node_count: number
+  down_node_count: number
+  recovering_node_count: number
+  global_inflight_images: number
+  busiest_node: {
+    model_key?: string
+    node_id?: string
+    inflight_images?: number
+  }
+  thread_pools: {
+    document_processing?: DashboardThreadPoolMetrics
+    ocr_request?: DashboardThreadPoolMetrics
+    ocr_health?: DashboardThreadPoolMetrics
+    callback?: DashboardThreadPoolMetrics
+  }
+}
+
 export interface BatchRow {
   batch_id: string
   status: string
@@ -81,9 +106,23 @@ export interface DashboardSummary {
   throughput: DashboardThroughput
   stage_status_counts: StageStatusCount[]
   image_progress: ImageProgressSummary
+  ocr_resources: DashboardOcrResources
   recent_batches: BatchRow[]
   recent_failures: DocumentRow[]
   recent_events: OcrEventRow[]
+}
+
+export interface BatchOcrRoutePolicy {
+  routing_mode: string
+  model_key: string
+  node_id: string
+  load_balance_strategy: string
+}
+
+export interface BatchOcrHitNode {
+  model_key: string
+  node_id: string
+  image_count: number
 }
 
 export interface BatchListResponse {
@@ -95,6 +134,8 @@ export interface BatchDetailResponse {
   batch: BatchRow
   documents: DocumentRow[]
   events: OcrEventRow[]
+  ocr_route_policy: BatchOcrRoutePolicy
+  ocr_hit_nodes: BatchOcrHitNode[]
   failure_summary: Record<string, number>
 }
 

@@ -10,6 +10,7 @@ import {
   NProgress
 } from 'naive-ui'
 
+import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
 import DocumentResultDrawer from '@/components/dashboard/DocumentResultDrawer.vue'
 import DocumentTrackCards from '@/components/dashboard/DocumentTrackCards.vue'
 import StatusTag from '@/components/dashboard/StatusTag.vue'
@@ -172,6 +173,12 @@ useAutoRefresh(refresh)
         刷新
       </NButton>
     </section>
+
+    <BatchOcrRoutePanel
+      v-if="selectedBatch"
+      :route-policy="selectedBatch.ocr_route_policy"
+      :hit-nodes="selectedBatch.ocr_hit_nodes"
+    />
 
     <section class="panel">
       <div class="panel__header">
