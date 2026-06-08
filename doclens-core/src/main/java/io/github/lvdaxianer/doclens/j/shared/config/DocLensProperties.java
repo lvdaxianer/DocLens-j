@@ -7,6 +7,7 @@ package io.github.lvdaxianer.doclens.j.shared.config;
  * @param autoProcessOnUpload 上传请求是否触发进程内 Worker 执行
  * @param workerId 用于后续任务获取的本地 Worker 标识
  * @param callback 回调投递配置
+ * @param threadPools 线程池隔离配置
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -19,7 +20,8 @@ public record DocLensProperties(
         PaddleOcrProperties paddleOcr,
         ExtractionProperties extraction,
         PdfRenderProperties pdfRender,
-        WordConversionProperties wordConversion
+        WordConversionProperties wordConversion,
+        ThreadPoolsProperties threadPools
 ) {
 
     /**
@@ -86,5 +88,43 @@ public record DocLensProperties(
      * @date 2026-06-08
      */
     public record WordConversionProperties(String command, int timeoutSeconds) {
+    }
+
+    /**
+     * DocLens 线程池隔离配置。
+     *
+     * @param documentProcessingThreadPool 文档处理线程池
+     * @param ocrRequestThreadPool OCR 请求线程池
+     * @param ocrHealthThreadPool OCR 健康检查线程池
+     * @param callbackThreadPool 回调线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record ThreadPoolsProperties(
+            ThreadPoolProperties documentProcessingThreadPool,
+            ThreadPoolProperties ocrRequestThreadPool,
+            ThreadPoolProperties ocrHealthThreadPool,
+            ThreadPoolProperties callbackThreadPool
+    ) {
+    }
+
+    /**
+     * 单个业务线程池配置。
+     *
+     * @param coreSize 核心线程数
+     * @param maxSize 最大线程数
+     * @param queueCapacity 队列容量
+     * @param keepAliveSeconds 空闲线程保活秒数
+     * @param threadNamePrefix 线程名前缀
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record ThreadPoolProperties(
+            int coreSize,
+            int maxSize,
+            int queueCapacity,
+            int keepAliveSeconds,
+            String threadNamePrefix
+    ) {
     }
 }

@@ -121,8 +121,22 @@ class PaddleOcrNativeClientTest {
                 new DocLensProperties.PaddleOcrProperties(true, endpointFor(server), TEST_TIMEOUT_SECONDS, false),
                 new DocLensProperties.ExtractionProperties(1),
                 new DocLensProperties.PdfRenderProperties(144, "png"),
-                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS)
+                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
+                threadPools()
         );
+    }
+
+    /**
+     * 创建测试线程池隔离配置。
+     *
+     * @return 线程池隔离配置
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties.ThreadPoolsProperties threadPools() {
+        DocLensProperties.ThreadPoolProperties pool = new DocLensProperties.ThreadPoolProperties(1, 1, 1, 1,
+                "doclens-test-");
+        return new DocLensProperties.ThreadPoolsProperties(pool, pool, pool, pool);
     }
 
     /**

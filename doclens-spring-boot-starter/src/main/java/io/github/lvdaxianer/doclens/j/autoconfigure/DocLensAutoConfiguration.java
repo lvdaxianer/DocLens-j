@@ -98,7 +98,39 @@ public class DocLensAutoConfiguration {
                 new DocLensProperties.PdfRenderProperties(properties.pdfRender().dpi(),
                         properties.pdfRender().imageFormat()),
                 new DocLensProperties.WordConversionProperties(properties.wordConversion().command(),
-                        properties.wordConversion().timeoutSeconds()));
+                        properties.wordConversion().timeoutSeconds()),
+                threadPools(properties.threadPools()));
+    }
+
+    /**
+     * 将 Spring 线程池属性转换为 core 线程池属性。
+     *
+     * @param properties Spring 线程池属性
+     * @return core 线程池属性
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties.ThreadPoolsProperties threadPools(
+            DocLensSpringProperties.ThreadPoolsProperties properties
+    ) {
+        return new DocLensProperties.ThreadPoolsProperties(
+                threadPool(properties.documentProcessingThreadPool()),
+                threadPool(properties.ocrRequestThreadPool()),
+                threadPool(properties.ocrHealthThreadPool()),
+                threadPool(properties.callbackThreadPool()));
+    }
+
+    /**
+     * 将 Spring 单线程池属性转换为 core 单线程池属性。
+     *
+     * @param properties Spring 单线程池属性
+     * @return core 单线程池属性
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties.ThreadPoolProperties threadPool(DocLensSpringProperties.ThreadPoolProperties properties) {
+        return new DocLensProperties.ThreadPoolProperties(properties.coreSize(), properties.maxSize(),
+                properties.queueCapacity(), properties.keepAliveSeconds(), properties.threadNamePrefix());
     }
 
     /**

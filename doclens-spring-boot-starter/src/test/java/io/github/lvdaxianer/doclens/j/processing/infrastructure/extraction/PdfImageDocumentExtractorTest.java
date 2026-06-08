@@ -88,7 +88,21 @@ class PdfImageDocumentExtractorTest {
                 new DocLensProperties.PaddleOcrProperties(false, "http://127.0.0.1:8080/ocr", 5, false),
                 new DocLensProperties.ExtractionProperties(2),
                 new DocLensProperties.PdfRenderProperties(36, "png"),
-                new DocLensProperties.WordConversionProperties("soffice", 5));
+                new DocLensProperties.WordConversionProperties("soffice", 5),
+                threadPools());
+    }
+
+    /**
+     * 创建测试线程池隔离配置。
+     *
+     * @return 线程池隔离配置
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties.ThreadPoolsProperties threadPools() {
+        DocLensProperties.ThreadPoolProperties pool = new DocLensProperties.ThreadPoolProperties(1, 1, 1, 1,
+                "doclens-test-");
+        return new DocLensProperties.ThreadPoolsProperties(pool, pool, pool, pool);
     }
 
     /**

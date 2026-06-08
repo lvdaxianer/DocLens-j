@@ -14,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param extraction 提取配置
  * @param pdfRender PDF 渲染配置
  * @param wordConversion Word 转 PDF 配置
+ * @param threadPools 线程池隔离配置
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -27,7 +28,8 @@ public record DocLensSpringProperties(
         PaddleOcrProperties paddleOcr,
         ExtractionProperties extraction,
         PdfRenderProperties pdfRender,
-        WordConversionProperties wordConversion
+        WordConversionProperties wordConversion,
+        ThreadPoolsProperties threadPools
 ) {
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
 
@@ -40,6 +42,7 @@ public record DocLensSpringProperties(
         extraction = extraction == null ? new ExtractionProperties(1) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
+        threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
     }
 
     /**
@@ -106,5 +109,59 @@ public record DocLensSpringProperties(
      * @date 2026-06-08
      */
     public record WordConversionProperties(String command, int timeoutSeconds) {
+    }
+
+    /**
+     * DocLens 线程池隔离属性。
+     *
+     * @param documentProcessingThreadPool 文档处理线程池
+     * @param ocrRequestThreadPool OCR 请求线程池
+     * @param ocrHealthThreadPool OCR 健康检查线程池
+     * @param callbackThreadPool 回调线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record ThreadPoolsProperties(
+            ThreadPoolProperties documentProcessingThreadPool,
+            ThreadPoolProperties ocrRequestThreadPool,
+            ThreadPoolProperties ocrHealthThreadPool,
+            ThreadPoolProperties callbackThreadPool
+    ) {
+
+        /**
+         * 创建默认线程池隔离配置。
+         *
+         * @return 默认线程池隔离配置
+         * @author lvdaxianerplus
+         * @date 2026-06-08
+         */
+        public static ThreadPoolsProperties defaults() {
+            return new ThreadPoolsProperties(
+                    new ThreadPoolProperties(1, 1, 1000, 60, "doclens-document-processing-"),
+                    new ThreadPoolProperties(2, 4, 100, 60, "doclens-ocr-request-"),
+                    new ThreadPoolProperties(1, 2, 100, 60, "doclens-ocr-health-"),
+                    new ThreadPoolProperties(1, 2, 100, 60, "doclens-callback-")
+            );
+        }
+    }
+
+    /**
+     * 单个业务线程池属性。
+     *
+     * @param coreSize 核心线程数
+     * @param maxSize 最大线程数
+     * @param queueCapacity 队列容量
+     * @param keepAliveSeconds 空闲线程保活秒数
+     * @param threadNamePrefix 线程名前缀
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public record ThreadPoolProperties(
+            int coreSize,
+            int maxSize,
+            int queueCapacity,
+            int keepAliveSeconds,
+            String threadNamePrefix
+    ) {
     }
 }
