@@ -3,6 +3,8 @@ import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
+const dashboardApiTarget = process.env.DASHBOARD_API_TARGET ?? 'http://127.0.0.1:8080'
+
 export default defineConfig({
   base: '/dashboard/',
   plugins: [vue()],
@@ -29,7 +31,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: dashboardApiTarget,
         changeOrigin: true
       }
     }

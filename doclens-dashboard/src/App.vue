@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { ActivitySquare, Gauge, Layers3, UploadCloud } from '@lucide/vue'
+import { ActivitySquare, Gauge, Layers3, Upload, UploadCloud } from '@lucide/vue'
 import {
   NConfigProvider,
   NIcon,
@@ -13,6 +13,7 @@ const route = useRoute()
 
 const navigationItems = [
   { name: 'overview', label: '总览', icon: ActivitySquare },
+  { name: 'upload', label: '上传', icon: Upload },
   { name: 'batches', label: '批次', icon: Layers3 },
   { name: 'ocr-health', label: 'OCR 健康', icon: Gauge }
 ]
