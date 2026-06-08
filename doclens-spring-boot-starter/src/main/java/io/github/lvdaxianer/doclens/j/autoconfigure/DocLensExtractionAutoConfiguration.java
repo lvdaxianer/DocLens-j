@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.LibreOfficeWordToPdfConverter;
@@ -16,6 +17,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -50,14 +52,18 @@ public class DocLensExtractionAutoConfiguration {
      * 创建图片 OCR 提取器。
      *
      * @param adapterRegistry OCR 适配器注册表
+     * @param routingServiceProvider OCR 路由服务提供器
      * @return 图片 OCR 提取器
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-09
      */
     @Bean
     @ConditionalOnMissingBean
-    ImageDocumentExtractor imageDocumentExtractor(DefaultAdapterRegistry adapterRegistry) {
-        return new ImageDocumentExtractor(adapterRegistry);
+    ImageDocumentExtractor imageDocumentExtractor(
+            DefaultAdapterRegistry adapterRegistry,
+            ObjectProvider<OcrRoutingService> routingServiceProvider
+    ) {
+        return new ImageDocumentExtractor(adapterRegistry, routingServiceProvider.getIfAvailable());
     }
 
     /**

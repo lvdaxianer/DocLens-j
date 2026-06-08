@@ -4,11 +4,14 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.AdapterRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRouteExecutionResult;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 图片文档 OCR 提取器。
@@ -19,6 +22,7 @@ import java.util.List;
 public class ImageDocumentExtractor {
 
     private final AdapterRegistry adapterRegistry;
+    private final Optional<OcrRoutingService> routingService;
 
     /**
      * 创建图片 OCR 提取器。
@@ -28,7 +32,20 @@ public class ImageDocumentExtractor {
      * @date 2026-06-08
      */
     public ImageDocumentExtractor(AdapterRegistry adapterRegistry) {
+        this(adapterRegistry, null);
+    }
+
+    /**
+     * 创建图片 OCR 提取器。
+     *
+     * @param adapterRegistry OCR 适配器注册表
+     * @param routingService OCR 资源路由服务
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public ImageDocumentExtractor(AdapterRegistry adapterRegistry, OcrRoutingService routingService) {
         this.adapterRegistry = adapterRegistry;
+        this.routingService = Optional.ofNullable(routingService);
     }
 
     /**
@@ -58,9 +75,30 @@ public class ImageDocumentExtractor {
      * @date 2026-06-08
      */
     ImageOcrResult recognize(DocumentTextExtractionRequest request, int pageNo, byte[] imageContent) {
+        ImageOcrRequest imageRequest = new ImageOcrRequest(request.document().batchId(),
+                request.document().documentId(), request.document().fileName(), pageNo, imageContent,
+                request.document().metadata());
+        if (routingService.isPresent()) {
+            OcrRouteExecutionResult routeResult = routingService.get()
+                    .recognize(imageRequest, request.document().ocrRoutePolicy());
+            return routeResult.result();
+        } else {
+            return recognizeWithAdapter(request, imageRequest);
+        }
+    }
+
+    /**
+     * 使用旧适配器注册表执行图片 OCR。
+     *
+     * @param request 提取请求
+     * @param imageRequest 图片 OCR 请求
+     * @return 图片 OCR 结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private ImageOcrResult recognizeWithAdapter(DocumentTextExtractionRequest request, ImageOcrRequest imageRequest) {
         OcrAdapter adapter = adapterRegistry.find(request.adapterKey())
                 .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + request.adapterKey()));
-        return adapter.recognize(new ImageOcrRequest(request.document().batchId(), request.document().documentId(),
-                request.document().fileName(), pageNo, imageContent, request.document().metadata()));
+        return adapter.recognize(imageRequest);
     }
 }
