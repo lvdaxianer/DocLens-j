@@ -8,19 +8,20 @@ import io.github.lvdaxianer.doclens.j.api.DefaultDocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEventSink;
 import io.github.lvdaxianer.doclens.j.api.NoopDocLensEventSink;
-import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.BatchMapper;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.MybatisPlusBatchRepository;
-import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
-import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrEventMapper;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrResultMapper;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -30,9 +31,9 @@ import io.github.lvdaxianer.doclens.j.shared.config.MybatisPlusConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.config.WorkerConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.application.SpringTransactionRunner;
 import io.github.lvdaxianer.doclens.j.storage.LocalObjectStorage;
-import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.util.List;
 import org.mybatis.spring.annotation.MapperScan;
+import org.apache.ibatis.annotations.Mapper;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -48,10 +49,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @AutoConfiguration
 @EnableConfigurationProperties(DocLensSpringProperties.class)
-@MapperScan({
-        "io.github.lvdaxianer.doclens.j.ingestion.infrastructure",
-        "io.github.lvdaxianer.doclens.j.processing.infrastructure"
-})
+@MapperScan(basePackageClasses = {
+        BatchMapper.class,
+        DocumentJobMapper.class,
+        OcrEventMapper.class,
+        OcrResultMapper.class
+}, annotationClass = Mapper.class)
 @Import({
         MybatisPlusConfiguration.class,
         WorkerConfiguration.class,
@@ -77,7 +80,16 @@ public class DocLensAutoConfiguration {
     DocLensProperties docLensProperties(DocLensSpringProperties properties) {
         return new DocLensProperties(properties.storageRoot(), properties.autoProcessOnUpload(), properties.workerId(),
                 new DocLensProperties.CallbackProperties(properties.callback().maxRetries(),
-                        properties.callback().timeoutSeconds()));
+                        properties.callback().timeoutSeconds()),
+                new DocLensProperties.AdapterProperties(properties.adapter().defaultKey()),
+                new DocLensProperties.PaddleOcrProperties(properties.paddleOcr().enabled(),
+                        properties.paddleOcr().endpoint(), properties.paddleOcr().timeoutSeconds(),
+                        properties.paddleOcr().visualize()),
+                new DocLensProperties.ExtractionProperties(properties.extraction().ocrConcurrency()),
+                new DocLensProperties.PdfRenderProperties(properties.pdfRender().dpi(),
+                        properties.pdfRender().imageFormat()),
+                new DocLensProperties.WordConversionProperties(properties.wordConversion().command(),
+                        properties.wordConversion().timeoutSeconds()));
     }
 
     /**
@@ -173,99 +185,6 @@ public class DocLensAutoConfiguration {
     @ConditionalOnMissingBean
     DefaultAdapterRegistry defaultAdapterRegistry(List<OcrAdapter> adapters) {
         return new DefaultAdapterRegistry(adapters);
-    }
-
-    /**
-     * 创建批次处理用例。
-     *
-     * @param dependencies 用例依赖
-     * @param transactionRunner 事务执行器
-     * @return 批次处理用例
-     * @author lvdaxianerplus
-     * @date 2026-06-07
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    BatchProcessingUseCase batchProcessingUseCase(
-            BatchProcessingDependencies dependencies,
-            TransactionRunner transactionRunner
-    ) {
-        return new BatchProcessingUseCase(dependencies, transactionRunner);
-    }
-
-    /**
-     * 创建批次处理用例的依赖持有对象。
-     *
-     * @param documentRepository 文档仓储
-     * @param resultRepository 结果仓储
-     * @param eventRepository 事件仓储
-     * @param batchRepository 批次仓储
-     * @param adapterRegistry 适配器注册表
-     * @param idGenerator ID 生成器
-     * @param eventFactory 事件工厂
-     * @return 依赖持有对象
-     * @author lvdaxianerplus
-     * @date 2026-06-07
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    BatchProcessingDependencies batchProcessingDependencies(
-            DocumentJobRepository documentRepository,
-            OcrResultRepository resultRepository,
-            OcrEventRepository eventRepository,
-            BatchRepository batchRepository,
-            DefaultAdapterRegistry adapterRegistry,
-            IdGenerator idGenerator,
-            OcrEventFactory eventFactory
-    ) {
-        return new BatchProcessingDependencies(documentRepository, resultRepository, eventRepository, batchRepository,
-                adapterRegistry, idGenerator, eventFactory);
-    }
-
-    /**
-     * 创建批次创建用例。
-     *
-     * @param dependencies 用例依赖
-     * @param transactionRunner 事务执行器
-     * @return 创建批次用例
-     * @author lvdaxianerplus
-     * @date 2026-06-07
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    CreateBatchUseCase createBatchUseCase(CreateBatchDependencies dependencies, TransactionRunner transactionRunner) {
-        return new CreateBatchUseCase(dependencies, transactionRunner);
-    }
-
-    /**
-     * 创建批次创建用例的依赖持有对象。
-     *
-     * @param batchRepository 批次仓储
-     * @param documentRepository 文档仓储
-     * @param eventRepository 事件仓储
-     * @param objectStorage 对象存储
-     * @param idGenerator ID 生成器
-     * @param properties 运行时属性
-     * @param batchProcessingUseCase 批次处理用例
-     * @param eventFactory 事件工厂
-     * @return 依赖持有对象
-     * @author lvdaxianerplus
-     * @date 2026-06-07
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    CreateBatchDependencies createBatchDependencies(
-            BatchRepository batchRepository,
-            DocumentJobRepository documentRepository,
-            OcrEventRepository eventRepository,
-            ObjectStorage objectStorage,
-            IdGenerator idGenerator,
-            DocLensProperties properties,
-            BatchProcessingUseCase batchProcessingUseCase,
-            OcrEventFactory eventFactory
-    ) {
-        return new CreateBatchDependencies(batchRepository, documentRepository, eventRepository, objectStorage,
-                idGenerator, properties, batchProcessingUseCase, eventFactory);
     }
 
     /**

@@ -48,7 +48,44 @@ spring:
 doclens:
   storage-root: ./var/storage
   auto-process-on-upload: true
+  adapter:
+    default-key: paddle_ocr
+  paddle-ocr:
+    enabled: true
+    endpoint: http://127.0.0.1:8080/ocr
+    timeout-seconds: 600
+    visualize: false
+  extraction:
+    ocr-concurrency: 1
+  pdf-render:
+    dpi: 36
+    image-format: png
+  word-conversion:
+    command: /opt/homebrew/bin/soffice
+    timeout-seconds: 60
 ```
+
+本地 PaddleOCR 原生 API 启动方式：
+
+```bash
+cd /Users/lvdaxianer/cache/soft/paddleocr-api
+./start-native.sh
+```
+
+`./start-native.sh` 默认监听 `http://127.0.0.1:8080/ocr`。如果同时启动 DocLens HTTP 服务，请让 DocLens 使用其它端口，例如：
+
+```bash
+mvn -pl doclens-server spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
+```
+
+文档转文本流水线：
+
+- Markdown/TXT：直接读取文本，不调用 OCR。
+- Image/TIFF：调用 OCR 转文字。
+- PDF：按页渲染为图片，并发 OCR 后按页码顺序合并文本。
+- Word：先通过 LibreOffice 转 PDF，再复用 PDF 流程。
+- 最终纯文本会同时保存到数据库和本地对象存储，磁盘文件名格式为 `[文件名称]_[uuid].md`。
+- 默认上传后会进入后台单线程处理，创建批次接口先返回任务信息；通过批次、文档和结果查询接口轮询处理状态。
 
 提交 OCR 批次：
 
@@ -136,8 +173,15 @@ public class HostOcrService {
 | 配置 | 默认值 | 说明 |
 | --- | --- | --- |
 | `doclens.storage-root` | `./var/storage` | 本地对象存储目录 |
-| `doclens.auto-process-on-upload` | `true` | 上传后是否立即在进程内处理 |
+| `doclens.auto-process-on-upload` | `true` | 上传后是否调度后台进程内处理 |
 | `doclens.worker-id` | `local-worker` | 本地 Worker 标识 |
+| `doclens.adapter.default-key` | `paddle_ocr` | 默认 OCR 适配器键 |
+| `doclens.paddle-ocr.enabled` | `true` | 是否启用 PaddleOCR 原生适配器 |
+| `doclens.paddle-ocr.endpoint` | `http://127.0.0.1:8080/ocr` | PaddleOCR 原生 API 地址 |
+| `doclens.paddle-ocr.timeout-seconds` | `600` | PaddleOCR 请求超时 |
+| `doclens.extraction.ocr-concurrency` | `1` | PDF/Word 多页 OCR 并发数 |
+| `doclens.pdf-render.dpi` | `36` | PDF 转图片渲染 DPI |
+| `doclens.word-conversion.command` | `/opt/homebrew/bin/soffice` | Word 转 PDF 命令 |
 | `doclens.callback.max-retries` | `3` | 回调最大重试次数 |
 | `doclens.callback.timeout-seconds` | `10` | 回调超时时间 |
 
@@ -172,7 +216,7 @@ SDK 相关模块会通过 Maven Enforcer 禁止引入 Spring Web 相关依赖。
 
 ## 当前限制
 
-- 默认 OCR 适配器仍是 Stub 实现，用于打通垂直切片。
+- 自动化测试使用 Stub 适配器，服务端本地默认使用 PaddleOCR 原生 API。
 - 当前 Worker 是进程内执行，独立 Worker/Callback Worker 尚未拆分。
 - 默认存储为本地文件系统，S3/MinIO 等对象存储适配可通过 `ObjectStorage` 扩展。
 - MyBatis-Plus 在测试启动时可能输出默认包扫描 WARN，但现有测试已验证仓储与接口可正常工作。

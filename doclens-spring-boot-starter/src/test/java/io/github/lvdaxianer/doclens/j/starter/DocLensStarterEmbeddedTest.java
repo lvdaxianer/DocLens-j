@@ -25,6 +25,9 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(classes = DocLensStarterEmbeddedTest.TestApplication.class)
 class DocLensStarterEmbeddedTest {
 
+    private static final int PROCESSING_WAIT_ATTEMPTS = 20;
+    private static final int PROCESSING_WAIT_MILLIS = 100;
+
     @TempDir
     static java.nio.file.Path tempDir;
 
@@ -47,6 +50,8 @@ class DocLensStarterEmbeddedTest {
         registry.add("doclens.worker-id", () -> "starter-test-worker");
         registry.add("doclens.callback.max-retries", () -> "3");
         registry.add("doclens.callback.timeout-seconds", () -> "10");
+        registry.add("doclens.adapter.default-key", () -> "stub_ocr");
+        registry.add("doclens.paddle-ocr.enabled", () -> "false");
     }
 
     /**
@@ -64,16 +69,55 @@ class DocLensStarterEmbeddedTest {
         String documentId = String.valueOf(firstDocument.get("document_id"));
 
         assertThat(batchId).startsWith("batch_");
-        assertThat(docLensEngine.getBatch(batchId)).containsEntry("progress_percent", 100);
+        assertThat(created).containsEntry("status", "queued");
+        Map<String, Object> completedBatch = waitForCompletedBatch(batchId);
+        assertThat(completedBatch).containsEntry("progress_percent", 100);
         assertThat(docLensEngine.getDocument(documentId)).containsEntry("document_id", documentId);
-        assertThat(docLensEngine.getDocumentResult(documentId)).containsEntry("document_id", documentId);
+        Map<String, Object> result = docLensEngine.getDocumentResult(documentId);
+        assertThat(result).containsEntry("document_id", documentId);
+        assertThat(String.valueOf(((Map<?, ?>) result.get("result")).get("finalText"))).isEqualTo("# Embedded\ncontent");
         assertThat(docLensEngine.getEvents(batchId)).containsKey("events");
         assertThat(docLensEngine.listAdapters().get("adapters")).isNotEmpty();
     }
 
+    /**
+     * 等待后台处理完成。
+     *
+     * @param batchId 批次 ID
+     * @return 批次状态
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private Map<String, Object> waitForCompletedBatch(String batchId) {
+        Map<String, Object> batch = docLensEngine.getBatch(batchId);
+        for (int attempt = 0; attempt < PROCESSING_WAIT_ATTEMPTS; attempt++) {
+            if (Integer.valueOf(100).equals(batch.get("progress_percent"))) {
+                return batch;
+            } else {
+                sleepBeforeNextAttempt();
+                batch = docLensEngine.getBatch(batchId);
+            }
+        }
+        return batch;
+    }
+
+    /**
+     * 等待下一次状态查询。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private void sleepBeforeNextAttempt() {
+        try {
+            Thread.sleep(PROCESSING_WAIT_MILLIS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private CreateBatchRequest createRequest() {
         return new CreateBatchRequest(
-                List.of(new DocumentInput("embedded.pdf", "%PDF-embedded".getBytes())),
+                List.of(new DocumentInput("embedded.md", "# Embedded\ncontent".getBytes())),
                 Map.of("source", "starter-test"),
                 "",
                 "idem-starter-" + UUID.randomUUID(),

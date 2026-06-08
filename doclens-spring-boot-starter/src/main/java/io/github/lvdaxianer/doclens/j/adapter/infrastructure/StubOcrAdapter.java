@@ -1,8 +1,10 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.api.AdapterCapability;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
-import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +22,7 @@ public class StubOcrAdapter implements OcrAdapter {
     @Override
     public AdapterCapability capability() {
         return new AdapterCapability(
-                DocLensConstants.DEFAULT_ADAPTER_KEY,
+                DocLensConstants.STUB_ADAPTER_KEY,
                 List.of("image", "pdf", "word"),
                 false,
                 false,
@@ -36,16 +38,11 @@ public class StubOcrAdapter implements OcrAdapter {
     }
 
     @Override
-    public Map<String, Object> parse(DocumentJob document) {
-        return Map.of(
-                "adapter", DocLensConstants.DEFAULT_ADAPTER_KEY,
-                "documentId", document.documentId(),
-                "fileName", document.fileName(),
-                "pages", List.of(Map.of(
-                        "pageNo", DocLensConstants.DEFAULT_PAGE_NO,
-                        "text", "Stub OCR text for " + document.fileName(),
-                        "confidence", DocLensConstants.STUB_CONFIDENCE
-                ))
-        );
+    public ImageOcrResult recognize(ImageOcrRequest request) {
+        OcrBlock block = new OcrBlock(request.pageNo(), "Stub OCR text for " + request.fileName(),
+                DocLensConstants.STUB_CONFIDENCE, List.of(), List.of(), DocLensConstants.STUB_ADAPTER_KEY);
+        return ImageOcrResult.fromBlocks(request.pageNo(),
+                Map.of("adapter", DocLensConstants.STUB_ADAPTER_KEY, "pageNo", request.pageNo()), List.of(block),
+                List.of());
     }
 }

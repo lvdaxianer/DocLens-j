@@ -97,6 +97,8 @@ public class MybatisPlusOcrResultRepository
         OcrResultEntity entity = new OcrResultEntity();
         entity.setResultId(result.resultId());
         entity.setDocumentId(result.documentId());
+        entity.setFinalText(result.finalText());
+        entity.setMarkdownStorageUri(result.markdownStorageUri());
         entity.setRawVendorOutput(jsonCodec.toJson(result.rawVendorOutput()));
         entity.setStructuredDocument(jsonCodec.toJson(result.structuredDocument()));
         entity.setPageText(jsonCodec.toJson(result.pageText()));
@@ -118,7 +120,8 @@ public class MybatisPlusOcrResultRepository
      * @date 2026-06-07
      */
     private OcrResult toDomain(OcrResultEntity entity) {
-        return new OcrResult(entity.getResultId(), entity.getDocumentId(),
+        return new OcrResult(entity.getResultId(), entity.getDocumentId(), entity.getFinalText(),
+                entity.getMarkdownStorageUri(),
                 jsonCodec.parseObject(entity.getRawVendorOutput()),
                 jsonCodec.parseObject(entity.getStructuredDocument()),
                 readValue(entity.getPageText(), LIST_OF_OBJECTS),

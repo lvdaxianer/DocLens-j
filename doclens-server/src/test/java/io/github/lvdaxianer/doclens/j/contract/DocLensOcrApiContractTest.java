@@ -30,6 +30,9 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 class DocLensOcrApiContractTest {
 
+    private static final int PROCESSING_WAIT_ATTEMPTS = 20;
+    private static final int PROCESSING_WAIT_MILLIS = 100;
+
     @TempDir
     static java.nio.file.Path tempDir;
 
@@ -51,6 +54,8 @@ class DocLensOcrApiContractTest {
         registry.add("spring.datasource.url",
                 () -> "jdbc:h2:file:" + tempDir.resolve("doclens-test") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
+        registry.add("doclens.adapter.default-key", () -> "stub_ocr");
+        registry.add("doclens.paddle-ocr.enabled", () -> "false");
     }
 
     /**
@@ -70,12 +75,9 @@ class DocLensOcrApiContractTest {
         assertThat(batchId).startsWith("batch_");
         assertThat(documentId).startsWith("doc_");
         assertThat(body.get("total_files").asInt()).isEqualTo(2);
-        assertThat(body.get("documents").get(0).get("file_name").asText()).isEqualTo("a.pdf");
+        assertThat(body.get("documents").get(0).get("file_name").asText()).isEqualTo("a.md");
 
-        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.metadata.bizId").value("A-1001"))
-                .andExpect(jsonPath("$.progress_percent").value(100));
+        waitForBatchCompleted(batchId);
 
         mockMvc.perform(get("/api/v1/documents/{documentId}", documentId))
                 .andExpect(status().isOk())
@@ -85,6 +87,8 @@ class DocLensOcrApiContractTest {
         mockMvc.perform(get("/api/v1/documents/{documentId}/result", documentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.summary.pageCount").value(1))
+                .andExpect(jsonPath("$.result.finalText").value("# A\n正文"))
+                .andExpect(jsonPath("$.result.markdownStorageUri").isString())
                 .andExpect(jsonPath("$.result.chunks").doesNotExist());
 
         mockMvc.perform(get("/api/v1/batches/{batchId}/events", batchId))
@@ -94,11 +98,51 @@ class DocLensOcrApiContractTest {
 
         mockMvc.perform(get("/api/v1/adapters"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.adapters[0].adapterKey").value("paddle_ocr"));
+                .andExpect(jsonPath("$.adapters[0].adapterKey").value("stub_ocr"));
 
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    /**
+     * 等待后台批次处理完成。
+     *
+     * @param batchId 批次 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private void waitForBatchCompleted(String batchId) throws Exception {
+        for (int attempt = 0; attempt < PROCESSING_WAIT_ATTEMPTS; attempt++) {
+            MvcResult result = mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.metadata.bizId").value("A-1001"))
+                    .andReturn();
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            if (body.get("progress_percent").asInt() == 100) {
+                return;
+            } else {
+                sleepBeforeNextAttempt();
+            }
+        }
+        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress_percent").value(100));
+    }
+
+    /**
+     * 等待下一次状态查询。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private void sleepBeforeNextAttempt() {
+        try {
+            Thread.sleep(PROCESSING_WAIT_MILLIS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -110,7 +154,7 @@ class DocLensOcrApiContractTest {
      */
     @Test
     void batchUploadRejectsInvalidMetadataJson() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("files", "demo.pdf", "application/pdf", "%PDF-demo".getBytes());
+        MockMultipartFile file = new MockMultipartFile("files", "demo.md", "text/markdown", "# Demo".getBytes());
 
         mockMvc.perform(multipart("/api/v1/batches")
                         .file(file)
@@ -120,7 +164,7 @@ class DocLensOcrApiContractTest {
     }
 
     private MvcResult uploadBatch() throws Exception {
-        MockMultipartFile first = new MockMultipartFile("files", "a.pdf", "application/pdf", "%PDF-a".getBytes());
+        MockMultipartFile first = new MockMultipartFile("files", "a.md", "text/markdown", "# A\n正文".getBytes());
         MockMultipartFile second = new MockMultipartFile("files", "b.png", "image/png", "png-bytes".getBytes());
         return mockMvc.perform(multipart("/api/v1/batches")
                         .file(first)

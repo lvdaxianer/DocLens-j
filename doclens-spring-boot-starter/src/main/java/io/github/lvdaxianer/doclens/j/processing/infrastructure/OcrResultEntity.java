@@ -20,6 +20,8 @@ public class OcrResultEntity {
     @TableId("result_id")
     private String resultId;
     private String documentId;
+    private String finalText;
+    private String markdownStorageUri;
     private String rawVendorOutput;
     private String structuredDocument;
     private String pageText;

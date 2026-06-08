@@ -9,5 +9,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 public enum DocumentType {
     IMAGE,
     PDF,
-    WORD
+    WORD,
+    MARKDOWN,
+    TEXT
 }

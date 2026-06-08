@@ -1,6 +1,5 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
@@ -13,14 +12,19 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
+import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
+import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
+import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +43,8 @@ public class BatchProcessingUseCase {
     private final OcrEventRepository eventRepository;
     private final BatchRepository batchRepository;
     private final DefaultAdapterRegistry adapterRegistry;
+    private final ObjectStorage objectStorage;
+    private final DocumentTextExtractor documentTextExtractor;
     private final IdGenerator idGenerator;
     private final OcrEventFactory eventFactory;
     private final TransactionRunner transactionRunner;
@@ -57,6 +63,8 @@ public class BatchProcessingUseCase {
         this.eventRepository = dependencies.eventRepository();
         this.batchRepository = dependencies.batchRepository();
         this.adapterRegistry = dependencies.adapterRegistry();
+        this.objectStorage = dependencies.objectStorage();
+        this.documentTextExtractor = dependencies.documentTextExtractor();
         this.idGenerator = dependencies.idGenerator();
         this.eventFactory = dependencies.eventFactory();
         this.transactionRunner = transactionRunner;
@@ -71,15 +79,16 @@ public class BatchProcessingUseCase {
      */
     public void processBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
-        List<DocumentProcessingResult> results = documents.stream().map(this::processDocument).toList();
-        transactionRunner.requiredVoid(() -> persistBatchProcessing(batchId, results));
+        documents.stream()
+                .map(this::processDocument)
+                .forEach(result -> transactionRunner.requiredVoid(() -> persistDocumentProcessing(result)));
+        transactionRunner.requiredVoid(() -> finishBatch(batchId));
     }
 
     private DocumentProcessingResult processDocument(DocumentJob document) {
         try {
             DocumentJob started = startDocument(document);
-            DocumentJob progressed = started.markPageCompleted(1, Math.max(1, started.totalPages()), OffsetDateTime.now());
-            return completeDocument(started, progressed);
+            return completeDocument(started);
         } catch (RuntimeException ex) {
             LOGGER.warn("[OCR处理] 文档处理失败 documentId={}, error={}", document.documentId(), ex.getMessage(), ex);
             return failDocument(document, ex);
@@ -90,38 +99,32 @@ public class BatchProcessingUseCase {
         return document.startProcessing(OffsetDateTime.now());
     }
 
-    private DocumentProcessingResult completeDocument(DocumentJob started, DocumentJob progressed) {
-        OcrResult result = buildResult(progressed);
+    private DocumentProcessingResult completeDocument(DocumentJob started) {
+        OcrResult result = buildResult(started);
+        int pageCount = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, result.pageText().size());
+        DocumentJob progressed = started.markPageCompleted(pageCount, pageCount, OffsetDateTime.now());
         DocumentJob completed = progressed.complete(result.resultId(), OffsetDateTime.now());
-        return new DocumentProcessingResult(completed, Optional.of(result), completionEvents(started, progressed, completed));
+        return new DocumentProcessingResult(completed, Optional.of(result),
+                completionEvents(started, progressed, completed, result));
     }
 
     private OcrResult buildResult(DocumentJob document) {
-        OcrAdapter adapter = adapterRegistry.find(document.adapterName())
+        adapterRegistry.find(document.adapterName())
                 .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + document.adapterName()));
-        Map<String, Object> rawOutput = adapter.parse(document);
+        byte[] content = objectStorage.readBytes(document.storageUri());
+        DocumentTextExtractionResult extracted = documentTextExtractor.extract(
+                new DocumentTextExtractionRequest(document, content, document.adapterName()));
+        String markdownStorageUri = writeMarkdownResult(document, extracted.finalText());
         String resultId = idGenerator.newResultId();
-        List<Map<String, Object>> pageText = pageText(document);
-        return new OcrResult(resultId, document.documentId(), rawOutput, structuredDocument(document, rawOutput),
-                pageText, layoutBlocks(pageText), List.of(), List.of(), DocLensConstants.STUB_CONFIDENCE, List.of(),
-                OffsetDateTime.now());
+        return new OcrResult(resultId, document.documentId(), extracted.finalText(), markdownStorageUri,
+                extracted.rawOutput(), extracted.structuredDocument(), extracted.pageText(), extracted.layoutBlocks(),
+                extracted.tables(), extracted.images(), extracted.confidence(), extracted.warnings(), OffsetDateTime.now());
     }
 
-    private Map<String, Object> structuredDocument(DocumentJob document, Map<String, Object> rawOutput) {
-        return Map.of(
-                "documentId", document.documentId(),
-                "fileName", document.fileName(),
-                "pages", rawOutput.get("pages")
-        );
-    }
-
-    private List<Map<String, Object>> pageText(DocumentJob document) {
-        return List.of(Map.of("pageNo", DocLensConstants.DEFAULT_PAGE_NO, "text", "Stub OCR text for " + document.fileName()));
-    }
-
-    private List<Map<String, Object>> layoutBlocks(List<Map<String, Object>> pageText) {
-        return List.of(Map.of("pageNo", DocLensConstants.DEFAULT_PAGE_NO, "type", "paragraph",
-                "text", pageText.getFirst().get("text")));
+    private String writeMarkdownResult(DocumentJob document, String finalText) {
+        String objectKey = "results/%s/%s/%s".formatted(document.batchId(), document.documentId(),
+                MarkdownResultNamer.markdownFileName(document.fileName(), UUID.randomUUID()));
+        return objectStorage.writeBytes(objectKey, finalText.getBytes(StandardCharsets.UTF_8));
     }
 
     private DocumentProcessingResult failDocument(DocumentJob document, RuntimeException ex) {
@@ -132,38 +135,36 @@ public class BatchProcessingUseCase {
         return new DocumentProcessingResult(failed, Optional.empty(), List.of(event));
     }
 
-    private List<OcrEvent> completionEvents(DocumentJob started, DocumentJob progressed, DocumentJob completed) {
+    private List<OcrEvent> completionEvents(
+            DocumentJob started,
+            DocumentJob progressed,
+            DocumentJob completed,
+            OcrResult result
+    ) {
         return List.of(
                 event(new DocumentEventPlan(started, DocLensConstants.EVENT_DOCUMENT_STARTED,
                         Map.of("percent", DocLensConstants.START_PROGRESS_PERCENT), Map.of())),
                 event(new DocumentEventPlan(progressed, DocLensConstants.EVENT_DOCUMENT_PAGE_COMPLETED,
                         pageProgress(progressed), Map.of())),
                 event(new DocumentEventPlan(completed, DocLensConstants.EVENT_DOCUMENT_COMPLETED,
-                        Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT), resultSummary()))
+                        Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT), resultSummary(result)))
         );
     }
 
     private Map<String, Object> pageProgress(DocumentJob document) {
-        return Map.of("percent", document.progressPercent(), "current_page", DocLensConstants.DEFAULT_PAGE_NO,
+        return Map.of("percent", document.progressPercent(), "current_page", document.currentPage(),
                 "total_pages", document.totalPages());
     }
 
-    private Map<String, Object> resultSummary() {
-        return Map.of("pageCount", DocLensConstants.DEFAULT_PAGE_COUNT, "blockCount", DocLensConstants.DEFAULT_BLOCK_COUNT,
-                "tableCount", DocLensConstants.DEFAULT_TABLE_COUNT, "confidence", DocLensConstants.STUB_CONFIDENCE);
+    private Map<String, Object> resultSummary(OcrResult result) {
+        return Map.of("pageCount", result.pageText().size(), "blockCount", result.layoutBlocks().size(),
+                "tableCount", result.tables().size(), "confidence", result.confidence());
     }
 
-    public void persistBatchProcessing(String batchId, List<DocumentProcessingResult> results) {
-        documentRepository.updateAll(results.stream().map(DocumentProcessingResult::document).toList());
-        resultRepository.saveAll(results.stream().flatMap(result -> result.result().stream()).toList());
-        eventRepository.saveAll(flattenEvents(results));
-        finishBatch(batchId);
-    }
-
-    private List<OcrEvent> flattenEvents(List<DocumentProcessingResult> results) {
-        List<OcrEvent> events = new ArrayList<>(results.size() * 3);
-        results.stream().flatMap(result -> result.events().stream()).forEach(events::add);
-        return events;
+    void persistDocumentProcessing(DocumentProcessingResult result) {
+        documentRepository.updateAll(List.of(result.document()));
+        resultRepository.saveAll(result.result().stream().toList());
+        eventRepository.saveAll(result.events());
     }
 
     private void finishBatch(String batchId) {

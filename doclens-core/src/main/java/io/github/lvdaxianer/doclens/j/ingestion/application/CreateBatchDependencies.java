@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.ingestion.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
-import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -18,7 +17,7 @@ import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
  * @param objectStorage 对象存储
  * @param idGenerator ID 生成器
  * @param properties 运行时属性
- * @param batchProcessingUseCase 批次处理用例
+ * @param batchProcessingScheduler 批次处理调度器
  * @param eventFactory OCR 事件工厂
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -30,7 +29,7 @@ public record CreateBatchDependencies(
         ObjectStorage objectStorage,
         IdGenerator idGenerator,
         DocLensProperties properties,
-        BatchProcessingUseCase batchProcessingUseCase,
+        BatchProcessingScheduler batchProcessingScheduler,
         OcrEventFactory eventFactory
 ) {
 }

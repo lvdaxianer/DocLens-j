@@ -39,6 +39,28 @@ DocLens Java separates OCR batch processing into a stable SDK contract, a framew
 mvn -pl doclens-server spring-boot:run
 ```
 
+For local PaddleOCR native API integration, start PaddleOCR first:
+
+```bash
+cd /Users/lvdaxianer/cache/soft/paddleocr-api
+./start-native.sh
+```
+
+The PaddleOCR native service listens on `http://127.0.0.1:8080/ocr`. Run DocLens on another port when both services are local:
+
+```bash
+mvn -pl doclens-server spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
+```
+
+Document text pipeline:
+
+- Markdown/TXT: read text directly.
+- Image/TIFF: OCR the image.
+- PDF: render pages to images, OCR concurrently, then merge by page order.
+- Word: convert to PDF with LibreOffice, then reuse the PDF flow.
+- Final plain text is saved in the database and as `[file-name]_[uuid].md` in local object storage.
+- Uploads are scheduled on a background single-thread in-process worker by default; poll batch, document, and result endpoints for completion.
+
 Create a batch:
 
 ```bash
@@ -123,8 +145,15 @@ Use `doclens-api` and `doclens-core` when Spring Boot auto-configuration is not 
 | Property | Default | Description |
 | --- | --- | --- |
 | `doclens.storage-root` | `./var/storage` | Local object storage root |
-| `doclens.auto-process-on-upload` | `true` | Process uploaded batches in-process |
+| `doclens.auto-process-on-upload` | `true` | Schedule uploaded batches on the in-process background worker |
 | `doclens.worker-id` | `local-worker` | Local worker identifier |
+| `doclens.adapter.default-key` | `paddle_ocr` | Default OCR adapter key |
+| `doclens.paddle-ocr.enabled` | `true` | Enable PaddleOCR native adapter |
+| `doclens.paddle-ocr.endpoint` | `http://127.0.0.1:8080/ocr` | PaddleOCR native API endpoint |
+| `doclens.paddle-ocr.timeout-seconds` | `600` | PaddleOCR request timeout |
+| `doclens.extraction.ocr-concurrency` | `1` | OCR concurrency for PDF/Word pages |
+| `doclens.pdf-render.dpi` | `36` | PDF page render DPI |
+| `doclens.word-conversion.command` | `/opt/homebrew/bin/soffice` | Word-to-PDF command |
 | `doclens.callback.max-retries` | `3` | Maximum callback retries |
 | `doclens.callback.timeout-seconds` | `10` | Callback timeout in seconds |
 
@@ -161,7 +190,7 @@ SDK-related modules are protected by Maven Enforcer rules that ban Spring Web de
 
 ## Current Limitations
 
-- The default OCR adapter is a Stub implementation for vertical-slice verification.
+- Automated tests use the Stub adapter; local server defaults to the PaddleOCR native API.
 - Worker execution is currently in-process; standalone Worker and Callback Worker processes are future work.
 - Local filesystem storage is the default; S3/MinIO can be added through `ObjectStorage`.
 - MyBatis-Plus may log a default mapper-scan warning during tests, while repository and API contract tests still pass.

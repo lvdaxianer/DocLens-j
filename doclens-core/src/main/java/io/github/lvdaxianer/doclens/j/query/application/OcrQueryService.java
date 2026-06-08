@@ -120,6 +120,8 @@ public class OcrQueryService {
                 "confidence", result.confidence()
         );
         Map<String, Object> payload = Map.ofEntries(
+                Map.entry("finalText", result.finalText()),
+                Map.entry("markdownStorageUri", result.markdownStorageUri()),
                 Map.entry("pages", result.structuredDocument().getOrDefault("pages", List.of())),
                 Map.entry("structuredDocument", result.structuredDocument()),
                 Map.entry("rawVendorOutput", result.rawVendorOutput()),

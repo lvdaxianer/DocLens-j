@@ -9,6 +9,8 @@ import java.util.Map;
  *
  * @param resultId 结果 ID
  * @param documentId 文档 ID
+ * @param finalText 最终纯文本
+ * @param markdownStorageUri Markdown 文件存储 URI
  * @param rawVendorOutput 厂商原始输出
  * @param structuredDocument 归一化结构化文档
  * @param pageText 页面文本记录集合
@@ -24,6 +26,8 @@ import java.util.Map;
 public record OcrResult(
         String resultId,
         String documentId,
+        String finalText,
+        String markdownStorageUri,
         Map<String, Object> rawVendorOutput,
         Map<String, Object> structuredDocument,
         List<Map<String, Object>> pageText,

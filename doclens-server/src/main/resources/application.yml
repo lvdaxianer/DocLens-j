@@ -27,6 +27,21 @@ doclens:
   storage-root: ./var/storage
   auto-process-on-upload: true
   worker-id: local-worker
+  adapter:
+    default-key: paddle_ocr
+  paddle-ocr:
+    enabled: true
+    endpoint: http://127.0.0.1:8080/ocr
+    timeout-seconds: 600
+    visualize: false
+  extraction:
+    ocr-concurrency: 1
+  pdf-render:
+    dpi: 36
+    image-format: png
+  word-conversion:
+    command: /opt/homebrew/bin/soffice
+    timeout-seconds: 60
   callback:
     max-retries: 3
     timeout-seconds: 10

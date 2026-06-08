@@ -2,7 +2,6 @@ package io.github.lvdaxianer.doclens.j.ingestion.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
-import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -39,7 +38,7 @@ public class CreateBatchUseCase {
     private final ObjectStorage objectStorage;
     private final IdGenerator idGenerator;
     private final DocLensProperties properties;
-    private final BatchProcessingUseCase batchProcessingUseCase;
+    private final BatchProcessingScheduler batchProcessingScheduler;
     private final OcrEventFactory eventFactory;
     private final TransactionRunner transactionRunner;
 
@@ -58,7 +57,7 @@ public class CreateBatchUseCase {
         this.objectStorage = dependencies.objectStorage();
         this.idGenerator = dependencies.idGenerator();
         this.properties = dependencies.properties();
-        this.batchProcessingUseCase = dependencies.batchProcessingUseCase();
+        this.batchProcessingScheduler = dependencies.batchProcessingScheduler();
         this.eventFactory = dependencies.eventFactory();
         this.transactionRunner = transactionRunner;
     }
@@ -103,7 +102,7 @@ public class CreateBatchUseCase {
 
     private void triggerProcessing(String batchId) {
         if (properties.autoProcessOnUpload()) {
-            batchProcessingUseCase.processBatch(batchId);
+            batchProcessingScheduler.schedule(batchId);
         } else {
             // 配置明确要求批次保持排队状态，等待外部 Worker 处理。
         }
@@ -176,8 +175,13 @@ public class CreateBatchUseCase {
         if (lowerName.endsWith(".pdf")) {
             return DocumentType.PDF;
         } else if (lowerName.endsWith(".png") || lowerName.endsWith(".jpg")
-                || lowerName.endsWith(".jpeg") || lowerName.endsWith(".webp")) {
+                || lowerName.endsWith(".jpeg") || lowerName.endsWith(".webp")
+                || lowerName.endsWith(".tif") || lowerName.endsWith(".tiff")) {
             return DocumentType.IMAGE;
+        } else if (lowerName.endsWith(".md") || lowerName.endsWith(".markdown")) {
+            return DocumentType.MARKDOWN;
+        } else if (lowerName.endsWith(".txt")) {
+            return DocumentType.TEXT;
         } else {
             return DocumentType.WORD;
         }
@@ -186,6 +190,9 @@ public class CreateBatchUseCase {
     private String resolveAdapter(CreateBatchCommand command) {
         if (command.adapterOverride() != null && !command.adapterOverride().isBlank()) {
             return command.adapterOverride();
+        } else if (properties.adapter() != null && properties.adapter().defaultKey() != null
+                && !properties.adapter().defaultKey().isBlank()) {
+            return properties.adapter().defaultKey();
         } else {
             return DocLensConstants.DEFAULT_ADAPTER_KEY;
         }

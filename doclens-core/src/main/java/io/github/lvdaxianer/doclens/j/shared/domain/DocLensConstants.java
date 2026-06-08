@@ -21,6 +21,7 @@ public final class DocLensConstants {
     public static final int DEFAULT_QUERY_LIMIT = 10000;
     public static final double STUB_CONFIDENCE = 0.99D;
     public static final String DEFAULT_ADAPTER_KEY = "paddle_ocr";
+    public static final String STUB_ADAPTER_KEY = "stub_ocr";
     public static final String EMPTY_VALUE = "";
     public static final String STAGE_QUEUED = "queued";
     public static final String EVENT_BATCH_CREATED = "batch.created";

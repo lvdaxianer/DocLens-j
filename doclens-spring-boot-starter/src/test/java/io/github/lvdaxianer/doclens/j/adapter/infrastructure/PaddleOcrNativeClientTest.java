@@ -1,0 +1,177 @@
+package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
+
+/**
+ * PaddleOCR 原生客户端测试。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+class PaddleOcrNativeClientTest {
+
+    private static final int SERVER_BACKLOG = 1;
+    private static final int TEST_TIMEOUT_SECONDS = 5;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 原生服务只接受普通 HTTP/1.1 请求。
+     *
+     * @throws IOException 本地测试服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void recognizeImageUsesPlainHttp11Request() throws IOException {
+        AtomicReference<String> upgradeHeader = new AtomicReference<>();
+        AtomicReference<String> protocol = new AtomicReference<>();
+        HttpServer server = startServer(exchange -> {
+            upgradeHeader.set(exchange.getRequestHeaders().getFirst("Upgrade"));
+            protocol.set(exchange.getProtocol());
+            writeResponse(exchange, 200, "{\"ok\":true}");
+        });
+
+        try {
+            PaddleOcrNativeClient client = new PaddleOcrNativeClient(propertiesFor(server), objectMapper);
+            JsonNode response = client.recognizeImage("image".getBytes(StandardCharsets.UTF_8));
+
+            assertThat(response.path("ok").asBoolean()).isTrue();
+            assertThat(protocol.get()).isEqualTo("HTTP/1.1");
+            assertThat(upgradeHeader.get()).isNull();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
+     * 非 2xx 响应应保留响应体，方便排查模型服务错误。
+     *
+     * @throws IOException 本地测试服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void recognizeImageIncludesResponseBodyWhenNativeApiFails() throws IOException {
+        HttpServer server = startServer(exchange -> writeResponse(exchange, 422, "{\"detail\":\"Unsupported upgrade request.\"}"));
+
+        try {
+            PaddleOcrNativeClient client = new PaddleOcrNativeClient(propertiesFor(server), objectMapper);
+
+            assertThatThrownBy(() -> client.recognizeImage("image".getBytes(StandardCharsets.UTF_8)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("HTTP 422")
+                    .hasMessageContaining("Unsupported upgrade request");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
+     * 启动本地 HTTP 测试服务。
+     *
+     * @param handler 请求处理器
+     * @return 本地 HTTP 测试服务
+     * @throws IOException 本地端口监听失败
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private HttpServer startServer(ThrowingExchangeHandler handler) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), SERVER_BACKLOG);
+        server.createContext("/ocr", exchange -> {
+            try {
+                handler.handle(exchange);
+            } catch (IOException ex) {
+                throw ex;
+            } catch (RuntimeException ex) {
+                throw ex;
+            }
+        });
+        server.start();
+        return server;
+    }
+
+    /**
+     * 生成指向本地测试服务的配置。
+     *
+     * @param server 本地 HTTP 测试服务
+     * @return DocLens 测试配置
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties propertiesFor(HttpServer server) {
+        return new DocLensProperties(
+                "target/test-storage",
+                true,
+                "worker-test",
+                new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
+                new DocLensProperties.AdapterProperties("paddle_ocr"),
+                new DocLensProperties.PaddleOcrProperties(true, endpointFor(server), TEST_TIMEOUT_SECONDS, false),
+                new DocLensProperties.ExtractionProperties(1),
+                new DocLensProperties.PdfRenderProperties(144, "png"),
+                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS)
+        );
+    }
+
+    /**
+     * 拼接本地 OCR 服务地址。
+     *
+     * @param server 本地 HTTP 测试服务
+     * @return OCR 接口地址
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private String endpointFor(HttpServer server) {
+        return "http://127.0.0.1:" + server.getAddress().getPort() + "/ocr";
+    }
+
+    /**
+     * 写入测试响应。
+     *
+     * @param exchange HTTP 交换对象
+     * @param statusCode 响应状态码
+     * @param responseBody 响应体
+     * @throws IOException 响应写入失败
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private void writeResponse(HttpExchange exchange, int statusCode, String responseBody) throws IOException {
+        byte[] responseBytes = responseBody.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(statusCode, responseBytes.length);
+        exchange.getResponseBody().write(responseBytes);
+        exchange.close();
+    }
+
+    /**
+     * 允许抛出受检异常的 HTTP 处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @FunctionalInterface
+    private interface ThrowingExchangeHandler {
+
+        /**
+         * 处理 HTTP 请求。
+         *
+         * @param exchange HTTP 交换对象
+         * @throws IOException 请求处理失败
+         * @author lvdaxianerplus
+         * @date 2026-06-08
+         */
+        void handle(HttpExchange exchange) throws IOException;
+    }
+}

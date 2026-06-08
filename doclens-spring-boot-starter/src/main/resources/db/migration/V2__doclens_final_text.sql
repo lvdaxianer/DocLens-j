@@ -1,0 +1,5 @@
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS final_text TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS markdown_storage_uri VARCHAR(2048) NOT NULL DEFAULT '';
