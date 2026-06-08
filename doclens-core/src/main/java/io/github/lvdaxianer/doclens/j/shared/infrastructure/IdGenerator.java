@@ -58,6 +58,17 @@ public class IdGenerator {
         return prefixedId("evt");
     }
 
+    /**
+     * 创建 OCR 调用记录标识。
+     *
+     * @return OCR 调用记录 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public String newOcrCallId() {
+        return prefixedId("ocr_call");
+    }
+
     private String prefixedId(String prefix) {
         byte[] bytes = new byte[RANDOM_BYTES];
         random.nextBytes(bytes);

@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeProvider;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import jakarta.annotation.PostConstruct;
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component;
  * @date 2026-06-08
  */
 @Component
-public class OcrRuntimeNodePool {
+public class OcrRuntimeNodePool implements OcrRuntimeNodeProvider {
 
     private final OcrNodeRepository nodeRepository;
     private final Map<String, OcrRuntimeNode> nodes = new ConcurrentHashMap<>();
@@ -60,27 +61,29 @@ public class OcrRuntimeNodePool {
     }
 
     /**
-     * 增加节点解析中图片数。
+     * 增加节点解析中图片数并返回节点选择视图。
      *
      * @param nodeId OCR 节点 ID
-     * @return 更新后的运行时节点
+     * @return 更新后的运行时节点视图
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    public Optional<OcrRuntimeNode> incrementInflight(String nodeId) {
-        return find(nodeId).map(this::incrementNode);
+    @Override
+    public Optional<OcrRuntimeNodeView> incrementInflight(String nodeId) {
+        return incrementInflightNode(nodeId).map(OcrRuntimeNode::toView);
     }
 
     /**
-     * 减少节点解析中图片数。
+     * 减少节点解析中图片数并返回节点选择视图。
      *
      * @param nodeId OCR 节点 ID
-     * @return 更新后的运行时节点
+     * @return 更新后的运行时节点视图
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    public Optional<OcrRuntimeNode> decrementInflight(String nodeId) {
-        return find(nodeId).map(this::decrementNode);
+    @Override
+    public Optional<OcrRuntimeNodeView> decrementInflight(String nodeId) {
+        return decrementInflightNode(nodeId).map(OcrRuntimeNode::toView);
     }
 
     /**
@@ -104,6 +107,30 @@ public class OcrRuntimeNodePool {
      */
     public List<OcrRuntimeNodeView> snapshot() {
         return nodes.values().stream().map(OcrRuntimeNode::toView).toList();
+    }
+
+    /**
+     * 增加节点解析中图片数并返回运行时节点。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 运行时节点
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public Optional<OcrRuntimeNode> incrementInflightNode(String nodeId) {
+        return find(nodeId).map(this::incrementNode);
+    }
+
+    /**
+     * 减少节点解析中图片数并返回运行时节点。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 运行时节点
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public Optional<OcrRuntimeNode> decrementInflightNode(String nodeId) {
+        return find(nodeId).map(this::decrementNode);
     }
 
     /**

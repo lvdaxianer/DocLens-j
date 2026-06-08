@@ -60,7 +60,7 @@ public class ImageDocumentExtractor {
     ImageOcrResult recognize(DocumentTextExtractionRequest request, int pageNo, byte[] imageContent) {
         OcrAdapter adapter = adapterRegistry.find(request.adapterKey())
                 .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + request.adapterKey()));
-        return adapter.recognize(new ImageOcrRequest(request.document().documentId(), request.document().fileName(), pageNo,
-                imageContent, request.document().metadata()));
+        return adapter.recognize(new ImageOcrRequest(request.document().batchId(), request.document().documentId(),
+                request.document().fileName(), pageNo, imageContent, request.document().metadata()));
     }
 }

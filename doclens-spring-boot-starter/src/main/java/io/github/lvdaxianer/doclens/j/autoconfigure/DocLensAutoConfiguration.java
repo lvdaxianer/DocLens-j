@@ -2,6 +2,9 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
+import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSelector;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeRepository;
@@ -32,6 +35,7 @@ import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGeneratorOcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.shared.config.MybatisPlusConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.config.WorkerConfiguration;
@@ -146,6 +150,33 @@ public class DocLensAutoConfiguration {
     @ConditionalOnMissingBean
     IdGenerator idGenerator() {
         return new IdGenerator();
+    }
+
+    /**
+     * 创建 OCR 调用记录 ID 生成器。
+     *
+     * @param idGenerator 通用 ID 生成器
+     * @return OCR 调用记录 ID 生成器
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrCallIdGenerator ocrCallIdGenerator(IdGenerator idGenerator) {
+        return new IdGeneratorOcrCallIdGenerator(idGenerator);
+    }
+
+    /**
+     * 创建 OCR 节点选择器。
+     *
+     * @return OCR 节点选择器
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrNodeSelector ocrNodeSelector() {
+        return new LeastInflightOcrNodeSelector();
     }
 
     /**
@@ -290,4 +321,5 @@ public class DocLensAutoConfiguration {
     ) {
         return new DefaultDocLensEngine(createBatchUseCase, queryService, adapterRegistry);
     }
+
 }

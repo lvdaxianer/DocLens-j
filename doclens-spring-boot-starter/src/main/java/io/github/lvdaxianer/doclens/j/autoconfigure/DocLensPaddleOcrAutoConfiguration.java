@@ -1,6 +1,9 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeResponseMapper;
@@ -66,5 +69,26 @@ public class DocLensPaddleOcrAutoConfiguration {
             PaddleOcrNativeResponseMapper responseMapper
     ) {
         return new PaddleOcrNativeAdapter(client, responseMapper);
+    }
+
+    /**
+     * 创建 PaddleOCR 节点执行器。
+     *
+     * @param nodePool OCR 运行时节点池
+     * @param client PaddleOCR 客户端
+     * @param responseMapper PaddleOCR 响应映射器
+     * @return OCR 节点执行器
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "doclens.paddle-ocr", name = "enabled", havingValue = "true", matchIfMissing = true)
+    OcrNodeImageExecutor paddleOcrNodeImageExecutor(
+            OcrRuntimeNodePool nodePool,
+            PaddleOcrNativeClient client,
+            PaddleOcrNativeResponseMapper responseMapper
+    ) {
+        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper);
     }
 }

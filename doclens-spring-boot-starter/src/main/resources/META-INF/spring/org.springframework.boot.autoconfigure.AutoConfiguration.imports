@@ -1,5 +1,6 @@
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensOcrThreadPoolAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensPaddleOcrAutoConfiguration
+io.github.lvdaxianer.doclens.j.autoconfigure.DocLensOcrResourceAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensExtractionAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensProcessingAutoConfiguration
