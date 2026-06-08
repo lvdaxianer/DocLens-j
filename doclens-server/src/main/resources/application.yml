@@ -31,7 +31,7 @@ doclens:
     default-key: paddle_ocr
   paddle-ocr:
     enabled: true
-    endpoint: http://127.0.0.1:18082/ocr
+    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}
     timeout-seconds: 600
     visualize: false
   extraction:

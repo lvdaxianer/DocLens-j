@@ -29,12 +29,13 @@ public record DocLensSpringProperties(
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion
 ) {
+    private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
 
     public DocLensSpringProperties {
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
         adapter = adapter == null ? new AdapterProperties("paddle_ocr") : adapter;
         paddleOcr = paddleOcr == null
-                ? new PaddleOcrProperties(true, "http://127.0.0.1:8080/ocr", 600, false)
+                ? new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false)
                 : paddleOcr;
         extraction = extraction == null ? new ExtractionProperties(1) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;

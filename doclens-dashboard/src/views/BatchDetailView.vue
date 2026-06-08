@@ -10,8 +10,10 @@ import {
   NProgress
 } from 'naive-ui'
 
+import DocumentResultDrawer from '@/components/dashboard/DocumentResultDrawer.vue'
 import DocumentTrackCards from '@/components/dashboard/DocumentTrackCards.vue'
 import StatusTag from '@/components/dashboard/StatusTag.vue'
+import { useDocumentResultDrawer } from '@/composables/useDocumentResultDrawer'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
 import type { DocumentRow } from '@/types/dashboard'
@@ -29,7 +31,19 @@ const route = useRoute()
 const store = useDashboardStore()
 const { selectedBatch, detailState } = storeToRefs(store)
 
+const COMPLETED_STATUS = 'completed'
+const FAILED_STATUS = 'failed'
+const PROGRESS_BAR_HEIGHT = 12
+
 const batchId = computed(() => String(route.params.batchId ?? ''))
+const {
+  resultDrawerOpen,
+  selectedResultDocument,
+  selectedDocumentResult,
+  resultState,
+  openDocumentResult,
+  retryDocumentResult
+} = useDocumentResultDrawer()
 
 const columns: DataTableColumns<DocumentRow> = [
   {
@@ -69,9 +83,9 @@ const columns: DataTableColumns<DocumentRow> = [
     render: (row) =>
       h(NProgress, {
         percentage: row.progress_percent,
-        height: 12,
+        height: PROGRESS_BAR_HEIGHT,
         indicatorPlacement: 'outside',
-        status: row.status === 'failed' ? 'error' : 'success'
+        status: row.status === FAILED_STATUS ? 'error' : 'success'
       }, {
         default: () => formatPercent(row.progress_percent)
       })
@@ -87,6 +101,24 @@ const columns: DataTableColumns<DocumentRow> = [
     key: 'updated_at',
     width: 150,
     render: (row) => formatDateTime(row.updated_at)
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 110,
+    fixed: 'right',
+    render: (row) =>
+      h(NButton, {
+        size: 'small',
+        secondary: true,
+        disabled: row.status !== COMPLETED_STATUS,
+        loading: resultState.loading && selectedResultDocument.value?.document_id === row.document_id,
+        onClick: () => {
+          void openDocumentResult(row)
+        }
+      }, {
+        default: () => '查看文本'
+      })
   }
 ]
 
@@ -99,8 +131,10 @@ const columns: DataTableColumns<DocumentRow> = [
  */
 function refresh(): Promise<void> {
   if (batchId.value) {
+    // 有批次 ID 时刷新当前批次详情。
     return store.loadBatchDetail(batchId.value)
   } else {
+    // 路由参数为空时跳过请求。
     return Promise.resolve()
   }
 }
@@ -155,6 +189,14 @@ useAutoRefresh(refresh)
         :pagination="{ pageSize: 8 }"
         :row-key="(row) => row.document_id"
         size="small"
+      />
+      <DocumentResultDrawer
+        v-model:show="resultDrawerOpen"
+        :document="selectedResultDocument"
+        :result="selectedDocumentResult"
+        :loading="resultState.loading"
+        :error="resultState.error"
+        @retry="retryDocumentResult"
       />
     </section>
   </div>

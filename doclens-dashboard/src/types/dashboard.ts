@@ -98,6 +98,38 @@ export interface BatchDetailResponse {
   failure_summary: Record<string, number>
 }
 
+/**
+ * 文档解析结果载荷。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+export interface DocumentResultPayload {
+  finalText: string
+  markdownStorageUri: string
+  pages: unknown[]
+  confidence: number
+  warnings: string[]
+  summary: {
+    pageCount: number
+    blockCount: number
+    tableCount: number
+    confidence: number
+  }
+}
+
+/**
+ * 文档解析结果接口响应。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-08
+ */
+export interface DocumentResultResponse {
+  document_id: string
+  result_id: string
+  result: DocumentResultPayload
+}
+
 export interface OcrHealthResponse {
   adapter_key: string
   success_rate: number
