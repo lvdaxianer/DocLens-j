@@ -11,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
@@ -74,6 +75,22 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
         LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
                 .eq(BatchEntity::getIdempotencyKey, idempotencyKey);
         return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
+    }
+
+    /**
+     * 按更新时间倒序列出最近批次。
+     *
+     * @param limit 最大返回数量
+     * @return 最近批次集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Override
+    public List<Batch> listRecent(int limit) {
+        LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
+                .orderByDesc(BatchEntity::getUpdatedAt)
+                .orderByDesc(BatchEntity::getBatchId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
     }
 
     /**

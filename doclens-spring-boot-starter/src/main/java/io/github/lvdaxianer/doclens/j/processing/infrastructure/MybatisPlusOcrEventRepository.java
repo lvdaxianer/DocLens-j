@@ -78,6 +78,22 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
+     * 按发生时间倒序列出最近 OCR 事件。
+     *
+     * @param limit 最大返回数量
+     * @return 最近 OCR 事件集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Override
+    public List<OcrEvent> listRecent(int limit) {
+        LambdaQueryWrapper<OcrEventEntity> wrapper = new LambdaQueryWrapper<OcrEventEntity>()
+                .orderByDesc(OcrEventEntity::getOccurredAt)
+                .orderByDesc(OcrEventEntity::getEventId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
      * 将领域 OCR 事件转换为持久化实体。
      *
      * @param event OCR 事件

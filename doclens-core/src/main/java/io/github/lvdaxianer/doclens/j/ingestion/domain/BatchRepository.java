@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.ingestion.domain;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -38,6 +39,16 @@ public interface BatchRepository {
      * @date 2026-06-07
      */
     Optional<Batch> findByIdempotencyKey(String idempotencyKey);
+
+    /**
+     * 按更新时间倒序列出最近批次。
+     *
+     * @param limit 最大返回数量
+     * @return 最近批次集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    List<Batch> listRecent(int limit);
 
     /**
      * 更新批次处理摘要。

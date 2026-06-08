@@ -37,4 +37,14 @@ public interface OcrEventRepository {
      * @date 2026-06-07
      */
     List<OcrEvent> listByBatchId(String batchId);
+
+    /**
+     * 按发生时间倒序列出最近事件。
+     *
+     * @param limit 最大返回数量
+     * @return 最近事件集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    List<OcrEvent> listRecent(int limit);
 }

@@ -66,4 +66,24 @@ public interface DocumentJobRepository {
      * @date 2026-06-07
      */
     List<DocumentJob> listByBatchId(String batchId);
+
+    /**
+     * 按批次 ID 集合批量列出文档。
+     *
+     * @param batchIds 批次 ID 集合
+     * @return 文档任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    List<DocumentJob> listByBatchIds(List<String> batchIds);
+
+    /**
+     * 按更新时间倒序列出最近文档。
+     *
+     * @param limit 最大返回数量
+     * @return 最近文档集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    List<DocumentJob> listRecent(int limit);
 }

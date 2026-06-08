@@ -119,6 +119,44 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
+     * 按批次 ID 集合批量列出文档任务。
+     *
+     * @param batchIds 批次 ID 集合
+     * @return 文档任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Override
+    public List<DocumentJob> listByBatchIds(List<String> batchIds) {
+        if (batchIds.isEmpty()) {
+            return List.of();
+        } else {
+            LambdaQueryWrapper<DocumentJobEntity> wrapper = new LambdaQueryWrapper<DocumentJobEntity>()
+                    .in(DocumentJobEntity::getBatchId, batchIds)
+                    .orderByAsc(DocumentJobEntity::getBatchId)
+                    .orderByAsc(DocumentJobEntity::getSortOrder);
+            return page(MybatisPlusPages.limit(batchIds.size() * DocLensConstants.DEFAULT_QUERY_LIMIT), wrapper)
+                    .getRecords().stream().map(this::toDomain).toList();
+        }
+    }
+
+    /**
+     * 按更新时间倒序列出最近文档任务。
+     *
+     * @param limit 最大返回数量
+     * @return 最近文档任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Override
+    public List<DocumentJob> listRecent(int limit) {
+        LambdaQueryWrapper<DocumentJobEntity> wrapper = new LambdaQueryWrapper<DocumentJobEntity>()
+                .orderByDesc(DocumentJobEntity::getUpdatedAt)
+                .orderByDesc(DocumentJobEntity::getDocumentId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
      * 将领域文档任务转换为持久化实体。
      *
      * @param document 文档任务

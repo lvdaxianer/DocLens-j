@@ -43,4 +43,17 @@ public final class MybatisPlusPages {
     public static <T> Page<T> listLimit() {
         return Page.of(DocLensConstants.FIRST_PAGE_NO, DocLensConstants.DEFAULT_QUERY_LIMIT);
     }
+
+    /**
+     * 创建指定上限的分页请求。
+     *
+     * @param limit 最大记录数
+     * @param <T> 实体类型
+     * @return 指定上限分页请求
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public static <T> Page<T> limit(int limit) {
+        return Page.of(DocLensConstants.FIRST_PAGE_NO, Math.max(DocLensConstants.SINGLE_QUERY_LIMIT, limit));
+    }
 }

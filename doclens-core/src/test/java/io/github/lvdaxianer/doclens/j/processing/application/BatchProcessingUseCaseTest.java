@@ -180,6 +180,16 @@ class BatchProcessingUseCaseTest {
                     .sorted((left, right) -> Integer.compare(left.sortOrder(), right.sortOrder()))
                     .toList();
         }
+
+        @Override
+        public List<DocumentJob> listByBatchIds(List<String> batchIds) {
+            return documents.values().stream().filter(document -> batchIds.contains(document.batchId())).toList();
+        }
+
+        @Override
+        public List<DocumentJob> listRecent(int limit) {
+            return documents.values().stream().limit(limit).toList();
+        }
     }
 
     /**
@@ -232,6 +242,11 @@ class BatchProcessingUseCaseTest {
         public List<OcrEvent> listByBatchId(String batchId) {
             return events.stream().filter(event -> batchId.equals(event.batchId())).toList();
         }
+
+        @Override
+        public List<OcrEvent> listRecent(int limit) {
+            return events.stream().limit(limit).toList();
+        }
     }
 
     /**
@@ -255,6 +270,11 @@ class BatchProcessingUseCaseTest {
         @Override
         public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
             return Optional.empty();
+        }
+
+        @Override
+        public List<Batch> listRecent(int limit) {
+            return List.of();
         }
 
         @Override

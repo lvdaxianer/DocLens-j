@@ -149,6 +149,11 @@ class CreateBatchUseCaseTest {
         }
 
         @Override
+        public List<Batch> listRecent(int limit) {
+            return batches.values().stream().limit(limit).toList();
+        }
+
+        @Override
         public void updateSummary(String batchId, int completedFiles, int failedFiles, io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus status) {
             // 当前测试只验证创建与调度。
         }
@@ -193,6 +198,16 @@ class CreateBatchUseCaseTest {
         public List<DocumentJob> listByBatchId(String batchId) {
             return documents.values().stream().filter(document -> batchId.equals(document.batchId())).toList();
         }
+
+        @Override
+        public List<DocumentJob> listByBatchIds(List<String> batchIds) {
+            return documents.values().stream().filter(document -> batchIds.contains(document.batchId())).toList();
+        }
+
+        @Override
+        public List<DocumentJob> listRecent(int limit) {
+            return documents.values().stream().limit(limit).toList();
+        }
     }
 
     /**
@@ -218,6 +233,11 @@ class CreateBatchUseCaseTest {
         @Override
         public List<OcrEvent> listByBatchId(String batchId) {
             return events.stream().filter(event -> batchId.equals(event.batchId())).toList();
+        }
+
+        @Override
+        public List<OcrEvent> listRecent(int limit) {
+            return events.stream().limit(limit).toList();
         }
     }
 

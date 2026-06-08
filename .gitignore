@@ -1,4 +1,6 @@
 target/
+node_modules/
+*.tsbuildinfo
 .idea/
 *.iml
 .DS_Store

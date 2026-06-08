@@ -22,6 +22,7 @@ import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrEv
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrEventMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrResultMapper;
+import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -207,6 +208,26 @@ public class DocLensAutoConfiguration {
             OcrEventRepository eventRepository
     ) {
         return new OcrQueryService(batchRepository, documentRepository, resultRepository, eventRepository);
+    }
+
+    /**
+     * 创建 Dashboard 查询服务。
+     *
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @return Dashboard 查询服务
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DashboardQueryService dashboardQueryService(
+            BatchRepository batchRepository,
+            DocumentJobRepository documentRepository,
+            OcrEventRepository eventRepository
+    ) {
+        return new DashboardQueryService(batchRepository, documentRepository, eventRepository);
     }
 
     /**
