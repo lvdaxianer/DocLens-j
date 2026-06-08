@@ -13,6 +13,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.PdfMode;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -63,6 +64,39 @@ class DashboardQueryServiceTest {
                 .containsEntry("failure_rate", 33.33D);
         assertThat(summary.get("recent_failures")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
                 .hasSize(1);
+    }
+
+    /**
+     * 总览应返回细粒度阶段分布和 OCR 图片进度。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void summaryExposesStageBreakdownAndImageProgress() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                stagedDocument("doc-word", DocumentType.WORD, ProcessingStage.WORD_TO_PDF_COMPLETED, 0, 1, 0),
+                stagedDocument("doc-pdf", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 3, 8, 1),
+                stagedDocument("doc-save", DocumentType.IMAGE, ProcessingStage.SAVE_TEXT, 1, 1, 2)
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> summary = service.summary();
+
+        assertThat(summary.get("stage_status_counts")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("stage", "word_to_pdf_completed")
+                        .containsEntry("document_count", 1L)
+                        .containsEntry("total_images", 0L))
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("stage", "ocr_images")
+                        .containsEntry("completed_images", 3L)
+                        .containsEntry("total_images", 8L));
+        assertThat(summary.get("image_progress")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("completed_images", 4L)
+                .containsEntry("total_images", 9L);
     }
 
     /**
@@ -146,6 +180,32 @@ class DashboardQueryServiceTest {
      */
     private DocumentJob processingDocument(String documentId, DocumentType fileType, int sortOrder) {
         return queuedDocument(documentId, fileType, sortOrder).startProcessing(BASE_TIME.plusSeconds(5));
+    }
+
+    /**
+     * 创建指定阶段的测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param fileType 文件类型
+     * @param stage 处理阶段
+     * @param currentPage 当前图片页
+     * @param totalPages 总图片页
+     * @param sortOrder 排序
+     * @return 指定阶段的测试文档
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocumentJob stagedDocument(
+            String documentId,
+            DocumentType fileType,
+            ProcessingStage stage,
+            int currentPage,
+            int totalPages,
+            int sortOrder
+    ) {
+        return queuedDocument(documentId, fileType, sortOrder)
+                .startProcessing(BASE_TIME.plusSeconds(5))
+                .advanceStage(stage, currentPage, totalPages, BASE_TIME.plusSeconds(6));
     }
 
     /**

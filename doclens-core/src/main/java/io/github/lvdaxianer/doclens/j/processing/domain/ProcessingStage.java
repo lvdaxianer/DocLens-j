@@ -8,6 +8,16 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
  */
 public enum ProcessingStage {
     QUEUED,
+    DIRECT_TEXT_SAVED,
+    WORD_TO_PDF,
+    WORD_TO_PDF_COMPLETED,
+    PDF_TO_IMAGES,
+    PDF_TO_IMAGES_COMPLETED,
+    OCR_IMAGES,
+    MERGE_TEXT,
+    SAVE_TEXT,
+    COMPLETED,
+    FAILED,
     RENDERING,
     OCR_PROCESSING,
     NORMALIZING,

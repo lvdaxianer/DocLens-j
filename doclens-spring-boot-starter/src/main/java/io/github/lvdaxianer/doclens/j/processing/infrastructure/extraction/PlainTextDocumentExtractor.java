@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction;
 
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -22,6 +23,7 @@ public class PlainTextDocumentExtractor {
      */
     public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
         String text = new String(request.content(), StandardCharsets.UTF_8);
+        request.progressReporter().report(ProcessingStage.DIRECT_TEXT_SAVED, 1, 1);
         return DocumentTextExtractionResult.plainText(request.document().documentId(), request.document().fileName(), text);
     }
 }

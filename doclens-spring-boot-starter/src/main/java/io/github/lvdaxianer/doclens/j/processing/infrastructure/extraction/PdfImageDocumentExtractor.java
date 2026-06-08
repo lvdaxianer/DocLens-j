@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.PdfPageImageRenderer;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.RenderedPageImage;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,13 +57,15 @@ public class PdfImageDocumentExtractor {
      * @date 2026-06-08
      */
     public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+        request.progressReporter().report(ProcessingStage.PDF_TO_IMAGES, 0, request.document().totalPages());
         List<RenderedPageImage> images = renderer.render(request.content());
+        request.progressReporter().report(ProcessingStage.PDF_TO_IMAGES_COMPLETED, 0, images.size());
         LOGGER.info("[OCR处理] PDF页OCR开始 documentId={}, pageCount={}", request.document().documentId(),
                 images.size());
         try {
+            AtomicInteger completedImages = new AtomicInteger();
             List<Callable<ImageOcrResult>> tasks = images.stream()
-                    .map(image -> (Callable<ImageOcrResult>) () -> imageDocumentExtractor.recognize(request,
-                            image.pageNo(), image.content()))
+                    .map(image -> pageTask(request, image, completedImages, images.size()))
                     .toList();
             List<ImageOcrResult> results = pageOcrExecutor.invokeAll(tasks).stream()
                     .map(this::pageResult)
@@ -74,6 +78,20 @@ public class PdfImageDocumentExtractor {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("PDF OCR interrupted", ex);
         }
+    }
+
+    private Callable<ImageOcrResult> pageTask(
+            DocumentTextExtractionRequest request,
+            RenderedPageImage image,
+            AtomicInteger completedImages,
+            int totalImages
+    ) {
+        return () -> {
+            ImageOcrResult result = imageDocumentExtractor.recognize(request, image.pageNo(), image.content());
+            request.progressReporter().report(ProcessingStage.OCR_IMAGES, completedImages.incrementAndGet(),
+                    totalImages);
+            return result;
+        };
     }
 
     /**

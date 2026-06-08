@@ -34,6 +34,8 @@ public record DocumentJob(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
+    private static final int IMAGE_PROGRESS_WEIGHT = 90;
+
     /**
      * 创建带安全可选默认值的文档任务。
      *
@@ -95,7 +97,31 @@ public record DocumentJob(
      * @date 2026-06-07
      */
     public DocumentJob startProcessing(OffsetDateTime now) {
-        return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_PROCESSING, DocLensConstants.START_PROGRESS_PERCENT, 0, totalPages, resultId,
+        return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_IMAGES, DocLensConstants.START_PROGRESS_PERCENT, 0, totalPages, resultId,
+                errorCode, errorMessage, now);
+    }
+
+    /**
+     * 推进文档处理阶段和图片页进度。
+     *
+     * @param nextStage 下一阶段
+     * @param nextCurrentPage 当前已完成图片页
+     * @param nextTotalPages 总图片页
+     * @param now 当前时间
+     * @return 更新后的文档
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public DocumentJob advanceStage(
+            ProcessingStage nextStage,
+            int nextCurrentPage,
+            int nextTotalPages,
+            OffsetDateTime now
+    ) {
+        int safeTotalPages = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, nextTotalPages);
+        int safeCurrentPage = Math.max(0, Math.min(nextCurrentPage, safeTotalPages));
+        int percent = progressPercent(nextStage, safeCurrentPage, safeTotalPages);
+        return withState(DocumentStatus.PROCESSING, nextStage, percent, safeCurrentPage, safeTotalPages, resultId,
                 errorCode, errorMessage, now);
     }
 
@@ -112,9 +138,10 @@ public record DocumentJob(
     public DocumentJob markPageCompleted(int currentPage, int totalPages, OffsetDateTime now) {
         int percent = Math.min(
                 DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT,
-                Math.max(DocLensConstants.START_PROGRESS_PERCENT, (int) Math.round(currentPage * 90.0 / totalPages))
+                Math.max(DocLensConstants.START_PROGRESS_PERCENT,
+                        (int) Math.round(currentPage * (double) IMAGE_PROGRESS_WEIGHT / totalPages))
         );
-        return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_PROCESSING, percent, currentPage, totalPages,
+        return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_IMAGES, percent, currentPage, totalPages,
                 resultId, errorCode, errorMessage, now);
     }
 
@@ -128,7 +155,7 @@ public record DocumentJob(
      * @date 2026-06-07
      */
     public DocumentJob complete(String resultId, OffsetDateTime now) {
-        return withState(DocumentStatus.COMPLETED, ProcessingStage.OCR_COMPLETED, DocLensConstants.COMPLETED_PROGRESS_PERCENT, totalPages, totalPages,
+        return withState(DocumentStatus.COMPLETED, ProcessingStage.COMPLETED, DocLensConstants.COMPLETED_PROGRESS_PERCENT, totalPages, totalPages,
                 Optional.of(resultId), Optional.empty(), Optional.empty(), now);
     }
 
@@ -143,8 +170,26 @@ public record DocumentJob(
      * @date 2026-06-07
      */
     public DocumentJob fail(String code, String message, OffsetDateTime now) {
-        return withState(DocumentStatus.FAILED, ProcessingStage.OCR_FAILED, DocLensConstants.COMPLETED_PROGRESS_PERCENT, currentPage, totalPages, resultId,
+        return withState(DocumentStatus.FAILED, ProcessingStage.FAILED, DocLensConstants.COMPLETED_PROGRESS_PERCENT, currentPage, totalPages, resultId,
                 Optional.of(code), Optional.ofNullable(message), now);
+    }
+
+    private int progressPercent(ProcessingStage nextStage, int nextCurrentPage, int nextTotalPages) {
+        if (nextStage == ProcessingStage.COMPLETED) {
+            return DocLensConstants.COMPLETED_PROGRESS_PERCENT;
+        } else {
+            return processingProgressPercent(nextStage, nextCurrentPage, nextTotalPages);
+        }
+    }
+
+    private int processingProgressPercent(ProcessingStage nextStage, int nextCurrentPage, int nextTotalPages) {
+        if (nextStage == ProcessingStage.OCR_IMAGES) {
+            return Math.min(DocLensConstants.MAX_PROCESSING_PROGRESS_PERCENT,
+                    Math.max(DocLensConstants.START_PROGRESS_PERCENT,
+                            (int) Math.round(nextCurrentPage * (double) IMAGE_PROGRESS_WEIGHT / nextTotalPages)));
+        } else {
+            return Math.max(progressPercent, DocLensConstants.START_PROGRESS_PERCENT);
+        }
     }
 
     private DocumentJob withState(

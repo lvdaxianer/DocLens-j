@@ -7,6 +7,7 @@ import BatchTable from '@/components/dashboard/BatchTable.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
 import MetricStrip from '@/components/dashboard/MetricStrip.vue'
+import StageStatusBoard from '@/components/dashboard/StageStatusBoard.vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { formatDateTime } from '@/utils/formatters'
 
@@ -36,6 +37,11 @@ onMounted(refresh)
     <NSpin :show="summaryState.loading && !summary">
       <MetricStrip :overview="summary?.overview ?? null" />
     </NSpin>
+
+    <StageStatusBoard
+      :stages="summary?.stage_status_counts ?? []"
+      :image-progress="summary?.image_progress ?? null"
+    />
 
     <section class="overview-grid">
       <LatencyChart :batches="summary?.recent_batches ?? []" />

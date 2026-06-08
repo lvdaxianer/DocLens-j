@@ -18,7 +18,10 @@ import {
   fileTypeLabel,
   formatDateTime,
   formatDuration,
-  formatPercent
+  formatImageProgress,
+  formatPercent,
+  hasImageProgressStage,
+  stageLabel
 } from '@/utils/formatters'
 
 const route = useRoute()
@@ -47,10 +50,22 @@ const columns: DataTableColumns<DocumentRow> = [
     render: (row) => h(StatusTag, { status: row.status })
   },
   {
+    title: '阶段',
+    key: 'stage',
+    width: 150,
+    render: (row) => h('span', { class: 'stage-label' }, stageLabel(row.stage))
+  },
+  {
     title: '处理轨道',
     key: 'track',
     minWidth: 410,
     render: (row) => h(ProcessingRail, { track: row.track, failed: row.status === 'failed' })
+  },
+  {
+    title: '图片进度',
+    key: 'image_progress',
+    width: 130,
+    render: (row) => hasImageProgressStage(row.stage) ? formatImageProgress(row.current_page, row.total_pages) : '-'
   },
   {
     title: '进度',
@@ -171,6 +186,16 @@ watch(batchId, refresh)
   max-width: 260px;
   overflow: hidden;
   color: var(--ink-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.stage-label) {
+  display: inline-block;
+  max-width: 132px;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

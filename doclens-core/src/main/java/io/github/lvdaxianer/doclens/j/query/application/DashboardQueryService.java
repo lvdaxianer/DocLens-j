@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import java.time.Duration;
@@ -68,6 +69,8 @@ public class DashboardQueryService {
         return Map.ofEntries(
                 Map.entry("overview", overview(batches, documents)),
                 Map.entry("throughput", throughput(documents)),
+                Map.entry("stage_status_counts", stageStatusCounts(documents)),
+                Map.entry("image_progress", imageProgress(documents)),
                 Map.entry("recent_batches", batchRows(batches, documents)),
                 Map.entry("recent_failures", failureRows(documents)),
                 Map.entry("recent_events", eventRows(events))
@@ -179,6 +182,8 @@ public class DashboardQueryService {
                 Map.entry("status", document.status().name().toLowerCase()),
                 Map.entry("stage", document.stage().name().toLowerCase()),
                 Map.entry("progress_percent", document.progressPercent()),
+                Map.entry("current_page", document.currentPage()),
+                Map.entry("total_pages", document.totalPages()),
                 Map.entry("duration_ms", durationMillis(document)),
                 Map.entry("track", processingTrack(document)),
                 Map.entry("error_code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE)),
@@ -206,6 +211,53 @@ public class DashboardQueryService {
     private List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
                 .map(this::documentRow).toList();
+    }
+
+    private List<Map<String, Object>> stageStatusCounts(List<DocumentJob> documents) {
+        return List.of(
+                stageStatusRow("queued", "待解析", List.of(ProcessingStage.QUEUED), documents),
+                stageStatusRow("direct_text_saved", "直通文本保存", List.of(ProcessingStage.DIRECT_TEXT_SAVED),
+                        documents),
+                stageStatusRow("word_to_pdf", "Word 转 PDF", List.of(ProcessingStage.WORD_TO_PDF), documents),
+                stageStatusRow("word_to_pdf_completed", "Word 转 PDF 完成",
+                        List.of(ProcessingStage.WORD_TO_PDF_COMPLETED), documents),
+                stageStatusRow("pdf_to_images", "PDF 转图片", List.of(ProcessingStage.PDF_TO_IMAGES), documents),
+                stageStatusRow("pdf_to_images_completed", "PDF 转图片完成",
+                        List.of(ProcessingStage.PDF_TO_IMAGES_COMPLETED), documents),
+                stageStatusRow("ocr_images", "OCR 图片解析", List.of(ProcessingStage.OCR_IMAGES), documents),
+                stageStatusRow("merge_text", "文本合并", List.of(ProcessingStage.MERGE_TEXT), documents),
+                stageStatusRow("save_text", "文本保存", List.of(ProcessingStage.SAVE_TEXT), documents),
+                stageStatusRow("completed", "解析完成", List.of(ProcessingStage.COMPLETED), documents),
+                stageStatusRow("failed", "解析失败", List.of(ProcessingStage.FAILED), documents)
+        );
+    }
+
+    private Map<String, Object> stageStatusRow(
+            String stage,
+            String label,
+            List<ProcessingStage> stages,
+            List<DocumentJob> documents
+    ) {
+        List<DocumentJob> matchedDocuments = documents.stream()
+                .filter(document -> stages.contains(normalizedStage(document.stage())))
+                .toList();
+        List<DocumentJob> imageDocuments = matchedDocuments.stream()
+                .filter(document -> isImageProgressStage(normalizedStage(document.stage())))
+                .toList();
+        long completedImages = imageDocuments.stream().mapToLong(DocumentJob::currentPage).sum();
+        long totalImages = imageDocuments.stream().mapToLong(DocumentJob::totalPages).sum();
+        return Map.of("stage", stage, "label", label, "document_count", (long) matchedDocuments.size(),
+                "completed_images", completedImages, "total_images", totalImages);
+    }
+
+    private Map<String, Object> imageProgress(List<DocumentJob> documents) {
+        List<DocumentJob> imageDocuments = documents.stream()
+                .filter(document -> isImageProgressStage(normalizedStage(document.stage())))
+                .toList();
+        long completedImages = imageDocuments.stream().mapToLong(DocumentJob::currentPage).sum();
+        long totalImages = imageDocuments.stream().mapToLong(DocumentJob::totalPages).sum();
+        return Map.of("completed_images", completedImages, "total_images", totalImages,
+                "progress_percent", ratio(completedImages, totalImages));
     }
 
     private Map<String, Long> failureSummary(List<DocumentJob> documents) {
@@ -243,6 +295,30 @@ public class DashboardQueryService {
 
     private long processingCount(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status() == DocumentStatus.PROCESSING).count();
+    }
+
+    private ProcessingStage normalizedStage(ProcessingStage stage) {
+        if (stage == ProcessingStage.OCR_PROCESSING) {
+            return ProcessingStage.OCR_IMAGES;
+        } else if (stage == ProcessingStage.OCR_COMPLETED) {
+            return ProcessingStage.COMPLETED;
+        } else if (stage == ProcessingStage.OCR_FAILED) {
+            return ProcessingStage.FAILED;
+        } else if (stage == ProcessingStage.RENDERING) {
+            return ProcessingStage.PDF_TO_IMAGES;
+        } else if (stage == ProcessingStage.NORMALIZING) {
+            return ProcessingStage.MERGE_TEXT;
+        } else {
+            return stage;
+        }
+    }
+
+    private boolean isImageProgressStage(ProcessingStage stage) {
+        return stage == ProcessingStage.PDF_TO_IMAGES_COMPLETED
+                || stage == ProcessingStage.OCR_IMAGES
+                || stage == ProcessingStage.MERGE_TEXT
+                || stage == ProcessingStage.SAVE_TEXT
+                || stage == ProcessingStage.COMPLETED;
     }
 
     private double ratio(long numerator, long denominator) {

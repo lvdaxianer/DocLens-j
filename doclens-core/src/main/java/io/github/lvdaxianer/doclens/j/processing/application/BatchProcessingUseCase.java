@@ -12,6 +12,8 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
+import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentProgressReporter;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
@@ -103,9 +105,11 @@ public class BatchProcessingUseCase {
         OcrResult result = buildResult(started);
         int pageCount = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, result.pageText().size());
         DocumentJob progressed = started.markPageCompleted(pageCount, pageCount, OffsetDateTime.now());
-        DocumentJob completed = progressed.complete(result.resultId(), OffsetDateTime.now());
+        DocumentJob saving = progressed.advanceStage(ProcessingStage.SAVE_TEXT, pageCount, pageCount,
+                OffsetDateTime.now());
+        DocumentJob completed = saving.complete(result.resultId(), OffsetDateTime.now());
         return new DocumentProcessingResult(completed, Optional.of(result),
-                completionEvents(started, progressed, completed, result));
+                completionEvents(started, progressed, saving, completed, result));
     }
 
     private OcrResult buildResult(DocumentJob document) {
@@ -113,7 +117,12 @@ public class BatchProcessingUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + document.adapterName()));
         byte[] content = objectStorage.readBytes(document.storageUri());
         DocumentTextExtractionResult extracted = documentTextExtractor.extract(
-                new DocumentTextExtractionRequest(document, content, document.adapterName()));
+                new DocumentTextExtractionRequest(document, content, document.adapterName(),
+                        stageReporter(document)));
+        stageReporter(document).report(ProcessingStage.MERGE_TEXT, extracted.pageText().size(),
+                extracted.pageText().size());
+        stageReporter(document).report(ProcessingStage.SAVE_TEXT, extracted.pageText().size(),
+                extracted.pageText().size());
         String markdownStorageUri = writeMarkdownResult(document, extracted.finalText());
         String resultId = idGenerator.newResultId();
         return new OcrResult(resultId, document.documentId(), extracted.finalText(), markdownStorageUri,
@@ -128,16 +137,22 @@ public class BatchProcessingUseCase {
     }
 
     private DocumentProcessingResult failDocument(DocumentJob document, RuntimeException ex) {
-        DocumentJob failed = document.fail(DocLensConstants.ERROR_CODE_OCR_FAILED, ex.getMessage(), OffsetDateTime.now());
+        DocumentJob failed = latestDocument(document).fail(DocLensConstants.ERROR_CODE_OCR_FAILED, ex.getMessage(),
+                OffsetDateTime.now());
         OcrEvent event = event(new DocumentEventPlan(failed, DocLensConstants.EVENT_DOCUMENT_FAILED,
                 Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT),
                 Map.of("code", DocLensConstants.ERROR_CODE_OCR_FAILED, "message", ex.getMessage())));
         return new DocumentProcessingResult(failed, Optional.empty(), List.of(event));
     }
 
+    private DocumentJob latestDocument(DocumentJob document) {
+        return documentRepository.findById(document.documentId()).orElse(document);
+    }
+
     private List<OcrEvent> completionEvents(
             DocumentJob started,
             DocumentJob progressed,
+            DocumentJob saving,
             DocumentJob completed,
             OcrResult result
     ) {
@@ -146,9 +161,27 @@ public class BatchProcessingUseCase {
                         Map.of("percent", DocLensConstants.START_PROGRESS_PERCENT), Map.of())),
                 event(new DocumentEventPlan(progressed, DocLensConstants.EVENT_DOCUMENT_PAGE_COMPLETED,
                         pageProgress(progressed), Map.of())),
+                event(new DocumentEventPlan(saving, DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
+                        pageProgress(saving), Map.of("stage", saving.stage().name().toLowerCase()))),
                 event(new DocumentEventPlan(completed, DocLensConstants.EVENT_DOCUMENT_COMPLETED,
                         Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT), resultSummary(result)))
         );
+    }
+
+    private DocumentProgressReporter stageReporter(DocumentJob document) {
+        return (stage, completedImages, totalImages) -> transactionRunner.requiredVoid(() ->
+                documentRepository.update(progressDocument(document.documentId(), stage, completedImages, totalImages)));
+    }
+
+    private DocumentJob progressDocument(
+            String documentId,
+            ProcessingStage stage,
+            int completedImages,
+            int totalImages
+    ) {
+        DocumentJob current = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalStateException("document not found: " + documentId));
+        return current.advanceStage(stage, completedImages, totalImages, OffsetDateTime.now());
     }
 
     private Map<String, Object> pageProgress(DocumentJob document) {
@@ -206,7 +239,7 @@ public class BatchProcessingUseCase {
     }
 
     private Map<String, Object> summaryDetail(DocumentEventPlan plan) {
-        if (DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(plan.eventType())) {
+        if (!DocLensConstants.EVENT_DOCUMENT_FAILED.equals(plan.eventType())) {
             return plan.detail();
         } else {
             return Map.of();
@@ -214,10 +247,10 @@ public class BatchProcessingUseCase {
     }
 
     private Map<String, Object> errorDetail(DocumentEventPlan plan) {
-        if (DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(plan.eventType())) {
-            return Map.of();
-        } else {
+        if (DocLensConstants.EVENT_DOCUMENT_FAILED.equals(plan.eventType())) {
             return plan.detail();
+        } else {
+            return Map.of();
         }
     }
 }

@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.util.List;
 
@@ -39,7 +40,9 @@ public class ImageDocumentExtractor {
      * @date 2026-06-08
      */
     public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+        request.progressReporter().report(ProcessingStage.OCR_IMAGES, 0, 1);
         ImageOcrResult result = recognize(request, DocLensConstants.DEFAULT_PAGE_NO, request.content());
+        request.progressReporter().report(ProcessingStage.OCR_IMAGES, 1, 1);
         return DocumentTextExtractionResult.fromPageResults(request.document().documentId(), request.document().fileName(),
                 List.of(result), List.of());
     }

@@ -27,6 +27,7 @@ public final class DocLensConstants {
     public static final String EVENT_BATCH_CREATED = "batch.created";
     public static final String EVENT_DOCUMENT_ENQUEUED = "document.enqueued";
     public static final String EVENT_DOCUMENT_STARTED = "document.started";
+    public static final String EVENT_DOCUMENT_STAGE_CHANGED = "document.stage.changed";
     public static final String EVENT_DOCUMENT_PAGE_COMPLETED = "document.page.completed";
     public static final String EVENT_DOCUMENT_COMPLETED = "document.completed";
     public static final String EVENT_DOCUMENT_FAILED = "document.failed";

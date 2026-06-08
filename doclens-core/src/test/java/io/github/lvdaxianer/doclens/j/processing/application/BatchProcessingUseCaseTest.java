@@ -23,6 +23,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
@@ -67,6 +68,48 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 提取器上报阶段进度时应立即持久化，便于 Dashboard 展示当前卡点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void processBatchPersistsStageProgressDuringExtraction() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        documentRepository.save(document("doc-1", 0));
+        RecordingDocumentTextExtractor extractor = new RecordingDocumentTextExtractor(documentRepository);
+        BatchProcessingUseCase useCase = useCase(documentRepository, extractor);
+
+        useCase.processBatch("batch-test");
+
+        assertThat(extractor.stageWasVisibleDuringExtraction).isTrue();
+        assertThat(extractor.currentPageWasVisibleDuringExtraction).isTrue();
+        assertThat(documentRepository.findById("doc-1")).get().extracting(DocumentJob::stage)
+                .isEqualTo(ProcessingStage.COMPLETED);
+    }
+
+    /**
+     * 提取中失败时应保留已上报的图片页进度，便于 Dashboard 定位失败位置。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void processBatchKeepsLatestProgressWhenExtractionFails() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, new FailingDocumentTextExtractor());
+
+        useCase.processBatch("batch-test");
+
+        assertThat(documentRepository.findById("doc-1")).get().satisfies(document -> {
+            assertThat(document.status()).isEqualTo(DocumentStatus.FAILED);
+            assertThat(document.currentPage()).isEqualTo(2);
+            assertThat(document.totalPages()).isEqualTo(5);
+        });
+    }
+
+    /**
      * 创建批次处理用例。
      *
      * @param documentRepository 文档仓储
@@ -77,7 +120,7 @@ class BatchProcessingUseCaseTest {
      */
     private BatchProcessingUseCase useCase(
             InMemoryDocumentJobRepository documentRepository,
-            RecordingDocumentTextExtractor extractor
+            DocumentTextExtractor extractor
     ) {
         BatchProcessingDependencies dependencies = new BatchProcessingDependencies(documentRepository,
                 new InMemoryOcrResultRepository(), new InMemoryOcrEventRepository(), new InMemoryBatchRepository(),
@@ -112,6 +155,8 @@ class BatchProcessingUseCaseTest {
 
         private final DocumentJobRepository documentRepository;
         private boolean secondDocumentSawFirstCompleted;
+        private boolean stageWasVisibleDuringExtraction;
+        private boolean currentPageWasVisibleDuringExtraction;
 
         /**
          * 创建记录型文本提取器。
@@ -131,10 +176,32 @@ class BatchProcessingUseCaseTest {
                         .filter(document -> document.status() == DocumentStatus.COMPLETED)
                         .isPresent();
             } else {
-                // 第一个文档无需读取前置文档状态。
+                request.progressReporter().report(ProcessingStage.OCR_IMAGES, 2, 5);
+                stageWasVisibleDuringExtraction = documentRepository.findById("doc-1")
+                        .filter(document -> document.stage() == ProcessingStage.OCR_IMAGES)
+                        .isPresent();
+                currentPageWasVisibleDuringExtraction = documentRepository.findById("doc-1")
+                        .filter(document -> document.currentPage() == 2)
+                        .filter(document -> document.totalPages() == 5)
+                        .isPresent();
             }
             return DocumentTextExtractionResult.plainText(request.document().documentId(),
                     request.document().fileName(), "text-" + request.document().documentId());
+        }
+    }
+
+    /**
+     * 先上报进度再失败的文本提取器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private static class FailingDocumentTextExtractor implements DocumentTextExtractor {
+
+        @Override
+        public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+            request.progressReporter().report(ProcessingStage.OCR_IMAGES, 2, 5);
+            throw new IllegalStateException("ocr failed");
         }
     }
 

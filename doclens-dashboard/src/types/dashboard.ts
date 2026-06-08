@@ -14,6 +14,20 @@ export interface DashboardThroughput {
   window_size: number
 }
 
+export interface StageStatusCount {
+  stage: string
+  label: string
+  document_count: number
+  completed_images: number
+  total_images: number
+}
+
+export interface ImageProgressSummary {
+  completed_images: number
+  total_images: number
+  progress_percent: number
+}
+
 export interface BatchRow {
   batch_id: string
   status: string
@@ -41,6 +55,8 @@ export interface DocumentRow {
   status: string
   stage: string
   progress_percent: number
+  current_page: number
+  total_pages: number
   duration_ms: number
   track: ProcessingTrackNode[]
   error_code: string
@@ -61,6 +77,8 @@ export interface OcrEventRow {
 export interface DashboardSummary {
   overview: DashboardOverview
   throughput: DashboardThroughput
+  stage_status_counts: StageStatusCount[]
+  image_progress: ImageProgressSummary
   recent_batches: BatchRow[]
   recent_failures: DocumentRow[]
   recent_events: OcrEventRow[]

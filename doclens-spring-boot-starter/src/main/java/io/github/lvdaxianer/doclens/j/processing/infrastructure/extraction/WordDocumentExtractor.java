@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction;
 
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.WordToPdfConverter;
 
 /**
@@ -40,8 +41,11 @@ public class WordDocumentExtractor {
      * @date 2026-06-08
      */
     public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+        request.progressReporter().report(ProcessingStage.WORD_TO_PDF, 0, request.document().totalPages());
         byte[] pdfContent = wordToPdfConverter.convert(request.document().fileName(), request.content());
+        request.progressReporter().report(ProcessingStage.WORD_TO_PDF_COMPLETED, 0,
+                request.document().totalPages());
         return pdfImageDocumentExtractor.extract(new DocumentTextExtractionRequest(request.document(), pdfContent,
-                request.adapterKey()));
+                request.adapterKey(), request.progressReporter()));
     }
 }
