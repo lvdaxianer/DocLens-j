@@ -78,4 +78,13 @@ public interface OcrNodeRepository {
      * @date 2026-06-08
      */
     Optional<OcrNode> findByModelHostPort(String modelKey, String host, int port);
+
+    /**
+     * 删除 OCR 节点。
+     *
+     * @param nodeId OCR 节点 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    void deleteById(String nodeId);
 }

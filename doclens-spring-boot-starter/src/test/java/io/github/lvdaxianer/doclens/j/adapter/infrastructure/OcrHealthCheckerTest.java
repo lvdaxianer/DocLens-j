@@ -219,6 +219,11 @@ class OcrHealthCheckerTest {
                     .filter(node -> modelKey.equals(node.modelKey()) && host.equals(node.host()) && port == node.port())
                     .findFirst();
         }
+
+        @Override
+        public void deleteById(String nodeId) {
+            nodes.remove(nodeId);
+        }
     }
 
     /**

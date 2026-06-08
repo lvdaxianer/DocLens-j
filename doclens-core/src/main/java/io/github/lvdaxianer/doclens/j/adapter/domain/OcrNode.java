@@ -111,6 +111,52 @@ public record OcrNode(
     }
 
     /**
+     * 更新节点配置并保留运行指标。
+     *
+     * @param request OCR 节点创建请求格式的更新值
+     * @return 更新后的 OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public OcrNode updateSettings(OcrNodeCreateRequest request) {
+        return new OcrNode(id, modelKey, request.name(), request.host(), request.port(), request.enabled(),
+                request.participateGlobal(), request.weight(), request.maxConcurrency(),
+                updateStatus(request.enabled()), failureCount, successCount, avgLatencyMs, p95LatencyMs,
+                lastHealthAt, lastSuccessAt, lastFailureAt, lastError, createdAt, request.now());
+    }
+
+    /**
+     * 更新节点启用状态。
+     *
+     * @param enabled 是否启用
+     * @param now 更新时间
+     * @return 更新后的 OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public OcrNode changeEnabled(boolean enabled, OffsetDateTime now) {
+        return new OcrNode(id, modelKey, name, host, port, enabled, participateGlobal, weight, maxConcurrency,
+                updateStatus(enabled), failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt,
+                lastSuccessAt, lastFailureAt, lastError, createdAt, now);
+    }
+
+    /**
+     * 根据启用状态更新节点状态。
+     *
+     * @param nextEnabled 下一启用状态
+     * @return 节点状态
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrNodeStatus updateStatus(boolean nextEnabled) {
+        if (nextEnabled) {
+            return status == OcrNodeStatus.DISABLED ? OcrNodeStatus.RECOVERING : status;
+        } else {
+            return OcrNodeStatus.DISABLED;
+        }
+    }
+
+    /**
      * 根据启用状态确定初始节点状态。
      *
      * @param enabled 是否启用

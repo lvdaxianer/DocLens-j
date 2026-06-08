@@ -117,6 +117,18 @@ public class MybatisPlusOcrNodeRepository
     }
 
     /**
+     * 删除 OCR 节点。
+     *
+     * @param nodeId OCR 节点 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Override
+    public void deleteById(String nodeId) {
+        removeById(nodeId);
+    }
+
+    /**
      * 创建稳定排序查询条件。
      *
      * @return 查询条件
