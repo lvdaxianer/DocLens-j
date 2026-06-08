@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeC
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeCallMapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeMapper;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.StubOcrAdapter;
 import io.github.lvdaxianer.doclens.j.api.DefaultDocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
@@ -72,6 +73,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         MybatisPlusOcrResultRepository.class,
         MybatisPlusOcrNodeRepository.class,
         MybatisPlusOcrNodeCallRepository.class,
+        OcrRuntimeNodePool.class,
         LocalObjectStorage.class
 })
 public class DocLensAutoConfiguration {
