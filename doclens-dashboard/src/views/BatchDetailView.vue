@@ -55,12 +55,15 @@ const columns: DataTableColumns<DocumentRow> = [
   {
     title: '进度',
     key: 'progress_percent',
-    width: 150,
+    width: 190,
     render: (row) =>
       h(NProgress, {
         percentage: row.progress_percent,
-        height: 8,
+        height: 12,
+        indicatorPlacement: 'outside',
         status: row.status === 'failed' ? 'error' : 'success'
+      }, {
+        default: () => formatPercent(row.progress_percent)
       })
   },
   {
@@ -170,6 +173,14 @@ watch(batchId, refresh)
   color: var(--ink-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+:deep(.n-progress-custom-content) {
+  min-width: 48px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
 }
 
 @media (max-width: 900px) {

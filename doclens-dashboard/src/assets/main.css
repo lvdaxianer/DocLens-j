@@ -61,12 +61,12 @@ a {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .panel {
   min-width: 0;
-  padding: 18px;
+  padding: 20px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);

@@ -68,7 +68,7 @@ onMounted(refresh)
 .overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
-  gap: 16px;
+  gap: 18px;
 }
 
 @media (max-width: 980px) {

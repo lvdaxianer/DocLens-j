@@ -37,13 +37,15 @@ const columns: DataTableColumns<BatchRow> = [
   {
     title: '进度',
     key: 'progress_percent',
-    width: 180,
+    width: 230,
     render: (row) =>
       h(NProgress, {
         percentage: row.progress_percent,
-        height: 8,
-        indicatorPlacement: 'inside',
+        height: 12,
+        indicatorPlacement: 'outside',
         status: row.failed_files > 0 ? 'error' : 'success'
+      }, {
+        default: () => formatPercent(row.progress_percent)
       })
   },
   {
@@ -109,6 +111,7 @@ const columns: DataTableColumns<BatchRow> = [
 <style scoped>
 .batch-table-shell {
   overflow-x: auto;
+  padding: 14px 16px 10px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -116,13 +119,26 @@ const columns: DataTableColumns<BatchRow> = [
 }
 
 .batch-table {
-  min-width: 980px;
+  min-width: 1040px;
+}
+
+:deep(.n-data-table-th),
+:deep(.n-data-table-td) {
+  padding: 12px 16px;
 }
 
 :deep(.n-data-table-th) {
   color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
+}
+
+:deep(.n-progress-custom-content) {
+  min-width: 48px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
 }
 
 :deep(.n-data-table-tr:hover .n-data-table-td) {

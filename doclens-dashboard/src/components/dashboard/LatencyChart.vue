@@ -27,10 +27,10 @@ const option = computed<EChartsCoreOption>(() => {
   return {
     color: ['#256d85', '#3d9b6d', '#c75146'],
     grid: {
-      left: 36,
-      right: 16,
-      top: 32,
-      bottom: 42
+      left: 58,
+      right: 28,
+      top: 36,
+      bottom: 56
     },
     tooltip: {
       trigger: 'axis',
@@ -108,9 +108,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .chart-panel {
   min-width: 0;
+  padding: 18px 18px 12px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
 }
 
 .chart-panel__header {
@@ -118,7 +120,7 @@ onBeforeUnmount(() => {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px 4px;
+  padding: 0 0 10px;
 }
 
 .chart-panel__title {
@@ -135,6 +137,6 @@ onBeforeUnmount(() => {
 
 .chart-panel__canvas {
   width: 100%;
-  height: 260px;
+  height: 280px;
 }
 </style>
