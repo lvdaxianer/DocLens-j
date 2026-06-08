@@ -7,10 +7,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +28,7 @@ class PaddleOcrNativeClientTest {
 
     private static final int SERVER_BACKLOG = 1;
     private static final int TEST_TIMEOUT_SECONDS = 5;
+    private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T10:00:00+08:00");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,6 +85,21 @@ class PaddleOcrNativeClientTest {
     }
 
     /**
+     * 运行时节点使用 host 和 port 拼接 PaddleOCR 固定接口路径。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Test
+    void buildsRuntimeNodeUrisFromHostAndPort() {
+        PaddleOcrNativeClient client = new PaddleOcrNativeClient(propertiesWithoutServer(), objectMapper);
+        OcrRuntimeNode node = runtimeNode("node_215", "10.100.30.215", 8080);
+
+        assertThat(client.ocrUri(node)).isEqualTo(URI.create("http://10.100.30.215:8080/ocr"));
+        assertThat(client.healthUri(node)).isEqualTo(URI.create("http://10.100.30.215:8080/health"));
+    }
+
+    /**
      * 启动本地 HTTP 测试服务。
      *
      * @param handler 请求处理器
@@ -124,6 +144,44 @@ class PaddleOcrNativeClientTest {
                 new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
                 threadPools()
         );
+    }
+
+    /**
+     * 生成不依赖本地 HTTP 服务的配置。
+     *
+     * @return DocLens 测试配置
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private DocLensProperties propertiesWithoutServer() {
+        return new DocLensProperties(
+                "target/test-storage",
+                true,
+                "worker-test",
+                new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
+                new DocLensProperties.AdapterProperties("paddle_ocr"),
+                new DocLensProperties.PaddleOcrProperties(true, "http://127.0.0.1:1/ocr", TEST_TIMEOUT_SECONDS, false),
+                new DocLensProperties.ExtractionProperties(1),
+                new DocLensProperties.PdfRenderProperties(144, "png"),
+                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
+                threadPools()
+        );
+    }
+
+    /**
+     * 创建运行时 OCR 节点。
+     *
+     * @param nodeId 节点 ID
+     * @param host 节点主机
+     * @param port 节点端口
+     * @return 运行时 OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private OcrRuntimeNode runtimeNode(String nodeId, String host, int port) {
+        OcrNode node = OcrNode.create(new OcrNodeCreateRequest(
+                nodeId, "paddle_ocr", nodeId, host, port, true, true, 100, 4, BASE_TIME));
+        return new OcrRuntimeNode(node);
     }
 
     /**

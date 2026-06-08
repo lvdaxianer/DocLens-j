@@ -26,6 +26,12 @@ public class PaddleOcrNativeClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(PaddleOcrNativeClient.class);
     private static final int IMAGE_FILE_TYPE = 1;
     private static final int ERROR_BODY_MAX_LENGTH = 500;
+    private static final String PADDLE_OCR_MODEL_KEY = "paddle_ocr";
+    private static final String OCR_PATH = "/ocr";
+    private static final String HEALTH_PATH = "/health";
+    private static final String LEGACY_ENDPOINT_NODE_ID = "configured-endpoint";
+    private static final String LEGACY_ENDPOINT_HOST = "configured";
+    private static final int LEGACY_ENDPOINT_PORT = 0;
 
     private final DocLensProperties properties;
     private final ObjectMapper objectMapper;
@@ -57,13 +63,63 @@ public class PaddleOcrNativeClient {
      * @date 2026-06-08
      */
     public JsonNode recognizeImage(byte[] imageContent) {
+        return recognizeImage(targetForConfiguredEndpoint(), imageContent);
+    }
+
+    /**
+     * 通过运行时节点识别单张图片。
+     *
+     * @param node OCR 运行时节点
+     * @param imageContent 图片字节
+     * @return PaddleOCR JSON 响应
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public JsonNode recognizeImage(OcrRuntimeNode node, byte[] imageContent) {
+        return recognizeImage(targetForNode(node), imageContent);
+    }
+
+    /**
+     * 拼接运行时节点 OCR 请求地址。
+     *
+     * @param node OCR 运行时节点
+     * @return OCR 请求 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    URI ocrUri(OcrRuntimeNode node) {
+        return nodeUri(node, OCR_PATH);
+    }
+
+    /**
+     * 拼接运行时节点健康检查地址。
+     *
+     * @param node OCR 运行时节点
+     * @return 健康检查 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    URI healthUri(OcrRuntimeNode node) {
+        return nodeUri(node, HEALTH_PATH);
+    }
+
+    /**
+     * 识别单张图片并记录节点上下文。
+     *
+     * @param target 请求目标
+     * @param imageContent 图片字节
+     * @return PaddleOCR JSON 响应
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private JsonNode recognizeImage(RequestTarget target, byte[] imageContent) {
         try {
             String requestBody = buildRequestBody(imageContent);
-            HttpRequest request = buildRequest(requestBody);
+            HttpRequest request = buildRequest(target.uri(), requestBody);
             Instant startedAt = Instant.now();
-            logRequest(imageContent);
+            logRequest(target, imageContent);
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            logResponse(response, startedAt);
+            logResponse(target, response, startedAt);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException(buildErrorMessage(response));
             } else {
@@ -102,8 +158,8 @@ public class PaddleOcrNativeClient {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private HttpRequest buildRequest(String requestBody) {
-        return HttpRequest.newBuilder(URI.create(properties.paddleOcr().endpoint()))
+    private HttpRequest buildRequest(URI uri, String requestBody) {
+        return HttpRequest.newBuilder(uri)
                 .version(HttpClient.Version.HTTP_1_1)
                 .timeout(Duration.ofSeconds(properties.paddleOcr().timeoutSeconds()))
                 .header("Content-Type", "application/json")
@@ -118,25 +174,26 @@ public class PaddleOcrNativeClient {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private void logRequest(byte[] imageContent) {
-        LOGGER.debug("[服务间调用] 发起请求|PaddleOCR|{}|POST|-|-|fileBytes={}, fileType={}, visualize={}",
-                properties.paddleOcr().endpoint(), imageContent.length, IMAGE_FILE_TYPE,
-                properties.paddleOcr().visualize());
+    private void logRequest(RequestTarget target, byte[] imageContent) {
+        LOGGER.debug("[服务间调用] 发起请求|PaddleOCR|{}|POST|-|-|modelKey={}, nodeId={}, host={}, port={}, fileBytes={}, fileType={}, visualize={}",
+                target.uri(), target.modelKey(), target.nodeId(), target.host(), target.port(),
+                imageContent.length, IMAGE_FILE_TYPE, properties.paddleOcr().visualize());
     }
 
     /**
      * 记录 PaddleOCR 响应摘要。
      *
+     * @param target 请求目标
      * @param response HTTP 响应
      * @param startedAt 请求开始时间
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private void logResponse(HttpResponse<String> response, Instant startedAt) {
+    private void logResponse(RequestTarget target, HttpResponse<String> response, Instant startedAt) {
         long elapsedMillis = Duration.between(startedAt, Instant.now()).toMillis();
-        LOGGER.debug("[服务间调用] 收到响应|PaddleOCR|{}|{}|{}ms|body={}",
-                properties.paddleOcr().endpoint(), response.statusCode(), elapsedMillis,
-                summarizeBody(response.body()));
+        LOGGER.debug("[服务间调用] 收到响应|PaddleOCR|{}|{}|{}ms|modelKey={}, nodeId={}, host={}, port={}, body={}",
+                target.uri(), response.statusCode(), elapsedMillis, target.modelKey(), target.nodeId(),
+                target.host(), target.port(), summarizeBody(response.body()));
     }
 
     /**
@@ -165,5 +222,57 @@ public class PaddleOcrNativeClient {
         } else {
             return responseBody.substring(0, ERROR_BODY_MAX_LENGTH);
         }
+    }
+
+    /**
+     * 构建固定 endpoint 兼容请求目标。
+     *
+     * @return 固定 endpoint 请求目标
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private RequestTarget targetForConfiguredEndpoint() {
+        return new RequestTarget(PADDLE_OCR_MODEL_KEY, LEGACY_ENDPOINT_NODE_ID, LEGACY_ENDPOINT_HOST,
+                LEGACY_ENDPOINT_PORT, URI.create(properties.paddleOcr().endpoint()));
+    }
+
+    /**
+     * 构建运行时节点请求目标。
+     *
+     * @param node OCR 运行时节点
+     * @return 运行时节点请求目标
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private RequestTarget targetForNode(OcrRuntimeNode node) {
+        return new RequestTarget(node.node().modelKey(), node.node().id(), node.node().host(), node.node().port(),
+                ocrUri(node));
+    }
+
+    /**
+     * 按节点和固定路径拼接 URI。
+     *
+     * @param node OCR 运行时节点
+     * @param path 固定接口路径
+     * @return 节点接口 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private URI nodeUri(OcrRuntimeNode node, String path) {
+        return URI.create("http://" + node.node().host() + ":" + node.node().port() + path);
+    }
+
+    /**
+     * PaddleOCR 请求目标。
+     *
+     * @param modelKey OCR 模型标识
+     * @param nodeId 节点 ID
+     * @param host 节点主机
+     * @param port 节点端口
+     * @param uri 请求 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    private record RequestTarget(String modelKey, String nodeId, String host, int port, URI uri) {
     }
 }
