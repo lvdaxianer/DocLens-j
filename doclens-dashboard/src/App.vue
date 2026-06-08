@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { ActivitySquare, Gauge, Layers3, Radio, Upload, UploadCloud } from '@lucide/vue'
+import { ActivitySquare, Gauge, Layers3, Radio, ServerCog, Upload, UploadCloud } from '@lucide/vue'
 import {
   NConfigProvider,
   NIcon,
@@ -15,7 +15,8 @@ const navigationItems = [
   { name: 'overview', label: '总览', icon: ActivitySquare },
   { name: 'upload', label: '上传', icon: Upload },
   { name: 'batches', label: '批次', icon: Layers3 },
-  { name: 'ocr-health', label: 'OCR 健康', icon: Gauge }
+  { name: 'ocr-health', label: 'OCR 健康', icon: Gauge },
+  { name: 'ocr-resources', label: 'OCR 资源', icon: ServerCog }
 ]
 
 const activeTitle = computed(() => route.meta.title ?? 'DocLens 控制台')

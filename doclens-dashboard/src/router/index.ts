@@ -3,6 +3,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import BatchDetailView from '@/views/BatchDetailView.vue'
 import BatchesView from '@/views/BatchesView.vue'
 import OcrHealthView from '@/views/OcrHealthView.vue'
+import OcrResourcesView from '@/views/OcrResourcesView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import UploadView from '@/views/UploadView.vue'
 
@@ -38,6 +39,12 @@ export const router = createRouter({
       name: 'ocr-health',
       component: OcrHealthView,
       meta: { title: 'OCR 健康' }
+    },
+    {
+      path: '/ocr-resources',
+      name: 'ocr-resources',
+      component: OcrResourcesView,
+      meta: { title: 'OCR 资源' }
     }
   ]
 })

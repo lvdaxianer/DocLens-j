@@ -1,0 +1,85 @@
+export type OcrNodeStatus = 'UP' | 'DOWN' | 'RECOVERING' | 'DISABLED'
+
+export interface OcrModel {
+  model_key: string
+  name: string
+  description: string
+  supported_inputs: string[]
+  ocr_path: string
+  health_path: string
+  node_count: number
+  healthy_node_count: number
+  enabled_node_count: number
+}
+
+export interface OcrModelListResponse {
+  items: OcrModel[]
+}
+
+export interface OcrNodeMetrics {
+  inflight_images: number
+  queued_images: number
+  processed_images_today: number
+  success_images: number
+  failed_images: number
+  avg_latency_ms: number
+  p95_latency_ms: number
+}
+
+export interface OcrNode {
+  id: string
+  model_key: string
+  name: string
+  host: string
+  port: number
+  enabled: boolean
+  participate_global: boolean
+  weight: number
+  max_concurrency: number
+  status: OcrNodeStatus
+  inflight_images: number
+  queued_images: number
+  processed_images_today: number
+  success_images: number
+  failed_images: number
+  avg_latency_ms: number
+  p95_latency_ms: number
+  last_health_at: string
+  last_error: string
+}
+
+export interface OcrNodeListResponse {
+  items: OcrNode[]
+}
+
+export interface OcrNodeCall {
+  id: string
+  document_id: string
+  image_index: number
+  status: string
+  retry_count: number
+  duration_ms: number
+  error_message: string
+  started_at: string
+  finished_at: string
+}
+
+export interface OcrNodePayload {
+  name: string
+  host: string
+  port: number
+  enabled: boolean
+  participate_global: boolean
+  weight: number
+  max_concurrency: number
+}
+
+export interface OcrNodeSubmitPayload {
+  modelKey: string
+  node: OcrNodePayload
+}
+
+export interface OcrNodeTestResponse {
+  healthy: boolean
+  message: string
+}
