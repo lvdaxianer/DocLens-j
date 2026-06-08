@@ -4,12 +4,12 @@ import { FilePlus2, UploadCloud, X } from '@lucide/vue'
 import {
   NButton,
   NIcon,
-  NInput,
-  NSelect,
   NTag
 } from 'naive-ui'
 
-import type { UploadBatchOptions } from '@/types/upload'
+import UploadAdvancedOptions from '@/components/upload/UploadAdvancedOptions.vue'
+import OcrRoutingSelector from '@/components/upload/OcrRoutingSelector.vue'
+import type { UploadAdvancedOptionsValue, UploadBatchOptions, UploadOcrRoutingOptions } from '@/types/upload'
 import { formatNumber } from '@/utils/formatters'
 
 const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,.md,.markdown,.png,.jpg,.jpeg,.webp,.tif,.tiff,.txt'
@@ -35,8 +35,9 @@ defineProps<{
 }>()
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
+const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
 const selectedFiles = shallowRef<File[]>([])
-const form = reactive({
+const form = reactive<UploadAdvancedOptionsValue>({
   metadata: EMPTY_UPLOAD_OPTIONS.metadata,
   callbackUrl: EMPTY_UPLOAD_OPTIONS.callbackUrl,
   idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey,
@@ -44,14 +45,14 @@ const form = reactive({
   pdfMode: EMPTY_UPLOAD_OPTIONS.pdfMode
 })
 
-const pdfModeOptions = [
-  { label: '服务端默认', value: '' },
-  { label: '页图 OCR', value: 'page_image_fallback' },
-  { label: '直接解析', value: 'direct' }
-]
-
 const hasFiles = computed(() => selectedFiles.value.length > 0)
 const totalSize = computed(() => selectedFiles.value.reduce((sum, file) => sum + file.size, 0))
+const ocrRouting = reactive<UploadOcrRoutingOptions>({
+  ocrRoutingMode: 'DEFAULT',
+  ocrModelKey: '',
+  ocrNodeId: '',
+  ocrLoadBalanceStrategy: ''
+})
 
 function openFilePicker(): void {
   if (fileInput.value) {
@@ -90,6 +91,7 @@ function resetForm(): void {
   form.idempotencyKey = EMPTY_UPLOAD_OPTIONS.idempotencyKey
   form.adapterOverride = EMPTY_UPLOAD_OPTIONS.adapterOverride
   form.pdfMode = EMPTY_UPLOAD_OPTIONS.pdfMode
+  ocrRoutingSelector.value?.reset()
   if (fileInput.value) {
     fileInput.value.value = ''
   } else {
@@ -97,19 +99,31 @@ function resetForm(): void {
   }
 }
 
+function updateOcrRouting(value: UploadOcrRoutingOptions): void {
+  ocrRouting.ocrRoutingMode = value.ocrRoutingMode
+  ocrRouting.ocrModelKey = value.ocrModelKey
+  ocrRouting.ocrNodeId = value.ocrNodeId
+  ocrRouting.ocrLoadBalanceStrategy = value.ocrLoadBalanceStrategy
+}
+
 function submitUpload(): void {
-  emit('submit', {
-    files: selectedFiles.value,
-    metadata: form.metadata,
-    callbackUrl: form.callbackUrl,
-    idempotencyKey: form.idempotencyKey,
-    adapterOverride: form.adapterOverride,
-    pdfMode: form.pdfMode,
-    ocrRoutingMode: EMPTY_UPLOAD_OPTIONS.ocrRoutingMode,
-    ocrModelKey: EMPTY_UPLOAD_OPTIONS.ocrModelKey,
-    ocrNodeId: EMPTY_UPLOAD_OPTIONS.ocrNodeId,
-    ocrLoadBalanceStrategy: EMPTY_UPLOAD_OPTIONS.ocrLoadBalanceStrategy
-  })
+  const validationMessage = ocrRoutingSelector.value?.validateRouting() ?? ''
+  if (validationMessage) {
+    // OCR 路由字段不完整时保持表单不提交，由选择器展示校验信息。
+  } else {
+    emit('submit', {
+      files: selectedFiles.value,
+      metadata: form.metadata,
+      callbackUrl: form.callbackUrl,
+      idempotencyKey: form.idempotencyKey,
+      adapterOverride: form.adapterOverride,
+      pdfMode: form.pdfMode,
+      ocrRoutingMode: ocrRouting.ocrRoutingMode,
+      ocrModelKey: ocrRouting.ocrModelKey,
+      ocrNodeId: ocrRouting.ocrNodeId,
+      ocrLoadBalanceStrategy: ocrRouting.ocrLoadBalanceStrategy
+    })
+  }
 }
 
 defineExpose({ resetForm })
@@ -160,34 +174,9 @@ defineExpose({ resetForm })
       <p v-else class="upload-dropzone__empty">还没有选择文件</p>
     </div>
 
-      <div class="upload-dropzone__options">
-        <label class="upload-dropzone__label" for="upload-metadata">元数据 JSON</label>
-      <NInput
-        id="upload-metadata"
-        v-model:value="form.metadata"
-        type="textarea"
-        :autosize="{ minRows: 3, maxRows: 5 }"
-        placeholder="metadata JSON，例如 {}"
-      />
-      <div class="upload-dropzone__option-grid">
-        <label class="upload-dropzone__field">
-          <span>回调地址</span>
-          <NInput v-model:value="form.callbackUrl" placeholder="callback_url，可选" />
-        </label>
-        <label class="upload-dropzone__field">
-          <span>幂等键</span>
-          <NInput v-model:value="form.idempotencyKey" placeholder="idempotency_key，可选" />
-        </label>
-        <label class="upload-dropzone__field">
-          <span>OCR 适配器</span>
-          <NInput v-model:value="form.adapterOverride" placeholder="adapter_override，可选" />
-        </label>
-        <label class="upload-dropzone__field">
-          <span>PDF 模式</span>
-          <NSelect v-model:value="form.pdfMode" :options="pdfModeOptions" />
-        </label>
-      </div>
-    </div>
+    <UploadAdvancedOptions v-model="form" />
+
+    <OcrRoutingSelector ref="ocrRoutingSelector" @change="updateOcrRouting" />
 
     <div class="upload-dropzone__actions">
       <NButton quaternary :disabled="loading" @click="resetForm">
@@ -332,32 +321,6 @@ defineExpose({ resetForm })
   font-size: 12px;
 }
 
-.upload-dropzone__options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.upload-dropzone__label,
-.upload-dropzone__field span {
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.upload-dropzone__field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.upload-dropzone__option-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .upload-dropzone__actions {
   display: flex;
   justify-content: flex-end;
@@ -365,8 +328,7 @@ defineExpose({ resetForm })
 }
 
 @media (max-width: 760px) {
-  .upload-dropzone__target,
-  .upload-dropzone__option-grid {
+  .upload-dropzone__target {
     grid-template-columns: 1fr;
   }
 }

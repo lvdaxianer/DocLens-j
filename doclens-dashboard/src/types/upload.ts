@@ -1,3 +1,20 @@
+export type OcrRoutingMode = 'DEFAULT' | 'GLOBAL_LOAD_BALANCE' | 'MODEL_LOAD_BALANCE' | 'SPECIFIC_NODE'
+
+export interface UploadOcrRoutingOptions {
+  ocrRoutingMode: OcrRoutingMode
+  ocrModelKey: string
+  ocrNodeId: string
+  ocrLoadBalanceStrategy: string
+}
+
+export interface UploadAdvancedOptionsValue {
+  metadata: string
+  callbackUrl: string
+  idempotencyKey: string
+  adapterOverride: string
+  pdfMode: string
+}
+
 export interface UploadBatchOptions {
   files: File[]
   metadata: string
@@ -5,7 +22,7 @@ export interface UploadBatchOptions {
   idempotencyKey: string
   adapterOverride: string
   pdfMode: string
-  ocrRoutingMode: string
+  ocrRoutingMode: OcrRoutingMode | ''
   ocrModelKey: string
   ocrNodeId: string
   ocrLoadBalanceStrategy: string
