@@ -142,7 +142,7 @@ defineExpose({ resetForm })
             <strong>{{ file.name }}</strong>
             <span>{{ formatNumber(Math.round(file.size / 1024)) }} KB</span>
           </div>
-          <NButton quaternary circle size="small" @click="removeFile(file.name)">
+          <NButton quaternary circle size="small" aria-label="移除文件" @click="removeFile(file.name)">
             <template #icon>
               <NIcon :component="X" />
             </template>
@@ -152,18 +152,32 @@ defineExpose({ resetForm })
       <p v-else class="upload-dropzone__empty">还没有选择文件</p>
     </div>
 
-    <div class="upload-dropzone__options">
+      <div class="upload-dropzone__options">
+        <label class="upload-dropzone__label" for="upload-metadata">元数据 JSON</label>
       <NInput
+        id="upload-metadata"
         v-model:value="form.metadata"
         type="textarea"
         :autosize="{ minRows: 3, maxRows: 5 }"
         placeholder="metadata JSON，例如 {}"
       />
       <div class="upload-dropzone__option-grid">
-        <NInput v-model:value="form.callbackUrl" placeholder="callback_url，可选" />
-        <NInput v-model:value="form.idempotencyKey" placeholder="idempotency_key，可选" />
-        <NInput v-model:value="form.adapterOverride" placeholder="adapter_override，可选" />
-        <NSelect v-model:value="form.pdfMode" :options="pdfModeOptions" />
+        <label class="upload-dropzone__field">
+          <span>回调地址</span>
+          <NInput v-model:value="form.callbackUrl" placeholder="callback_url，可选" />
+        </label>
+        <label class="upload-dropzone__field">
+          <span>幂等键</span>
+          <NInput v-model:value="form.idempotencyKey" placeholder="idempotency_key，可选" />
+        </label>
+        <label class="upload-dropzone__field">
+          <span>OCR 适配器</span>
+          <NInput v-model:value="form.adapterOverride" placeholder="adapter_override，可选" />
+        </label>
+        <label class="upload-dropzone__field">
+          <span>PDF 模式</span>
+          <NSelect v-model:value="form.pdfMode" :options="pdfModeOptions" />
+        </label>
       </div>
     </div>
 
@@ -188,14 +202,22 @@ defineExpose({ resetForm })
 
 .upload-dropzone__target {
   display: grid;
-  min-height: 150px;
+  min-height: 164px;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 20px;
-  border: 1px dashed rgba(37, 109, 133, 0.42);
+  padding: 22px;
+  border: 1px dashed rgba(37, 109, 133, 0.48);
   border-radius: 8px;
-  background: var(--surface-inset);
+  background:
+    linear-gradient(135deg, rgba(220, 239, 245, 0.88), rgba(255, 255, 255, 0.82)),
+    var(--surface-inset);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.upload-dropzone__target:hover {
+  border-color: var(--active);
+  box-shadow: var(--focus-ring);
 }
 
 .upload-dropzone__input {
@@ -203,8 +225,15 @@ defineExpose({ resetForm })
 }
 
 .upload-dropzone__target-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 8px;
+  background: #ffffff;
   color: var(--active);
   font-size: 32px;
+  box-shadow: var(--shadow-soft);
 }
 
 .upload-dropzone__target-copy {
@@ -258,6 +287,12 @@ defineExpose({ resetForm })
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.upload-file:hover {
+  border-color: var(--rail-border-strong);
+  background: var(--surface-hover);
 }
 
 .upload-file__icon {
@@ -293,6 +328,20 @@ defineExpose({ resetForm })
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.upload-dropzone__label,
+.upload-dropzone__field span {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.upload-dropzone__field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .upload-dropzone__option-grid {

@@ -97,6 +97,9 @@ function openLatestBatch(): void {
 
 .upload-view__side {
   align-self: start;
+  background:
+    linear-gradient(180deg, rgba(223, 244, 233, 0.74), rgba(255, 255, 255, 0) 150px),
+    var(--surface-raised);
 }
 
 .upload-result {
@@ -107,6 +110,12 @@ function openLatestBatch(): void {
 }
 
 .upload-result__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--success-muted);
   color: var(--success);
   font-size: 28px;
 }

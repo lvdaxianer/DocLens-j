@@ -1,19 +1,26 @@
 :root {
-  --surface-canvas: #f7f9f8;
+  --surface-canvas: #f6f8fb;
+  --surface-sidebar: #ffffff;
   --surface-raised: #ffffff;
-  --surface-inset: #eef4f2;
-  --rail-border: rgba(70, 94, 101, 0.18);
-  --ink-strong: #17272b;
-  --ink-soft: #43565d;
-  --ink-muted: #75858b;
+  --surface-hover: #f1f6f9;
+  --surface-inset: #eef3f7;
+  --rail-border: rgba(30, 41, 59, 0.12);
+  --rail-border-strong: rgba(30, 41, 59, 0.2);
+  --ink-strong: #10202a;
+  --ink-soft: #405565;
+  --ink-muted: #6d7f8d;
   --active: #256d85;
-  --active-muted: #dceff4;
-  --success: #2f8a5b;
-  --success-muted: #e0f3e8;
-  --danger: #c75146;
-  --danger-muted: #f7e2df;
-  --latency: #8b6f2c;
-  --latency-muted: #f1ead2;
+  --active-strong: #174e63;
+  --active-muted: #dceff5;
+  --success: #23845a;
+  --success-muted: #dff4e9;
+  --danger: #c84d43;
+  --danger-muted: #f8e0de;
+  --latency: #946f1f;
+  --latency-muted: #f2ead2;
+  --shadow-soft: 0 10px 30px rgba(16, 32, 42, 0.06);
+  --shadow-card: 0 1px 2px rgba(16, 32, 42, 0.04), 0 12px 24px rgba(16, 32, 42, 0.04);
+  --focus-ring: 0 0 0 3px rgba(37, 109, 133, 0.18);
 }
 
 * {
@@ -29,6 +36,8 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
+  color: var(--ink-strong);
+  line-height: 1.5;
 }
 
 button,
@@ -36,6 +45,12 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+button,
+a,
+[role="button"] {
+  cursor: pointer;
 }
 
 a {
@@ -51,10 +66,11 @@ a {
 
 .panel {
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
 }
 
 .panel__header {
@@ -75,4 +91,13 @@ a {
 .panel__hint {
   color: var(--ink-muted);
   font-size: 12px;
+}
+
+.panel__header > div {
+  min-width: 0;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }

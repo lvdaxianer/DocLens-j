@@ -93,22 +93,40 @@ const columns: DataTableColumns<BatchRow> = [
 </script>
 
 <template>
-  <NDataTable
-    class="batch-table"
-    :columns="columns"
-    :data="batches"
-    :loading="loading"
-    :pagination="{ pageSize: 10 }"
-    :row-key="(row) => row.batch_id"
-    size="small"
-  />
+  <div class="batch-table-shell">
+    <NDataTable
+      class="batch-table"
+      :columns="columns"
+      :data="batches"
+      :loading="loading"
+      :pagination="{ pageSize: 10 }"
+      :row-key="(row) => row.batch_id"
+      size="small"
+    />
+  </div>
 </template>
 
 <style scoped>
-.batch-table {
+.batch-table-shell {
+  overflow-x: auto;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.batch-table {
+  min-width: 980px;
+}
+
+:deep(.n-data-table-th) {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+:deep(.n-data-table-tr:hover .n-data-table-td) {
+  background: var(--surface-hover);
 }
 
 :deep(.batch-link) {
@@ -120,5 +138,10 @@ const columns: DataTableColumns<BatchRow> = [
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+:deep(.batch-link:hover) {
+  color: var(--active-strong);
+  text-decoration: underline;
 }
 </style>

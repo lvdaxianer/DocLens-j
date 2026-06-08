@@ -98,10 +98,18 @@ const metrics = computed(() => {
   display: flex;
   min-width: 0;
   gap: 10px;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.metric-card:hover {
+  border-color: var(--rail-border-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
 }
 
 .metric-card__icon {
