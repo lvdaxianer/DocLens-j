@@ -6,6 +6,11 @@ import { NButton, NIcon, NPopconfirm, NSwitch, NTag } from 'naive-ui'
 import type { OcrNode, OcrNodeStatus } from '@/types/ocrResources'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
 import { displayModelName, displayNodeName } from '@/utils/ocrDisplayRules'
+import {
+  OCR_NODE_TABLE_ACTION_COLUMN_WIDTH,
+  OCR_NODE_TABLE_ACTION_GAP,
+  shouldStickOcrNodeTableActions
+} from '@/utils/ocrNodeTableLayout'
 
 const props = defineProps<{
   nodes: OcrNode[]
@@ -21,6 +26,11 @@ const emit = defineEmits<{
 }>()
 
 const sortedNodes = computed(() => [...props.nodes].sort((left, right) => left.name.localeCompare(right.name)))
+const tableStyle = computed(() => ({
+  '--ocr-node-action-column-width': `${OCR_NODE_TABLE_ACTION_COLUMN_WIDTH}px`,
+  '--ocr-node-action-gap': `${OCR_NODE_TABLE_ACTION_GAP}px`
+}))
+const isActionColumnSticky = shouldStickOcrNodeTableActions()
 
 /**
  * 获取节点状态标签类型。
@@ -100,7 +110,7 @@ function nodeEndpointLabel(node: OcrNode): string {
       当前模型还没有配置节点
     </div>
 
-    <div v-else class="ocr-node-table__scroller">
+    <div v-else class="ocr-node-table__scroller" :style="tableStyle">
       <table class="ocr-node-table__grid">
         <thead>
           <tr>
@@ -119,7 +129,7 @@ function nodeEndpointLabel(node: OcrNode): string {
             <th>平均耗时</th>
             <th>P95</th>
             <th>最近检查</th>
-            <th>操作</th>
+            <th :class="{ 'ocr-node-table__action-cell--sticky': isActionColumnSticky }">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -165,7 +175,7 @@ function nodeEndpointLabel(node: OcrNode): string {
             <td>{{ formatDuration(node.avg_latency_ms) }}</td>
             <td>{{ formatDuration(node.p95_latency_ms) }}</td>
             <td>{{ formatDateTime(node.last_health_at) }}</td>
-            <td>
+            <td :class="{ 'ocr-node-table__action-cell--sticky': isActionColumnSticky }">
               <div class="ocr-node-table__actions">
                 <NButton quaternary circle size="small" title="详情" @click="emit('detail', node)">
                   <template #icon>
@@ -268,7 +278,22 @@ function nodeEndpointLabel(node: OcrNode): string {
 .ocr-node-table__actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: flex-end;
+  gap: var(--ocr-node-action-gap);
+}
+
+.ocr-node-table__action-cell--sticky {
+  position: sticky;
+  right: 0;
+  width: var(--ocr-node-action-column-width);
+  min-width: var(--ocr-node-action-column-width);
+  max-width: var(--ocr-node-action-column-width);
+  background: var(--surface-raised);
+  box-shadow: -8px 0 12px rgba(16, 32, 42, 0.06);
+}
+
+.ocr-node-table__grid th.ocr-node-table__action-cell--sticky {
+  background: var(--surface-inset);
 }
 
 @media (max-width: 1440px) {
