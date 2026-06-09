@@ -51,7 +51,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         this.nodePool = nodePool;
         this.threadPools = threadPools;
         this.threadPoolMetricsReader = new ThreadPoolMetricsReader();
-        this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository);
+        this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, nodePool);
     }
 
     /**

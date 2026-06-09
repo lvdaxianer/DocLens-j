@@ -33,7 +33,11 @@ public record OcrNodeResponse(
         @JsonProperty("failed_images") long failedImages,
         @JsonProperty("avg_latency_ms") long avgLatencyMs,
         @JsonProperty("p95_latency_ms") long p95LatencyMs,
+        @JsonProperty("failure_count") long failureCount,
+        @JsonProperty("recovery_success_count") long recoverySuccessCount,
         @JsonProperty("last_health_at") String lastHealthAt,
+        @JsonProperty("circuit_open_until") String circuitOpenUntil,
+        @JsonProperty("last_manual_recovery_at") String lastManualRecoveryAt,
         @JsonProperty("last_error") String lastError
 ) {
 
@@ -64,8 +68,10 @@ public record OcrNodeResponse(
                 node.credentialConfigured(), node.enabled(), node.participateGlobal(), node.weight(),
                 node.maxConcurrency(), node.status().name(), metrics.inflightImages(), metrics.queuedImages(),
                 metrics.processedImagesToday(), metrics.successImages(), metrics.failedImages(), metrics.avgLatencyMs(),
-                metrics.p95LatencyMs(),
-                node.lastHealthAt().map(Object::toString).orElse(""), node.lastError().orElse(""));
+                metrics.p95LatencyMs(), node.failureCount(), node.successCount(),
+                node.lastHealthAt().map(Object::toString).orElse(""),
+                node.circuitOpenUntil().map(Object::toString).orElse(""),
+                node.lastManualRecoveryAt().map(Object::toString).orElse(""), node.lastError().orElse(""));
     }
 
     /**

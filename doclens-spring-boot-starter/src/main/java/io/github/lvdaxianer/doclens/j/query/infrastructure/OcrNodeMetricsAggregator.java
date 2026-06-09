@@ -5,6 +5,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -20,16 +21,19 @@ import java.util.Optional;
 public class OcrNodeMetricsAggregator implements OcrNodeMetricsViewReader {
 
     private final OcrNodeCallRepository callRepository;
+    private final OcrRuntimeNodePool nodePool;
 
     /**
      * 创建 OCR 节点指标聚合器。
      *
      * @param callRepository OCR 调用记录仓储
+     * @param nodePool OCR 运行时节点池
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    public OcrNodeMetricsAggregator(OcrNodeCallRepository callRepository) {
+    public OcrNodeMetricsAggregator(OcrNodeCallRepository callRepository, OcrRuntimeNodePool nodePool) {
         this.callRepository = callRepository;
+        this.nodePool = nodePool;
     }
 
     /**
@@ -65,8 +69,11 @@ public class OcrNodeMetricsAggregator implements OcrNodeMetricsViewReader {
     private Map<String, OcrNodeMetrics> buildMetrics(List<String> nodeIds, List<OcrNodeCall> calls) {
         Map<String, List<OcrNodeCall>> callsByNodeId = calls.stream().collect(java.util.stream.Collectors.groupingBy(
                 OcrNodeCall::nodeId));
+        Map<String, io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView> runtimeViews =
+                runtimeViewsByNodeId();
         Map<String, OcrNodeMetrics> metricsByNodeId = new HashMap<>(nodeIds.size());
-        nodeIds.forEach(nodeId -> metricsByNodeId.put(nodeId, metrics(callsByNodeId.getOrDefault(nodeId, List.of()))));
+        nodeIds.forEach(nodeId -> metricsByNodeId.put(nodeId,
+                metrics(callsByNodeId.getOrDefault(nodeId, List.of()), runtimeViews.get(nodeId))));
         return metricsByNodeId;
     }
 
@@ -78,7 +85,10 @@ public class OcrNodeMetricsAggregator implements OcrNodeMetricsViewReader {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private OcrNodeMetrics metrics(List<OcrNodeCall> calls) {
+    private OcrNodeMetrics metrics(
+            List<OcrNodeCall> calls,
+            io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView runtimeView
+    ) {
         long processedImagesToday = calls.size();
         long successImages = calls.stream().filter(call -> call.status() == OcrNodeCallStatus.SUCCESS).count();
         long failedImages = calls.stream().filter(call -> call.status() == OcrNodeCallStatus.FAILED).count();
@@ -93,8 +103,53 @@ public class OcrNodeMetricsAggregator implements OcrNodeMetricsViewReader {
                 .map(call -> call.errorMessage().orElse(""))
                 .filter(message -> !message.isBlank())
                 .reduce((left, right) -> right);
-        return new OcrNodeMetrics(0, 0, processedImagesToday, successImages, failedImages, avgLatencyMs,
-                p95LatencyMs, lastRequestAt, lastError);
+        return new OcrNodeMetrics(inflightImages(runtimeView), queuedImages(runtimeView), processedImagesToday,
+                successImages, failedImages, avgLatencyMs, p95LatencyMs, lastRequestAt, lastError);
+    }
+
+    /**
+     * 构建运行时节点索引，供真实 inflight/queued 指标读取使用。
+     *
+     * @return 运行时节点索引
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private Map<String, io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView> runtimeViewsByNodeId() {
+        return nodePool.snapshot().stream().collect(java.util.stream.Collectors.toMap(
+                io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView::nodeId,
+                view -> view));
+    }
+
+    /**
+     * 读取运行时 inflight 图片数，缺失时降级为 0。
+     *
+     * @param runtimeView 运行时节点视图
+     * @return 运行时 inflight 图片数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private int inflightImages(io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView runtimeView) {
+        if (runtimeView == null) {
+            return 0;
+        } else {
+            return runtimeView.inflightImages();
+        }
+    }
+
+    /**
+     * 读取运行时 queued 图片数，缺失时降级为 0。
+     *
+     * @param runtimeView 运行时节点视图
+     * @return 运行时 queued 图片数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private int queuedImages(io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView runtimeView) {
+        if (runtimeView == null) {
+            return 0;
+        } else {
+            return runtimeView.queuedImages();
+        }
     }
 
     /**

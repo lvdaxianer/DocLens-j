@@ -27,7 +27,11 @@ import org.junit.jupiter.api.Test;
  */
 class OcrDashboardMetricsProviderTest {
 
-    private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
+    private static final OffsetDateTime BASE_TIME = OffsetDateTime.now()
+            .withHour(10)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0);
 
     /**
      * 批次命中节点应返回节点别名，避免前端退回显示内部 ID。
@@ -104,7 +108,9 @@ class OcrDashboardMetricsProviderTest {
             InMemoryOcrNodeRepository nodeRepository,
             InMemoryOcrNodeCallRepository callRepository
     ) {
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, new OcrRuntimeNodePool(nodeRepository),
+        OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
+        nodePool.initialize();
+        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
                 new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null));
     }
 

@@ -61,10 +61,13 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-09
      */
     @Bean
-    @ConditionalOnBean(OcrNodeCallRepository.class)
+    @ConditionalOnBean({OcrNodeCallRepository.class, OcrRuntimeNodePool.class})
     @ConditionalOnMissingBean
-    OcrNodeMetricsViewReader ocrNodeMetricsViewReader(OcrNodeCallRepository callRepository) {
-        return new OcrNodeMetricsAggregator(callRepository);
+    OcrNodeMetricsViewReader ocrNodeMetricsViewReader(
+            OcrNodeCallRepository callRepository,
+            OcrRuntimeNodePool nodePool
+    ) {
+        return new OcrNodeMetricsAggregator(callRepository, nodePool);
     }
 
     /**
