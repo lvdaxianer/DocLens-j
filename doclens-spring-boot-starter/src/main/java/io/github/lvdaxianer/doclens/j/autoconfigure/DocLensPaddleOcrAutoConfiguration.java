@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.DashScopeOnlineOcrClient;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeBootstrapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
@@ -10,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeAdap
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeResponseMapper;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.concurrent.ExecutorService;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -79,11 +81,28 @@ public class DocLensPaddleOcrAutoConfiguration {
     }
 
     /**
+     * 创建 DashScope compatible 在线 OCR 客户端。
+     *
+     * @param objectMapper Jackson 映射器
+     * @param properties DocLens 配置
+     * @return DashScope compatible 在线 OCR 客户端
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DashScopeOnlineOcrClient dashScopeOnlineOcrClient(ObjectMapper objectMapper, DocLensProperties properties) {
+        return new DashScopeOnlineOcrClient(objectMapper, DashScopeOnlineOcrClient.DEFAULT_ENDPOINT,
+                Duration.ofSeconds(properties.paddleOcr().timeoutSeconds()));
+    }
+
+    /**
      * 创建 PaddleOCR 节点执行器。
      *
      * @param nodePool OCR 运行时节点池
      * @param client PaddleOCR 客户端
      * @param responseMapper PaddleOCR 响应映射器
+     * @param onlineClient 在线 OCR 客户端
      * @param ocrRequestExecutor OCR 请求线程池
      * @return OCR 节点执行器
      * @author lvdaxianerplus
@@ -96,9 +115,10 @@ public class DocLensPaddleOcrAutoConfiguration {
             OcrRuntimeNodePool nodePool,
             PaddleOcrNativeClient client,
             PaddleOcrNativeResponseMapper responseMapper,
+            DashScopeOnlineOcrClient onlineClient,
             @Qualifier("doclensOcrRequestExecutor") ExecutorService ocrRequestExecutor
     ) {
-        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper, ocrRequestExecutor);
+        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper, onlineClient, ocrRequestExecutor);
     }
 
     /**

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
@@ -107,6 +108,23 @@ class OcrHealthCheckerTest {
     }
 
     /**
+     * 在线节点健康检查只校验配置，不调用离线健康客户端。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void onlineNodeHealthCheckUsesConfigurationOnly() {
+        TestContext context = context(onlineNode("node-online"));
+
+        context.checker.checkOnce();
+
+        assertThat(context.healthClient.checkedNodeIds).isEmpty();
+        assertThat(context.repository.findById("node-online")).get().extracting(OcrNode::status)
+                .isEqualTo(OcrNodeStatus.UP);
+    }
+
+    /**
      * 创建测试上下文。
      *
      * @param node OCR 节点
@@ -142,6 +160,25 @@ class OcrHealthCheckerTest {
                 created.enabled(), created.participateGlobal(), created.weight(), created.maxConcurrency(), status,
                 failureCount, successCount, 0L, 0L, Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), created.createdAt(), created.updatedAt());
+    }
+
+    /**
+     * 创建在线 OCR 节点。
+     *
+     * @param nodeId 节点 ID
+     * @return OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrNode onlineNode(String nodeId) {
+        OcrNode created = OcrNode.create(new OcrNodeCreateRequest(nodeId, "paddle_ocr", OcrNodeDeploymentType.ONLINE,
+                nodeId, "", 0, "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20",
+                "sk-secret", true, true, true, 100, 4, BASE_TIME));
+        return new OcrNode(created.id(), created.modelKey(), created.deploymentType(), created.name(),
+                created.host(), created.port(), created.channelKey(), created.providerModel(), created.credentialRef(),
+                created.credentialConfigured(), created.enabled(), created.participateGlobal(), created.weight(),
+                created.maxConcurrency(), OcrNodeStatus.RECOVERING, 0L, 1L, 0L, 0L, Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty(), created.createdAt(), created.updatedAt());
     }
 
     /**

@@ -6,14 +6,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
+import java.net.URI;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,13 +50,40 @@ class PaddleOcrNodeImageExecutorTest {
         RecordingPaddleOcrNativeClient client = new RecordingPaddleOcrNativeClient();
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable,
                 "doclens-ocr-request-test-1"));
+        RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient();
         PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool, client,
-                new PaddleOcrNativeResponseMapper(new ObjectMapper()), executor);
+                new PaddleOcrNativeResponseMapper(new ObjectMapper()), onlineClient, executor);
 
         nodeExecutor.recognize(view(node), request());
         executor.shutdownNow();
 
         assertThat(client.threadName()).hasValue("doclens-ocr-request-test-1");
+        assertThat(onlineClient.called()).isFalse();
+    }
+
+    /**
+     * 在线节点应走 DashScope compatible 客户端，避免误进入 PaddleOCR 离线路径。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void recognizesOnlineNodeThroughDashScopeClient() {
+        OcrNode node = onlineNode();
+        OcrRuntimeNodePool nodePool = nodePool(node);
+        RecordingPaddleOcrNativeClient paddleClient = new RecordingPaddleOcrNativeClient();
+        RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient();
+        ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable,
+                "doclens-ocr-request-online-test-1"));
+        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool, paddleClient,
+                new PaddleOcrNativeResponseMapper(new ObjectMapper()), onlineClient, executor);
+
+        ImageOcrResult result = nodeExecutor.recognize(view(node), request());
+        executor.shutdownNow();
+
+        assertThat(paddleClient.threadName()).isEmpty();
+        assertThat(onlineClient.threadName()).hasValue("doclens-ocr-request-online-test-1");
+        assertThat(result.pageText()).first().extracting("text").isEqualTo("在线识别文本");
     }
 
     /**
@@ -101,6 +134,19 @@ class PaddleOcrNodeImageExecutorTest {
     private OcrNode node() {
         return OcrNode.create(new OcrNodeCreateRequest("node-1", "paddle_ocr", "node-1",
                 "127.0.0.1", 8080, true, true, 100, 4, BASE_TIME));
+    }
+
+    /**
+     * 创建在线 OCR 节点。
+     *
+     * @return 在线 OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrNode onlineNode() {
+        return OcrNode.create(new OcrNodeCreateRequest("node-online", "paddle_ocr", OcrNodeDeploymentType.ONLINE,
+                "在线节点", "", 0, "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", "sk-test", true,
+                true, true, 100, 4, BASE_TIME));
     }
 
     /**
@@ -210,6 +256,60 @@ class PaddleOcrNodeImageExecutorTest {
         public JsonNode recognizeImage(OcrRuntimeNode node, byte[] imageContent) {
             threadName.set(Thread.currentThread().getName());
             return OBJECT_MAPPER.createObjectNode().put("errorCode", 0);
+        }
+
+        /**
+         * 返回记录到的调用线程名。
+         *
+         * @return 调用线程名
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        Optional<String> threadName() {
+            return Optional.ofNullable(threadName.get());
+        }
+    }
+
+    /**
+     * 记录调用线程的 DashScope compatible 在线 OCR 客户端。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static class RecordingDashScopeOnlineOcrClient extends DashScopeOnlineOcrClient {
+
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+        private final AtomicReference<String> threadName = new AtomicReference<>();
+
+        /**
+         * 创建记录调用线程的在线 OCR 客户端。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        RecordingDashScopeOnlineOcrClient() {
+            super(OBJECT_MAPPER, URI.create("http://127.0.0.1:1/compatible-mode/v1/chat/completions"),
+                    Duration.ofSeconds(TEST_TIMEOUT_SECONDS));
+        }
+
+        @Override
+        public ImageOcrResult recognizeImage(OcrRuntimeNode node, ImageOcrRequest request) {
+            threadName.set(Thread.currentThread().getName());
+            return ImageOcrResult.fromBlocks(request.pageNo(), Map.of(),
+                    List.of(new OcrBlock(request.pageNo(), "在线识别文本", 1D, List.of(), List.of(), "test")),
+                    List.of());
+        }
+
+        /**
+         * 返回是否被调用。
+         *
+         * @return 是否被调用
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        boolean called() {
+            return threadName.get() != null;
         }
 
         /**

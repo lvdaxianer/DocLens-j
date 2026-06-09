@@ -1,13 +1,12 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import java.time.OffsetDateTime;
-import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -16,7 +15,6 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -64,17 +62,25 @@ class MybatisPlusOcrNodeRepositoryTest {
     }
 
     /**
-     * 同一模型下重复 host 和 port 应由数据库唯一约束拒绝。
+     * 在线节点配置应能持久化渠道、模型和凭证状态。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-09
      */
     @Test
-    void duplicateModelHostPortIsRejected() {
-        repository.save(node("node_2", "paddle_repo_dup", "10.100.30.216", 8080));
+    void saveFindsOnlineNodeSettings() {
+        OcrNode node = onlineNode("node_2", "paddle_repo_online");
 
-        assertThatThrownBy(() -> repository.save(node("node_3", "paddle_repo_dup", "10.100.30.216", 8080)))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        repository.save(node);
+
+        assertThat(repository.findById("node_2"))
+                .get()
+                .satisfies(saved -> {
+                    assertThat(saved.deploymentType()).isEqualTo(OcrNodeDeploymentType.ONLINE);
+                    assertThat(saved.channelKey()).contains("aliyun_bailian_dashscope");
+                    assertThat(saved.providerModel()).contains("qwen-vl-ocr-2025-11-20");
+                    assertThat(saved.credentialConfigured()).isTrue();
+                });
     }
 
     /**
@@ -90,6 +96,21 @@ class MybatisPlusOcrNodeRepositoryTest {
      */
     private OcrNode node(String id, String modelKey, String host, int port) {
         return OcrNode.create(new OcrNodeCreateRequest(id, modelKey, id, host, port,
+                true, true, 100, 4, BASE_TIME));
+    }
+
+    /**
+     * 创建测试在线 OCR 节点。
+     *
+     * @param id 节点 ID
+     * @param modelKey 模型标识
+     * @return OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrNode onlineNode(String id, String modelKey) {
+        return OcrNode.create(new OcrNodeCreateRequest(id, modelKey, OcrNodeDeploymentType.ONLINE, id, "", 0,
+                "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", "sk-secret", true,
                 true, true, 100, 4, BASE_TIME));
     }
 

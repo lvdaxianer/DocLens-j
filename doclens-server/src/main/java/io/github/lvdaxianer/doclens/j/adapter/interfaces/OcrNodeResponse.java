@@ -12,9 +12,13 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 public record OcrNodeResponse(
         String id,
         @JsonProperty("model_key") String modelKey,
+        @JsonProperty("deployment_type") String deploymentType,
         String name,
         String host,
         int port,
+        @JsonProperty("channel_key") String channelKey,
+        @JsonProperty("provider_model") String providerModel,
+        @JsonProperty("credential_configured") boolean credentialConfigured,
         boolean enabled,
         @JsonProperty("participate_global") boolean participateGlobal,
         int weight,
@@ -40,10 +44,11 @@ public record OcrNodeResponse(
      * @date 2026-06-09
      */
     public static OcrNodeResponse from(OcrNode node) {
-        return new OcrNodeResponse(node.id(), node.modelKey(), node.name(), node.host(), node.port(),
-                node.enabled(), node.participateGlobal(), node.weight(), node.maxConcurrency(), node.status().name(),
-                0, 0, node.successCount() + node.failureCount(), node.successCount(), node.failureCount(),
-                node.avgLatencyMs(), node.p95LatencyMs(), node.lastHealthAt().map(Object::toString).orElse(""),
-                node.lastError().orElse(""));
+        return new OcrNodeResponse(node.id(), node.modelKey(), node.deploymentType().name(), node.name(), node.host(),
+                node.port(), node.channelKey().orElse(""), node.providerModel().orElse(""),
+                node.credentialConfigured(), node.enabled(), node.participateGlobal(), node.weight(),
+                node.maxConcurrency(), node.status().name(), 0, 0, node.successCount() + node.failureCount(),
+                node.successCount(), node.failureCount(), node.avgLatencyMs(), node.p95LatencyMs(),
+                node.lastHealthAt().map(Object::toString).orElse(""), node.lastError().orElse(""));
     }
 }

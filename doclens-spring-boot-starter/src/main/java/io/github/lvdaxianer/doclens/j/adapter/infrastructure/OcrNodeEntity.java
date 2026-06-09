@@ -20,9 +20,14 @@ public class OcrNodeEntity {
     @TableId("id")
     private String id;
     private String modelKey;
+    private String deploymentType;
     private String name;
     private String host;
     private int port;
+    private String channelKey;
+    private String providerModel;
+    private String credentialRef;
+    private boolean credentialConfigured;
     private boolean enabled;
     private boolean participateGlobal;
     private int weight;

@@ -1,15 +1,21 @@
 package io.github.lvdaxianer.doclens.j.adapter.application;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
+
 /**
  * OCR 节点可配置参数。
  *
+ * @param deploymentType 节点部署类型
  * @param endpoint 节点地址配置
+ * @param online 在线节点配置
  * @param scheduling 节点调度配置
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
 public record OcrNodeSettings(
+        OcrNodeDeploymentType deploymentType,
         Endpoint endpoint,
+        Online online,
         Scheduling scheduling
 ) {
     /**
@@ -22,6 +28,18 @@ public record OcrNodeSettings(
      * @date 2026-06-09
      */
     public record Endpoint(String name, String host, int port) {
+    }
+
+    /**
+     * OCR 在线节点配置。
+     *
+     * @param channelKey 在线渠道标识
+     * @param providerModel 在线模型名称
+     * @param apiKey 在线 API Key
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public record Online(String channelKey, String providerModel, String apiKey) {
     }
 
     /**

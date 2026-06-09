@@ -8,15 +8,20 @@ import {
   NFormItem,
   NInput,
   NInputNumber,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSwitch
 } from 'naive-ui'
 
-import type { OcrModel, OcrNode, OcrNodePayload, OcrNodeSubmitPayload } from '@/types/ocrResources'
-
-const DEFAULT_PORT = 8080
-const DEFAULT_WEIGHT = 100
-const DEFAULT_MAX_CONCURRENCY = 4
+import type { OcrModel, OcrNode, OcrNodeSubmitPayload } from '@/types/ocrResources'
+import {
+  createDefaultOcrNodeForm,
+  createOcrNodePayload,
+  DASHSCOPE_CHANNEL_KEY,
+  fillOcrNodeFormFromNode,
+  isOcrNodeFormSubmittable
+} from '@/utils/ocrNodeFormRules'
 
 const props = defineProps<{
   visible: boolean
@@ -31,21 +36,18 @@ const emit = defineEmits<{
   submit: [payload: OcrNodeSubmitPayload]
 }>()
 
-const form = reactive({
-  modelKey: '',
-  name: '',
-  host: '',
-  port: DEFAULT_PORT,
-  enabled: true,
-  participateGlobal: true,
-  weight: DEFAULT_WEIGHT,
-  maxConcurrency: DEFAULT_MAX_CONCURRENCY
-})
+const form = reactive(createDefaultOcrNodeForm(''))
 
 const title = computed(() => (props.node ? '编辑 OCR 节点' : '新增 OCR 节点'))
 const isEditing = computed(() => Boolean(props.node))
 const modelOptions = computed(() => props.models.map((model) => ({ label: `${model.name} · ${model.model_key}`, value: model.model_key })))
-const canSubmit = computed(() => form.modelKey.trim() !== '' && form.name.trim() !== '' && form.host.trim() !== '')
+const channelOptions = [
+  {
+    label: '阿里百炼 DashScope',
+    value: DASHSCOPE_CHANNEL_KEY
+  }
+]
+const canSubmit = computed(() => isOcrNodeFormSubmittable(form))
 
 /**
  * 将节点配置写入本地表单。
@@ -71,14 +73,7 @@ function syncForm(): void {
  * @date 2026-06-09
  */
 function fillFromNode(node: OcrNode): void {
-  form.modelKey = node.model_key
-  form.name = node.name
-  form.host = node.host
-  form.port = node.port
-  form.enabled = node.enabled
-  form.participateGlobal = node.participate_global
-  form.weight = node.weight
-  form.maxConcurrency = node.max_concurrency
+  Object.assign(form, fillOcrNodeFormFromNode(node))
 }
 
 /**
@@ -89,14 +84,7 @@ function fillFromNode(node: OcrNode): void {
  * @date 2026-06-09
  */
 function resetForCreate(): void {
-  form.modelKey = props.selectedModelKey || props.models[0]?.model_key || ''
-  form.name = ''
-  form.host = ''
-  form.port = DEFAULT_PORT
-  form.enabled = true
-  form.participateGlobal = true
-  form.weight = DEFAULT_WEIGHT
-  form.maxConcurrency = DEFAULT_MAX_CONCURRENCY
+  Object.assign(form, createDefaultOcrNodeForm(props.selectedModelKey || props.models[0]?.model_key || ''))
 }
 
 /**
@@ -107,16 +95,7 @@ function resetForCreate(): void {
  * @date 2026-06-09
  */
 function createPayload(): OcrNodeSubmitPayload {
-  const node: OcrNodePayload = {
-    name: form.name.trim(),
-    host: form.host.trim(),
-    port: form.port,
-    enabled: form.enabled,
-    participate_global: form.participateGlobal,
-    weight: form.weight,
-    max_concurrency: form.maxConcurrency
-  }
-  return { modelKey: form.modelKey, node }
+  return createOcrNodePayload(form)
 }
 
 /**
@@ -138,21 +117,48 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
 </script>
 
 <template>
-  <NDrawer :show="visible" :width="460" @update:show="emit('close')">
+  <NDrawer :show="visible" :width="520" @update:show="emit('close')">
     <NDrawerContent :title="title" closable>
       <NForm class="ocr-node-form" label-placement="top">
+        <NFormItem label="部署类型">
+          <NRadioGroup v-model:value="form.deploymentType" :disabled="isEditing">
+            <NRadioButton value="OFFLINE">
+              离线节点
+            </NRadioButton>
+            <NRadioButton value="ONLINE">
+              在线节点
+            </NRadioButton>
+          </NRadioGroup>
+        </NFormItem>
         <NFormItem label="OCR 模型">
           <NSelect v-model:value="form.modelKey" :disabled="isEditing" :options="modelOptions" />
         </NFormItem>
         <NFormItem label="节点名称">
           <NInput v-model:value="form.name" placeholder="例如 paddle-215" />
         </NFormItem>
-        <NFormItem label="Host">
-          <NInput v-model:value="form.host" placeholder="只填写主机或 IP" />
-        </NFormItem>
-        <NFormItem label="Port">
-          <NInputNumber v-model:value="form.port" class="ocr-node-form__number" :min="1" :max="65535" />
-        </NFormItem>
+        <template v-if="form.deploymentType === 'OFFLINE'">
+          <NFormItem label="Host">
+            <NInput v-model:value="form.host" placeholder="只填写主机或 IP" />
+          </NFormItem>
+          <NFormItem label="Port">
+            <NInputNumber v-model:value="form.port" class="ocr-node-form__number" :min="1" :max="65535" />
+          </NFormItem>
+        </template>
+        <template v-else>
+          <NFormItem label="在线渠道">
+            <NSelect v-model:value="form.channelKey" :options="channelOptions" />
+          </NFormItem>
+          <NFormItem label="模型名称">
+            <NInput v-model:value="form.providerModel" placeholder="qwen-vl-ocr-2025-11-20" />
+          </NFormItem>
+          <NFormItem label="API Key">
+            <NInput
+              v-model:value="form.apiKey"
+              type="password"
+              :placeholder="form.credentialConfigured ? '已配置，留空则沿用旧密钥' : '保存后不再回显'"
+            />
+          </NFormItem>
+        </template>
         <div class="ocr-node-form__switches">
           <NFormItem label="启用节点">
             <NSwitch v-model:value="form.enabled" />

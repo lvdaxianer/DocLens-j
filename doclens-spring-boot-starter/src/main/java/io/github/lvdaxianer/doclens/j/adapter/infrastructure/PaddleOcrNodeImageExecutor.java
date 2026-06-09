@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRuntimeNodeView;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -23,6 +24,7 @@ public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
     private final OcrRuntimeNodePool nodePool;
     private final PaddleOcrNativeClient client;
     private final PaddleOcrNativeResponseMapper responseMapper;
+    private final DashScopeOnlineOcrClient onlineClient;
     private final ExecutorService ocrRequestExecutor;
 
     /**
@@ -31,6 +33,7 @@ public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
      * @param nodePool OCR 运行时节点池
      * @param client PaddleOCR 客户端
      * @param responseMapper PaddleOCR 响应映射器
+     * @param onlineClient 在线 OCR 客户端
      * @param ocrRequestExecutor OCR 请求线程池
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -39,11 +42,13 @@ public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
             OcrRuntimeNodePool nodePool,
             PaddleOcrNativeClient client,
             PaddleOcrNativeResponseMapper responseMapper,
+            DashScopeOnlineOcrClient onlineClient,
             ExecutorService ocrRequestExecutor
     ) {
         this.nodePool = nodePool;
         this.client = client;
         this.responseMapper = responseMapper;
+        this.onlineClient = onlineClient;
         this.ocrRequestExecutor = ocrRequestExecutor;
     }
 
@@ -66,11 +71,27 @@ public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
     private ImageOcrResult recognizeOnNode(OcrRuntimeNode runtimeNode, ImageOcrRequest request) {
         LOGGER.info("[OCR请求] 开始请求 OCR 节点, nodeId={}, documentId={}, pageNo={}",
                 runtimeNode.node().id(), request.documentId(), request.pageNo());
-        ImageOcrResult result = responseMapper.map(request.pageNo(),
-                client.recognizeImage(runtimeNode, request.imageContent()));
+        ImageOcrResult result = recognizeByDeployment(runtimeNode, request);
         LOGGER.info("[OCR请求] OCR 节点请求完成, nodeId={}, documentId={}, pageNo={}",
                 runtimeNode.node().id(), request.documentId(), request.pageNo());
         return result;
+    }
+
+    /**
+     * 按节点部署类型分发 OCR 请求。
+     *
+     * @param runtimeNode OCR 运行时节点
+     * @param request 图片 OCR 请求
+     * @return 图片 OCR 结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private ImageOcrResult recognizeByDeployment(OcrRuntimeNode runtimeNode, ImageOcrRequest request) {
+        if (runtimeNode.node().deploymentType() == OcrNodeDeploymentType.ONLINE) {
+            return onlineClient.recognizeImage(runtimeNode, request);
+        } else {
+            return responseMapper.map(request.pageNo(), client.recognizeImage(runtimeNode, request.imageContent()));
+        }
     }
 
     /**

@@ -72,6 +72,22 @@ function statusLabel(status: OcrNodeStatus): string {
 function toggleEnabled(node: OcrNode, enabled: boolean): void {
   emit('toggleEnabled', node, enabled)
 }
+
+/**
+ * 获取节点资源地址或在线渠道展示文本。
+ *
+ * @param node - OCR 节点
+ * @returns 节点地址展示文本
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+function nodeEndpointLabel(node: OcrNode): string {
+  if (node.deployment_type === 'ONLINE') {
+    return `${node.channel_key || '在线渠道'} · ${node.provider_model || '未配置模型'}`
+  } else {
+    return `${node.host}:${node.port}`
+  }
+}
 </script>
 
 <template>
@@ -90,6 +106,7 @@ function toggleEnabled(node: OcrNode, enabled: boolean): void {
           <tr>
             <th>OCR</th>
             <th>节点</th>
+            <th>部署</th>
             <th>地址</th>
             <th>状态</th>
             <th>启用</th>
@@ -114,7 +131,12 @@ function toggleEnabled(node: OcrNode, enabled: boolean): void {
                 <span>{{ displayNodeName({ id: node.id, name: node.name }) }}</span>
               </button>
             </td>
-            <td>{{ node.host }}:{{ node.port }}</td>
+            <td>
+              <NTag size="small" :type="node.deployment_type === 'ONLINE' ? 'info' : 'default'">
+                {{ node.deployment_type === 'ONLINE' ? '在线' : '离线' }}
+              </NTag>
+            </td>
+            <td>{{ nodeEndpointLabel(node) }}</td>
             <td>
               <NTag size="small" :type="statusTagType(node.status)">
                 {{ statusLabel(node.status) }}

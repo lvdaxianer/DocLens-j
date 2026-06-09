@@ -8,9 +8,14 @@ import java.util.Optional;
  *
  * @param id 节点 ID
  * @param modelKey OCR 模型标识
+ * @param deploymentType 节点部署类型
  * @param name 节点名称
  * @param host 节点主机
  * @param port 节点端口
+ * @param channelKey 在线渠道标识
+ * @param providerModel 在线模型名称
+ * @param credentialRef 在线凭证引用
+ * @param credentialConfigured 是否已配置在线凭证
  * @param enabled 是否启用
  * @param participateGlobal 是否参与全局负载均衡
  * @param weight 节点权重
@@ -32,9 +37,14 @@ import java.util.Optional;
 public record OcrNode(
         String id,
         String modelKey,
+        OcrNodeDeploymentType deploymentType,
         String name,
         String host,
         int port,
+        Optional<String> channelKey,
+        Optional<String> providerModel,
+        Optional<String> credentialRef,
+        boolean credentialConfigured,
         boolean enabled,
         boolean participateGlobal,
         int weight,
@@ -53,9 +63,64 @@ public record OcrNode(
 ) {
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65535;
+    private static final String ALIYUN_BAILIAN_DASHSCOPE = "aliyun_bailian_dashscope";
 
     /**
      * 创建带安全默认值的 OCR 节点。
+     *
+     * @param id 节点 ID
+     * @param modelKey OCR 模型标识
+     * @param deploymentType 节点部署类型
+     * @param name 节点名称
+     * @param host 节点主机
+     * @param port 节点端口
+     * @param channelKey 在线渠道标识
+     * @param providerModel 在线模型名称
+     * @param credentialRef 在线凭证引用
+     * @param credentialConfigured 是否已配置在线凭证
+     * @param enabled 是否启用
+     * @param participateGlobal 是否参与全局负载均衡
+     * @param weight 节点权重
+     * @param maxConcurrency 最大并发图片数
+     * @param status 节点状态
+     * @param failureCount 失败次数
+     * @param successCount 成功次数
+     * @param avgLatencyMs 平均耗时
+     * @param p95LatencyMs P95 耗时
+     * @param lastHealthAt 最近健康检查时间
+     * @param lastSuccessAt 最近成功时间
+     * @param lastFailureAt 最近失败时间
+     * @param lastError 最近错误
+     * @param createdAt 创建时间
+     * @param updatedAt 更新时间
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    public OcrNode {
+        id = requiredText(id, "ocr node id is required");
+        modelKey = requiredText(modelKey, "ocr model key is required");
+        deploymentType = deploymentType == null ? OcrNodeDeploymentType.OFFLINE : deploymentType;
+        name = requiredText(name, "ocr node name is required");
+        host = normalizeHost(deploymentType, host);
+        port = normalizePort(deploymentType, port);
+        channelKey = channelKey == null ? Optional.empty() : channelKey;
+        providerModel = providerModel == null ? Optional.empty() : providerModel;
+        credentialRef = credentialRef == null ? Optional.empty() : credentialRef;
+        channelKey = normalizeChannel(deploymentType, channelKey);
+        providerModel = normalizeProviderModel(deploymentType, providerModel);
+        credentialRef = normalize(credentialRef);
+        credentialConfigured = credentialConfigured || credentialRef.isPresent();
+        validatePositive(weight, "ocr node weight must be greater than 0");
+        validatePositive(maxConcurrency, "ocr node max concurrency must be greater than 0");
+        status = status == null ? statusFor(enabled) : status;
+        lastHealthAt = lastHealthAt == null ? Optional.empty() : lastHealthAt;
+        lastSuccessAt = lastSuccessAt == null ? Optional.empty() : lastSuccessAt;
+        lastFailureAt = lastFailureAt == null ? Optional.empty() : lastFailureAt;
+        lastError = lastError == null ? Optional.empty() : normalize(lastError);
+    }
+
+    /**
+     * 创建兼容旧离线节点参数的 OCR 节点。
      *
      * @param id 节点 ID
      * @param modelKey OCR 模型标识
@@ -78,21 +143,34 @@ public record OcrNode(
      * @param createdAt 创建时间
      * @param updatedAt 更新时间
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-09
      */
-    public OcrNode {
-        id = requiredText(id, "ocr node id is required");
-        modelKey = requiredText(modelKey, "ocr model key is required");
-        name = requiredText(name, "ocr node name is required");
-        host = validHost(host);
-        validatePort(port);
-        validatePositive(weight, "ocr node weight must be greater than 0");
-        validatePositive(maxConcurrency, "ocr node max concurrency must be greater than 0");
-        status = status == null ? statusFor(enabled) : status;
-        lastHealthAt = lastHealthAt == null ? Optional.empty() : lastHealthAt;
-        lastSuccessAt = lastSuccessAt == null ? Optional.empty() : lastSuccessAt;
-        lastFailureAt = lastFailureAt == null ? Optional.empty() : lastFailureAt;
-        lastError = lastError == null ? Optional.empty() : normalize(lastError);
+    public OcrNode(
+            String id,
+            String modelKey,
+            String name,
+            String host,
+            int port,
+            boolean enabled,
+            boolean participateGlobal,
+            int weight,
+            int maxConcurrency,
+            OcrNodeStatus status,
+            long failureCount,
+            long successCount,
+            long avgLatencyMs,
+            long p95LatencyMs,
+            Optional<OffsetDateTime> lastHealthAt,
+            Optional<OffsetDateTime> lastSuccessAt,
+            Optional<OffsetDateTime> lastFailureAt,
+            Optional<String> lastError,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt
+    ) {
+        this(id, modelKey, OcrNodeDeploymentType.OFFLINE, name, host, port, Optional.empty(), Optional.empty(),
+                Optional.empty(), false, enabled, participateGlobal, weight, maxConcurrency, status, failureCount,
+                successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt, lastError,
+                createdAt, updatedAt);
     }
 
     /**
@@ -104,10 +182,12 @@ public record OcrNode(
      * @date 2026-06-08
      */
     public static OcrNode create(OcrNodeCreateRequest request) {
-        return new OcrNode(request.id(), request.modelKey(), request.name(), request.host(), request.port(),
-                request.enabled(), request.participateGlobal(), request.weight(), request.maxConcurrency(),
-                statusFor(request.enabled()), 0L, 0L, 0L, 0L, Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty(), request.now(), request.now());
+        return new OcrNode(request.id(), request.modelKey(), request.deploymentType(), request.name(), request.host(),
+                request.port(), Optional.ofNullable(request.channelKey()), Optional.ofNullable(request.providerModel()),
+                Optional.ofNullable(request.credentialRef()), request.credentialConfigured(), request.enabled(),
+                request.participateGlobal(), request.weight(), request.maxConcurrency(), statusFor(request.enabled()),
+                0L, 0L, 0L, 0L, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), request.now(),
+                request.now());
     }
 
     /**
@@ -119,10 +199,12 @@ public record OcrNode(
      * @date 2026-06-09
      */
     public OcrNode updateSettings(OcrNodeCreateRequest request) {
-        return new OcrNode(id, modelKey, request.name(), request.host(), request.port(), request.enabled(),
-                request.participateGlobal(), request.weight(), request.maxConcurrency(),
-                updateStatus(request.enabled()), failureCount, successCount, avgLatencyMs, p95LatencyMs,
-                lastHealthAt, lastSuccessAt, lastFailureAt, lastError, createdAt, request.now());
+        return new OcrNode(id, modelKey, request.deploymentType(), request.name(), request.host(), request.port(),
+                Optional.ofNullable(request.channelKey()), Optional.ofNullable(request.providerModel()),
+                Optional.ofNullable(request.credentialRef()), request.credentialConfigured(), request.enabled(),
+                request.participateGlobal(), request.weight(), request.maxConcurrency(), updateStatus(request.enabled()),
+                failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt,
+                lastError, createdAt, request.now());
     }
 
     /**
@@ -135,9 +217,10 @@ public record OcrNode(
      * @date 2026-06-09
      */
     public OcrNode changeEnabled(boolean enabled, OffsetDateTime now) {
-        return new OcrNode(id, modelKey, name, host, port, enabled, participateGlobal, weight, maxConcurrency,
-                updateStatus(enabled), failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt,
-                lastSuccessAt, lastFailureAt, lastError, createdAt, now);
+        return new OcrNode(id, modelKey, deploymentType, name, host, port, channelKey, providerModel, credentialRef,
+                credentialConfigured, enabled, participateGlobal, weight, maxConcurrency, updateStatus(enabled),
+                failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt,
+                lastError, createdAt, now);
     }
 
     /**
@@ -199,6 +282,98 @@ public record OcrNode(
             throw new IllegalArgumentException("ocr node host must not include scheme, path, query or fragment");
         } else {
             return normalizedHost;
+        }
+    }
+
+    /**
+     * 按部署类型标准化主机。
+     *
+     * @param deploymentType 节点部署类型
+     * @param host 主机文本
+     * @return 标准化后的主机文本
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static String normalizeHost(OcrNodeDeploymentType deploymentType, String host) {
+        if (deploymentType == OcrNodeDeploymentType.OFFLINE) {
+            return validHost(host);
+        } else {
+            return "";
+        }
+    }
+
+    /**
+     * 按部署类型标准化端口。
+     *
+     * @param deploymentType 节点部署类型
+     * @param port 节点端口
+     * @return 标准化后的端口
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static int normalizePort(OcrNodeDeploymentType deploymentType, int port) {
+        if (deploymentType == OcrNodeDeploymentType.OFFLINE) {
+            validatePort(port);
+            return port;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * 按部署类型标准化在线渠道。
+     *
+     * @param deploymentType 节点部署类型
+     * @param channelKey 在线渠道标识
+     * @return 标准化后的在线渠道
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static Optional<String> normalizeChannel(
+            OcrNodeDeploymentType deploymentType,
+            Optional<String> channelKey
+    ) {
+        if (deploymentType == OcrNodeDeploymentType.ONLINE) {
+            String normalizedChannel = requiredText(channelKey.orElse(""), "ocr online channel key is required");
+            validateSupportedChannel(normalizedChannel);
+            return Optional.of(normalizedChannel);
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 按部署类型标准化在线模型名称。
+     *
+     * @param deploymentType 节点部署类型
+     * @param providerModel 在线模型名称
+     * @return 标准化后的在线模型名称
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static Optional<String> normalizeProviderModel(
+            OcrNodeDeploymentType deploymentType,
+            Optional<String> providerModel
+    ) {
+        if (deploymentType == OcrNodeDeploymentType.ONLINE) {
+            return Optional.of(requiredText(providerModel.orElse(""), "ocr online provider model is required"));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 校验在线渠道是否已支持。
+     *
+     * @param channelKey 在线渠道标识
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static void validateSupportedChannel(String channelKey) {
+        if (ALIYUN_BAILIAN_DASHSCOPE.equals(channelKey)) {
+            return;
+        } else {
+            throw new IllegalArgumentException("unsupported ocr online channel key");
         }
     }
 

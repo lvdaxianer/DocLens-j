@@ -43,6 +43,23 @@ class OcrNodeTest {
     }
 
     /**
+     * 在线节点应忽略外部传入的 host 与 port。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void onlineNodeIgnoresHostAndPort() {
+        OcrNode node = OcrNode.create(new OcrNodeCreateRequest("node_online", "paddle_ocr",
+                OcrNodeDeploymentType.ONLINE, "online-1", "https://example.com/ocr", 8080,
+                "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", "sk-test", true, true,
+                true, 100, 4, BASE_TIME));
+
+        assertThat(node.host()).isEmpty();
+        assertThat(node.port()).isZero();
+    }
+
+    /**
      * 创建指定端口的测试请求。
      *
      * @param port OCR 节点端口

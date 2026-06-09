@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
@@ -165,9 +166,14 @@ public class MybatisPlusOcrNodeRepository
         OcrNodeEntity entity = new OcrNodeEntity();
         entity.setId(node.id());
         entity.setModelKey(node.modelKey());
+        entity.setDeploymentType(node.deploymentType().name());
         entity.setName(node.name());
         entity.setHost(node.host());
         entity.setPort(node.port());
+        entity.setChannelKey(node.channelKey().orElse(null));
+        entity.setProviderModel(node.providerModel().orElse(null));
+        entity.setCredentialRef(node.credentialRef().orElse(null));
+        entity.setCredentialConfigured(node.credentialConfigured());
         entity.setEnabled(node.enabled());
         entity.setParticipateGlobal(node.participateGlobal());
         entity.setWeight(node.weight());
@@ -195,12 +201,30 @@ public class MybatisPlusOcrNodeRepository
      * @date 2026-06-08
      */
     private OcrNode toDomain(OcrNodeEntity entity) {
-        return new OcrNode(entity.getId(), entity.getModelKey(), entity.getName(), entity.getHost(),
-                entity.getPort(), entity.isEnabled(), entity.isParticipateGlobal(), entity.getWeight(),
+        return new OcrNode(entity.getId(), entity.getModelKey(), deploymentType(entity), entity.getName(),
+                entity.getHost(), entity.getPort(), Optional.ofNullable(entity.getChannelKey()),
+                Optional.ofNullable(entity.getProviderModel()), Optional.ofNullable(entity.getCredentialRef()),
+                entity.isCredentialConfigured(), entity.isEnabled(), entity.isParticipateGlobal(), entity.getWeight(),
                 entity.getMaxConcurrency(), OcrNodeStatus.valueOf(entity.getStatus()), entity.getFailureCount(),
                 entity.getSuccessCount(), entity.getAvgLatencyMs(), entity.getP95LatencyMs(),
                 Optional.ofNullable(entity.getLastHealthAt()), Optional.ofNullable(entity.getLastSuccessAt()),
                 Optional.ofNullable(entity.getLastFailureAt()), Optional.ofNullable(entity.getLastError()),
                 entity.getCreatedAt(), entity.getUpdatedAt());
+    }
+
+    /**
+     * 读取节点部署类型并兼容历史数据。
+     *
+     * @param entity OCR 节点实体
+     * @return 节点部署类型
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private OcrNodeDeploymentType deploymentType(OcrNodeEntity entity) {
+        if (entity.getDeploymentType() == null || entity.getDeploymentType().isBlank()) {
+            return OcrNodeDeploymentType.OFFLINE;
+        } else {
+            return OcrNodeDeploymentType.valueOf(entity.getDeploymentType());
+        }
     }
 }

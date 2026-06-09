@@ -26,6 +26,16 @@ const failedRate = computed(() => {
     return '0.0%'
   }
 })
+
+const endpointLabel = computed(() => {
+  if (props.node?.deployment_type === 'ONLINE') {
+    return `${props.node.channel_key || '在线渠道'} · ${props.node.provider_model || '未配置模型'}`
+  } else if (props.node) {
+    return `${props.node.host}:${props.node.port}`
+  } else {
+    return ''
+  }
+})
 </script>
 
 <template>
@@ -38,8 +48,8 @@ const failedRate = computed(() => {
             <strong>{{ displayModelName({ modelKey: node.model_key }) }}</strong>
           </div>
           <div>
-            <span>地址</span>
-            <strong>{{ node.host }}:{{ node.port }}</strong>
+            <span>{{ node.deployment_type === 'ONLINE' ? '渠道' : '地址' }}</span>
+            <strong>{{ endpointLabel }}</strong>
           </div>
           <div>
             <span>状态</span>
@@ -75,6 +85,14 @@ const failedRate = computed(() => {
         <section class="ocr-node-detail__section">
           <h2>运行指标</h2>
           <dl class="ocr-node-detail__pairs">
+            <div>
+              <dt>部署类型</dt>
+              <dd>{{ node.deployment_type === 'ONLINE' ? '在线节点' : '离线节点' }}</dd>
+            </div>
+            <div v-if="node.deployment_type === 'ONLINE'">
+              <dt>密钥状态</dt>
+              <dd>{{ node.credential_configured ? '已配置' : '未配置' }}</dd>
+            </div>
             <div>
               <dt>排队图片</dt>
               <dd>{{ formatNumber(node.queued_images) }}</dd>

@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
@@ -73,13 +74,44 @@ public class OcrHealthChecker {
      * @date 2026-06-09
      */
     public boolean checkNode(OcrNode node) {
-        boolean healthy = healthClient.isHealthy(node);
+        boolean healthy = isHealthy(node);
         if (healthy) {
             nodeRepository.update(successNode(node));
         } else {
             nodeRepository.update(failedNode(node, "health check failed"));
         }
         return healthy;
+    }
+
+    /**
+     * 按节点部署类型执行健康判断。
+     *
+     * @param node OCR 节点
+     * @return 节点是否健康
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private boolean isHealthy(OcrNode node) {
+        if (node.deploymentType() == OcrNodeDeploymentType.ONLINE) {
+            return onlineConfigurationReady(node);
+        } else {
+            return healthClient.isHealthy(node);
+        }
+    }
+
+    /**
+     * 校验在线节点配置是否足以参与调度。
+     *
+     * @param node OCR 节点
+     * @return 配置是否完整
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private boolean onlineConfigurationReady(OcrNode node) {
+        return node.channelKey().isPresent()
+                && node.providerModel().isPresent()
+                && node.credentialConfigured()
+                && node.credentialRef().isPresent();
     }
 
     /**
@@ -238,9 +270,10 @@ public class OcrHealthChecker {
             Optional<String> errorMessage
     ) {
         OffsetDateTime now = OffsetDateTime.now();
-        return new OcrNode(node.id(), node.modelKey(), node.name(), node.host(), node.port(), node.enabled(),
-                node.participateGlobal(), node.weight(), node.maxConcurrency(), status, failureCount, successCount,
-                node.avgLatencyMs(), node.p95LatencyMs(), Optional.of(now), successAt(successCount, now),
+        return new OcrNode(node.id(), node.modelKey(), node.deploymentType(), node.name(), node.host(), node.port(),
+                node.channelKey(), node.providerModel(), node.credentialRef(), node.credentialConfigured(),
+                node.enabled(), node.participateGlobal(), node.weight(), node.maxConcurrency(), status, failureCount,
+                successCount, node.avgLatencyMs(), node.p95LatencyMs(), Optional.of(now), successAt(successCount, now),
                 failureAt(failureCount, now), errorMessage, node.createdAt(), now);
     }
 
