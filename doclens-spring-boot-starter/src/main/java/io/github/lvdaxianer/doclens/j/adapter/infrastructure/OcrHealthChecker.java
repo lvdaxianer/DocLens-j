@@ -7,7 +7,6 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -58,7 +57,7 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     public void checkOnce() {
-        List<Callable<Void>> tasks = nodeRepository.listEnabled().stream()
+        List<Runnable> tasks = nodeRepository.listEnabled().stream()
                 .filter(node -> node.status() != OcrNodeStatus.DISABLED)
                 .map(this::healthTask)
                 .toList();
@@ -122,11 +121,8 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private Callable<Void> healthTask(OcrNode node) {
-        return () -> {
-            checkNode(node);
-            return null;
-        };
+    private Runnable healthTask(OcrNode node) {
+        return () -> checkNode(node);
     }
 
     /**
@@ -137,13 +133,8 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private List<Future<Void>> submitTasks(List<Callable<Void>> tasks) {
-        try {
-            return healthExecutor.invokeAll(tasks);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("OCR health check interrupted", ex);
-        }
+    private List<Future<?>> submitTasks(List<Runnable> tasks) {
+        return tasks.stream().map(healthExecutor::submit).toList();
     }
 
     /**
@@ -153,7 +144,7 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private void waitForTasks(List<Future<Void>> futures) {
+    private void waitForTasks(List<Future<?>> futures) {
         futures.forEach(this::waitForTask);
     }
 
@@ -164,7 +155,7 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private void waitForTask(Future<Void> future) {
+    private void waitForTask(Future<?> future) {
         try {
             future.get();
         } catch (InterruptedException ex) {

@@ -7,10 +7,13 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,6 +30,8 @@ import org.junit.jupiter.api.Test;
 class OcrHealthCheckerTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T10:00:00+08:00");
+    private static final Path HEALTH_CHECKER_SOURCE = Path.of("src/main/java/io/github/lvdaxianer/doclens/j/"
+            + "adapter/infrastructure/OcrHealthChecker.java");
 
     /**
      * UP 节点连续健康检查失败后应变为 DOWN。
@@ -122,6 +127,19 @@ class OcrHealthCheckerTest {
         assertThat(context.healthClient.checkedNodeIds).isEmpty();
         assertThat(context.repository.findById("node-online")).get().extracting(OcrNode::status)
                 .isEqualTo(OcrNodeStatus.UP);
+    }
+
+    /**
+     * 健康检查器生产代码不应通过 return null 适配异步任务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void healthCheckerSourceDoesNotReturnNullFromAsyncTask() throws IOException {
+        String source = Files.readString(HEALTH_CHECKER_SOURCE);
+
+        assertThat(source).doesNotContain("return null;");
     }
 
     /**
