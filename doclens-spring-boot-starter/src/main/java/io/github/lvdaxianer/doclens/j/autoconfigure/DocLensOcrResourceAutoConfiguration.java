@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrGovernanceConfigService;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequestQueue;
@@ -10,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingDependencies
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrGovernanceConfigRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
@@ -133,17 +135,39 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
+    @ConditionalOnBean(OcrGovernanceConfigRepository.class)
+    @ConditionalOnMissingBean
+    OcrGovernanceConfigService ocrGovernanceConfigService(
+            OcrGovernanceConfigRepository repository,
+            DocLensSpringProperties properties
+    ) {
+        return new OcrGovernanceConfigService(repository, new OcrHealthGovernance(properties.ocr().failureThreshold(),
+                properties.ocr().probeIntervalSeconds(), properties.ocr().circuitOpenSeconds(),
+                properties.ocr().recoverySuccessThreshold(), properties.ocr().manualRecoveryAttempts()));
+    }
+
+    /**
+     * 创建 OCR 健康检查器。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param healthClient OCR 健康检查客户端
+     * @param healthExecutor OCR 健康检查线程池
+     * @param governanceConfigService OCR 全局治理配置服务
+     * @return OCR 健康检查器
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
+    @Bean
     @ConditionalOnBean({OcrNodeRepository.class, OcrHealthClient.class})
     @ConditionalOnMissingBean
     OcrHealthChecker ocrHealthChecker(
             OcrNodeRepository nodeRepository,
             OcrHealthClient healthClient,
             @Qualifier("doclensOcrHealthExecutor") ExecutorService healthExecutor,
-            DocLensSpringProperties properties
+            OcrGovernanceConfigService governanceConfigService
     ) {
         return new OcrHealthChecker(nodeRepository, healthClient, healthExecutor,
-                new OcrHealthCheckProperties(properties.ocr().failureThreshold(),
-                        properties.ocr().recoverySuccessThreshold(), properties.ocr().circuitOpenSeconds()));
+                governanceConfigService::currentGovernance, java.time.OffsetDateTime::now);
     }
 
     /**
@@ -177,10 +201,10 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrHealthChecker healthChecker,
             OcrRuntimeNodePool nodePool,
             @Qualifier("doclensOcrHealthSchedulerExecutor") ScheduledExecutorService schedulerExecutor,
-            DocLensSpringProperties properties
+            OcrGovernanceConfigService governanceConfigService
     ) {
         return new OcrHealthCheckScheduler(healthChecker, nodePool, schedulerExecutor,
-                properties.ocr().probeIntervalSeconds());
+                () -> governanceConfigService.currentGovernance().probeIntervalSeconds());
     }
 
     /**
@@ -214,9 +238,10 @@ public class DocLensOcrResourceAutoConfiguration {
     OcrManualRecoveryService ocrManualRecoveryService(
             OcrNodeRepository nodeRepository,
             OcrHealthChecker healthChecker,
-            DocLensSpringProperties properties
+            OcrGovernanceConfigService governanceConfigService
     ) {
-        return new OcrManualRecoveryService(nodeRepository, healthChecker, properties.ocr().manualRecoveryAttempts());
+        return new OcrManualRecoveryService(nodeRepository, healthChecker,
+                governanceConfigService::currentGovernance, java.time.OffsetDateTime::now);
     }
 
     /**

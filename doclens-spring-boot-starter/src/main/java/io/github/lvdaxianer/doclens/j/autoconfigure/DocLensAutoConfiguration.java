@@ -7,7 +7,9 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.WeightedCapacityOcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeCallRepository;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrGovernanceConfigRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrGovernanceConfigMapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeCallMapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeMapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
@@ -68,6 +70,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         LlmMarkdownConfigMapper.class,
         OcrEventMapper.class,
         OcrResultMapper.class,
+        OcrGovernanceConfigMapper.class,
         OcrNodeMapper.class,
         OcrNodeCallMapper.class
 }, annotationClass = Mapper.class)
@@ -80,6 +83,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         MybatisPlusLlmMarkdownConfigRepository.class,
         MybatisPlusOcrEventRepository.class,
         MybatisPlusOcrResultRepository.class,
+        MybatisPlusOcrGovernanceConfigRepository.class,
         MybatisPlusOcrNodeRepository.class,
         MybatisPlusOcrNodeCallRepository.class,
         OcrRuntimeNodePool.class,

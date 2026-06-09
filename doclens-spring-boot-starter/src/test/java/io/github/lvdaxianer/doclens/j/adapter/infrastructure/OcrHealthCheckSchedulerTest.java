@@ -188,27 +188,15 @@ class OcrHealthCheckSchedulerTest {
             super(1);
         }
 
-        /**
-         * 记录固定延迟任务注册次数。
-         *
-         * @param command 周期任务
-         * @param initialDelay 首次延迟
-         * @param delay 间隔延迟
-         * @param unit 时间单位
-         * @return 调度任务句柄
-         * @author lvdaxianerplus
-         * @date 2026-06-09
-         */
         @Override
-        public ScheduledFuture<?> scheduleWithFixedDelay(
+        public ScheduledFuture<?> schedule(
                 Runnable command,
-                long initialDelay,
                 long delay,
                 TimeUnit unit
         ) {
             scheduleCount.incrementAndGet();
-            return super.scheduleWithFixedDelay(() -> {
-            }, initialDelay, delay, unit);
+            return super.schedule(() -> {
+            }, delay, unit);
         }
 
         /**

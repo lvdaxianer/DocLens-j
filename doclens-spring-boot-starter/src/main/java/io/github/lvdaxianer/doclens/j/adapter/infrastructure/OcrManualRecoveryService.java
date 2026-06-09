@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
@@ -21,7 +22,7 @@ public class OcrManualRecoveryService {
 
     private final OcrNodeRepository nodeRepository;
     private final OcrHealthChecker healthChecker;
-    private final int manualRecoveryAttempts;
+    private final Supplier<OcrHealthGovernance> governanceSupplier;
     private final Supplier<OffsetDateTime> nowSupplier;
 
     /**
@@ -38,7 +39,12 @@ public class OcrManualRecoveryService {
             OcrHealthChecker healthChecker,
             int manualRecoveryAttempts
     ) {
-        this(nodeRepository, healthChecker, manualRecoveryAttempts, OffsetDateTime::now);
+        this(nodeRepository, healthChecker, () -> new OcrHealthGovernance(
+                OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD,
+                OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS,
+                OcrHealthGovernance.DEFAULT_CIRCUIT_OPEN_SECONDS,
+                OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD,
+                manualRecoveryAttempts), OffsetDateTime::now);
     }
 
     /**
@@ -57,9 +63,33 @@ public class OcrManualRecoveryService {
             int manualRecoveryAttempts,
             Supplier<OffsetDateTime> nowSupplier
     ) {
+        this(nodeRepository, healthChecker, () -> new OcrHealthGovernance(
+                OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD,
+                OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS,
+                OcrHealthGovernance.DEFAULT_CIRCUIT_OPEN_SECONDS,
+                OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD,
+                manualRecoveryAttempts), nowSupplier);
+    }
+
+    /**
+     * 创建读取运行时治理配置的 OCR 节点手动恢复服务。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param healthChecker OCR 健康检查器
+     * @param governanceSupplier 当前治理配置提供器
+     * @param nowSupplier 当前时间提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public OcrManualRecoveryService(
+            OcrNodeRepository nodeRepository,
+            OcrHealthChecker healthChecker,
+            Supplier<OcrHealthGovernance> governanceSupplier,
+            Supplier<OffsetDateTime> nowSupplier
+    ) {
         this.nodeRepository = nodeRepository;
         this.healthChecker = healthChecker;
-        this.manualRecoveryAttempts = manualRecoveryAttempts;
+        this.governanceSupplier = governanceSupplier;
         this.nowSupplier = nowSupplier;
     }
 
@@ -75,8 +105,9 @@ public class OcrManualRecoveryService {
         OcrNode recoveryNode = markManualRecoveryStarted(node);
         int attempts = 0;
         boolean recovered = false;
-        LOGGER.info("[OCR手动恢复] 开始执行节点手动恢复, nodeId={}, attempts={}", node.id(), manualRecoveryAttempts);
-        while (attempts < manualRecoveryAttempts && !recovered) {
+        int maxAttempts = Math.max(1, governanceSupplier.get().manualRecoveryAttempts());
+        LOGGER.info("[OCR手动恢复] 开始执行节点手动恢复, nodeId={}, attempts={}", node.id(), maxAttempts);
+        while (attempts < maxAttempts && !recovered) {
             attempts++;
             boolean probeHealthy = healthChecker.checkNodeIgnoringCircuitWindow(recoveryNode);
             recoveryNode = reloadNode(node.id());

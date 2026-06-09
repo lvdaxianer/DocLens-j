@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
@@ -27,7 +28,7 @@ public class OcrHealthChecker {
     private final OcrNodeRepository nodeRepository;
     private final OcrHealthClient healthClient;
     private final ExecutorService healthExecutor;
-    private final OcrHealthCheckProperties properties;
+    private final Supplier<OcrHealthGovernance> governanceSupplier;
     private final Supplier<OffsetDateTime> nowSupplier;
 
     /**
@@ -46,7 +47,7 @@ public class OcrHealthChecker {
             ExecutorService healthExecutor,
             OcrHealthCheckProperties properties
     ) {
-        this(nodeRepository, healthClient, healthExecutor, properties, OffsetDateTime::now);
+        this(nodeRepository, healthClient, healthExecutor, () -> toGovernance(properties), OffsetDateTime::now);
     }
 
     /**
@@ -67,10 +68,31 @@ public class OcrHealthChecker {
             OcrHealthCheckProperties properties,
             Supplier<OffsetDateTime> nowSupplier
     ) {
+        this(nodeRepository, healthClient, healthExecutor, () -> toGovernance(properties), nowSupplier);
+    }
+
+    /**
+     * 创建读取运行时治理配置的 OCR 健康检查器。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param healthClient OCR 健康检查客户端
+     * @param healthExecutor OCR 健康检查线程池
+     * @param governanceSupplier 当前治理配置提供器
+     * @param nowSupplier 当前时间提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public OcrHealthChecker(
+            OcrNodeRepository nodeRepository,
+            OcrHealthClient healthClient,
+            ExecutorService healthExecutor,
+            Supplier<OcrHealthGovernance> governanceSupplier,
+            Supplier<OffsetDateTime> nowSupplier
+    ) {
         this.nodeRepository = nodeRepository;
         this.healthClient = healthClient;
         this.healthExecutor = healthExecutor;
-        this.properties = properties;
+        this.governanceSupplier = governanceSupplier;
         this.nowSupplier = nowSupplier;
     }
 
@@ -248,12 +270,13 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     private OcrNode failedNode(OcrNode node, String errorMessage, OffsetDateTime now) {
+        OcrHealthGovernance governance = governance();
         long failureCount = node.failureCount() + 1;
-        OcrNodeStatus status = failureStatus(failureCount, node);
+        OcrNodeStatus status = failureStatus(failureCount, node, governance);
         LOGGER.warn("[OCR健康检查] 节点健康检查失败, nodeId={}, modelKey={}, error={}",
                 node.id(), node.modelKey(), errorMessage);
-        Optional<OffsetDateTime> circuitOpenUntil = failureCount >= Math.max(1, properties.healthFailureThreshold())
-                ? Optional.of(now.plusSeconds(properties.circuitOpenSeconds()))
+        Optional<OffsetDateTime> circuitOpenUntil = failureCount >= Math.max(1, governance.failureThreshold())
+                ? Optional.of(now.plusSeconds(governance.circuitOpenSeconds()))
                 : node.circuitOpenUntil();
         return replaceHealth(node, status, failureCount, 0L, Optional.of(errorMessage), circuitOpenUntil, now);
     }
@@ -266,8 +289,8 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private OcrNodeStatus failureStatus(long failureCount, OcrNode node) {
-        if (failureCount >= Math.max(1, properties.healthFailureThreshold())) {
+    private OcrNodeStatus failureStatus(long failureCount, OcrNode node, OcrHealthGovernance governance) {
+        if (failureCount >= Math.max(1, governance.failureThreshold())) {
             return OcrNodeStatus.DOWN;
         } else {
             return node.status();
@@ -283,7 +306,7 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     private boolean reachedRecoveryThreshold(OcrNode node) {
-        return node.successCount() + 1 >= Math.max(1, properties.recoverySuccessThreshold());
+        return node.successCount() + 1 >= Math.max(1, governance().recoverySuccessThreshold());
     }
 
     /**
@@ -330,6 +353,31 @@ public class OcrHealthChecker {
         } else {
             return node.circuitOpenUntil().isEmpty() || !node.circuitOpenUntil().get().isAfter(now);
         }
+    }
+
+    /**
+     * 读取当前生效的 OCR 治理配置。
+     *
+     * @return 当前治理配置
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrHealthGovernance governance() {
+        return governanceSupplier.get();
+    }
+
+    /**
+     * 将旧版健康检查属性适配为治理配置。
+     *
+     * @param properties 健康检查属性
+     * @return 治理配置
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static OcrHealthGovernance toGovernance(OcrHealthCheckProperties properties) {
+        return new OcrHealthGovernance(properties.healthFailureThreshold(),
+                OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS, properties.circuitOpenSeconds(),
+                properties.recoverySuccessThreshold(), OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS);
     }
 
     /**
