@@ -57,7 +57,7 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
      */
     @Test
     void repositoryPersistsCircuitWindowAndRecoveryCounters() {
-        OcrNode node = sampleNode();
+        OcrNode node = sampleNode("node-health-1");
 
         repository.save(node);
 
@@ -72,14 +72,36 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
     }
 
     /**
+     * 仓储更新时应允许清空熔断窗口与最近错误。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void repositoryUpdateClearsCircuitWindowAndLastError() {
+        OcrNode node = sampleNode("node-health-2");
+        repository.save(node);
+
+        OcrNode recovered = node.updateHealthGovernance(0L, 3L, Optional.of(BASE_TIME.plusMinutes(10)),
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(BASE_TIME.plusMinutes(10)),
+                BASE_TIME.plusMinutes(10));
+        repository.update(recovered);
+
+        OcrNode reloaded = repository.findById(node.id()).orElseThrow();
+        assertThat(reloaded.circuitOpenUntil()).isEmpty();
+        assertThat(reloaded.lastError()).isEmpty();
+        assertThat(reloaded.lastManualRecoveryAt()).contains(BASE_TIME.plusMinutes(10));
+    }
+
+    /**
      * 创建带健康治理字段的测试节点。
      *
      * @return OCR 节点
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private OcrNode sampleNode() {
-        return new OcrNode("node-health-1", "paddle_health", OcrNodeDeploymentType.OFFLINE, "node-health-1",
+    private OcrNode sampleNode(String nodeId) {
+        return new OcrNode(nodeId, "paddle_health", OcrNodeDeploymentType.OFFLINE, nodeId,
                 "10.100.30.216", 8081, Optional.empty(), Optional.empty(), Optional.empty(), false,
                 true, true, 50, 10, OcrNodeStatus.DOWN, 2L, 1L, 120L, 200L, Optional.of(BASE_TIME),
                 Optional.of(BASE_TIME.minusMinutes(5)), Optional.of(LAST_FAILURE_AT), Optional.of("timeout"),

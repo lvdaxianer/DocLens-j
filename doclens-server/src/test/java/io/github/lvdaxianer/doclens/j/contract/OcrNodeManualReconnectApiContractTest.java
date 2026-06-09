@@ -75,7 +75,8 @@ class OcrNodeManualReconnectApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attempts").value(3))
                 .andExpect(jsonPath("$.healthy").value(true))
-                .andExpect(jsonPath("$.status").value("UP"));
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.circuit_open_until").value(""));
     }
 
     /**
