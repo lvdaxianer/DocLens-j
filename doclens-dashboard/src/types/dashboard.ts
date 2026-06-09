@@ -42,7 +42,9 @@ export interface DashboardOcrResources {
   global_inflight_images: number
   busiest_node: {
     model_key?: string
+    model_name?: string
     node_id?: string
+    node_name?: string
     inflight_images?: number
   }
   thread_pools: {
@@ -115,13 +117,17 @@ export interface DashboardSummary {
 export interface BatchOcrRoutePolicy {
   routing_mode: string
   model_key: string
+  model_name?: string
   node_id: string
+  node_name?: string
   load_balance_strategy: string
 }
 
 export interface BatchOcrHitNode {
   model_key: string
+  model_name?: string
   node_id: string
+  node_name?: string
   image_count: number
 }
 

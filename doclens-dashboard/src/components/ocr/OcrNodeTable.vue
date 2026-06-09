@@ -5,6 +5,7 @@ import { NButton, NIcon, NPopconfirm, NSwitch, NTag } from 'naive-ui'
 
 import type { OcrNode, OcrNodeStatus } from '@/types/ocrResources'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
+import { displayModelName, displayNodeName } from '@/utils/ocrDisplayRules'
 
 const props = defineProps<{
   nodes: OcrNode[]
@@ -106,11 +107,11 @@ function toggleEnabled(node: OcrNode, enabled: boolean): void {
         </thead>
         <tbody>
           <tr v-for="node in sortedNodes" :key="node.id">
-            <td>{{ node.model_key }}</td>
+            <td>{{ displayModelName({ modelKey: node.model_key }) }}</td>
             <td>
               <button class="ocr-node-table__name" type="button" @click="emit('detail', node)">
                 <NIcon :component="Activity" />
-                <span>{{ node.name }}</span>
+                <span>{{ displayNodeName({ id: node.id, name: node.name }) }}</span>
               </button>
             </td>
             <td>{{ node.host }}:{{ node.port }}</td>
@@ -197,12 +198,13 @@ function toggleEnabled(node: OcrNode, enabled: boolean): void {
 }
 
 .ocr-node-table__scroller {
+  max-width: 100%;
   overflow-x: auto;
 }
 
 .ocr-node-table__grid {
   width: 100%;
-  min-width: 1280px;
+  min-width: 1180px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -245,5 +247,13 @@ function toggleEnabled(node: OcrNode, enabled: boolean): void {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+@media (max-width: 1440px) {
+  .ocr-node-table__grid th,
+  .ocr-node-table__grid td {
+    padding: 9px 6px;
+    font-size: 11px;
+  }
 }
 </style>

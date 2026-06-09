@@ -35,6 +35,7 @@ const { selectedBatch, detailState } = storeToRefs(store)
 const COMPLETED_STATUS = 'completed'
 const FAILED_STATUS = 'failed'
 const PROGRESS_BAR_HEIGHT = 12
+const DOCUMENT_TABLE_SCROLL_X = 1120
 
 const batchId = computed(() => String(route.params.batchId ?? ''))
 const {
@@ -195,6 +196,7 @@ useAutoRefresh(refresh)
         :loading="detailState.loading"
         :pagination="{ pageSize: 8 }"
         :row-key="(row) => row.document_id"
+        :scroll-x="DOCUMENT_TABLE_SCROLL_X"
         size="small"
       />
       <DocumentResultDrawer

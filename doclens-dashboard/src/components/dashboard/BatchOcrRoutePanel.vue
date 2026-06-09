@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BatchOcrHitNode, BatchOcrRoutePolicy } from '@/types/dashboard'
 import { formatNumber } from '@/utils/formatters'
+import { displayModelName, displayNodeName, displayNodeSubtitle } from '@/utils/ocrDisplayRules'
 
 defineProps<{
   routePolicy?: BatchOcrRoutePolicy | null
@@ -23,11 +24,11 @@ defineProps<{
       </div>
       <div>
         <dt>OCR 模型</dt>
-        <dd>{{ routePolicy?.model_key || '-' }}</dd>
+        <dd>{{ displayModelName({ modelKey: routePolicy?.model_key, name: routePolicy?.model_name }) }}</dd>
       </div>
       <div>
         <dt>节点</dt>
-        <dd>{{ routePolicy?.node_id || '-' }}</dd>
+        <dd>{{ displayNodeName({ nodeId: routePolicy?.node_id, nodeName: routePolicy?.node_name }) }}</dd>
       </div>
       <div>
         <dt>负载均衡</dt>
@@ -36,8 +37,14 @@ defineProps<{
     </dl>
     <div v-if="hitNodes.length > 0" class="batch-ocr-route__hits">
       <article v-for="node in hitNodes" :key="`${node.model_key}-${node.node_id}`" class="batch-ocr-route__hit">
-        <strong>{{ node.node_id }}</strong>
-        <span>{{ node.model_key }} · {{ formatNumber(node.image_count) }} 张图片</span>
+        <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
+        <span>
+          {{ displayNodeSubtitle({
+            nodeId: node.node_id,
+            modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
+            imageCount: node.image_count
+          }) }}
+        </span>
       </article>
     </div>
     <p v-else class="batch-ocr-route__empty">暂无 OCR 命中节点记录</p>
@@ -84,7 +91,7 @@ defineProps<{
 
 .batch-ocr-route__hits {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
 }
 

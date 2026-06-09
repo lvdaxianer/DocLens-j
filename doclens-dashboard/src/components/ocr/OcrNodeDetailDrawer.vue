@@ -5,6 +5,7 @@ import { NDrawer, NDrawerContent, NIcon, NTag } from 'naive-ui'
 
 import type { OcrNode, OcrNodeCall } from '@/types/ocrResources'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
+import { displayModelName, displayNodeName } from '@/utils/ocrDisplayRules'
 
 const props = defineProps<{
   visible: boolean
@@ -28,13 +29,13 @@ const failedRate = computed(() => {
 </script>
 
 <template>
-  <NDrawer :show="visible" :width="520" @update:show="emit('close')">
-    <NDrawerContent :title="node ? node.name : 'OCR 节点详情'" closable>
+  <NDrawer :show="visible" :width="520" class="ocr-node-detail-drawer" @update:show="emit('close')">
+    <NDrawerContent :title="node ? displayNodeName({ id: node.id, name: node.name }) : 'OCR 节点详情'" closable>
       <section v-if="node" class="ocr-node-detail">
         <div class="ocr-node-detail__summary">
           <div>
             <span>模型</span>
-            <strong>{{ node.model_key }}</strong>
+            <strong>{{ displayModelName({ modelKey: node.model_key }) }}</strong>
           </div>
           <div>
             <span>地址</span>
@@ -137,6 +138,7 @@ const failedRate = computed(() => {
 
 .ocr-node-detail {
   gap: 16px;
+  min-width: 0;
 }
 
 .ocr-node-detail__summary,
@@ -237,6 +239,7 @@ const failedRate = computed(() => {
 
 .ocr-node-detail__call {
   display: flex;
+  min-width: 0;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--rail-border);
@@ -252,5 +255,17 @@ const failedRate = computed(() => {
 .ocr-node-detail__call span {
   color: var(--ink-muted);
   font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  :deep(.ocr-node-detail-drawer.n-drawer) {
+    width: min(520px, 100vw) !important;
+  }
+
+  .ocr-node-detail__summary,
+  .ocr-node-detail__metrics,
+  .ocr-node-detail__pairs {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -5,6 +5,7 @@ import { NIcon } from 'naive-ui'
 
 import type { DashboardOcrResources } from '@/types/dashboard'
 import { formatNumber } from '@/utils/formatters'
+import { displayNodeName } from '@/utils/ocrDisplayRules'
 
 const props = defineProps<{
   metrics?: DashboardOcrResources | null
@@ -54,10 +55,12 @@ const cards = computed(() => [
 ])
 
 const busiestNodeNote = computed(() => {
-  const nodeId = props.metrics?.busiest_node.node_id
-  if (nodeId) {
-    return `${nodeId} · ${formatNumber(props.metrics?.busiest_node.inflight_images)} 张`
+  const busiestNode = props.metrics?.busiest_node
+  if (busiestNode?.node_id) {
+    // 有繁忙节点时优先展示节点名称，内部 ID 仅作为缺省值。
+    return `${displayNodeName({ nodeId: busiestNode.node_id, nodeName: busiestNode.node_name })} · ${formatNumber(busiestNode.inflight_images)} 张`
   } else {
+    // 没有繁忙节点时展示稳定空态。
     return '暂无繁忙节点'
   }
 })
@@ -145,7 +148,13 @@ const busiestNodeNote = computed(() => {
   --signal-muted: var(--surface-inset);
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1440px) {
+  .ocr-resource-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
   .ocr-resource-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
