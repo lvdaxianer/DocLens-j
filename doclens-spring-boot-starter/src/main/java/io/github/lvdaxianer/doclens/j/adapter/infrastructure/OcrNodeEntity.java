@@ -41,6 +41,11 @@ public class OcrNodeEntity {
     private OffsetDateTime lastSuccessAt;
     private OffsetDateTime lastFailureAt;
     private String lastError;
+    private long consecutiveFailureCount;
+    private long recoverySuccessCount;
+    private OffsetDateTime lastHealthCheckAt;
+    private OffsetDateTime circuitOpenUntil;
+    private OffsetDateTime lastManualRecoveryAt;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

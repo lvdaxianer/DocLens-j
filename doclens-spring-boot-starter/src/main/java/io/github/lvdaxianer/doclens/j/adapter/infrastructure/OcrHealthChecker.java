@@ -265,7 +265,8 @@ public class OcrHealthChecker {
                 node.channelKey(), node.providerModel(), node.credentialRef(), node.credentialConfigured(),
                 node.enabled(), node.participateGlobal(), node.weight(), node.maxConcurrency(), status, failureCount,
                 successCount, node.avgLatencyMs(), node.p95LatencyMs(), Optional.of(now), successAt(successCount, now),
-                failureAt(failureCount, now), errorMessage, node.createdAt(), now);
+                failureAt(failureCount, now), errorMessage, node.circuitOpenUntil(), node.lastManualRecoveryAt(),
+                node.createdAt(), now);
     }
 
     /**

@@ -29,6 +29,8 @@ import java.util.Optional;
  * @param lastSuccessAt 最近成功时间
  * @param lastFailureAt 最近失败时间
  * @param lastError 最近错误
+ * @param circuitOpenUntil 熔断结束时间
+ * @param lastManualRecoveryAt 最近手动恢复时间
  * @param createdAt 创建时间
  * @param updatedAt 更新时间
  * @author lvdaxianerplus
@@ -58,6 +60,8 @@ public record OcrNode(
         Optional<OffsetDateTime> lastSuccessAt,
         Optional<OffsetDateTime> lastFailureAt,
         Optional<String> lastError,
+        Optional<OffsetDateTime> circuitOpenUntil,
+        Optional<OffsetDateTime> lastManualRecoveryAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -117,6 +121,8 @@ public record OcrNode(
         lastSuccessAt = lastSuccessAt == null ? Optional.empty() : lastSuccessAt;
         lastFailureAt = lastFailureAt == null ? Optional.empty() : lastFailureAt;
         lastError = lastError == null ? Optional.empty() : normalize(lastError);
+        circuitOpenUntil = circuitOpenUntil == null ? Optional.empty() : circuitOpenUntil;
+        lastManualRecoveryAt = lastManualRecoveryAt == null ? Optional.empty() : lastManualRecoveryAt;
     }
 
     /**
@@ -170,7 +176,7 @@ public record OcrNode(
         this(id, modelKey, OcrNodeDeploymentType.OFFLINE, name, host, port, Optional.empty(), Optional.empty(),
                 Optional.empty(), false, enabled, participateGlobal, weight, maxConcurrency, status, failureCount,
                 successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt, lastError,
-                createdAt, updatedAt);
+                Optional.empty(), Optional.empty(), createdAt, updatedAt);
     }
 
     /**
@@ -186,8 +192,8 @@ public record OcrNode(
                 request.port(), Optional.ofNullable(request.channelKey()), Optional.ofNullable(request.providerModel()),
                 Optional.ofNullable(request.credentialRef()), request.credentialConfigured(), request.enabled(),
                 request.participateGlobal(), request.weight(), request.maxConcurrency(), statusFor(request.enabled()),
-                0L, 0L, 0L, 0L, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), request.now(),
-                request.now());
+                0L, 0L, 0L, 0L, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.empty(), request.now(), request.now());
     }
 
     /**
@@ -204,7 +210,7 @@ public record OcrNode(
                 Optional.ofNullable(request.credentialRef()), request.credentialConfigured(), request.enabled(),
                 request.participateGlobal(), request.weight(), request.maxConcurrency(), updateStatus(request.enabled()),
                 failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt,
-                lastError, createdAt, request.now());
+                lastError, circuitOpenUntil, lastManualRecoveryAt, createdAt, request.now());
     }
 
     /**
@@ -220,7 +226,38 @@ public record OcrNode(
         return new OcrNode(id, modelKey, deploymentType, name, host, port, channelKey, providerModel, credentialRef,
                 credentialConfigured, enabled, participateGlobal, weight, maxConcurrency, updateStatus(enabled),
                 failureCount, successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt,
-                lastError, createdAt, now);
+                lastError, circuitOpenUntil, lastManualRecoveryAt, createdAt, now);
+    }
+
+    /**
+     * 更新节点健康治理时间窗与计数。
+     *
+     * @param failureCount 连续失败次数
+     * @param successCount 恢复成功次数
+     * @param lastHealthAt 最近健康检查时间
+     * @param lastFailureAt 最近失败时间
+     * @param lastError 最近错误
+     * @param circuitOpenUntil 熔断结束时间
+     * @param lastManualRecoveryAt 最近手动恢复时间
+     * @param now 更新时间
+     * @return 更新后的 OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public OcrNode updateHealthGovernance(
+            long failureCount,
+            long successCount,
+            Optional<OffsetDateTime> lastHealthAt,
+            Optional<OffsetDateTime> lastFailureAt,
+            Optional<String> lastError,
+            Optional<OffsetDateTime> circuitOpenUntil,
+            Optional<OffsetDateTime> lastManualRecoveryAt,
+            OffsetDateTime now
+    ) {
+        return new OcrNode(id, modelKey, deploymentType, name, host, port, channelKey, providerModel, credentialRef,
+                credentialConfigured, enabled, participateGlobal, weight, maxConcurrency, status, failureCount,
+                successCount, avgLatencyMs, p95LatencyMs, lastHealthAt, lastSuccessAt, lastFailureAt, lastError,
+                circuitOpenUntil, lastManualRecoveryAt, createdAt, now);
     }
 
     /**

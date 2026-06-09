@@ -196,7 +196,8 @@ class OcrHealthCheckerTest {
                 created.host(), created.port(), created.channelKey(), created.providerModel(), created.credentialRef(),
                 created.credentialConfigured(), created.enabled(), created.participateGlobal(), created.weight(),
                 created.maxConcurrency(), OcrNodeStatus.RECOVERING, 0L, 1L, 0L, 0L, Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), created.createdAt(), created.updatedAt());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                created.createdAt(), created.updatedAt());
     }
 
     /**

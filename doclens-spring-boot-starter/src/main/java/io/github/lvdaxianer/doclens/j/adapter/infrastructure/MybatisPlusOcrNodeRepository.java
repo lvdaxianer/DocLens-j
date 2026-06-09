@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
+import java.time.OffsetDateTime;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
 import java.util.List;
 import java.util.Optional;
@@ -187,6 +188,11 @@ public class MybatisPlusOcrNodeRepository
         entity.setLastSuccessAt(node.lastSuccessAt().orElse(null));
         entity.setLastFailureAt(node.lastFailureAt().orElse(null));
         entity.setLastError(node.lastError().orElse(null));
+        entity.setConsecutiveFailureCount(node.failureCount());
+        entity.setRecoverySuccessCount(node.successCount());
+        entity.setLastHealthCheckAt(node.lastHealthAt().orElse(null));
+        entity.setCircuitOpenUntil(node.circuitOpenUntil().orElse(null));
+        entity.setLastManualRecoveryAt(node.lastManualRecoveryAt().orElse(null));
         entity.setCreatedAt(node.createdAt());
         entity.setUpdatedAt(node.updatedAt());
         return entity;
@@ -204,12 +210,61 @@ public class MybatisPlusOcrNodeRepository
         return new OcrNode(entity.getId(), entity.getModelKey(), deploymentType(entity), entity.getName(),
                 entity.getHost(), entity.getPort(), Optional.ofNullable(entity.getChannelKey()),
                 Optional.ofNullable(entity.getProviderModel()), Optional.ofNullable(entity.getCredentialRef()),
-                entity.isCredentialConfigured(), entity.isEnabled(), entity.isParticipateGlobal(), entity.getWeight(),
-                entity.getMaxConcurrency(), OcrNodeStatus.valueOf(entity.getStatus()), entity.getFailureCount(),
-                entity.getSuccessCount(), entity.getAvgLatencyMs(), entity.getP95LatencyMs(),
-                Optional.ofNullable(entity.getLastHealthAt()), Optional.ofNullable(entity.getLastSuccessAt()),
+                entity.isCredentialConfigured(), entity.isEnabled(), entity.isParticipateGlobal(),
+                entity.getWeight(), entity.getMaxConcurrency(), OcrNodeStatus.valueOf(entity.getStatus()),
+                failureCount(entity), successCount(entity), entity.getAvgLatencyMs(), entity.getP95LatencyMs(),
+                lastHealthAt(entity), Optional.ofNullable(entity.getLastSuccessAt()),
                 Optional.ofNullable(entity.getLastFailureAt()), Optional.ofNullable(entity.getLastError()),
-                entity.getCreatedAt(), entity.getUpdatedAt());
+                Optional.ofNullable(entity.getCircuitOpenUntil()),
+                Optional.ofNullable(entity.getLastManualRecoveryAt()), entity.getCreatedAt(), entity.getUpdatedAt());
+    }
+
+    /**
+     * 读取连续失败次数并兼容历史列。
+     *
+     * @param entity OCR 节点实体
+     * @return 连续失败次数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private long failureCount(OcrNodeEntity entity) {
+        if (entity.getConsecutiveFailureCount() > 0) {
+            return entity.getConsecutiveFailureCount();
+        } else {
+            return entity.getFailureCount();
+        }
+    }
+
+    /**
+     * 读取恢复成功次数并兼容历史列。
+     *
+     * @param entity OCR 节点实体
+     * @return 恢复成功次数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private long successCount(OcrNodeEntity entity) {
+        if (entity.getRecoverySuccessCount() > 0) {
+            return entity.getRecoverySuccessCount();
+        } else {
+            return entity.getSuccessCount();
+        }
+    }
+
+    /**
+     * 读取最近健康检查时间并兼容历史列。
+     *
+     * @param entity OCR 节点实体
+     * @return 最近健康检查时间
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private Optional<OffsetDateTime> lastHealthAt(OcrNodeEntity entity) {
+        if (entity.getLastHealthCheckAt() != null) {
+            return Optional.of(entity.getLastHealthCheckAt());
+        } else {
+            return Optional.ofNullable(entity.getLastHealthAt());
+        }
     }
 
     /**
