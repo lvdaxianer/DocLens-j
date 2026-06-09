@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.contract;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -11,9 +12,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigSettings;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -289,6 +292,29 @@ class LlmMarkdownConfigApiContractTest {
         assertThat(response)
                 .doesNotContain("sk-test-secret")
                 .doesNotContain("api_key");
+    }
+
+    /**
+     * 测试配置时 API Key 留空应沿用已保存旧密钥。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void testConfigKeepsSavedCredentialWhenApiKeyBlank() throws Exception {
+        saveConfig("https://llm.example.com/v1/chat/completions", "markdown-model", "sk-saved-secret");
+        given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
+
+        mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson("https://llm.example.com/v1/chat/completions", "markdown-model", "")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.healthy").value(true));
+
+        ArgumentCaptor<LlmMarkdownConfigSettings> captor = ArgumentCaptor.forClass(LlmMarkdownConfigSettings.class);
+        verify(configTester).test(captor.capture());
+        assertThat(captor.getValue().apiKey()).isEqualTo("sk-saved-secret");
     }
 
     /**

@@ -60,6 +60,21 @@ public class LlmMarkdownConfigService {
     }
 
     /**
+     * 构建用于测试连通性的配置参数。
+     *
+     * @param settings 原始测试参数
+     * @return 规整并补齐凭证后的测试参数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public LlmMarkdownConfigSettings settingsForTest(LlmMarkdownConfigSettings settings) {
+        LlmMarkdownConfig current = getConfig();
+        LlmMarkdownConfigSettings normalized = normalizeSettings(settings);
+        return new LlmMarkdownConfigSettings(normalized.url(), normalized.model(),
+                credentialForUpdate(current, normalized.apiKey()));
+    }
+
+    /**
      * 校验并规整 LLM Markdown 配置参数。
      *
      * @param settings 原始配置参数

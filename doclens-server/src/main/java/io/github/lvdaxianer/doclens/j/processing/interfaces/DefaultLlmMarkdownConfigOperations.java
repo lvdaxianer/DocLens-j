@@ -67,6 +67,6 @@ public class DefaultLlmMarkdownConfigOperations implements LlmMarkdownConfigOper
      */
     @Override
     public LlmMarkdownConfigTestResponse testConfig(LlmMarkdownConfigRequest request) {
-        return configTester.test(request.toSettings());
+        return configTester.test(configService.settingsForTest(request.toSettings()));
     }
 }
