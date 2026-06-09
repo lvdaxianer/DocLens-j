@@ -5,7 +5,8 @@ import {
   createDefaultOcrNodeForm,
   createOcrNodePayload,
   fillOcrNodeFormFromNode,
-  isOcrNodeFormSubmittable
+  isOcrNodeFormSubmittable,
+  shouldShowOcrModelSelect
 } from '../ocrNodeFormRules'
 
 test('offline node form submits only host and port endpoint fields', () => {
@@ -49,6 +50,24 @@ test('online node form submits channel model and api key without endpoint fields
     weight: 100,
     max_concurrency: 4
   })
+})
+
+test('online node form hides ocr model select from user flow', () => {
+  assert.equal(shouldShowOcrModelSelect('OFFLINE'), true)
+  assert.equal(shouldShowOcrModelSelect('ONLINE'), false)
+})
+
+test('online node form does not require user selected ocr model', () => {
+  const form = createDefaultOcrNodeForm('')
+
+  form.deploymentType = 'ONLINE'
+  form.name = '阿里百炼 OCR'
+  form.channelKey = 'aliyun_bailian_dashscope'
+  form.providerModel = 'qwen-vl-ocr-2025-11-20'
+  form.apiKey = 'sk-secret'
+
+  assert.equal(isOcrNodeFormSubmittable(form), true)
+  assert.equal(createOcrNodePayload(form).modelKey, 'paddle_ocr')
 })
 
 test('editing online node never hydrates existing api key into form', () => {

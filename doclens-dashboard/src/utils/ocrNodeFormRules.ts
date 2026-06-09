@@ -9,6 +9,7 @@ import type {
 const DEFAULT_PORT = 8080
 const DEFAULT_WEIGHT = 100
 const DEFAULT_MAX_CONCURRENCY = 4
+const COMPATIBLE_ONLINE_MODEL_KEY = 'paddle_ocr'
 export const DASHSCOPE_CHANNEL_KEY: OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
 
 export interface OcrNodeFormState {
@@ -98,6 +99,18 @@ export function isOcrNodeFormSubmittable(form: OcrNodeFormState): boolean {
 }
 
 /**
+ * 判断节点表单是否需要展示 OCR 模型选择。
+ *
+ * @param deploymentType - 节点部署类型
+ * @returns 是否展示 OCR 模型选择
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function shouldShowOcrModelSelect(deploymentType: OcrNodeDeploymentType): boolean {
+  return deploymentType === 'OFFLINE'
+}
+
+/**
  * 创建 OCR 节点提交载荷。
  *
  * @param form - OCR 节点表单状态
@@ -107,7 +120,7 @@ export function isOcrNodeFormSubmittable(form: OcrNodeFormState): boolean {
  */
 export function createOcrNodePayload(form: OcrNodeFormState): OcrNodeSubmitPayload {
   const node = form.deploymentType === 'OFFLINE' ? offlinePayload(form) : onlinePayload(form)
-  return { modelKey: form.modelKey, node }
+  return { modelKey: effectiveModelKey(form), node }
 }
 
 /**
@@ -119,7 +132,27 @@ export function createOcrNodePayload(form: OcrNodeFormState): OcrNodeSubmitPaylo
  * @date 2026-06-09
  */
 function hasBaseFields(form: OcrNodeFormState): boolean {
-  return form.modelKey.trim() !== '' && form.name.trim() !== ''
+  if (form.deploymentType === 'OFFLINE') {
+    return form.modelKey.trim() !== '' && form.name.trim() !== ''
+  } else {
+    return form.name.trim() !== ''
+  }
+}
+
+/**
+ * 获取提交给后端路由的 OCR 模型标识。
+ *
+ * @param form - OCR 节点表单状态
+ * @returns OCR 模型标识
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+function effectiveModelKey(form: OcrNodeFormState): string {
+  if (form.deploymentType === 'OFFLINE') {
+    return form.modelKey
+  } else {
+    return form.modelKey.trim() || COMPATIBLE_ONLINE_MODEL_KEY
+  }
 }
 
 /**

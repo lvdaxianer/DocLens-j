@@ -20,7 +20,8 @@ import {
   createOcrNodePayload,
   DASHSCOPE_CHANNEL_KEY,
   fillOcrNodeFormFromNode,
-  isOcrNodeFormSubmittable
+  isOcrNodeFormSubmittable,
+  shouldShowOcrModelSelect
 } from '@/utils/ocrNodeFormRules'
 
 const props = defineProps<{
@@ -41,6 +42,7 @@ let form = reactive(createDefaultOcrNodeForm(''))
 const title = computed(() => (props.node ? '编辑 OCR 节点' : '新增 OCR 节点'))
 const isEditing = computed(() => Boolean(props.node))
 const modelOptions = computed(() => props.models.map((model) => ({ label: `${model.name} · ${model.model_key}`, value: model.model_key })))
+const hasOcrModelSelect = computed(() => shouldShowOcrModelSelect(form.deploymentType))
 const channelOptions = [
   {
     label: '阿里百炼 DashScope',
@@ -130,7 +132,7 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
             </NRadioButton>
           </NRadioGroup>
         </NFormItem>
-        <NFormItem label="OCR 模型">
+        <NFormItem v-if="hasOcrModelSelect" label="OCR 模型">
           <NSelect v-model:value="form.modelKey" :disabled="isEditing" :options="modelOptions" />
         </NFormItem>
         <NFormItem label="节点名称">
