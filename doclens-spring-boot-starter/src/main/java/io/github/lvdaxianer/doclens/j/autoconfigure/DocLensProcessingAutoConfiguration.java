@@ -9,7 +9,10 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.AsyncBatchProcessingScheduler;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
@@ -84,7 +87,42 @@ public class DocLensProcessingAutoConfiguration {
     }
 
     /**
-     * 创建默认直通 Markdown 后处理器。
+     * 创建 LLM Markdown 配置服务。
+     *
+     * @param configRepository LLM Markdown 配置仓储
+     * @return LLM Markdown 配置服务
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    LlmMarkdownConfigService llmMarkdownConfigService(LlmMarkdownConfigRepository configRepository) {
+        return new LlmMarkdownConfigService(configRepository);
+    }
+
+    /**
+     * 创建支持运行时配置的 Markdown 后处理器。
+     *
+     * @param objectMapper JSON 映射器
+     * @param properties Spring 配置属性
+     * @param configRepository LLM Markdown 配置仓储
+     * @return Markdown 后处理器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    MarkdownPostProcessor markdownPostProcessor(
+            ObjectMapper objectMapper,
+            DocLensSpringProperties properties,
+            LlmMarkdownConfigRepository configRepository
+    ) {
+        MarkdownPostProcessor fallbackProcessor = fallbackMarkdownPostProcessor(objectMapper, properties);
+        return new ConfigurableMarkdownPostProcessor(objectMapper, configRepository, fallbackProcessor);
+    }
+
+    /**
+     * 创建 Spring 配置兜底 Markdown 后处理器。
      *
      * @param objectMapper JSON 映射器
      * @param properties Spring 配置属性
@@ -92,9 +130,7 @@ public class DocLensProcessingAutoConfiguration {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    @Bean
-    @ConditionalOnMissingBean
-    MarkdownPostProcessor markdownPostProcessor(ObjectMapper objectMapper, DocLensSpringProperties properties) {
+    MarkdownPostProcessor fallbackMarkdownPostProcessor(ObjectMapper objectMapper, DocLensSpringProperties properties) {
         DocLensSpringProperties.LlmMarkdownProperties llmMarkdown = properties.llmMarkdown();
         if (isConfigured(llmMarkdown)) {
             // URL 与模型已配置时启用 HTTP LLM Markdown 后处理。

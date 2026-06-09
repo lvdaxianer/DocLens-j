@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,7 +29,7 @@ class DocLensProcessingAutoConfigurationTest {
     @Test
     void createsNoopMarkdownPostProcessorWhenLlmMarkdownIsNotConfigured() {
         MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
-                .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
+                .fallbackMarkdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
                         null, null, null, null, null, null, null, null));
 
         assertThat(processor.process(request()).markdown()).isEqualTo("OCR 文本");
@@ -47,9 +50,26 @@ class DocLensProcessingAutoConfigurationTest {
                 null, null, null, null, llmMarkdown, null);
 
         MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
-                .markdownPostProcessor(new ObjectMapper(), properties);
+                .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
 
         assertThat(processor).isInstanceOf(HttpMarkdownPostProcessor.class);
+    }
+
+    /**
+     * 默认 Markdown 后处理器应支持运行时配置覆盖。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void createsConfigurableMarkdownPostProcessor() {
+        LlmMarkdownConfigRepository repository = new EmptyConfigRepository();
+
+        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+                .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
+                        null, null, null, null, null, null, null, null), repository);
+
+        assertThat(processor).isInstanceOf(ConfigurableMarkdownPostProcessor.class);
     }
 
     /**
@@ -61,5 +81,37 @@ class DocLensProcessingAutoConfigurationTest {
      */
     private MarkdownPostProcessingRequest request() {
         return new MarkdownPostProcessingRequest("doc-1", "demo.txt", Map.of(), "OCR 文本");
+    }
+
+    /**
+     * 空配置仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static final class EmptyConfigRepository implements LlmMarkdownConfigRepository {
+
+        /**
+         * 查询当前配置。
+         *
+         * @return 当前配置
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        @Override
+        public Optional<io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig> find() {
+            return Optional.empty();
+        }
+
+        /**
+         * 保存配置。
+         *
+         * @param config LLM Markdown 配置
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        @Override
+        public void save(io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig config) {
+        }
     }
 }

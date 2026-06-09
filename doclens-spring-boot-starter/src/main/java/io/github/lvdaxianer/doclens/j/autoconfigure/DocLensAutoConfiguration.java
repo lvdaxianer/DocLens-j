@@ -25,7 +25,9 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentJobMapper;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownConfigMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusLlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.OcrEventMapper;
@@ -63,6 +65,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @MapperScan(basePackageClasses = {
         BatchMapper.class,
         DocumentJobMapper.class,
+        LlmMarkdownConfigMapper.class,
         OcrEventMapper.class,
         OcrResultMapper.class,
         OcrNodeMapper.class,
@@ -74,6 +77,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         StubOcrAdapter.class,
         MybatisPlusBatchRepository.class,
         MybatisPlusDocumentJobRepository.class,
+        MybatisPlusLlmMarkdownConfigRepository.class,
         MybatisPlusOcrEventRepository.class,
         MybatisPlusOcrResultRepository.class,
         MybatisPlusOcrNodeRepository.class,
