@@ -59,7 +59,7 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
             processor.process(new MarkdownPostProcessingRequest(TEST_DOCUMENT_ID, TEST_FILE_NAME, Map.of(), TEST_OCR_TEXT));
             return LlmMarkdownConfigTestResponse.reachable();
         } catch (IllegalStateException ex) {
-            return LlmMarkdownConfigTestResponse.unreachable();
+            return LlmMarkdownConfigTestResponse.unreachable(ex.getMessage());
         }
     }
 }

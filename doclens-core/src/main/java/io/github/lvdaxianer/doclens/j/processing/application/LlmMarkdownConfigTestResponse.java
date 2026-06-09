@@ -27,11 +27,40 @@ public record LlmMarkdownConfigTestResponse(boolean healthy, String message) {
     /**
      * 创建失败测试结果。
      *
+     * @param message 失败原因
+     * @return 失败测试结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public static LlmMarkdownConfigTestResponse unreachable(String message) {
+        String normalized = normalize(message);
+        if (!normalized.isBlank()) {
+            return new LlmMarkdownConfigTestResponse(false, normalized);
+        } else {
+            return unreachable();
+        }
+    }
+
+    /**
+     * 创建失败测试结果。
+     *
      * @return 失败测试结果
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     public static LlmMarkdownConfigTestResponse unreachable() {
         return new LlmMarkdownConfigTestResponse(false, FAILURE_MESSAGE);
+    }
+
+    /**
+     * 规整可选失败消息。
+     *
+     * @param message 原始失败消息
+     * @return 规整后的失败消息
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static String normalize(String message) {
+        return message == null ? "" : message.trim();
     }
 }

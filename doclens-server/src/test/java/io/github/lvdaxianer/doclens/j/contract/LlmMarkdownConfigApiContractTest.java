@@ -295,6 +295,27 @@ class LlmMarkdownConfigApiContractTest {
     }
 
     /**
+     * 测试配置失败时应返回可展示的具体失败原因。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void testConfigReportsConcreteFailureMessage() throws Exception {
+        given(configTester.test(any())).willReturn(
+                LlmMarkdownConfigTestResponse.unreachable("LLM Markdown returned HTTP 401: invalid api key"));
+
+        mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson("https://llm.example.com/v1/chat/completions", "markdown-model",
+                                "sk-test-secret")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.healthy").value(false))
+                .andExpect(jsonPath("$.message").value("LLM Markdown returned HTTP 401: invalid api key"));
+    }
+
+    /**
      * 测试配置时 API Key 留空应沿用已保存旧密钥。
      *
      * @throws Exception 请求执行失败时抛出
