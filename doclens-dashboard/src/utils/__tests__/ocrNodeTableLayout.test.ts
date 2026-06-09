@@ -7,7 +7,7 @@ import {
   OCR_NODE_TABLE_ACTION_GAP,
   OCR_NODE_TABLE_ACTION_WIDTH,
   shouldStickOcrNodeTableActions
-} from '../ocrNodeTableLayout'
+} from '../ocrNodeTableLayout.ts'
 
 test('ocr node table action column fits all icon actions', () => {
   const requiredWidth = (OCR_NODE_TABLE_ACTION_BUTTON_COUNT * OCR_NODE_TABLE_ACTION_WIDTH)
