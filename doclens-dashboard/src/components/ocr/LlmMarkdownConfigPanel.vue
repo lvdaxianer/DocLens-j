@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { RefreshCcw, Save } from '@lucide/vue'
+import { FlaskConical, RefreshCcw, Save } from '@lucide/vue'
 import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NTag, useMessage } from 'naive-ui'
 
 import { useLlmMarkdownConfig } from '@/composables/useLlmMarkdownConfig'
@@ -33,6 +33,13 @@ onMounted(llmConfig.loadConfig)
     </div>
 
     <NAlert v-if="llmConfig.errorMessage.value" class="llm-config-panel__alert" type="error" :title="llmConfig.errorMessage.value" />
+    <NAlert
+      class="llm-config-panel__alert"
+      type="info"
+      title="仅支持 OpenAI compatible Chat Completions 格式"
+    >
+      推荐 endpoint：{{ llmConfig.capabilityHints.value.endpointExample }}
+    </NAlert>
 
     <NForm class="llm-config-panel__form" label-placement="top">
       <NFormItem label="URL">
@@ -52,6 +59,17 @@ onMounted(llmConfig.loadConfig)
 
     <div class="llm-config-panel__footer">
       <span>API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}</span>
+      <NButton
+        secondary
+        :loading="llmConfig.isTesting.value"
+        :disabled="!llmConfig.capabilityHints.value.canTest"
+        @click="llmConfig.testConfig"
+      >
+        <template #icon>
+          <NIcon :component="FlaskConical" />
+        </template>
+        测试配置
+      </NButton>
       <NButton type="primary" :loading="llmConfig.isSaving.value" :disabled="!llmConfig.canSubmit.value" @click="llmConfig.saveConfig">
         <template #icon>
           <NIcon :component="Save" />

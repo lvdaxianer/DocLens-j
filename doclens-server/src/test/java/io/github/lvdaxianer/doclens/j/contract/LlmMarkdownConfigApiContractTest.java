@@ -1,17 +1,23 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,6 +38,9 @@ class LlmMarkdownConfigApiContractTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private LlmMarkdownConfigTester configTester;
 
     /**
      * 配置隔离的测试数据库和存储目录。
@@ -253,6 +262,33 @@ class LlmMarkdownConfigApiContractTest {
                         .value("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
                 .andExpect(jsonPath("$.model").value("qwen-vl-ocr-2025-11-20"))
                 .andExpect(jsonPath("$.credential_configured").value(true));
+    }
+
+    /**
+     * 测试接口应按 OpenAI compatible 配置执行探测且不回显 API Key。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void testConfigReportsConnectivityWithoutExposingApiKey() throws Exception {
+        given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
+
+        String response = mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson("https://llm.example.com/v1/chat/completions", "markdown-model",
+                                "sk-test-secret")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.healthy").value(true))
+                .andExpect(jsonPath("$.message").value("llm markdown config is reachable"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(response)
+                .doesNotContain("sk-test-secret")
+                .doesNotContain("api_key");
     }
 
     /**

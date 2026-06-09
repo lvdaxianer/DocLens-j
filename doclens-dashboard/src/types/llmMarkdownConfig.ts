@@ -9,3 +9,8 @@ export interface LlmMarkdownConfigPayload {
   model: string
   api_key?: string
 }
+
+export interface LlmMarkdownConfigTestResponse {
+  healthy: boolean
+  message: string
+}

@@ -7,9 +7,17 @@ export interface LlmMarkdownConfigFormState {
   credentialConfigured: boolean
 }
 
+export interface LlmConfigCapabilityHints {
+  protocolHint: string
+  endpointExample: string
+  canTest: boolean
+}
+
 const HTTP_PROTOCOL = 'http:'
 const HTTPS_PROTOCOL = 'https:'
 const MASKED_SECRET = '***'
+const OPENAI_COMPATIBLE_PROTOCOL_HINT = '仅支持 OpenAI compatible Chat Completions 格式'
+const OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
 
@@ -100,6 +108,24 @@ export function sanitizeLlmMarkdownConfigErrorMessage(message: string): string {
   return message
     .replace(API_KEY_VALUE_PATTERN, `$1${MASKED_SECRET}`)
     .replace(BEARER_VALUE_PATTERN, `$1${MASKED_SECRET}`)
+}
+
+/**
+ * 返回 LLM 配置能力提示与测试按钮状态。
+ *
+ * @param form - LLM Markdown 配置表单状态
+ * @returns 能力提示
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function llmConfigCapabilityHints(form: LlmMarkdownConfigFormState): LlmConfigCapabilityHints {
+  const hasUrl = form.url.trim() !== ''
+  const hasModel = form.model.trim() !== ''
+  return {
+    protocolHint: OPENAI_COMPATIBLE_PROTOCOL_HINT,
+    endpointExample: OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE,
+    canTest: hasUrl && hasModel && isHttpUrl(form.url)
+  }
 }
 
 /**

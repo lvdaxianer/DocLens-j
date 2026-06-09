@@ -54,9 +54,22 @@ public class LlmMarkdownConfigService {
      */
     public LlmMarkdownConfig saveConfig(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfig current = getConfig();
-        LlmMarkdownConfig updated = buildConfig(current, settings);
+        LlmMarkdownConfig updated = buildConfig(current, normalizeSettings(settings));
         repository.save(updated);
         return updated;
+    }
+
+    /**
+     * 校验并规整 LLM Markdown 配置参数。
+     *
+     * @param settings 原始配置参数
+     * @return 规整后的配置参数
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public LlmMarkdownConfigSettings normalizeSettings(LlmMarkdownConfigSettings settings) {
+        return new LlmMarkdownConfigSettings(validUrl(settings.url()),
+                required(settings.model(), "llm markdown model is required"), normalize(settings.apiKey()));
     }
 
     /**
@@ -69,8 +82,8 @@ public class LlmMarkdownConfigService {
      * @date 2026-06-09
      */
     private LlmMarkdownConfig buildConfig(LlmMarkdownConfig current, LlmMarkdownConfigSettings settings) {
-        String url = validUrl(settings.url());
-        String model = required(settings.model(), "llm markdown model is required");
+        String url = settings.url();
+        String model = settings.model();
         String credential = credentialForUpdate(current, settings.apiKey());
         OffsetDateTime now = OffsetDateTime.now();
         return new LlmMarkdownConfig(LlmMarkdownConfig.SINGLETON_ID, url, model,

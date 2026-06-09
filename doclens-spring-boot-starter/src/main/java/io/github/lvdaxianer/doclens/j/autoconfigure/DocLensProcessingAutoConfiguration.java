@@ -11,9 +11,11 @@ import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDepe
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.DefaultLlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -98,6 +100,23 @@ public class DocLensProcessingAutoConfiguration {
     @ConditionalOnMissingBean
     LlmMarkdownConfigService llmMarkdownConfigService(LlmMarkdownConfigRepository configRepository) {
         return new LlmMarkdownConfigService(configRepository);
+    }
+
+    /**
+     * 创建 LLM Markdown 配置测试器。
+     *
+     * @param objectMapper JSON 映射器
+     * @return LLM 配置测试器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    LlmMarkdownConfigTester llmMarkdownConfigTester(
+            ObjectMapper objectMapper,
+            LlmMarkdownConfigService llmMarkdownConfigService
+    ) {
+        return new DefaultLlmMarkdownConfigTester(objectMapper, llmMarkdownConfigService);
     }
 
     /**

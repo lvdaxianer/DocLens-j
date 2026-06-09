@@ -2,6 +2,17 @@ import type { UploadAdvancedOptionsValue, UploadOcrRoutingOptions } from '@/type
 
 export const DEFAULT_UPLOAD_METADATA_JSON = '{}'
 export const DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY = 'least-inflight'
+const CALLBACK_TEXT_SOURCE_HINT = '若启用且成功执行 LLM Markdown 后处理则返回 Markdown，否则返回 OCR 合并纯文本'
+
+export interface UploadCallbackContractHints {
+  method: 'POST'
+  body: {
+    meta: Record<string, never>
+    text: Record<string, never>
+    idempotency_key: string
+  }
+  textSourceHint: string
+}
 
 /**
  * 创建上传页默认高级选项。
@@ -48,5 +59,24 @@ export function validateMetadataJson(metadataJson: string): string {
     return ''
   } catch {
     return '元数据 JSON 格式不正确'
+  }
+}
+
+/**
+ * 返回上传完成回调的固定契约提示。
+ *
+ * @returns 回调契约提示
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function callbackContractHints(): UploadCallbackContractHints {
+  return {
+    method: 'POST',
+    body: {
+      meta: {},
+      text: {},
+      idempotency_key: ''
+    },
+    textSourceHint: CALLBACK_TEXT_SOURCE_HINT
   }
 }

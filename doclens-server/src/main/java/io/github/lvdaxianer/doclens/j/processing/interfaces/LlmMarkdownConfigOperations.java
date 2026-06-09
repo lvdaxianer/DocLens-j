@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.interfaces;
 
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
+
 /**
  * LLM Markdown 配置 HTTP 操作端口。
  *
@@ -26,4 +28,14 @@ public interface LlmMarkdownConfigOperations {
      * @date 2026-06-09
      */
     LlmMarkdownConfigResponse updateConfig(LlmMarkdownConfigRequest request);
+
+    /**
+     * 测试 LLM Markdown 配置连通性。
+     *
+     * @param request LLM Markdown 配置请求
+     * @return 连通性测试结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    LlmMarkdownConfigTestResponse testConfig(LlmMarkdownConfigRequest request);
 }

@@ -15,6 +15,7 @@ import type { DocumentResultResponse, DocumentRow } from '@/types/dashboard'
 import { formatNumber, formatPercent } from '@/utils/formatters'
 import {
   isLlmMarkdownApplied,
+  llmStageDescription,
   llmPostProcessingStatus,
   resultTextTitle
 } from '@/utils/llmResultDisplayRules'
@@ -45,6 +46,7 @@ const textTitle = computed(() => props.result ? resultTextTitle(props.result.res
 const textLength = computed(() => props.result?.result.finalText.length ?? 0)
 const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
 const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
+const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
 </script>
 
 <template>
@@ -89,6 +91,9 @@ const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.resu
                 <NTag :type="llmApplied ? 'success' : 'warning'" round>
                   {{ llmStatus }}
                 </NTag>
+              </NDescriptionsItem>
+              <NDescriptionsItem label="LLM 结果说明">
+                {{ llmDescription }}
               </NDescriptionsItem>
             </NDescriptions>
 

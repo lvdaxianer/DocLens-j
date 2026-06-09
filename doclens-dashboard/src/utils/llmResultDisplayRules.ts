@@ -8,6 +8,18 @@ export interface DocumentResultDisplayPayload {
 const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_failed'
 
 /**
+ * 判断当前结果是否因为 LLM 排版失败而回退。
+ *
+ * @param result - 文档结果载荷
+ * @returns 是否为失败回退
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+function isLlmMarkdownFallback(result: DocumentResultDisplayPayload): boolean {
+  return result.warnings.includes(LLM_POST_PROCESSING_FAILED_WARNING)
+}
+
+/**
  * 判断当前结果是否成功使用了 LLM Markdown 后处理。
  *
  * @param result - 文档结果载荷
@@ -43,5 +55,29 @@ export function resultTextTitle(result: DocumentResultDisplayPayload): string {
  * @date 2026-06-09
  */
 export function llmPostProcessingStatus(result: DocumentResultDisplayPayload): string {
-  return isLlmMarkdownApplied(result) ? 'LLM 已排版' : 'LLM 未生效'
+  if (isLlmMarkdownApplied(result)) {
+    return 'LLM 已排版'
+  } else if (isLlmMarkdownFallback(result)) {
+    return 'LLM 回退 OCR'
+  } else {
+    return 'LLM 未启用'
+  }
+}
+
+/**
+ * 获取 LLM 后处理的详细阶段说明。
+ *
+ * @param result - 文档结果载荷
+ * @returns 详细状态说明
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function llmStageDescription(result: DocumentResultDisplayPayload): string {
+  if (isLlmMarkdownApplied(result)) {
+    return '已输出 Markdown 结构化结果'
+  } else if (isLlmMarkdownFallback(result)) {
+    return 'LLM 排版失败，已回退 OCR 纯文本'
+  } else {
+    return '未配置 LLM 后处理，返回 OCR 纯文本'
+  }
 }

@@ -1,7 +1,12 @@
-import type { LlmMarkdownConfigPayload, LlmMarkdownConfigResponse } from '@/types/llmMarkdownConfig'
+import type {
+  LlmMarkdownConfigPayload,
+  LlmMarkdownConfigResponse,
+  LlmMarkdownConfigTestResponse
+} from '@/types/llmMarkdownConfig'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
 const LLM_CONFIG_PATH = '/api/v1/llm-markdown-config'
+const LLM_CONFIG_TEST_PATH = '/api/v1/llm-markdown-config/test'
 const LLM_CONFIG_BUSINESS = '[LLM Markdown 配置 API]'
 const JSON_CONTENT_TYPE = 'application/json'
 const NETWORK_ERROR_STATUS = 'NETWORK_ERROR'
@@ -9,10 +14,12 @@ const DEFAULT_ERROR_MESSAGE = '请求失败'
 
 interface LlmConfigRequestOptions {
   method: string
+  path?: string
   body?: LlmMarkdownConfigPayload
 }
 
 interface LlmConfigRequestContext {
+  path: string
   method: string
   startedAt: number
   responseStatus: number | string
@@ -34,12 +41,14 @@ function toErrorMessage(error: unknown): string {
  * 创建 LLM 配置请求上下文。
  *
  * @param method - HTTP 方法
+ * @param path - 请求路径
  * @returns 请求上下文
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-function createContext(method: string): LlmConfigRequestContext {
+function createContext(method: string, path: string): LlmConfigRequestContext {
   return {
+    path,
     method,
     startedAt: performance.now(),
     responseStatus: NETWORK_ERROR_STATUS
@@ -59,7 +68,7 @@ function logRequest(context: LlmConfigRequestContext): void {
     business: LLM_CONFIG_BUSINESS,
     stage: 'REQUEST',
     message: '发起 LLM Markdown 配置请求',
-    context: { method: context.method, path: LLM_CONFIG_PATH }
+    context: { method: context.method, path: context.path }
   })
 }
 
@@ -78,7 +87,7 @@ function logResponse(context: LlmConfigRequestContext): void {
     message: '收到 LLM Markdown 配置响应',
     context: {
       method: context.method,
-      path: LLM_CONFIG_PATH,
+      path: context.path,
       status: context.responseStatus,
       durationMs: Math.round(performance.now() - context.startedAt)
     }
@@ -101,7 +110,7 @@ function logRequestError(context: LlmConfigRequestContext, error: unknown): void
     message: 'LLM Markdown 配置请求失败',
     context: {
       method: context.method,
-      path: LLM_CONFIG_PATH,
+      path: context.path,
       status: context.responseStatus,
       error: toErrorMessage(error)
     }
@@ -118,7 +127,7 @@ function logRequestError(context: LlmConfigRequestContext, error: unknown): void
  */
 function fetchLlmConfig(options: LlmConfigRequestOptions): Promise<Response> {
   const headers = options.body ? { 'Content-Type': JSON_CONTENT_TYPE } : undefined
-  return fetch(LLM_CONFIG_PATH, {
+  return fetch(options.path ?? LLM_CONFIG_PATH, {
     method: options.method,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined
@@ -134,14 +143,14 @@ function fetchLlmConfig(options: LlmConfigRequestOptions): Promise<Response> {
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-async function parseResponse(context: LlmConfigRequestContext, response: Response): Promise<LlmMarkdownConfigResponse> {
+async function parseResponse<T>(context: LlmConfigRequestContext, response: Response): Promise<T> {
   context.responseStatus = response.status
   const responseBody = await response.text()
   logResponse(context)
   if (!response.ok) {
     throw new Error(errorMessageFromResponse(response, responseBody))
   } else {
-    return JSON.parse(responseBody) as LlmMarkdownConfigResponse
+    return JSON.parse(responseBody) as T
   }
 }
 
@@ -171,11 +180,11 @@ function errorMessageFromResponse(response: Response, responseBody: string): str
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-async function requestLlmConfig(options: LlmConfigRequestOptions): Promise<LlmMarkdownConfigResponse> {
-  const context = createContext(options.method)
+async function requestLlmConfig<T>(options: LlmConfigRequestOptions): Promise<T> {
+  const context = createContext(options.method, options.path ?? LLM_CONFIG_PATH)
   logRequest(context)
   try {
-    return await parseResponse(context, await fetchLlmConfig(options))
+    return await parseResponse<T>(context, await fetchLlmConfig(options))
   } catch (error) {
     logRequestError(context, error)
     throw error
@@ -190,7 +199,7 @@ async function requestLlmConfig(options: LlmConfigRequestOptions): Promise<LlmMa
  * @date 2026-06-09
  */
 export function fetchLlmMarkdownConfig(): Promise<LlmMarkdownConfigResponse> {
-  return requestLlmConfig({ method: 'GET' })
+  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'GET' })
 }
 
 /**
@@ -202,5 +211,21 @@ export function fetchLlmMarkdownConfig(): Promise<LlmMarkdownConfigResponse> {
  * @date 2026-06-09
  */
 export function updateLlmMarkdownConfig(payload: LlmMarkdownConfigPayload): Promise<LlmMarkdownConfigResponse> {
-  return requestLlmConfig({ method: 'PUT', body: payload })
+  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'PUT', body: payload })
+}
+
+/**
+ * 测试当前 LLM Markdown 配置是否可连通。
+ *
+ * @param payload - LLM Markdown 配置测试载荷
+ * @returns LLM 配置测试响应
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function testLlmMarkdownConfig(payload: LlmMarkdownConfigPayload): Promise<LlmMarkdownConfigTestResponse> {
+  return requestLlmConfig<LlmMarkdownConfigTestResponse>({
+    method: 'POST',
+    path: LLM_CONFIG_TEST_PATH,
+    body: payload
+  })
 }

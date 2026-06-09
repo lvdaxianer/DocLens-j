@@ -1,11 +1,12 @@
 import { computed, reactive, shallowRef } from 'vue'
 import type { MessageApi } from 'naive-ui'
 
-import { fetchLlmMarkdownConfig, updateLlmMarkdownConfig } from '@/api/llmMarkdownConfig'
+import { fetchLlmMarkdownConfig, testLlmMarkdownConfig, updateLlmMarkdownConfig } from '@/api/llmMarkdownConfig'
 import {
   createDefaultLlmMarkdownConfigForm,
   createLlmMarkdownConfigPayload,
   fillLlmMarkdownConfigFormFromResponse,
+  llmConfigCapabilityHints,
   isLlmMarkdownConfigFormSubmittable,
   sanitizeLlmMarkdownConfigErrorMessage
 } from '@/utils/llmMarkdownConfigRules'
@@ -22,10 +23,12 @@ export function useLlmMarkdownConfig(message: MessageApi) {
   const form = reactive(createDefaultLlmMarkdownConfigForm())
   const isLoading = shallowRef(false)
   const isSaving = shallowRef(false)
+  const isTesting = shallowRef(false)
   const lastLoadedAt = shallowRef('')
   const errorMessage = shallowRef('')
   const canSubmit = computed(() => isLlmMarkdownConfigFormSubmittable(form))
   const isConfigured = computed(() => form.url.trim() !== '' && form.model.trim() !== '')
+  const capabilityHints = computed(() => llmConfigCapabilityHints(form))
 
   /**
    * 将未知异常转换为错误消息。
@@ -96,15 +99,45 @@ export function useLlmMarkdownConfig(message: MessageApi) {
     }
   }
 
+  /**
+   * 测试当前 LLM Markdown 配置是否可连通。
+   *
+   * @returns 测试完成信号
+   * @author lvdaxianerplus
+   * @date 2026-06-09
+   */
+  async function testConfig(): Promise<void> {
+    if (!capabilityHints.value.canTest) {
+      message.warning('请先填写有效的 OpenAI compatible URL 和模型名称')
+      return
+    }
+    isTesting.value = true
+    try {
+      const response = await testLlmMarkdownConfig(createLlmMarkdownConfigPayload(form))
+      if (response.healthy) {
+        message.success(response.message)
+      } else {
+        message.warning(response.message)
+      }
+    } catch (error) {
+      message.error(toErrorMessage(error))
+    } finally {
+      isTesting.value = false
+    }
+  }
+
   return {
     form,
     isLoading,
     isSaving,
+    isTesting,
     lastLoadedAt,
     errorMessage,
     canSubmit,
     isConfigured,
+    capabilityHints,
     loadConfig,
-    saveConfig
+    saveConfig,
+    testConfig
   }
 }

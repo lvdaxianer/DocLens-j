@@ -1,6 +1,8 @@
 package io.github.lvdaxianer.doclens.j.processing.interfaces;
 
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
+import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class DefaultLlmMarkdownConfigOperations implements LlmMarkdownConfigOperations {
 
     private final LlmMarkdownConfigService configService;
+    private final LlmMarkdownConfigTester configTester;
 
     /**
      * 创建默认 LLM Markdown 配置 HTTP 操作实现。
@@ -21,8 +24,12 @@ public class DefaultLlmMarkdownConfigOperations implements LlmMarkdownConfigOper
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    public DefaultLlmMarkdownConfigOperations(LlmMarkdownConfigService configService) {
+    public DefaultLlmMarkdownConfigOperations(
+            LlmMarkdownConfigService configService,
+            LlmMarkdownConfigTester configTester
+    ) {
         this.configService = configService;
+        this.configTester = configTester;
     }
 
     /**
@@ -48,5 +55,18 @@ public class DefaultLlmMarkdownConfigOperations implements LlmMarkdownConfigOper
     @Override
     public LlmMarkdownConfigResponse updateConfig(LlmMarkdownConfigRequest request) {
         return LlmMarkdownConfigResponse.from(configService.saveConfig(request.toSettings()));
+    }
+
+    /**
+     * 测试 LLM Markdown 配置。
+     *
+     * @param request LLM Markdown 配置请求
+     * @return 测试结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Override
+    public LlmMarkdownConfigTestResponse testConfig(LlmMarkdownConfigRequest request) {
+        return configTester.test(request.toSettings());
     }
 }

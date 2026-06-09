@@ -2,12 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  llmConfigCapabilityHints,
   createDefaultLlmMarkdownConfigForm,
   createLlmMarkdownConfigPayload,
   fillLlmMarkdownConfigFormFromResponse,
   isLlmMarkdownConfigFormSubmittable,
   sanitizeLlmMarkdownConfigErrorMessage
-} from '../llmMarkdownConfigRules'
+} from '../llmMarkdownConfigRules.ts'
 
 test('default llm markdown config form starts disabled and without credential', () => {
   const form = createDefaultLlmMarkdownConfigForm()
@@ -79,4 +80,23 @@ test('llm markdown config error message masks accidental api key content', () =>
     sanitizeLlmMarkdownConfigErrorMessage(message),
     '调用失败 api_key="***" Authorization: Bearer ***'
   )
+})
+
+test('llm markdown config hints declare openai compatible requirement and test button availability', () => {
+  const emptyForm = createDefaultLlmMarkdownConfigForm()
+
+  assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
+    protocolHint: '仅支持 OpenAI compatible Chat Completions 格式',
+    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    canTest: false
+  })
+
+  emptyForm.url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  emptyForm.model = 'qwen-vl-ocr-2025-11-20'
+
+  assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
+    protocolHint: '仅支持 OpenAI compatible Chat Completions 格式',
+    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    canTest: true
+  })
 })
