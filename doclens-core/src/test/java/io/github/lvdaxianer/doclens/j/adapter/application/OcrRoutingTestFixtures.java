@@ -35,6 +35,8 @@ final class OcrRoutingTestFixtures {
         private final Map<String, OcrRuntimeNodeView> nodes = new HashMap<>(TEST_CALL_CAPACITY);
         private final Map<String, Integer> inflightImages = new HashMap<>(TEST_CALL_CAPACITY);
         private final Map<String, Integer> queuedImages = new HashMap<>(TEST_CALL_CAPACITY);
+        private int tryAcquireCount;
+        private int releaseCount;
 
         /**
          * 创建内存运行时节点提供器。
@@ -68,6 +70,7 @@ final class OcrRoutingTestFixtures {
 
         @Override
         public Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
+            tryAcquireCount++;
             return Optional.ofNullable(nodes.get(nodeId))
                     .filter(node -> availableSlots(nodeId) > 0)
                     .flatMap(node -> updateInflight(nodeId, 1));
@@ -75,6 +78,7 @@ final class OcrRoutingTestFixtures {
 
         @Override
         public Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
+            releaseCount++;
             return updateInflight(nodeId, -1);
         }
 
@@ -98,6 +102,28 @@ final class OcrRoutingTestFixtures {
          */
         int inflight(String nodeId) {
             return inflightImages.getOrDefault(nodeId, 0);
+        }
+
+        /**
+         * 返回占槽尝试次数。
+         *
+         * @return 占槽尝试次数
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        int tryAcquireCount() {
+            return tryAcquireCount;
+        }
+
+        /**
+         * 返回释放槽位次数。
+         *
+         * @return 释放槽位次数
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        int releaseCount() {
+            return releaseCount;
         }
 
         /**

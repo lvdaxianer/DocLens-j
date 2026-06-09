@@ -1,8 +1,10 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequestQueue;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingDependencies;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
@@ -56,12 +58,14 @@ public class DocLensOcrResourceAutoConfiguration {
     OcrRoutingAutoConfigurationDependencies ocrRoutingAutoConfigurationDependencies(
             OcrRuntimeNodePool nodePool,
             OcrNodeSelector nodeSelector,
+            OcrPendingRequestQueue pendingRequestQueue,
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
             OcrCallIdGenerator callIdGenerator
     ) {
-        return new OcrRoutingAutoConfigurationDependencies(nodePool, nodeSelector, nodeExecutor, callRepository,
-                callIdGenerator);
+        return new OcrRoutingAutoConfigurationDependencies(nodePool, nodeSelector,
+                new OcrDispatchCoordinator(nodePool, nodeSelector, pendingRequestQueue), nodeExecutor,
+                callRepository, callIdGenerator);
     }
 
     /**
@@ -78,9 +82,9 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrRoutingAutoConfigurationDependencies dependencies,
             DocLensSpringProperties properties
     ) {
-        return new OcrRoutingService(new OcrRoutingDependencies(dependencies.nodePool(), dependencies.nodeSelector(),
-                dependencies.nodeExecutor(), dependencies.callRepository(), dependencies.callIdGenerator(),
-                routingProperties(properties.ocr())));
+        return new OcrRoutingService(new OcrRoutingDependencies(dependencies.nodePool(),
+                dependencies.nodeSelector(), dependencies.dispatchCoordinator(), dependencies.nodeExecutor(),
+                dependencies.callRepository(), dependencies.callIdGenerator(), routingProperties(properties.ocr())));
     }
 
     /**
@@ -209,6 +213,7 @@ public class DocLensOcrResourceAutoConfiguration {
      *
      * @param nodePool OCR 运行时节点池
      * @param nodeSelector OCR 节点选择器
+     * @param dispatchCoordinator OCR 同步派发协调器
      * @param nodeExecutor OCR 节点执行器
      * @param callRepository OCR 调用记录仓储
      * @param callIdGenerator OCR 调用记录 ID 生成器
@@ -218,6 +223,7 @@ public class DocLensOcrResourceAutoConfiguration {
     record OcrRoutingAutoConfigurationDependencies(
             OcrRuntimeNodePool nodePool,
             OcrNodeSelector nodeSelector,
+            OcrDispatchCoordinator dispatchCoordinator,
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
             OcrCallIdGenerator callIdGenerator

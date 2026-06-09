@@ -122,6 +122,24 @@ class OcrRoutingServiceTest {
     }
 
     /**
+     * 路由服务应通过协调器路径占用并释放节点槽位。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void routingServiceAcquiresSlotThroughCoordinatorAndReleasesItAfterExecution() {
+        TestContext context = context(List.of(node("paddle-1", "paddle_ocr")));
+
+        OcrRouteExecutionResult result = context.service.recognize(request(),
+                OcrRoutePolicy.globalLoadBalance("least-inflight"));
+
+        assertThat(result.nodeId()).isEqualTo("paddle-1");
+        assertThat(context.nodeProvider.tryAcquireCount()).isEqualTo(1);
+        assertThat(context.nodeProvider.releaseCount()).isEqualTo(1);
+    }
+
+    /**
      * 创建 OCR 路由测试上下文。
      *
      * @param nodes 运行时节点
@@ -131,11 +149,13 @@ class OcrRoutingServiceTest {
      */
     private TestContext context(List<OcrRuntimeNodeView> nodes) {
         InMemoryRuntimeNodeProvider nodeProvider = new InMemoryRuntimeNodeProvider(nodes);
+        LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
         RecordingNodeExecutor executor = new RecordingNodeExecutor();
         InMemoryCallRepository callRepository = new InMemoryCallRepository();
         OcrRoutingService service = new OcrRoutingService(new OcrRoutingDependencies(
                 nodeProvider,
-                new LeastInflightOcrNodeSelector(),
+                selector,
+                new OcrDispatchCoordinator(nodeProvider, selector, new InMemoryPendingQueue()),
                 executor,
                 callRepository,
                 new FixedCallIdGenerator(),
@@ -213,5 +233,26 @@ class OcrRoutingServiceTest {
             RecordingNodeExecutor executor,
             InMemoryCallRepository callRepository
     ) {
+    }
+
+    /**
+     * 内存待派发队列。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static final class InMemoryPendingQueue implements OcrPendingRequestQueue {
+
+        private final java.util.ArrayDeque<OcrPendingRequest> requests = new java.util.ArrayDeque<>(1);
+
+        @Override
+        public void enqueue(OcrPendingRequest request) {
+            requests.addLast(request);
+        }
+
+        @Override
+        public java.util.Optional<OcrPendingRequest> poll() {
+            return java.util.Optional.ofNullable(requests.pollFirst());
+        }
     }
 }

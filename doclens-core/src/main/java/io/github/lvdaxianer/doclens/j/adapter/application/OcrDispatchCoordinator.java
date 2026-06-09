@@ -1,10 +1,14 @@
 package io.github.lvdaxianer.doclens.j.adapter.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * OCR 同步派发协调器。
@@ -49,14 +53,36 @@ public final class OcrDispatchCoordinator {
      * @date 2026-06-10
      */
     public OcrDispatchAcquireResult acquire(ImageOcrRequest request, OcrRoutePolicy policy) {
-        Optional<OcrRuntimeNodeView> acquired = tryAcquireAvailableNode(policy);
+        return acquire(request, policy, Set.of());
+    }
+
+    /**
+     * 尝试为请求占用一个未被排除节点的槽位。
+     *
+     * @param request 图片 OCR 请求
+     * @param policy OCR 路由策略
+     * @param excludedNodeIds 已排除节点
+     * @return 占槽结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public OcrDispatchAcquireResult acquire(
+            ImageOcrRequest request,
+            OcrRoutePolicy policy,
+            Set<String> excludedNodeIds
+    ) {
+        if (!hasMatchingNode(policy, excludedNodeIds)) {
+            return OcrDispatchAcquireResult.unavailable();
+        }
+        Optional<OcrRuntimeNodeView> acquired = tryAcquireAvailableNode(policy, excludedNodeIds);
         if (acquired.isPresent()) {
             return OcrDispatchAcquireResult.dispatched(acquired.get());
         } else {
             // 当前没有可用节点或候选节点在竞争中全部失去槽位，转入等待队列。
         }
-        queue.enqueue(OcrPendingRequest.from(request, policy));
-        return OcrDispatchAcquireResult.queuedResult();
+        CompletableFuture<OcrRuntimeNodeView> dispatchFuture = new CompletableFuture<>();
+        queue.enqueue(OcrPendingRequest.from(request, policy, excludedNodeIds, dispatchFuture));
+        return OcrDispatchAcquireResult.queuedResult(dispatchFuture);
     }
 
     /**
@@ -81,8 +107,9 @@ public final class OcrDispatchCoordinator {
         Optional<OcrPendingRequest> pendingRequest = queue.poll();
         if (pendingRequest.isPresent()) {
             OcrPendingRequest request = pendingRequest.get();
-            Optional<OcrRuntimeNodeView> acquired = tryAcquireAvailableNode(request.policy());
+            Optional<OcrRuntimeNodeView> acquired = tryAcquireAvailableNode(request.policy(), request.excludedNodeIds());
             if (acquired.isPresent()) {
+                request.dispatchFuture().complete(acquired.get());
                 return;
             } else {
                 // 当前仍无可派发节点或候选节点在竞争中全部失去槽位，请求重新入队等待下一次机会。
@@ -101,10 +128,10 @@ public final class OcrDispatchCoordinator {
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private Optional<OcrRuntimeNodeView> tryAcquireAvailableNode(OcrRoutePolicy policy) {
+    private Optional<OcrRuntimeNodeView> tryAcquireAvailableNode(OcrRoutePolicy policy, Set<String> excludedNodeIds) {
         Set<String> attemptedNodeIds = new LinkedHashSet<>(INITIAL_ATTEMPTED_NODE_CAPACITY);
         while (true) {
-            Optional<OcrRuntimeNodeView> selected = selectUntriedNode(policy, attemptedNodeIds);
+            Optional<OcrRuntimeNodeView> selected = selectUntriedNode(policy, excludedNodeIds, attemptedNodeIds);
             if (selected.isEmpty()) {
                 return Optional.empty();
             } else if (attemptedNodeIds.add(selected.get().nodeId())) {
@@ -129,9 +156,78 @@ public final class OcrDispatchCoordinator {
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private Optional<OcrRuntimeNodeView> selectUntriedNode(OcrRoutePolicy policy, Set<String> attemptedNodeIds) {
-        return selector.select(policy, nodeProvider.snapshot().stream()
+    private Optional<OcrRuntimeNodeView> selectUntriedNode(
+            OcrRoutePolicy policy,
+            Set<String> excludedNodeIds,
+            Set<String> attemptedNodeIds
+    ) {
+        return selector.select(policy, candidateNodes(policy, excludedNodeIds).stream()
                 .filter(node -> !attemptedNodeIds.contains(node.nodeId()))
                 .toList());
+    }
+
+    /**
+     * 判断是否仍存在匹配路由策略且未被排除的节点。
+     *
+     * @param policy OCR 路由策略
+     * @param excludedNodeIds 已排除节点
+     * @return 是否存在匹配节点
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean hasMatchingNode(OcrRoutePolicy policy, Set<String> excludedNodeIds) {
+        return !candidateNodes(policy, excludedNodeIds).isEmpty();
+    }
+
+    /**
+     * 过滤出匹配路由策略且未排除的候选节点。
+     *
+     * @param policy OCR 路由策略
+     * @param excludedNodeIds 已排除节点
+     * @return 候选节点集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private List<OcrRuntimeNodeView> candidateNodes(OcrRoutePolicy policy, Set<String> excludedNodeIds) {
+        return nodeProvider.snapshot().stream()
+                .filter(node -> !excludedNodeIds.contains(node.nodeId()))
+                .filter(OcrRuntimeNodeView::enabled)
+                .filter(node -> node.status() == OcrNodeStatus.UP)
+                .filter(node -> matchesPolicy(policy, node))
+                .toList();
+    }
+
+    /**
+     * 判断节点是否匹配当前路由策略。
+     *
+     * @param policy OCR 路由策略
+     * @param node 运行时节点
+     * @return 是否匹配
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean matchesPolicy(OcrRoutePolicy policy, OcrRuntimeNodeView node) {
+        if (policy.routingMode() == OcrRoutingMode.MODEL_LOAD_BALANCE) {
+            return policy.modelKey().filter(node.modelKey()::equals).isPresent();
+        } else {
+            return matchesNonModelPolicy(policy, node);
+        }
+    }
+
+    /**
+     * 判断非模型路由模式下的节点是否匹配。
+     *
+     * @param policy OCR 路由策略
+     * @param node 运行时节点
+     * @return 是否匹配
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean matchesNonModelPolicy(OcrRoutePolicy policy, OcrRuntimeNodeView node) {
+        if (policy.routingMode() == OcrRoutingMode.SPECIFIC_NODE) {
+            return policy.nodeId().filter(node.nodeId()::equals).isPresent();
+        } else {
+            return node.participateGlobal();
+        }
     }
 }

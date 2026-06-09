@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequest;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequestQueue;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRouteExecutionResult;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingDependencies;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
@@ -87,7 +90,9 @@ class ImageDocumentExtractorTest {
             RecordingNodeExecutor nodeExecutor,
             InMemoryCallRepository callRepository
     ) {
-        return new OcrRoutingService(new OcrRoutingDependencies(nodeProvider, new LeastInflightOcrNodeSelector(),
+        LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
+        return new OcrRoutingService(new OcrRoutingDependencies(nodeProvider, selector,
+                new OcrDispatchCoordinator(nodeProvider, selector, new InMemoryPendingQueue()),
                 nodeExecutor, callRepository, new FixedCallIdGenerator(),
                 new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)));
     }
@@ -229,6 +234,27 @@ class ImageDocumentExtractorTest {
             return calls.stream()
                     .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
                     .toList();
+        }
+    }
+
+    /**
+     * 内存待派发队列。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static class InMemoryPendingQueue implements OcrPendingRequestQueue {
+
+        private final java.util.ArrayDeque<OcrPendingRequest> requests = new java.util.ArrayDeque<>(1);
+
+        @Override
+        public void enqueue(OcrPendingRequest request) {
+            requests.addLast(request);
+        }
+
+        @Override
+        public Optional<OcrPendingRequest> poll() {
+            return Optional.ofNullable(requests.pollFirst());
         }
     }
 

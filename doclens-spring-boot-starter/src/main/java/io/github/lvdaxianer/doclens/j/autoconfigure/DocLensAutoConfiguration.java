@@ -2,9 +2,9 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
-import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
+import io.github.lvdaxianer.doclens.j.adapter.application.WeightedCapacityOcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.MybatisPlusOcrNodeRepository;
@@ -182,8 +182,9 @@ public class DocLensAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    OcrNodeSelector ocrNodeSelector() {
-        return new LeastInflightOcrNodeSelector();
+    OcrNodeSelector ocrNodeSelector(DocLensSpringProperties properties) {
+        return new WeightedCapacityOcrNodeSelector(properties.ocr().idleFactor(), properties.ocr().weightFactor(),
+                properties.ocr().topBucketThreshold());
     }
 
     /**

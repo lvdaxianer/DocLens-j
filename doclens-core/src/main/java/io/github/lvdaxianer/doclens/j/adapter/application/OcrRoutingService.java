@@ -7,7 +7,6 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -24,8 +23,7 @@ public class OcrRoutingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcrRoutingService.class);
     private static final String OCR_FAILED_CODE = "OCR_ROUTE_FAILED";
 
-    private final OcrRuntimeNodeProvider nodeProvider;
-    private final OcrNodeSelector nodeSelector;
+    private final OcrDispatchCoordinator dispatchCoordinator;
     private final OcrNodeImageExecutor nodeExecutor;
     private final OcrNodeCallRecorder callRecorder;
     private final OcrRoutingServiceProperties properties;
@@ -38,8 +36,7 @@ public class OcrRoutingService {
      * @date 2026-06-08
      */
     public OcrRoutingService(OcrRoutingDependencies dependencies) {
-        this.nodeProvider = dependencies.nodeProvider();
-        this.nodeSelector = dependencies.nodeSelector();
+        this.dispatchCoordinator = dependencies.dispatchCoordinator();
         this.nodeExecutor = dependencies.nodeExecutor();
         this.callRecorder = new OcrNodeCallRecorder(dependencies.callRepository(), dependencies.callIdGenerator());
         this.properties = dependencies.properties();
@@ -57,7 +54,7 @@ public class OcrRoutingService {
     public OcrRouteExecutionResult recognize(ImageOcrRequest request, OcrRoutePolicy requestedPolicy) {
         OffsetDateTime startedAt = OffsetDateTime.now();
         OcrRoutePolicy policy = effectivePolicy(requestedPolicy);
-        Set<String> excludedNodeIds = new HashSet<>(nodeProvider.snapshot().size());
+        Set<String> excludedNodeIds = new HashSet<>();
         OcrRouteAccumulator accumulator = new OcrRouteAccumulator(startedAt);
         return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
     }
@@ -79,12 +76,7 @@ public class OcrRoutingService {
             Set<String> excludedNodeIds,
             OcrRouteAccumulator accumulator
     ) {
-        Optional<OcrRuntimeNodeView> selectedNode = selectNode(policy, excludedNodeIds);
-        if (selectedNode.isPresent()) {
-            return executeSelectedNode(request, policy, selectedNode.get(), excludedNodeIds, accumulator);
-        } else {
-            throw routeException(accumulator.lastFailure());
-        }
+        return executeSelectedNode(request, policy, excludedNodeIds, accumulator);
     }
 
     /**
@@ -102,18 +94,23 @@ public class OcrRoutingService {
     private OcrRouteExecutionResult executeSelectedNode(
             ImageOcrRequest request,
             OcrRoutePolicy policy,
-            OcrRuntimeNodeView node,
             Set<String> excludedNodeIds,
             OcrRouteAccumulator accumulator
     ) {
-        NodeAttemptResult result = executeWithRetry(request, policy, node, accumulator);
-        if (result.result().isPresent()) {
-            return result.result().get();
-        } else if (canFailover(policy)) {
-            excludedNodeIds.add(node.nodeId());
-            return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
-        } else {
-            throw routeException(accumulator.lastFailure());
+        OcrDispatchAcquireResult acquireResult = dispatchCoordinator.acquire(request, policy, excludedNodeIds);
+        OcrRuntimeNodeView node = dispatchedNode(acquireResult);
+        try {
+            NodeAttemptResult result = executeWithRetry(request, policy, node, accumulator);
+            if (result.result().isPresent()) {
+                return result.result().get();
+            } else if (canFailover(policy)) {
+                excludedNodeIds.add(node.nodeId());
+                return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
+            } else {
+                throw routeException(accumulator.lastFailure());
+            }
+        } finally {
+            dispatchCoordinator.release(node.nodeId());
         }
     }
 
@@ -166,7 +163,6 @@ public class OcrRoutingService {
             int attemptIndex,
             OcrRouteAccumulator accumulator
     ) {
-        nodeProvider.incrementInflight(node.nodeId());
         try {
             ImageOcrResult imageResult = nodeExecutor.recognize(node, request);
             return Optional.of(successResult(request, policy, node, imageResult, accumulator));
@@ -174,8 +170,6 @@ public class OcrRoutingService {
             accumulator.recordFailure(ex);
             logNodeFailure(node, attemptIndex, ex);
             return Optional.empty();
-        } finally {
-            nodeProvider.decrementInflight(node.nodeId());
         }
     }
 
@@ -205,19 +199,19 @@ public class OcrRoutingService {
     }
 
     /**
-     * 选择一个未被排除的候选节点。
+     * 解析派发结果中的最终节点。
      *
-     * @param policy 有效路由策略
-     * @param excludedNodeIds 已失败节点 ID
-     * @return 选中的运行时节点
+     * @param acquireResult 派发占槽结果
+     * @return 最终命中的节点
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-10
      */
-    private Optional<OcrRuntimeNodeView> selectNode(OcrRoutePolicy policy, Set<String> excludedNodeIds) {
-        List<OcrRuntimeNodeView> candidates = nodeProvider.snapshot().stream()
-                .filter(node -> !excludedNodeIds.contains(node.nodeId()))
-                .toList();
-        return nodeSelector.select(policy, candidates);
+    private OcrRuntimeNodeView dispatchedNode(OcrDispatchAcquireResult acquireResult) {
+        if (acquireResult.queued()) {
+            return acquireResult.awaitDispatch();
+        } else {
+            return acquireResult.node().orElseThrow(() -> new OcrRouteExecutionException("no healthy ocr candidates"));
+        }
     }
 
     /**
