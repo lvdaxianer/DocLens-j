@@ -87,6 +87,66 @@ public class OcrRuntimeNodePool implements OcrRuntimeNodeProvider {
     }
 
     /**
+     * 原子尝试占用节点槽位。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 更新后的运行时节点视图
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
+        return find(nodeId)
+                .filter(OcrRuntimeNode::hasAvailableSlot)
+                .filter(node -> node.tryAcquireSlot())
+                .map(OcrRuntimeNode::toView);
+    }
+
+    /**
+     * 释放节点槽位。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 更新后的运行时节点视图
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
+        return find(nodeId).map(node -> {
+            node.releaseSlot();
+            return node.toView();
+        });
+    }
+
+    /**
+     * 增加节点排队图片数。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 更新后的运行时节点视图
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public Optional<OcrRuntimeNodeView> incrementQueued(String nodeId) {
+        return find(nodeId).map(node -> {
+            node.incrementQueued();
+            return node.toView();
+        });
+    }
+
+    /**
+     * 减少节点排队图片数。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 更新后的运行时节点视图
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public Optional<OcrRuntimeNodeView> decrementQueued(String nodeId) {
+        return find(nodeId).map(node -> {
+            node.decrementQueued();
+            return node.toView();
+        });
+    }
+
+    /**
      * 查询运行时节点。
      *
      * @param nodeId OCR 节点 ID
