@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { Plus, RefreshCcw } from '@lucide/vue'
 import { NAlert, NButton, NIcon, useMessage } from 'naive-ui'
 
+import LlmMarkdownConfigPanel from '@/components/ocr/LlmMarkdownConfigPanel.vue'
 import OcrModelList from '@/components/ocr/OcrModelList.vue'
 import OcrNodeDetailDrawer from '@/components/ocr/OcrNodeDetailDrawer.vue'
 import OcrNodeFormDrawer from '@/components/ocr/OcrNodeFormDrawer.vue'
@@ -70,6 +71,8 @@ onMounted(loadModels)
     </section>
 
     <OcrModelList :models="models" :selected-model-key="selectedModelKey" @select="selectModel" />
+
+    <LlmMarkdownConfigPanel />
 
     <section class="panel">
       <div class="panel__header">
