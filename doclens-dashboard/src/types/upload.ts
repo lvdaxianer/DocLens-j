@@ -11,8 +11,6 @@ export interface UploadAdvancedOptionsValue {
   metadata: string
   callbackUrl: string
   idempotencyKey: string
-  adapterOverride: string
-  pdfMode: string
 }
 
 export interface UploadBatchOptions {
@@ -20,9 +18,7 @@ export interface UploadBatchOptions {
   metadata: string
   callbackUrl: string
   idempotencyKey: string
-  adapterOverride: string
-  pdfMode: string
-  ocrRoutingMode: OcrRoutingMode | ''
+  ocrRoutingMode: OcrRoutingMode
   ocrModelKey: string
   ocrNodeId: string
   ocrLoadBalanceStrategy: string

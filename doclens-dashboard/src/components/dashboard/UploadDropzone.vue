@@ -4,26 +4,32 @@ import { FilePlus2, UploadCloud, X } from '@lucide/vue'
 import {
   NButton,
   NIcon,
-  NTag
+  NTag,
+  useMessage
 } from 'naive-ui'
 
 import UploadAdvancedOptions from '@/components/upload/UploadAdvancedOptions.vue'
 import OcrRoutingSelector from '@/components/upload/OcrRoutingSelector.vue'
 import type { UploadAdvancedOptionsValue, UploadBatchOptions, UploadOcrRoutingOptions } from '@/types/upload'
+import {
+  createDefaultUploadAdvancedOptions,
+  createDefaultUploadOcrRouting,
+  validateMetadataJson
+} from '@/utils/uploadFormRules'
 import { formatNumber } from '@/utils/formatters'
 
 const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,.md,.markdown,.png,.jpg,.jpeg,.webp,.tif,.tiff,.txt'
+const DEFAULT_ADVANCED_OPTIONS = createDefaultUploadAdvancedOptions()
+const DEFAULT_OCR_ROUTING = createDefaultUploadOcrRouting()
 const EMPTY_UPLOAD_OPTIONS: UploadBatchOptions = {
   files: [],
-  metadata: '{}',
-  callbackUrl: '',
-  idempotencyKey: '',
-  adapterOverride: '',
-  pdfMode: '',
-  ocrRoutingMode: '',
-  ocrModelKey: '',
-  ocrNodeId: '',
-  ocrLoadBalanceStrategy: ''
+  metadata: DEFAULT_ADVANCED_OPTIONS.metadata,
+  callbackUrl: DEFAULT_ADVANCED_OPTIONS.callbackUrl,
+  idempotencyKey: DEFAULT_ADVANCED_OPTIONS.idempotencyKey,
+  ocrRoutingMode: DEFAULT_OCR_ROUTING.ocrRoutingMode,
+  ocrModelKey: DEFAULT_OCR_ROUTING.ocrModelKey,
+  ocrNodeId: DEFAULT_OCR_ROUTING.ocrNodeId,
+  ocrLoadBalanceStrategy: DEFAULT_OCR_ROUTING.ocrLoadBalanceStrategy
 }
 
 const emit = defineEmits<{
@@ -36,69 +42,124 @@ defineProps<{
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
+const message = useMessage()
 const selectedFiles = shallowRef<File[]>([])
 const form = reactive<UploadAdvancedOptionsValue>({
   metadata: EMPTY_UPLOAD_OPTIONS.metadata,
   callbackUrl: EMPTY_UPLOAD_OPTIONS.callbackUrl,
-  idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey,
-  adapterOverride: EMPTY_UPLOAD_OPTIONS.adapterOverride,
-  pdfMode: EMPTY_UPLOAD_OPTIONS.pdfMode
+  idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey
 })
 
 const hasFiles = computed(() => selectedFiles.value.length > 0)
 const totalSize = computed(() => selectedFiles.value.reduce((sum, file) => sum + file.size, 0))
 const ocrRouting = reactive<UploadOcrRoutingOptions>({
-  ocrRoutingMode: 'DEFAULT',
-  ocrModelKey: '',
-  ocrNodeId: '',
-  ocrLoadBalanceStrategy: ''
+  ocrRoutingMode: EMPTY_UPLOAD_OPTIONS.ocrRoutingMode,
+  ocrModelKey: EMPTY_UPLOAD_OPTIONS.ocrModelKey,
+  ocrNodeId: EMPTY_UPLOAD_OPTIONS.ocrNodeId,
+  ocrLoadBalanceStrategy: EMPTY_UPLOAD_OPTIONS.ocrLoadBalanceStrategy
 })
 
+/**
+ * 打开文件选择器。
+ *
+ * @returns 打开完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function openFilePicker(): void {
   if (fileInput.value) {
+    // 文件输入框已经挂载时打开系统选择器。
     fileInput.value.click()
   } else {
     // 文件输入框尚未挂载时不执行操作。
   }
 }
 
+/**
+ * 更新待上传文件列表。
+ *
+ * @param files - 浏览器文件列表
+ * @returns 更新完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function updateFiles(files: FileList | null): void {
   if (files) {
+    // 有文件列表时转换为稳定数组。
     selectedFiles.value = Array.from(files)
   } else {
+    // 无文件列表时清空待上传文件。
     selectedFiles.value = []
   }
 }
 
+/**
+ * 从待上传列表移除文件。
+ *
+ * @param fileName - 文件名称
+ * @returns 移除完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function removeFile(fileName: string): void {
   selectedFiles.value = selectedFiles.value.filter((file) => file.name !== fileName)
 }
 
+/**
+ * 处理文件选择事件。
+ *
+ * @param event - 文件选择事件
+ * @returns 处理完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function handleFileChange(event: Event): void {
   const target = event.target as HTMLInputElement
   updateFiles(target.files)
 }
 
+/**
+ * 处理拖拽上传事件。
+ *
+ * @param event - 拖拽事件
+ * @returns 处理完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function handleDrop(event: DragEvent): void {
   event.preventDefault()
   updateFiles(event.dataTransfer?.files ?? null)
 }
 
+/**
+ * 重置上传表单。
+ *
+ * @returns 重置完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function resetForm(): void {
   selectedFiles.value = []
   form.metadata = EMPTY_UPLOAD_OPTIONS.metadata
   form.callbackUrl = EMPTY_UPLOAD_OPTIONS.callbackUrl
   form.idempotencyKey = EMPTY_UPLOAD_OPTIONS.idempotencyKey
-  form.adapterOverride = EMPTY_UPLOAD_OPTIONS.adapterOverride
-  form.pdfMode = EMPTY_UPLOAD_OPTIONS.pdfMode
   ocrRoutingSelector.value?.reset()
   if (fileInput.value) {
+    // 文件输入框已经挂载时同步清空原生值。
     fileInput.value.value = ''
   } else {
     // 文件输入框尚未挂载，无需重置 DOM 值。
   }
 }
 
+/**
+ * 同步 OCR 路由选择器值。
+ *
+ * @param value - OCR 路由参数
+ * @returns 同步完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function updateOcrRouting(value: UploadOcrRoutingOptions): void {
   ocrRouting.ocrRoutingMode = value.ocrRoutingMode
   ocrRouting.ocrModelKey = value.ocrModelKey
@@ -106,18 +167,28 @@ function updateOcrRouting(value: UploadOcrRoutingOptions): void {
   ocrRouting.ocrLoadBalanceStrategy = value.ocrLoadBalanceStrategy
 }
 
+/**
+ * 提交上传表单。
+ *
+ * @returns 提交完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
 function submitUpload(): void {
   const validationMessage = ocrRoutingSelector.value?.validateRouting() ?? ''
-  if (validationMessage) {
+  const metadataValidationMessage = validateMetadataJson(form.metadata)
+  if (metadataValidationMessage) {
+    // 元数据 JSON 不合法时阻止提交并提示用户。
+    message.warning(metadataValidationMessage)
+  } else if (validationMessage) {
     // OCR 路由字段不完整时保持表单不提交，由选择器展示校验信息。
   } else {
+    // 所有上传字段合法时向父组件发出提交事件。
     emit('submit', {
       files: selectedFiles.value,
       metadata: form.metadata,
       callbackUrl: form.callbackUrl,
       idempotencyKey: form.idempotencyKey,
-      adapterOverride: form.adapterOverride,
-      pdfMode: form.pdfMode,
       ocrRoutingMode: ocrRouting.ocrRoutingMode,
       ocrModelKey: ocrRouting.ocrModelKey,
       ocrNodeId: ocrRouting.ocrNodeId,

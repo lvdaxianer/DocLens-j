@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import { NInput, NSelect } from 'naive-ui'
+import { NInput } from 'naive-ui'
 
 import type { UploadAdvancedOptionsValue } from '@/types/upload'
 
 const model = defineModel<UploadAdvancedOptionsValue>({ required: true })
-
-const pdfModeOptions = [
-  { label: '服务端默认', value: '' },
-  { label: '页图 OCR', value: 'page_image_fallback' },
-  { label: '直接解析', value: 'direct' }
-]
 </script>
 
 <template>
@@ -21,7 +15,9 @@ const pdfModeOptions = [
       type="textarea"
       :autosize="{ minRows: 3, maxRows: 5 }"
       placeholder="metadata JSON，例如 {}"
+      class="upload-advanced-options__json-editor"
     />
+    <p class="upload-advanced-options__hint">回调将在解析完成后以 POST 方式发送。</p>
     <div class="upload-advanced-options__grid">
       <label class="upload-advanced-options__field">
         <span>回调地址</span>
@@ -30,14 +26,6 @@ const pdfModeOptions = [
       <label class="upload-advanced-options__field">
         <span>幂等键</span>
         <NInput v-model:value="model.idempotencyKey" placeholder="idempotency_key，可选" />
-      </label>
-      <label class="upload-advanced-options__field">
-        <span>OCR 适配器</span>
-        <NInput v-model:value="model.adapterOverride" placeholder="adapter_override，可选" />
-      </label>
-      <label class="upload-advanced-options__field">
-        <span>PDF 模式</span>
-        <NSelect v-model:value="model.pdfMode" :options="pdfModeOptions" />
       </label>
     </div>
   </div>
@@ -55,6 +43,16 @@ const pdfModeOptions = [
   color: var(--ink-soft);
   font-size: 12px;
   font-weight: 700;
+}
+
+.upload-advanced-options__hint {
+  margin: -2px 0 0;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.upload-advanced-options__json-editor :deep(textarea) {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 .upload-advanced-options__field {

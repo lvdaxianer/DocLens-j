@@ -5,8 +5,10 @@ import { NAlert, NFormItem, NRadio, NRadioGroup, NSelect } from 'naive-ui'
 import { fetchOcrModels, fetchOcrNodes } from '@/api/ocrResources'
 import type { OcrModel, OcrNode } from '@/types/ocrResources'
 import type { OcrRoutingMode, UploadOcrRoutingOptions } from '@/types/upload'
-
-const DEFAULT_LOAD_BALANCE_STRATEGY = 'least-inflight'
+import {
+  DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY,
+  createDefaultUploadOcrRouting
+} from '@/utils/uploadFormRules'
 
 const emit = defineEmits<{
   change: [value: UploadOcrRoutingOptions]
@@ -17,15 +19,10 @@ const nodes = shallowRef<OcrNode[]>([])
 const loadingModels = shallowRef(false)
 const loadingNodes = shallowRef(false)
 const errorMessage = shallowRef('')
-const form = reactive<UploadOcrRoutingOptions>({
-  ocrRoutingMode: 'DEFAULT',
-  ocrModelKey: '',
-  ocrNodeId: '',
-  ocrLoadBalanceStrategy: ''
-})
+const form = reactive<UploadOcrRoutingOptions>(createDefaultUploadOcrRouting())
 
 const modelOptions = computed(() => models.value.map((model) => ({
-  label: `${model.name} · ${model.model_key}`,
+  label: model.name,
   value: model.model_key
 })))
 const nodeOptions = computed(() => nodes.value.map((node) => ({
@@ -39,7 +36,7 @@ const hasStrategySelect = computed(() => form.ocrRoutingMode === 'GLOBAL_LOAD_BA
 const validationMessage = computed(() => validateRouting())
 
 const strategyOptions = [
-  { label: '最少解析中图片', value: DEFAULT_LOAD_BALANCE_STRATEGY }
+  { label: '最少解析中图片', value: DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY }
 ]
 
 /**
@@ -145,7 +142,7 @@ function createValue(): UploadOcrRoutingOptions {
 function updateMode(mode: OcrRoutingMode): void {
   form.ocrRoutingMode = mode
   if (hasStrategySelect.value) {
-    form.ocrLoadBalanceStrategy = DEFAULT_LOAD_BALANCE_STRATEGY
+    form.ocrLoadBalanceStrategy = DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY
   } else {
     form.ocrLoadBalanceStrategy = ''
   }
@@ -169,10 +166,7 @@ function updateMode(mode: OcrRoutingMode): void {
  * @date 2026-06-09
  */
 function reset(): void {
-  form.ocrRoutingMode = 'DEFAULT'
-  form.ocrModelKey = ''
-  form.ocrNodeId = ''
-  form.ocrLoadBalanceStrategy = ''
+  Object.assign(form, createDefaultUploadOcrRouting())
   nodes.value = []
   emit('change', createValue())
 }
@@ -197,7 +191,6 @@ defineExpose({ reset, validateRouting })
 
     <NFormItem label="OCR 路由方式">
       <NRadioGroup :value="form.ocrRoutingMode" class="ocr-routing-selector__modes" @update:value="updateMode">
-        <NRadio value="DEFAULT">系统默认</NRadio>
         <NRadio value="GLOBAL_LOAD_BALANCE">全局负载均衡</NRadio>
         <NRadio value="MODEL_LOAD_BALANCE">指定 OCR</NRadio>
         <NRadio value="SPECIFIC_NODE">指定节点</NRadio>
