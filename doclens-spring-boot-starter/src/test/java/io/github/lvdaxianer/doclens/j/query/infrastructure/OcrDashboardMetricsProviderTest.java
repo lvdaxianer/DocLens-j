@@ -11,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +52,43 @@ class OcrDashboardMetricsProviderTest {
                 .containsEntry("node_id", "ocr_node_1")
                 .containsEntry("node_name", "财务 OCR 节点")
                 .containsEntry("image_count", 2L));
+    }
+
+    /**
+     * OCR 资源指标应基于调用记录计算今日处理、平均耗时和 P95。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void ocrResourcesIncludesLatencyMetricsFromCalls() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode("ocr_node_1", "财务 OCR 节点"),
+                offlineNode("ocr_node_2", "票据 OCR 节点")
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
+                successfulCall("call-1", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 100),
+                successfulCall("call-2", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 200),
+                successfulCall("call-3", "batch-2", "doc-2", "paddle_ocr", "ocr_node_2", 600)
+        ));
+        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
+
+        Map<String, Object> resources = provider.ocrResources();
+
+        assertThat(resources).containsEntry("healthy_node_count", 2L);
+        assertThat(resources.get("nodes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("node_id", "ocr_node_1")
+                        .containsEntry("node_name", "财务 OCR 节点")
+                        .containsEntry("processed_images_today", 2L)
+                        .containsEntry("avg_latency_ms", 150L)
+                        .containsEntry("p95_latency_ms", 200L))
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("node_id", "ocr_node_2")
+                        .containsEntry("node_name", "票据 OCR 节点")
+                        .containsEntry("processed_images_today", 1L)
+                        .containsEntry("avg_latency_ms", 600L)
+                        .containsEntry("p95_latency_ms", 600L));
     }
 
     /**
@@ -205,6 +243,13 @@ class OcrDashboardMetricsProviderTest {
         @Override
         public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
             return calls.stream().filter(call -> call.nodeId().equals(nodeId)).limit(limit).toList();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
+            return calls.stream()
+                    .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
+                    .toList();
         }
     }
 }

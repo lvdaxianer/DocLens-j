@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.query.infrastructure;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
@@ -27,6 +28,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private final OcrRuntimeNodePool nodePool;
     private final DashboardThreadPools threadPools;
     private final ThreadPoolMetricsReader threadPoolMetricsReader;
+    private final OcrNodeMetricsAggregator metricsAggregator;
 
     /**
      * 创建 OCR Dashboard 指标提供器。
@@ -49,6 +51,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         this.nodePool = nodePool;
         this.threadPools = threadPools;
         this.threadPoolMetricsReader = new ThreadPoolMetricsReader();
+        this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository);
     }
 
     /**
@@ -61,12 +64,15 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     @Override
     public Map<String, Object> ocrResources() {
         List<OcrNode> nodes = nodeRepository.listAll();
+        Map<String, OcrNodeMetrics> metricsByNodeId = metricsAggregator.metricsByNodeIds(
+                nodes.stream().map(OcrNode::id).toList());
         return Map.ofEntries(
                 Map.entry("healthy_node_count", statusCount(nodes, OcrNodeStatus.UP)),
                 Map.entry("down_node_count", statusCount(nodes, OcrNodeStatus.DOWN)),
                 Map.entry("recovering_node_count", statusCount(nodes, OcrNodeStatus.RECOVERING)),
                 Map.entry("global_inflight_images", globalInflightImages()),
                 Map.entry("busiest_node", busiestNode()),
+                Map.entry("nodes", nodeRows(nodes, metricsByNodeId)),
                 Map.entry("thread_pools", threadPoolMetrics())
         );
     }
@@ -130,6 +136,42 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
                         "model_key", node.modelKey(),
                         "inflight_images", node.inflightImages()))
                 .orElseGet(Map::of);
+    }
+
+    /**
+     * 组装 OCR 节点表展示指标。
+     *
+     * @param nodes OCR 节点集合
+     * @param metricsByNodeId 节点指标映射
+     * @return 节点展示指标
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private List<Map<String, Object>> nodeRows(List<OcrNode> nodes, Map<String, OcrNodeMetrics> metricsByNodeId) {
+        return nodes.stream().map(node -> nodeRow(node, metricsByNodeId)).toList();
+    }
+
+    /**
+     * 组装单个 OCR 节点展示指标。
+     *
+     * @param node OCR 节点
+     * @param metricsByNodeId 节点指标映射
+     * @return 节点展示指标
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private Map<String, Object> nodeRow(OcrNode node, Map<String, OcrNodeMetrics> metricsByNodeId) {
+        OcrNodeMetrics metrics = metricsByNodeId.getOrDefault(node.id(),
+                new OcrNodeMetrics(0, 0, 0L, 0L, 0L, 0L, 0L, Optional.empty(), Optional.empty()));
+        return Map.ofEntries(
+                Map.entry("node_id", node.id()),
+                Map.entry("node_name", node.name()),
+                Map.entry("processed_images_today", metrics.processedImagesToday()),
+                Map.entry("success_images", metrics.successImages()),
+                Map.entry("failed_images", metrics.failedImages()),
+                Map.entry("avg_latency_ms", metrics.avgLatencyMs()),
+                Map.entry("p95_latency_ms", metrics.p95LatencyMs())
+        );
     }
 
     /**

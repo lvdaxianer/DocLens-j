@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
+import java.util.Optional;
 
 /**
  * OCR 节点响应 DTO。
@@ -44,11 +46,36 @@ public record OcrNodeResponse(
      * @date 2026-06-09
      */
     public static OcrNodeResponse from(OcrNode node) {
+        return from(node, defaultMetrics());
+    }
+
+    /**
+     * 从领域节点和聚合指标创建响应。
+     *
+     * @param node OCR 节点
+     * @param metrics OCR 节点聚合指标
+     * @return OCR 节点响应
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public static OcrNodeResponse from(OcrNode node, OcrNodeMetrics metrics) {
         return new OcrNodeResponse(node.id(), node.modelKey(), node.deploymentType().name(), node.name(), node.host(),
                 node.port(), node.channelKey().orElse(""), node.providerModel().orElse(""),
                 node.credentialConfigured(), node.enabled(), node.participateGlobal(), node.weight(),
-                node.maxConcurrency(), node.status().name(), 0, 0, node.successCount() + node.failureCount(),
-                node.successCount(), node.failureCount(), node.avgLatencyMs(), node.p95LatencyMs(),
+                node.maxConcurrency(), node.status().name(), metrics.inflightImages(), metrics.queuedImages(),
+                metrics.processedImagesToday(), metrics.successImages(), metrics.failedImages(), metrics.avgLatencyMs(),
+                metrics.p95LatencyMs(),
                 node.lastHealthAt().map(Object::toString).orElse(""), node.lastError().orElse(""));
+    }
+
+    /**
+     * 创建默认空指标。
+     *
+     * @return 默认空指标
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static OcrNodeMetrics defaultMetrics() {
+        return new OcrNodeMetrics(0, 0, 0L, 0L, 0L, 0L, 0L, Optional.empty(), Optional.empty());
     }
 }

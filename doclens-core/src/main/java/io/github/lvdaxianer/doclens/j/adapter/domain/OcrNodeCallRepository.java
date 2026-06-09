@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.adapter.domain;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -49,4 +50,15 @@ public interface OcrNodeCallRepository {
      * @date 2026-06-08
      */
     List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit);
+
+    /**
+     * 按节点 ID 批量查询指定日期的 OCR 调用记录。
+     *
+     * @param nodeIds OCR 节点 ID 集合
+     * @param day 统计日期
+     * @return OCR 调用记录集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day);
 }

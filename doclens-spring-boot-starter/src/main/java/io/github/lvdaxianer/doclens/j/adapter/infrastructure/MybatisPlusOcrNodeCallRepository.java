@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -84,6 +85,30 @@ public class MybatisPlusOcrNodeCallRepository
                 .orderByDesc(OcrNodeCallEntity::getStartedAt)
                 .orderByDesc(OcrNodeCallEntity::getId);
         return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 按节点 ID 批量查询指定日期的 OCR 调用记录。
+     *
+     * @param nodeIds OCR 节点 ID 集合
+     * @param day 统计日期
+     * @return OCR 调用记录集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Override
+    public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
+        if (nodeIds.isEmpty()) {
+            return List.of();
+        } else {
+            LambdaQueryWrapper<OcrNodeCallEntity> wrapper = new LambdaQueryWrapper<OcrNodeCallEntity>()
+                    .in(OcrNodeCallEntity::getNodeId, nodeIds)
+                    .ge(OcrNodeCallEntity::getStartedAt, day.atStartOfDay().atOffset(java.time.ZoneOffset.UTC))
+                    .lt(OcrNodeCallEntity::getStartedAt, day.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC))
+                    .orderByAsc(OcrNodeCallEntity::getStartedAt)
+                    .orderByAsc(OcrNodeCallEntity::getId);
+            return page(MybatisPlusPages.listLimit(), wrapper).getRecords().stream().map(this::toDomain).toList();
+        }
     }
 
     /**

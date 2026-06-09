@@ -29,6 +29,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -201,6 +202,13 @@ class ImageDocumentExtractorTest {
         @Override
         public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
             return calls.stream().filter(call -> call.nodeId().equals(nodeId)).limit(limit).toList();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
+            return calls.stream()
+                    .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
+                    .toList();
         }
     }
 

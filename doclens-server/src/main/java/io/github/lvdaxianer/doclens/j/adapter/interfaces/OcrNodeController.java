@@ -1,6 +1,9 @@
 package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeManagementService;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeMetricsViewReader;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class OcrNodeController {
 
     private final OcrNodeManagementService managementService;
+    private final OcrNodeMetricsViewReader metricsViewReader;
 
     /**
      * 创建 OCR 节点管理控制器。
@@ -31,8 +35,12 @@ public class OcrNodeController {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    public OcrNodeController(OcrNodeManagementService managementService) {
+    public OcrNodeController(
+            OcrNodeManagementService managementService,
+            OcrNodeMetricsViewReader metricsViewReader
+    ) {
         this.managementService = managementService;
+        this.metricsViewReader = metricsViewReader;
     }
 
     /**
@@ -45,8 +53,13 @@ public class OcrNodeController {
      */
     @GetMapping("/ocr-models/{modelKey}/nodes")
     public Map<String, List<OcrNodeResponse>> listNodes(@PathVariable String modelKey) {
-        List<OcrNodeResponse> items = managementService.listNodes(modelKey).stream()
-                .map(OcrNodeResponse::from)
+        List<OcrNode> nodes = managementService.listNodes(modelKey);
+        Map<String, OcrNodeMetrics> metricsByNodeId = metricsViewReader.metricsByNodeIds(
+                nodes.stream().map(OcrNode::id).toList());
+        List<OcrNodeResponse> items = nodes.stream()
+                .map(node -> OcrNodeResponse.from(node, metricsByNodeId.getOrDefault(node.id(),
+                        new OcrNodeMetrics(0, 0, 0L, 0L, 0L, 0L, 0L, java.util.Optional.empty(),
+                                java.util.Optional.empty()))))
                 .toList();
         return Map.of("items", items);
     }

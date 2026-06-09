@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -181,6 +182,13 @@ final class OcrRoutingTestFixtures {
         @Override
         public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
             return calls.stream().filter(call -> nodeId.equals(call.nodeId())).limit(limit).toList();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
+            return calls.stream()
+                    .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
+                    .toList();
         }
     }
 

@@ -2,10 +2,12 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeMetricsViewReader;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.application.EmptyDashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrNodeMetricsAggregator;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardThreadPools;
 import java.util.concurrent.ExecutorService;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -48,6 +50,21 @@ public class DocLensDashboardMetricsAutoConfiguration {
             DashboardThreadPools threadPools
     ) {
         return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools);
+    }
+
+    /**
+     * 创建 OCR 节点指标读取器。
+     *
+     * @param callRepository OCR 调用记录仓储
+     * @return OCR 节点指标读取器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnBean(OcrNodeCallRepository.class)
+    @ConditionalOnMissingBean
+    OcrNodeMetricsViewReader ocrNodeMetricsViewReader(OcrNodeCallRepository callRepository) {
+        return new OcrNodeMetricsAggregator(callRepository);
     }
 
     /**
