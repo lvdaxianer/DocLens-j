@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeMetricsViewReader;
@@ -36,6 +37,7 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @param callRepository OCR 调用记录仓储
      * @param nodePool OCR 运行时节点池
      * @param threadPools Dashboard 线程池集合
+     * @param batchHitTracker 批次运行时命中跟踪器
      * @return Dashboard OCR 指标提供器
      * @author lvdaxianerplus
      * @date 2026-06-09
@@ -47,9 +49,11 @@ public class DocLensDashboardMetricsAutoConfiguration {
             OcrNodeRepository nodeRepository,
             OcrNodeCallRepository callRepository,
             OcrRuntimeNodePool nodePool,
-            DashboardThreadPools threadPools
+            DashboardThreadPools threadPools,
+            OcrBatchHitTracker batchHitTracker
     ) {
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools);
+        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools,
+                batchHitTracker);
     }
 
     /**

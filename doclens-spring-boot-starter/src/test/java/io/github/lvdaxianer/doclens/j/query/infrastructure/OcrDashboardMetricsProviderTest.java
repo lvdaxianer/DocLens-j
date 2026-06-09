@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
@@ -59,6 +61,40 @@ class OcrDashboardMetricsProviderTest {
     }
 
     /**
+     * 批次命中节点应合并进行中的运行时命中，避免处理中遗漏尚未落库的节点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void hitNodesByBatchMergesCompletedCallsAndRuntimeHits() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode("ocr_node_1", "财务 OCR 节点"),
+                offlineNode("ocr_node_2", "票据 OCR 节点")
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
+                successfulCall("call-1", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 320)
+        ));
+        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker(List.of(
+                new OcrBatchNodeHit("batch-1", "paddle_ocr", "ocr_node_1", 1L),
+                new OcrBatchNodeHit("batch-1", "paddle_ocr", "ocr_node_2", 2L)
+        ));
+        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository, batchHitTracker);
+
+        List<Map<String, Object>> hitNodes = provider.hitNodesByBatch("batch-1");
+
+        assertThat(hitNodes)
+                .anySatisfy(row -> assertThat(row)
+                        .containsEntry("node_id", "ocr_node_1")
+                        .containsEntry("node_name", "财务 OCR 节点")
+                        .containsEntry("image_count", 2L))
+                .anySatisfy(row -> assertThat(row)
+                        .containsEntry("node_id", "ocr_node_2")
+                        .containsEntry("node_name", "票据 OCR 节点")
+                        .containsEntry("image_count", 2L));
+    }
+
+    /**
      * OCR 资源指标应基于调用记录计算今日处理、平均耗时和 P95。
      *
      * @author lvdaxianerplus
@@ -108,10 +144,28 @@ class OcrDashboardMetricsProviderTest {
             InMemoryOcrNodeRepository nodeRepository,
             InMemoryOcrNodeCallRepository callRepository
     ) {
+        return provider(nodeRepository, callRepository, new InMemoryBatchHitTracker(List.of()));
+    }
+
+    /**
+     * 创建带运行时命中跟踪的待测指标提供器。
+     *
+     * @param nodeRepository 节点仓储
+     * @param callRepository 调用记录仓储
+     * @param batchHitTracker 批次运行时命中跟踪器
+     * @return 指标提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrDashboardMetricsProvider provider(
+            InMemoryOcrNodeRepository nodeRepository,
+            InMemoryOcrNodeCallRepository callRepository,
+            OcrBatchHitTracker batchHitTracker
+    ) {
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
         nodePool.initialize();
         return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
-                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null));
+                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null), batchHitTracker);
     }
 
     /**
@@ -256,6 +310,30 @@ class OcrDashboardMetricsProviderTest {
             return calls.stream()
                     .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
                     .toList();
+        }
+    }
+
+    /**
+     * 内存批次运行时命中跟踪器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private record InMemoryBatchHitTracker(List<OcrBatchNodeHit> hits) implements OcrBatchHitTracker {
+
+        @Override
+        public void recordDispatch(String batchId, String modelKey, String nodeId) {
+            throw new UnsupportedOperationException("test tracker is read only");
+        }
+
+        @Override
+        public void recordCompletion(String batchId, String modelKey, String nodeId) {
+            throw new UnsupportedOperationException("test tracker is read only");
+        }
+
+        @Override
+        public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
+            return hits.stream().filter(hit -> hit.batchId().equals(batchId)).toList();
         }
     }
 }

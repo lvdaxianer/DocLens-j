@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
@@ -29,6 +31,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private final DashboardThreadPools threadPools;
     private final ThreadPoolMetricsReader threadPoolMetricsReader;
     private final OcrNodeMetricsAggregator metricsAggregator;
+    private final OcrBatchHitTracker batchHitTracker;
 
     /**
      * 创建 OCR Dashboard 指标提供器。
@@ -37,6 +40,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      * @param callRepository OCR 调用仓储
      * @param nodePool 运行时节点池
      * @param threadPools Dashboard 线程池集合
+     * @param batchHitTracker 批次运行时命中跟踪器
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
@@ -44,7 +48,8 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
             OcrNodeRepository nodeRepository,
             OcrNodeCallRepository callRepository,
             OcrRuntimeNodePool nodePool,
-            DashboardThreadPools threadPools
+            DashboardThreadPools threadPools,
+            OcrBatchHitTracker batchHitTracker
     ) {
         this.nodeRepository = nodeRepository;
         this.callRepository = callRepository;
@@ -52,6 +57,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         this.threadPools = threadPools;
         this.threadPoolMetricsReader = new ThreadPoolMetricsReader();
         this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, nodePool);
+        this.batchHitTracker = batchHitTracker;
     }
 
     /**
@@ -89,12 +95,27 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     public List<Map<String, Object>> hitNodesByBatch(String batchId) {
         Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
                 .collect(Collectors.toMap(OcrNode::id, node -> node));
-        return callRepository.listByBatchId(batchId).stream()
-                .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()))
-                .entrySet()
-                .stream()
+        Map<HitNodeKey, Long> hitCounts = callRepository.listByBatchId(batchId).stream()
+                .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
+        mergeRuntimeHits(hitCounts, batchHitTracker.snapshotByBatch(batchId));
+        return hitCounts.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(HitNodeKey::modelKey)
+                        .thenComparing(HitNodeKey::nodeId)))
                 .map(entry -> hitNodeRow(nodesById, entry.getKey(), entry.getValue()))
                 .toList();
+    }
+
+    /**
+     * 合并运行时命中快照，补齐尚未落库的处理中图片分布。
+     *
+     * @param hitCounts 已落库命中统计
+     * @param runtimeHits 运行时命中快照
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void mergeRuntimeHits(Map<HitNodeKey, Long> hitCounts, List<OcrBatchNodeHit> runtimeHits) {
+        runtimeHits.forEach(hit -> hitCounts.merge(new HitNodeKey(hit.modelKey(), hit.nodeId()), hit.imageCount(),
+                Long::sum));
     }
 
     /**

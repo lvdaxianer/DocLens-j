@@ -11,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
  * @param nodeExecutor OCR 节点执行端口
  * @param callRepository OCR 调用记录仓储
  * @param callIdGenerator OCR 调用记录 ID 生成器
+ * @param batchHitTracker 批次运行时命中跟踪器
  * @param properties OCR 路由服务配置
  * @author lvdaxianerplus
  * @date 2026-06-08
@@ -22,6 +23,7 @@ public record OcrRoutingDependencies(
         OcrNodeImageExecutor nodeExecutor,
         OcrNodeCallRepository callRepository,
         OcrCallIdGenerator callIdGenerator,
+        OcrBatchHitTracker batchHitTracker,
         OcrRoutingServiceProperties properties
 ) {
 }

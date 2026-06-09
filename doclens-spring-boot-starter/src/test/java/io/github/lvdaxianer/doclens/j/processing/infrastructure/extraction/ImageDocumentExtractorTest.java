@@ -3,6 +3,8 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSelector;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
@@ -93,8 +95,34 @@ class ImageDocumentExtractorTest {
         LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
         return new OcrRoutingService(new OcrRoutingDependencies(nodeProvider, selector,
                 new OcrDispatchCoordinator(nodeProvider, selector, new InMemoryPendingQueue()),
-                nodeExecutor, callRepository, new FixedCallIdGenerator(),
+                nodeExecutor, callRepository, new FixedCallIdGenerator(), noOpBatchHitTracker(),
                 new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)));
+    }
+
+    /**
+     * 创建空实现批次命中跟踪器，避免提取器测试耦合 Dashboard 展示逻辑。
+     *
+     * @return 空实现批次命中跟踪器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrBatchHitTracker noOpBatchHitTracker() {
+        return new OcrBatchHitTracker() {
+            @Override
+            public void recordDispatch(String batchId, String modelKey, String nodeId) {
+                // 当前测试只验证路由结果，不关心运行时批次命中展示。
+            }
+
+            @Override
+            public void recordCompletion(String batchId, String modelKey, String nodeId) {
+                // 当前测试只验证路由结果，不关心运行时批次命中展示。
+            }
+
+            @Override
+            public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
+                return List.of();
+            }
+        };
     }
 
     /**

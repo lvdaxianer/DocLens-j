@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
@@ -17,6 +18,7 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckPrope
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrManualRecoveryService;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrHealthClient;
@@ -49,6 +51,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @param nodeExecutor OCR 节点执行器
      * @param callRepository OCR 调用记录仓储
      * @param callIdGenerator OCR 调用记录 ID 生成器
+     * @param batchHitTracker 批次运行时命中跟踪器
      * @return OCR 路由自动配置依赖
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -62,11 +65,12 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrPendingRequestQueue pendingRequestQueue,
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
-            OcrCallIdGenerator callIdGenerator
+            OcrCallIdGenerator callIdGenerator,
+            OcrBatchHitTracker batchHitTracker
     ) {
         return new OcrRoutingAutoConfigurationDependencies(nodePool, nodeSelector,
                 new OcrDispatchCoordinator(nodePool, nodeSelector, pendingRequestQueue), nodeExecutor,
-                callRepository, callIdGenerator);
+                callRepository, callIdGenerator, batchHitTracker);
     }
 
     /**
@@ -86,7 +90,21 @@ public class DocLensOcrResourceAutoConfiguration {
     ) {
         return new OcrRoutingService(new OcrRoutingDependencies(dependencies.nodePool(),
                 dependencies.nodeSelector(), dependencies.dispatchCoordinator(), dependencies.nodeExecutor(),
-                dependencies.callRepository(), dependencies.callIdGenerator(), routingProperties(properties.ocr())));
+                dependencies.callRepository(), dependencies.callIdGenerator(), dependencies.batchHitTracker(),
+                routingProperties(properties.ocr())));
+    }
+
+    /**
+     * 创建进程内批次 OCR 命中跟踪器。
+     *
+     * @return 批次 OCR 命中跟踪器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrBatchHitTracker ocrBatchHitTracker() {
+        return new InMemoryOcrBatchHitTracker();
     }
 
     /**
@@ -243,6 +261,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @param nodeExecutor OCR 节点执行器
      * @param callRepository OCR 调用记录仓储
      * @param callIdGenerator OCR 调用记录 ID 生成器
+     * @param batchHitTracker 批次运行时命中跟踪器
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -252,7 +271,8 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrDispatchCoordinator dispatchCoordinator,
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
-            OcrCallIdGenerator callIdGenerator
+            OcrCallIdGenerator callIdGenerator,
+            OcrBatchHitTracker batchHitTracker
     ) {
     }
 }

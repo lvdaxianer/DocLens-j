@@ -6,10 +6,13 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * OCR 路由测试夹具。
@@ -273,6 +276,75 @@ final class OcrRoutingTestFixtures {
             return calls.stream()
                     .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
                     .toList();
+        }
+    }
+
+    /**
+     * 内存批次运行时命中跟踪器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    static class InMemoryBatchHitTracker implements OcrBatchHitTracker {
+
+        private static final int KEY_SEGMENT_COUNT = 3;
+        private static final String KEY_SEPARATOR = "|";
+        private final Map<String, AtomicLong> hitCounts = new ConcurrentHashMap<>(TEST_CALL_CAPACITY);
+
+        @Override
+        public void recordDispatch(String batchId, String modelKey, String nodeId) {
+            hitCounts.computeIfAbsent(hitKey(batchId, modelKey, nodeId), ignored -> new AtomicLong(0L))
+                    .incrementAndGet();
+        }
+
+        @Override
+        public void recordCompletion(String batchId, String modelKey, String nodeId) {
+            hitCounts.computeIfPresent(hitKey(batchId, modelKey, nodeId), (ignored, counter) -> {
+                long currentValue = counter.decrementAndGet();
+                if (currentValue <= 0L) {
+                    return null;
+                } else {
+                    return counter;
+                }
+            });
+        }
+
+        @Override
+        public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
+            return hitCounts.entrySet().stream()
+                    .filter(entry -> entry.getValue().get() > 0L)
+                    .map(entry -> toHit(entry.getKey(), entry.getValue().get()))
+                    .filter(hit -> batchId.equals(hit.batchId()))
+                    .sorted(Comparator.comparing(OcrBatchNodeHit::nodeId))
+                    .toList();
+        }
+
+        /**
+         * 组装批次命中键，避免维护多层并发结构。
+         *
+         * @param batchId 批次 ID
+         * @param modelKey 模型标识
+         * @param nodeId 节点 ID
+         * @return 命中键
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        private String hitKey(String batchId, String modelKey, String nodeId) {
+            return batchId + KEY_SEPARATOR + modelKey + KEY_SEPARATOR + nodeId;
+        }
+
+        /**
+         * 将命中键转换为快照对象。
+         *
+         * @param key 命中键
+         * @param imageCount 图片数
+         * @return 命中快照
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        private OcrBatchNodeHit toHit(String key, long imageCount) {
+            String[] segments = key.split("\\|", KEY_SEGMENT_COUNT);
+            return new OcrBatchNodeHit(segments[0], segments[1], segments[2], imageCount);
         }
     }
 

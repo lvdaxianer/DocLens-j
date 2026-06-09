@@ -26,6 +26,7 @@ public class OcrRoutingService {
     private final OcrDispatchCoordinator dispatchCoordinator;
     private final OcrNodeImageExecutor nodeExecutor;
     private final OcrNodeCallRecorder callRecorder;
+    private final OcrBatchHitTracker batchHitTracker;
     private final OcrRoutingServiceProperties properties;
 
     /**
@@ -39,6 +40,7 @@ public class OcrRoutingService {
         this.dispatchCoordinator = dependencies.dispatchCoordinator();
         this.nodeExecutor = dependencies.nodeExecutor();
         this.callRecorder = new OcrNodeCallRecorder(dependencies.callRepository(), dependencies.callIdGenerator());
+        this.batchHitTracker = dependencies.batchHitTracker();
         this.properties = dependencies.properties();
     }
 
@@ -99,6 +101,7 @@ public class OcrRoutingService {
     ) {
         OcrDispatchAcquireResult acquireResult = dispatchCoordinator.acquire(request, policy, excludedNodeIds);
         OcrRuntimeNodeView node = dispatchedNode(acquireResult);
+        batchHitTracker.recordDispatch(request.batchId(), node.modelKey(), node.nodeId());
         try {
             NodeAttemptResult result = executeWithRetry(request, policy, node, accumulator);
             if (result.result().isPresent()) {
@@ -110,6 +113,7 @@ public class OcrRoutingService {
                 throw routeException(accumulator.lastFailure());
             }
         } finally {
+            batchHitTracker.recordCompletion(request.batchId(), node.modelKey(), node.nodeId());
             dispatchCoordinator.release(node.nodeId());
         }
     }

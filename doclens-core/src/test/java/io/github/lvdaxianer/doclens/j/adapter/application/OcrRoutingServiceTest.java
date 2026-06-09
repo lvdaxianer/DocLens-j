@@ -4,14 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.FixedCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryRuntimeNodeProvider;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.RecordingNodeExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
+import java.util.Map;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -140,6 +146,44 @@ class OcrRoutingServiceTest {
     }
 
     /**
+     * 路由执行期间应暴露运行时命中节点，便于 Dashboard 在处理中展示真实分布。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void routingServiceTracksBatchHitNodeWhileRequestIsStillRunning() throws Exception {
+        BlockingNodeExecutor executor = new BlockingNodeExecutor();
+        InMemoryRuntimeNodeProvider nodeProvider = new InMemoryRuntimeNodeProvider(List.of(node("paddle-1", "paddle_ocr")));
+        InMemoryCallRepository callRepository = new InMemoryCallRepository();
+        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker();
+        OcrRoutingService service = service(nodeProvider, executor, callRepository, batchHitTracker);
+        AtomicReference<OcrRouteExecutionResult> resultRef = new AtomicReference<>();
+        Thread worker = new Thread(() -> resultRef.set(service.recognize(request(),
+                OcrRoutePolicy.globalLoadBalance("least-inflight"))));
+
+        worker.start();
+        assertThat(executor.awaitStarted()).isTrue();
+
+        assertThat(batchHitTracker.snapshotByBatch("batch-test")).singleElement().satisfies(hit ->
+                assertThat(Map.of(
+                        "modelKey", hit.modelKey(),
+                        "nodeId", hit.nodeId(),
+                        "imageCount", hit.imageCount()))
+                        .containsEntry("modelKey", "paddle_ocr")
+                        .containsEntry("nodeId", "paddle-1")
+                        .containsEntry("imageCount", 1L));
+        assertThat(callRepository.calls).isEmpty();
+
+        executor.release();
+        worker.join(TimeUnit.SECONDS.toMillis(2));
+
+        assertThat(resultRef.get()).isNotNull();
+        assertThat(batchHitTracker.snapshotByBatch("batch-test")).isEmpty();
+        assertThat(callRepository.calls).hasSize(1);
+    }
+
+    /**
      * 创建 OCR 路由测试上下文。
      *
      * @param nodes 运行时节点
@@ -148,20 +192,54 @@ class OcrRoutingServiceTest {
      * @date 2026-06-08
      */
     private TestContext context(List<OcrRuntimeNodeView> nodes) {
+        return context(nodes, new RecordingNodeExecutor());
+    }
+
+    /**
+     * 创建带自定义执行器的 OCR 路由测试上下文。
+     *
+     * @param nodes 运行时节点
+     * @param executor 节点执行器
+     * @return 测试上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private TestContext context(List<OcrRuntimeNodeView> nodes, OcrNodeImageExecutor executor) {
         InMemoryRuntimeNodeProvider nodeProvider = new InMemoryRuntimeNodeProvider(nodes);
-        LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
-        RecordingNodeExecutor executor = new RecordingNodeExecutor();
         InMemoryCallRepository callRepository = new InMemoryCallRepository();
-        OcrRoutingService service = new OcrRoutingService(new OcrRoutingDependencies(
+        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker();
+        OcrRoutingService service = service(nodeProvider, executor, callRepository, batchHitTracker);
+        return new TestContext(service, nodeProvider, (RecordingNodeExecutor) executor, callRepository, batchHitTracker);
+    }
+
+    /**
+     * 创建可复用的 OCR 路由服务，避免不同测试路径重复拼装依赖。
+     *
+     * @param nodeProvider 运行时节点提供器
+     * @param executor 节点执行器
+     * @param callRepository 调用记录仓储
+     * @param batchHitTracker 批次运行时命中跟踪器
+     * @return OCR 路由服务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrRoutingService service(
+            InMemoryRuntimeNodeProvider nodeProvider,
+            OcrNodeImageExecutor executor,
+            InMemoryCallRepository callRepository,
+            InMemoryBatchHitTracker batchHitTracker
+    ) {
+        LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
+        return new OcrRoutingService(new OcrRoutingDependencies(
                 nodeProvider,
                 selector,
                 new OcrDispatchCoordinator(nodeProvider, selector, new InMemoryPendingQueue()),
                 executor,
                 callRepository,
                 new FixedCallIdGenerator(),
+                batchHitTracker,
                 new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)
         ));
-        return new TestContext(service, nodeProvider, executor, callRepository);
     }
 
     /**
@@ -231,8 +309,65 @@ class OcrRoutingServiceTest {
             OcrRoutingService service,
             InMemoryRuntimeNodeProvider nodeProvider,
             RecordingNodeExecutor executor,
-            InMemoryCallRepository callRepository
+            InMemoryCallRepository callRepository,
+            InMemoryBatchHitTracker batchHitTracker
     ) {
+    }
+
+    /**
+     * 阻塞型执行器，用于观察 OCR 调用进行中的运行时状态。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static final class BlockingNodeExecutor implements OcrNodeImageExecutor {
+
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Override
+        public ImageOcrResult recognize(OcrRuntimeNodeView node, ImageOcrRequest request) {
+            started.countDown();
+            awaitRelease();
+            return ImageOcrResult.fromBlocks(request.pageNo(), Map.of(), List.of(), List.of());
+        }
+
+        /**
+         * 等待执行器开始处理。
+         *
+         * @return 是否在超时前开始处理
+         * @throws InterruptedException 线程中断
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        boolean awaitStarted() throws InterruptedException {
+            return started.await(2, TimeUnit.SECONDS);
+        }
+
+        /**
+         * 释放被阻塞的执行器。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        void release() {
+            release.countDown();
+        }
+
+        /**
+         * 等待外部放行，避免测试线程忙等。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        private void awaitRelease() {
+            try {
+                release.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("blocking executor interrupted", ex);
+            }
+        }
     }
 
     /**
