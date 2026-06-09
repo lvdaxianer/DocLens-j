@@ -1,6 +1,7 @@
 import type {
   OcrModelListResponse,
   OcrNode,
+  OcrNodeCallListResponse,
   OcrNodeListResponse,
   OcrNodePayload,
   OcrNodeTestResponse
@@ -275,5 +276,19 @@ export function deleteOcrNode(nodeId: string): Promise<void> {
 export function testOcrNode(nodeId: string): Promise<OcrNodeTestResponse> {
   return requestJson<OcrNodeTestResponse>(`/api/v1/ocr-nodes/${encodeURIComponent(nodeId)}/test`, {
     method: 'POST'
+  })
+}
+
+/**
+ * 获取 OCR 节点最近调用记录。
+ *
+ * @param nodeId - OCR 节点 ID
+ * @returns 最近调用列表响应
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function fetchOcrNodeCalls(nodeId: string): Promise<OcrNodeCallListResponse> {
+  return requestJson<OcrNodeCallListResponse>(`/api/v1/ocr-nodes/${encodeURIComponent(nodeId)}/calls`, {
+    method: 'GET'
   })
 }

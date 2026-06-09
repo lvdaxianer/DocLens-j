@@ -5,12 +5,13 @@ import {
   createOcrNode,
   deleteOcrNode,
   fetchOcrModels,
+  fetchOcrNodeCalls,
   fetchOcrNodes,
   testOcrNode,
   updateOcrNode,
   updateOcrNodeEnabled
 } from '@/api/ocrResources'
-import type { OcrModel, OcrNode, OcrNodeSubmitPayload } from '@/types/ocrResources'
+import type { OcrModel, OcrNode, OcrNodeCall, OcrNodeSubmitPayload } from '@/types/ocrResources'
 
 /**
  * 创建 OCR 资源页状态和操作。
@@ -25,6 +26,7 @@ export function useOcrResources(message: MessageApi) {
   const nodes = shallowRef<OcrNode[]>([])
   const selectedModelKey = shallowRef('')
   const selectedNode = shallowRef<OcrNode | null>(null)
+  const selectedNodeCalls = shallowRef<OcrNodeCall[]>([])
   const editingNode = shallowRef<OcrNode | null>(null)
   const isFormVisible = shallowRef(false)
   const isDetailVisible = shallowRef(false)
@@ -158,9 +160,16 @@ export function useOcrResources(message: MessageApi) {
    * @author lvdaxianerplus
    * @date 2026-06-09
    */
-  function openDetailDrawer(node: OcrNode): void {
+  async function openDetailDrawer(node: OcrNode): Promise<void> {
     selectedNode.value = node
     isDetailVisible.value = true
+    selectedNodeCalls.value = []
+    try {
+      const response = await fetchOcrNodeCalls(node.id)
+      selectedNodeCalls.value = response.items
+    } catch (error) {
+      message.error(toErrorMessage(error))
+    }
   }
 
   /**
@@ -183,6 +192,8 @@ export function useOcrResources(message: MessageApi) {
    */
   function closeDetailDrawer(): void {
     isDetailVisible.value = false
+    selectedNode.value = null
+    selectedNodeCalls.value = []
   }
 
   /**
@@ -287,6 +298,7 @@ export function useOcrResources(message: MessageApi) {
     nodes,
     selectedModelKey,
     selectedNode,
+    selectedNodeCalls,
     editingNode,
     isFormVisible,
     isDetailVisible,

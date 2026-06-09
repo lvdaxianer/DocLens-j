@@ -18,6 +18,7 @@ const {
   nodes,
   selectedModelKey,
   selectedNode,
+  selectedNodeCalls,
   editingNode,
   isFormVisible,
   isDetailVisible,
@@ -105,6 +106,7 @@ onMounted(loadModels)
     <OcrNodeDetailDrawer
       :visible="isDetailVisible"
       :node="selectedNode"
+      :calls="selectedNodeCalls"
       @close="closeDetailDrawer"
     />
   </div>

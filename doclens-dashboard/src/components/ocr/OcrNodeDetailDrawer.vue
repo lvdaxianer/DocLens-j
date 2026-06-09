@@ -139,7 +139,7 @@ const endpointLabel = computed(() => {
               </div>
             </article>
           </div>
-          <p v-else class="ocr-node-detail__empty">最近调用记录等待后端读模型接入</p>
+          <p v-else class="ocr-node-detail__empty">暂无最近调用记录</p>
         </section>
       </section>
     </NDrawerContent>

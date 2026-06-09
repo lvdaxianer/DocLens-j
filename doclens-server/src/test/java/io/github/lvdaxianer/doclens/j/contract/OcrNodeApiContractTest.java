@@ -7,7 +7,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallCreateRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +36,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class OcrNodeApiContractTest {
 
+    private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
+
     @TempDir
     static java.nio.file.Path tempDir;
 
@@ -36,6 +46,9 @@ class OcrNodeApiContractTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private OcrNodeCallRepository ocrNodeCallRepository;
 
     /**
      * 配置隔离的测试存储与数据库。
@@ -232,6 +245,30 @@ class OcrNodeApiContractTest {
     }
 
     /**
+     * 节点详情接口应返回最近调用记录，供 Dashboard 详情抽屉展示。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void nodeRecentCallsReturnsLatestCallRecords() throws Exception {
+        String nodeId = createNode("paddle-api-calls", "10.100.30.221", 8080);
+        saveCall(nodeId, "doc_call_1", 1, OcrNodeCallStatus.SUCCESS, 0, 180L, Optional.empty());
+        saveCall(nodeId, "doc_call_2", 2, OcrNodeCallStatus.FAILED, 1, 520L, Optional.of("timeout"));
+
+        mockMvc.perform(get("/api/v1/ocr-nodes/{nodeId}/calls", nodeId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].document_id").value("doc_call_2"))
+                .andExpect(jsonPath("$.items[0].image_index").value(2))
+                .andExpect(jsonPath("$.items[0].status").value("FAILED"))
+                .andExpect(jsonPath("$.items[0].retry_count").value(1))
+                .andExpect(jsonPath("$.items[0].duration_ms").value(520))
+                .andExpect(jsonPath("$.items[0].error_message").value("timeout"))
+                .andExpect(jsonPath("$.items[1].document_id").value("doc_call_1"));
+    }
+
+    /**
      * 创建 OCR 节点并返回节点 ID。
      *
      * @param name 节点名称
@@ -326,5 +363,47 @@ class OcrNodeApiContractTest {
                   "max_concurrency": 4
                 }
                 """.formatted(name, providerModel, apiKey);
+    }
+
+    /**
+     * 保存节点调用记录，供详情接口契约测试复用。
+     *
+     * @param nodeId 节点 ID
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @param status 调用状态
+     * @param retryCount 重试次数
+     * @param elapsedMs 耗时
+     * @param errorMessage 错误消息
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private void saveCall(
+            String nodeId,
+            String documentId,
+            int pageNo,
+            OcrNodeCallStatus status,
+            int retryCount,
+            long elapsedMs,
+            Optional<String> errorMessage
+    ) {
+        OffsetDateTime startedAt = BASE_TIME.plusSeconds(pageNo);
+        OcrNodeCall call = OcrNodeCall.create(new OcrNodeCallCreateRequest(
+                "call_" + documentId,
+                "batch_contract",
+                documentId,
+                pageNo,
+                "paddle_ocr",
+                nodeId,
+                OcrRoutingMode.GLOBAL_LOAD_BALANCE,
+                status,
+                retryCount,
+                elapsedMs,
+                Optional.empty(),
+                errorMessage,
+                startedAt,
+                Optional.of(startedAt.plus(Duration.ofMillis(elapsedMs)))
+        ));
+        ocrNodeCallRepository.save(call);
     }
 }

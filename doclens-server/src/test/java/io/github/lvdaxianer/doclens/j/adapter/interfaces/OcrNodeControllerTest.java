@@ -3,12 +3,15 @@ package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeManagementService;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeMetricsViewReader;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelDefinition;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +51,8 @@ class OcrNodeControllerTest {
                 "ocr_node_2", new OcrNodeMetrics(0, 0, 1L, 1L, 0L, 600L, 600L, Optional.of(BASE_TIME), Optional.empty())
         ));
 
-        OcrNodeController controller = new OcrNodeController(managementService, metricsViewReader);
+        OcrNodeController controller = new OcrNodeController(managementService, metricsViewReader,
+                new EmptyCallRepository());
 
         Map<String, List<OcrNodeResponse>> response = controller.listNodes("paddle_ocr");
 
@@ -115,6 +119,40 @@ class OcrNodeControllerTest {
         @Override
         public OcrModelDefinition requireSupported(String modelKey) {
             return null;
+        }
+    }
+
+    /**
+     * 空调用记录仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static final class EmptyCallRepository implements OcrNodeCallRepository {
+
+        @Override
+        public void save(OcrNodeCall call) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByDocumentId(String documentId) {
+            return List.of();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByBatchId(String batchId) {
+            return List.of();
+        }
+
+        @Override
+        public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
+            return List.of();
+        }
+
+        @Override
+        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
+            return List.of();
         }
     }
 

@@ -70,6 +70,10 @@ export interface OcrNodeCall {
   finished_at: string
 }
 
+export interface OcrNodeCallListResponse {
+  items: OcrNodeCall[]
+}
+
 export interface OcrNodePayload {
   deployment_type: OcrNodeDeploymentType
   name: string
