@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Activity, Eye, FlaskConical, Pencil, Power, Trash2 } from '@lucide/vue'
+import { Activity, Eye, FlaskConical, Link2, Pencil, Power, Trash2 } from '@lucide/vue'
 import { NButton, NIcon, NPopconfirm, NSwitch, NTag } from 'naive-ui'
 
 import type { OcrNode, OcrNodeStatus } from '@/types/ocrResources'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
-import { displayModelName, displayNodeName } from '@/utils/ocrDisplayRules'
+import { displayModelName, displayNodeName, summarizeOcrNode } from '@/utils/ocrDisplayRules'
 import {
   OCR_NODE_TABLE_ACTION_COLUMN_WIDTH,
   OCR_NODE_TABLE_ACTION_GAP,
@@ -22,6 +22,7 @@ const emit = defineEmits<{
   delete: [node: OcrNode]
   detail: [node: OcrNode]
   test: [node: OcrNode]
+  reconnect: [node: OcrNode]
   toggleEnabled: [node: OcrNode, enabled: boolean]
 }>()
 
@@ -98,6 +99,18 @@ function nodeEndpointLabel(node: OcrNode): string {
     return `${node.host}:${node.port}`
   }
 }
+
+/**
+ * 获取节点治理摘要。
+ *
+ * @param node - OCR 节点
+ * @returns 节点治理摘要
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function governanceSummary(node: OcrNode) {
+  return summarizeOcrNode(node)
+}
 </script>
 
 <template>
@@ -119,6 +132,7 @@ function nodeEndpointLabel(node: OcrNode): string {
             <th>部署</th>
             <th>地址</th>
             <th>状态</th>
+            <th>治理</th>
             <th>启用</th>
             <th>全局</th>
             <th>解析中</th>
@@ -151,6 +165,12 @@ function nodeEndpointLabel(node: OcrNode): string {
               <NTag size="small" :type="statusTagType(node.status)">
                 {{ statusLabel(node.status) }}
               </NTag>
+            </td>
+            <td>
+              <div class="ocr-node-table__governance">
+                <span>{{ governanceSummary(node).queueLabel }}</span>
+                <span>{{ governanceSummary(node).circuitLabel }}</span>
+              </div>
             </td>
             <td>
               <NSwitch size="small" :value="node.enabled" @update:value="toggleEnabled(node, $event)">
@@ -190,6 +210,18 @@ function nodeEndpointLabel(node: OcrNode): string {
                 <NButton quaternary circle size="small" title="测试" @click="emit('test', node)">
                   <template #icon>
                     <NIcon :component="FlaskConical" />
+                  </template>
+                </NButton>
+                <NButton
+                  v-if="governanceSummary(node).canReconnect"
+                  quaternary
+                  circle
+                  size="small"
+                  title="手动连接"
+                  @click="emit('reconnect', node)"
+                >
+                  <template #icon>
+                    <NIcon :component="Link2" />
                   </template>
                 </NButton>
                 <NButton quaternary circle size="small" title="切换启用" @click="toggleEnabled(node, !node.enabled)">
@@ -256,6 +288,12 @@ function nodeEndpointLabel(node: OcrNode): string {
   color: var(--ink-muted);
   font-weight: 700;
   background: var(--surface-inset);
+}
+
+.ocr-node-table__governance {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .ocr-node-table__name {

@@ -6,7 +6,8 @@ import {
   displayRoutingMode,
   displayModelName,
   displayNodeName,
-  displayNodeSubtitle
+  displayNodeSubtitle,
+  summarizeOcrNode
 } from '../ocrDisplayRules.ts'
 
 test('node display prefers alias over internal node id', () => {
@@ -50,4 +51,16 @@ test('load balance strategy display prefers product wording', () => {
   assert.equal(displayLoadBalanceStrategy('least-inflight'), '最少解析中图片')
   assert.equal(displayLoadBalanceStrategy('weighted-random'), 'weighted-random')
   assert.equal(displayLoadBalanceStrategy(''), '-')
+})
+
+test('ocr node display exposes reconnect affordance and circuit window state', () => {
+  const summary = summarizeOcrNode({
+    status: 'DOWN',
+    circuit_open_until: '2026-06-10T10:00:00+08:00',
+    queued_images: 2
+  })
+
+  assert.equal(summary.canReconnect, true)
+  assert.equal(summary.queueLabel, '排队 2 张')
+  assert.equal(summary.circuitLabel, '熔断至 2026-06-10T10:00:00+08:00')
 })

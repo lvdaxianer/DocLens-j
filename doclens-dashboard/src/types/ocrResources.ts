@@ -50,7 +50,11 @@ export interface OcrNode {
   failed_images: number
   avg_latency_ms: number
   p95_latency_ms: number
+  failure_count: number
+  recovery_success_count: number
   last_health_at: string
+  circuit_open_until: string
+  last_manual_recovery_at: string
   last_error: string
 }
 
@@ -96,4 +100,11 @@ export interface OcrNodeSubmitPayload {
 export interface OcrNodeTestResponse {
   healthy: boolean
   message: string
+}
+
+export interface OcrNodeReconnectResponse {
+  healthy: boolean
+  attempts: number
+  status: OcrNodeStatus
+  circuit_open_until: string
 }

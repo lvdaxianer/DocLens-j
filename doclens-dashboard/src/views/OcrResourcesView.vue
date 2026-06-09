@@ -39,6 +39,7 @@ const {
   saveNode,
   removeNode,
   testNode,
+  reconnectNode,
   toggleNodeEnabled
 } = ocrResources
 
@@ -89,6 +90,7 @@ onMounted(loadModels)
         @delete="removeNode"
         @detail="openDetailDrawer"
         @test="testNode"
+        @reconnect="reconnectNode"
         @toggle-enabled="toggleNodeEnabled"
       />
     </section>

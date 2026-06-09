@@ -7,8 +7,8 @@ import type {
 } from '@/types/ocrResources'
 
 const DEFAULT_PORT = 8080
-const DEFAULT_WEIGHT = 100
-const DEFAULT_MAX_CONCURRENCY = 4
+const DEFAULT_WEIGHT = 50
+const DEFAULT_MAX_CONCURRENCY = 10
 const COMPATIBLE_ONLINE_MODEL_KEY = 'paddle_ocr'
 export const DASHSCOPE_CHANNEL_KEY: OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
 

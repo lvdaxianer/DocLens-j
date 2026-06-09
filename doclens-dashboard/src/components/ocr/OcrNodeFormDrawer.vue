@@ -170,10 +170,10 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
           </NFormItem>
         </div>
         <div class="ocr-node-form__grid">
-          <NFormItem label="权重">
+          <NFormItem label="权重（默认 50）">
             <NInputNumber v-model:value="form.weight" class="ocr-node-form__number" :min="1" :max="10000" />
           </NFormItem>
-          <NFormItem label="最大并发">
+          <NFormItem label="最大并发（默认 10）">
             <NInputNumber v-model:value="form.maxConcurrency" class="ocr-node-form__number" :min="1" :max="1000" />
           </NFormItem>
         </div>

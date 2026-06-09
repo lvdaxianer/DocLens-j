@@ -4,6 +4,7 @@ import type {
   OcrNodeCallListResponse,
   OcrNodeListResponse,
   OcrNodePayload,
+  OcrNodeReconnectResponse,
   OcrNodeTestResponse
 } from '@/types/ocrResources'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
@@ -275,6 +276,20 @@ export function deleteOcrNode(nodeId: string): Promise<void> {
  */
 export function testOcrNode(nodeId: string): Promise<OcrNodeTestResponse> {
   return requestJson<OcrNodeTestResponse>(`/api/v1/ocr-nodes/${encodeURIComponent(nodeId)}/test`, {
+    method: 'POST'
+  })
+}
+
+/**
+ * 触发 OCR 节点手动恢复探测。
+ *
+ * @param nodeId - OCR 节点 ID
+ * @returns 节点手动恢复响应
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function reconnectOcrNode(nodeId: string): Promise<OcrNodeReconnectResponse> {
+  return requestJson<OcrNodeReconnectResponse>(`/api/v1/ocr-nodes/${encodeURIComponent(nodeId)}/reconnect`, {
     method: 'POST'
   })
 }

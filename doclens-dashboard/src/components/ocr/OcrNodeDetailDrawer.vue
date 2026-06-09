@@ -5,7 +5,7 @@ import { NDrawer, NDrawerContent, NIcon, NTag } from 'naive-ui'
 
 import type { OcrNode, OcrNodeCall } from '@/types/ocrResources'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
-import { displayModelName, displayNodeName } from '@/utils/ocrDisplayRules'
+import { displayModelName, displayNodeName, summarizeOcrNode } from '@/utils/ocrDisplayRules'
 
 const props = defineProps<{
   visible: boolean
@@ -36,6 +36,8 @@ const endpointLabel = computed(() => {
     return ''
   }
 })
+
+const governanceSummary = computed(() => summarizeOcrNode(props.node ?? {}))
 </script>
 
 <template>
@@ -64,6 +66,11 @@ const endpointLabel = computed(() => {
             <NIcon :component="Image" />
             <span>当前解析</span>
             <strong>{{ formatNumber(node.inflight_images) }}</strong>
+          </article>
+          <article class="ocr-node-detail__metric">
+            <NIcon :component="Clock3" />
+            <span>当前排队</span>
+            <strong>{{ formatNumber(node.queued_images) }}</strong>
           </article>
           <article class="ocr-node-detail__metric">
             <NIcon :component="Activity" />
@@ -98,6 +105,10 @@ const endpointLabel = computed(() => {
               <dd>{{ formatNumber(node.queued_images) }}</dd>
             </div>
             <div>
+              <dt>权重 / 并发</dt>
+              <dd>{{ formatNumber(node.weight) }} / {{ formatNumber(node.max_concurrency) }}</dd>
+            </div>
+            <div>
               <dt>成功图片</dt>
               <dd>{{ formatNumber(node.success_images) }}</dd>
             </div>
@@ -112,6 +123,28 @@ const endpointLabel = computed(() => {
             <div>
               <dt>最近检查</dt>
               <dd>{{ formatDateTime(node.last_health_at) }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="ocr-node-detail__section">
+          <h2>健康治理</h2>
+          <dl class="ocr-node-detail__pairs">
+            <div>
+              <dt>连续失败</dt>
+              <dd>{{ formatNumber(node.failure_count) }}</dd>
+            </div>
+            <div>
+              <dt>恢复成功</dt>
+              <dd>{{ formatNumber(node.recovery_success_count) }}</dd>
+            </div>
+            <div>
+              <dt>熔断窗口</dt>
+              <dd>{{ governanceSummary.circuitLabel }}</dd>
+            </div>
+            <div>
+              <dt>手动恢复</dt>
+              <dd>{{ formatDateTime(node.last_manual_recovery_at) }}</dd>
             </div>
           </dl>
         </section>

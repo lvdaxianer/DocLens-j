@@ -7,6 +7,7 @@ import {
   fetchOcrModels,
   fetchOcrNodeCalls,
   fetchOcrNodes,
+  reconnectOcrNode,
   testOcrNode,
   updateOcrNode,
   updateOcrNodeEnabled
@@ -275,6 +276,34 @@ export function useOcrResources(message: MessageApi) {
   }
 
   /**
+   * 触发 OCR 节点手动恢复。
+   *
+   * @param node - OCR 节点
+   * @returns 手动恢复完成信号
+   * @author lvdaxianerplus
+   * @date 2026-06-10
+   */
+  async function reconnectNode(node: OcrNode): Promise<void> {
+    try {
+      const response = await reconnectOcrNode(node.id)
+      await loadNodes()
+      if (selectedNode.value?.id === node.id) {
+        const refreshedNode = nodes.value.find((item) => item.id === node.id) ?? node
+        selectedNode.value = refreshedNode
+      } else {
+        // 当前未打开该节点详情时无需同步抽屉内状态。
+      }
+      if (response.healthy) {
+        message.success(`手动连接成功，已尝试 ${response.attempts} 次`)
+      } else {
+        message.warning(`手动连接已执行 ${response.attempts} 次，当前状态：${response.status}`)
+      }
+    } catch (error) {
+      message.error(toErrorMessage(error))
+    }
+  }
+
+  /**
    * 切换 OCR 节点启用状态。
    *
    * @param node - OCR 节点
@@ -319,6 +348,7 @@ export function useOcrResources(message: MessageApi) {
     saveNode,
     removeNode,
     testNode,
+    reconnectNode,
     toggleNodeEnabled
   }
 }

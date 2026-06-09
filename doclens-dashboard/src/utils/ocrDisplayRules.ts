@@ -19,6 +19,18 @@ export interface OcrNodeSubtitleSource {
   imageCount?: number
 }
 
+export interface OcrNodeSummarySource {
+  status?: string
+  queued_images?: number
+  circuit_open_until?: string
+}
+
+export interface OcrNodeSummary {
+  canReconnect: boolean
+  queueLabel: string
+  circuitLabel: string
+}
+
 const ROUTING_MODE_LABELS: Record<string, string> = {
   DEFAULT: '全局负载均衡',
   GLOBAL_LOAD_BALANCE: '全局负载均衡',
@@ -112,5 +124,62 @@ export function displayLoadBalanceStrategy(strategy?: string): string {
     return LOAD_BALANCE_STRATEGY_LABELS[normalizedStrategy] ?? normalizedStrategy
   } else {
     return '-'
+  }
+}
+
+/**
+ * 汇总 OCR 节点治理展示信息。
+ *
+ * @param node - 节点治理显示源
+ * @returns 节点治理展示摘要
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function summarizeOcrNode(node: OcrNodeSummarySource): OcrNodeSummary {
+  return {
+    canReconnect: shouldReconnect(node.status),
+    queueLabel: queueLabel(node.queued_images),
+    circuitLabel: circuitLabel(node.circuit_open_until)
+  }
+}
+
+/**
+ * 判断节点是否应展示手动连接入口。
+ *
+ * @param status - 节点状态
+ * @returns 是否可手动连接
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function shouldReconnect(status?: string): boolean {
+  return status === 'DOWN' || status === 'RECOVERING'
+}
+
+/**
+ * 生成节点排队摘要。
+ *
+ * @param queuedImages - 排队图片数
+ * @returns 排队摘要
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function queueLabel(queuedImages?: number): string {
+  return `排队 ${queuedImages ?? 0} 张`
+}
+
+/**
+ * 生成节点熔断窗口摘要。
+ *
+ * @param circuitOpenUntil - 熔断结束时间
+ * @returns 熔断窗口摘要
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function circuitLabel(circuitOpenUntil?: string): string {
+  const value = circuitOpenUntil?.trim()
+  if (value) {
+    return `熔断至 ${value}`
+  } else {
+    return '未熔断'
   }
 }

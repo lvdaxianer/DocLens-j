@@ -24,8 +24,8 @@ test('offline node form submits only host and port endpoint fields', () => {
     port: 8080,
     enabled: true,
     participate_global: true,
-    weight: 100,
-    max_concurrency: 4
+    weight: 50,
+    max_concurrency: 10
   })
 })
 
@@ -47,9 +47,16 @@ test('online node form submits channel model and api key without endpoint fields
     api_key: 'sk-secret',
     enabled: true,
     participate_global: true,
-    weight: 100,
-    max_concurrency: 4
+    weight: 50,
+    max_concurrency: 10
   })
+})
+
+test('ocr node form defaults weight and max concurrency to product values', () => {
+  const form = createDefaultOcrNodeForm('paddle_ocr')
+
+  assert.equal(form.weight, 50)
+  assert.equal(form.maxConcurrency, 10)
 })
 
 test('online node form hides ocr model select from user flow', () => {
@@ -83,8 +90,8 @@ test('editing online node never hydrates existing api key into form', () => {
     credential_configured: true,
     enabled: true,
     participate_global: true,
-    weight: 100,
-    max_concurrency: 4,
+    weight: 50,
+    max_concurrency: 10,
     status: 'RECOVERING',
     inflight_images: 0,
     queued_images: 0,
@@ -93,7 +100,11 @@ test('editing online node never hydrates existing api key into form', () => {
     failed_images: 0,
     avg_latency_ms: 0,
     p95_latency_ms: 0,
+    failure_count: 0,
+    recovery_success_count: 0,
     last_health_at: '',
+    circuit_open_until: '',
+    last_manual_recovery_at: '',
     last_error: ''
   })
 

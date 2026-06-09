@@ -5,10 +5,10 @@
  * @date 2026-06-09
  */
 
-export const OCR_NODE_TABLE_ACTION_BUTTON_COUNT = 5
+export const OCR_NODE_TABLE_ACTION_BUTTON_COUNT = 6
 export const OCR_NODE_TABLE_ACTION_WIDTH = 28
 export const OCR_NODE_TABLE_ACTION_GAP = 2
-export const OCR_NODE_TABLE_ACTION_COLUMN_WIDTH = 160
+export const OCR_NODE_TABLE_ACTION_COLUMN_WIDTH = 192
 
 /**
  * 判断 OCR 节点表格操作列是否需要固定在右侧。
