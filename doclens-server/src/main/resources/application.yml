@@ -10,8 +10,8 @@ spring:
     enabled: true
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 200MB
+      max-file-size: 300MB
+      max-request-size: 300MB
 
 server:
   port: 10003
