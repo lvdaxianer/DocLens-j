@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -23,6 +24,7 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +41,12 @@ import org.slf4j.LoggerFactory;
 public class BatchProcessingUseCase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BatchProcessingUseCase.class);
+    private static final int RESULT_SUMMARY_CAPACITY = 5;
+    private static final String PAGE_COUNT_FIELD = "pageCount";
+    private static final String BLOCK_COUNT_FIELD = "blockCount";
+    private static final String TABLE_COUNT_FIELD = "tableCount";
+    private static final String CONFIDENCE_FIELD = "confidence";
+    private static final String CALLBACK_BODY_FIELD = "callback_body";
 
     private final DocumentJobRepository documentRepository;
     private final OcrResultRepository resultRepository;
@@ -81,35 +89,64 @@ public class BatchProcessingUseCase {
      */
     public void processBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
+        Optional<Batch> batch = batchRepository.findById(batchId);
         documents.stream()
-                .map(this::processDocument)
+                .map(document -> processDocument(document, batch))
                 .forEach(result -> transactionRunner.requiredVoid(() -> persistDocumentProcessing(result)));
         transactionRunner.requiredVoid(() -> finishBatch(batchId));
     }
 
-    private DocumentProcessingResult processDocument(DocumentJob document) {
+    /**
+     * 处理单个文档并转换为持久化计划。
+     *
+     * @param document 文档任务
+     * @param batch 可选批次
+     * @return 文档处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private DocumentProcessingResult processDocument(DocumentJob document, Optional<Batch> batch) {
         try {
             DocumentJob started = startDocument(document);
-            return completeDocument(started);
+            return completeDocument(started, batch);
         } catch (RuntimeException ex) {
             LOGGER.warn("[OCR处理] 文档处理失败 documentId={}, error={}", document.documentId(), ex.getMessage(), ex);
             return failDocument(document, ex);
         }
     }
 
+    /**
+     * 标记文档开始处理。
+     *
+     * @param document 文档任务
+     * @return 开始处理后的文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
     private DocumentJob startDocument(DocumentJob document) {
         return document.startProcessing(OffsetDateTime.now());
     }
 
-    private DocumentProcessingResult completeDocument(DocumentJob started) {
+    /**
+     * 完成文档解析并构建结果。
+     *
+     * @param started 已开始处理的文档
+     * @param batch 可选批次
+     * @return 文档处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private DocumentProcessingResult completeDocument(DocumentJob started, Optional<Batch> batch) {
         OcrResult result = buildResult(started);
         int pageCount = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, result.pageText().size());
         DocumentJob progressed = started.markPageCompleted(pageCount, pageCount, OffsetDateTime.now());
         DocumentJob saving = progressed.advanceStage(ProcessingStage.SAVE_TEXT, pageCount, pageCount,
                 OffsetDateTime.now());
         DocumentJob completed = saving.complete(result.resultId(), OffsetDateTime.now());
+        CompletedDocumentEventContext eventContext = new CompletedDocumentEventContext(started, progressed, saving,
+                completed, result, batch);
         return new DocumentProcessingResult(completed, Optional.of(result),
-                completionEvents(started, progressed, saving, completed, result));
+                completionEvents(eventContext));
     }
 
     private OcrResult buildResult(DocumentJob document) {
@@ -149,22 +186,25 @@ public class BatchProcessingUseCase {
         return documentRepository.findById(document.documentId()).orElse(document);
     }
 
-    private List<OcrEvent> completionEvents(
-            DocumentJob started,
-            DocumentJob progressed,
-            DocumentJob saving,
-            DocumentJob completed,
-            OcrResult result
-    ) {
+    /**
+     * 构建文档完成链路事件集合。
+     *
+     * @param context 文档完成事件上下文
+     * @return 文档完成链路事件集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private List<OcrEvent> completionEvents(CompletedDocumentEventContext context) {
         return List.of(
-                event(new DocumentEventPlan(started, DocLensConstants.EVENT_DOCUMENT_STARTED,
+                event(new DocumentEventPlan(context.started(), DocLensConstants.EVENT_DOCUMENT_STARTED,
                         Map.of("percent", DocLensConstants.START_PROGRESS_PERCENT), Map.of())),
-                event(new DocumentEventPlan(progressed, DocLensConstants.EVENT_DOCUMENT_PAGE_COMPLETED,
-                        pageProgress(progressed), Map.of())),
-                event(new DocumentEventPlan(saving, DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
-                        pageProgress(saving), Map.of("stage", saving.stage().name().toLowerCase()))),
-                event(new DocumentEventPlan(completed, DocLensConstants.EVENT_DOCUMENT_COMPLETED,
-                        Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT), resultSummary(result)))
+                event(new DocumentEventPlan(context.progressed(), DocLensConstants.EVENT_DOCUMENT_PAGE_COMPLETED,
+                        pageProgress(context.progressed()), Map.of())),
+                event(new DocumentEventPlan(context.saving(), DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
+                        pageProgress(context.saving()), Map.of("stage", context.saving().stage().name().toLowerCase()))),
+                event(new DocumentEventPlan(context.completed(), DocLensConstants.EVENT_DOCUMENT_COMPLETED,
+                        Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT),
+                        resultSummary(context.completed(), context.result(), context.batch())))
         );
     }
 
@@ -189,9 +229,66 @@ public class BatchProcessingUseCase {
                 "total_pages", document.totalPages());
     }
 
-    private Map<String, Object> resultSummary(OcrResult result) {
-        return Map.of("pageCount", result.pageText().size(), "blockCount", result.layoutBlocks().size(),
-                "tableCount", result.tables().size(), "confidence", result.confidence());
+    /**
+     * 构建文档完成事件的结果摘要。
+     *
+     * @param document 文档任务
+     * @param result OCR 结果
+     * @param batch 可选批次
+     * @return 结果摘要
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private Map<String, Object> resultSummary(DocumentJob document, OcrResult result, Optional<Batch> batch) {
+        Map<String, Object> summary = new LinkedHashMap<>(RESULT_SUMMARY_CAPACITY);
+        summary.put(PAGE_COUNT_FIELD, result.pageText().size());
+        summary.put(BLOCK_COUNT_FIELD, result.layoutBlocks().size());
+        summary.put(TABLE_COUNT_FIELD, result.tables().size());
+        summary.put(CONFIDENCE_FIELD, result.confidence());
+        summary.put(CALLBACK_BODY_FIELD, callbackBody(document, result, batch));
+        return summary;
+    }
+
+    /**
+     * 构建解析完成后的回调 body。
+     *
+     * @param document 文档任务
+     * @param result OCR 结果
+     * @param batch 可选批次
+     * @return 回调 body
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private Map<String, Object> callbackBody(DocumentJob document, OcrResult result, Optional<Batch> batch) {
+        if (batch.isPresent()) {
+            // 批次存在时使用上传时保存的幂等键构造回调契约。
+            return DocumentCompletedCallbackBody.from(batch.get(), document, result).toMap();
+        } else {
+            // 批次缺失时仍返回稳定契约，避免回调消费方收到不完整结构。
+            return new DocumentCompletedCallbackBody(document.metadata().values(), result.finalText(), "").toMap();
+        }
+    }
+
+    /**
+     * 文档完成事件构建上下文。
+     *
+     * @param started 开始处理阶段文档
+     * @param progressed 图片页完成阶段文档
+     * @param saving 保存文本阶段文档
+     * @param completed 完成阶段文档
+     * @param result OCR 结果
+     * @param batch 可选批次
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private record CompletedDocumentEventContext(
+            DocumentJob started,
+            DocumentJob progressed,
+            DocumentJob saving,
+            DocumentJob completed,
+            OcrResult result,
+            Optional<Batch> batch
+    ) {
     }
 
     void persistDocumentProcessing(DocumentProcessingResult result) {

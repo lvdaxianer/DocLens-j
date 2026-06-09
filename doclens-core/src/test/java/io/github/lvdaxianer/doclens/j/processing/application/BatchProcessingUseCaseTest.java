@@ -25,6 +25,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
+import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
@@ -111,6 +112,33 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 文档完成事件应携带解析完成回调 body 契约。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void processBatchBuildsCompletedCallbackBodyContract() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        documentRepository.save(document("doc-1", 0, new JsonPayload(Map.of("source", "upload-form"))));
+        batchRepository.save(Batch.create("batch-test", 1, new JsonPayload(Map.of("source", "upload-form")),
+                Optional.of("https://callback.example.test/done"), Optional.of("idem-001"), OffsetDateTime.now()));
+        BatchProcessingUseCase useCase = useCase(documentRepository, eventRepository, batchRepository,
+                new FixedTextExtractor("markdown text"));
+
+        useCase.processBatch("batch-test");
+
+        assertThat(eventRepository.events)
+                .filteredOn(event -> DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(event.eventType()))
+                .singleElement()
+                .satisfies(event -> assertThat(event.resultSummary()).containsEntry("callback_body",
+                        Map.of("meta", Map.of("source", "upload-form"), "text", "markdown text",
+                                "idempotency_key", "idem-001")));
+    }
+
+    /**
      * 创建批次处理用例。
      *
      * @param documentRepository 文档仓储
@@ -123,10 +151,30 @@ class BatchProcessingUseCaseTest {
             InMemoryDocumentJobRepository documentRepository,
             DocumentTextExtractor extractor
     ) {
+        return useCase(documentRepository, new InMemoryOcrEventRepository(), new InMemoryBatchRepository(), extractor);
+    }
+
+    /**
+     * 创建批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor
+    ) {
         BatchProcessingDependencies dependencies = new BatchProcessingDependencies(documentRepository,
-                new InMemoryOcrResultRepository(), new InMemoryOcrEventRepository(), new InMemoryBatchRepository(),
-                new DefaultAdapterRegistry(List.of(new StubAdapter())), new InMemoryObjectStorage(), extractor,
-                new IdGenerator(), new OcrEventFactory(new IdGenerator()));
+                new InMemoryOcrResultRepository(), eventRepository, batchRepository, new DefaultAdapterRegistry(
+                List.of(new StubAdapter())), new InMemoryObjectStorage(), extractor, new IdGenerator(),
+                new OcrEventFactory(new IdGenerator()));
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
     }
 
@@ -140,9 +188,23 @@ class BatchProcessingUseCaseTest {
      * @date 2026-06-08
      */
     private DocumentJob document(String documentId, int sortOrder) {
+        return document(documentId, sortOrder, JsonPayload.empty());
+    }
+
+    /**
+     * 创建测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param sortOrder 排序
+     * @param metadata 文档元数据
+     * @return 文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private DocumentJob document(String documentId, int sortOrder, JsonPayload metadata) {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
                 documentId + ".txt", DocumentType.TEXT, 5, 1, "local://" + documentId, "stub_ocr",
-                Optional.empty(), JsonPayload.empty(), sortOrder, OffsetDateTime.now());
+                Optional.empty(), metadata, sortOrder, OffsetDateTime.now());
         return DocumentJob.create(request);
     }
 
@@ -203,6 +265,34 @@ class BatchProcessingUseCaseTest {
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
             request.progressReporter().report(ProcessingStage.OCR_IMAGES, 2, 5);
             throw new IllegalStateException("ocr failed");
+        }
+    }
+
+    /**
+     * 返回固定文本的提取器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static class FixedTextExtractor implements DocumentTextExtractor {
+
+        private final String text;
+
+        /**
+         * 创建固定文本提取器。
+         *
+         * @param text 固定文本
+         * @author lvdaxianerplus
+         * @date 2026-06-09
+         */
+        FixedTextExtractor(String text) {
+            this.text = text;
+        }
+
+        @Override
+        public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+            return DocumentTextExtractionResult.plainText(request.document().documentId(),
+                    request.document().fileName(), text);
         }
     }
 
@@ -325,14 +415,16 @@ class BatchProcessingUseCaseTest {
      */
     private static class InMemoryBatchRepository implements BatchRepository {
 
+        private final Map<String, Batch> batches = new HashMap<>(TEST_DOCUMENT_CAPACITY);
+
         @Override
         public void save(Batch batch) {
-            // 当前测试不创建新批次。
+            batches.put(batch.batchId(), batch);
         }
 
         @Override
         public Optional<Batch> findById(String batchId) {
-            return Optional.empty();
+            return Optional.ofNullable(batches.get(batchId));
         }
 
         @Override
