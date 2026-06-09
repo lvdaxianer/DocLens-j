@@ -5,6 +5,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
+import java.util.function.Supplier;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -27,6 +28,7 @@ public class OcrHealthChecker {
     private final OcrHealthClient healthClient;
     private final ExecutorService healthExecutor;
     private final OcrHealthCheckProperties properties;
+    private final Supplier<OffsetDateTime> nowSupplier;
 
     /**
      * 创建 OCR 节点健康检查器。
@@ -44,10 +46,32 @@ public class OcrHealthChecker {
             ExecutorService healthExecutor,
             OcrHealthCheckProperties properties
     ) {
+        this(nodeRepository, healthClient, healthExecutor, properties, OffsetDateTime::now);
+    }
+
+    /**
+     * 创建带可控时钟的 OCR 节点健康检查器。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param healthClient OCR 健康检查客户端
+     * @param healthExecutor OCR 健康检查线程池
+     * @param properties 健康检查阈值配置
+     * @param nowSupplier 当前时间提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public OcrHealthChecker(
+            OcrNodeRepository nodeRepository,
+            OcrHealthClient healthClient,
+            ExecutorService healthExecutor,
+            OcrHealthCheckProperties properties,
+            Supplier<OffsetDateTime> nowSupplier
+    ) {
         this.nodeRepository = nodeRepository;
         this.healthClient = healthClient;
         this.healthExecutor = healthExecutor;
         this.properties = properties;
+        this.nowSupplier = nowSupplier;
     }
 
     /**
@@ -73,11 +97,15 @@ public class OcrHealthChecker {
      * @date 2026-06-09
      */
     public boolean checkNode(OcrNode node) {
+        OffsetDateTime now = nowSupplier.get();
+        if (!shouldProbe(node, now)) {
+            return false;
+        }
         boolean healthy = isHealthy(node);
         if (healthy) {
-            nodeRepository.update(successNode(node));
+            nodeRepository.update(successNode(node, now));
         } else {
-            nodeRepository.update(failedNode(node, "health check failed"));
+            nodeRepository.update(failedNode(node, "health check failed", now));
         }
         return healthy;
     }
@@ -174,9 +202,15 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private OcrNode successNode(OcrNode node) {
-        OcrNodeStatus status = successStatus(node);
-        return replaceHealth(node, status, 0L, node.successCount() + 1, Optional.empty());
+    private OcrNode successNode(OcrNode node, OffsetDateTime now) {
+        if (node.status() == OcrNodeStatus.DOWN) {
+            return replaceHealth(node, OcrNodeStatus.RECOVERING, 0L, 1L, Optional.empty(), Optional.empty(), now);
+        } else if (node.status() == OcrNodeStatus.RECOVERING && reachedRecoveryThreshold(node)) {
+            return replaceHealth(node, OcrNodeStatus.UP, 0L, 0L, Optional.empty(), Optional.empty(), now);
+        } else {
+            return replaceHealth(node, node.status(), 0L, node.successCount() + 1, Optional.empty(),
+                    node.circuitOpenUntil(), now);
+        }
     }
 
     /**
@@ -188,11 +222,15 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private OcrNode failedNode(OcrNode node, String errorMessage) {
-        OcrNodeStatus status = failureStatus(node);
+    private OcrNode failedNode(OcrNode node, String errorMessage, OffsetDateTime now) {
+        long failureCount = node.failureCount() + 1;
+        OcrNodeStatus status = failureStatus(failureCount, node);
         LOGGER.warn("[OCR健康检查] 节点健康检查失败, nodeId={}, modelKey={}, error={}",
                 node.id(), node.modelKey(), errorMessage);
-        return replaceHealth(node, status, node.failureCount() + 1, 0L, Optional.of(errorMessage));
+        Optional<OffsetDateTime> circuitOpenUntil = failureCount >= Math.max(1, properties.healthFailureThreshold())
+                ? Optional.of(now.plusSeconds(properties.circuitOpenSeconds()))
+                : node.circuitOpenUntil();
+        return replaceHealth(node, status, failureCount, 0L, Optional.of(errorMessage), circuitOpenUntil, now);
     }
 
     /**
@@ -203,26 +241,8 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    private OcrNodeStatus successStatus(OcrNode node) {
-        if (node.status() == OcrNodeStatus.DOWN) {
-            return OcrNodeStatus.RECOVERING;
-        } else if (node.status() == OcrNodeStatus.RECOVERING && reachedRecoveryThreshold(node)) {
-            return OcrNodeStatus.UP;
-        } else {
-            return node.status();
-        }
-    }
-
-    /**
-     * 计算健康失败后的节点状态。
-     *
-     * @param node OCR 节点
-     * @return 节点状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private OcrNodeStatus failureStatus(OcrNode node) {
-        if (node.failureCount() + 1 >= Math.max(1, properties.healthFailureThreshold())) {
+    private OcrNodeStatus failureStatus(long failureCount, OcrNode node) {
+        if (failureCount >= Math.max(1, properties.healthFailureThreshold())) {
             return OcrNodeStatus.DOWN;
         } else {
             return node.status();
@@ -258,15 +278,29 @@ public class OcrHealthChecker {
             OcrNodeStatus status,
             long failureCount,
             long successCount,
-            Optional<String> errorMessage
+            Optional<String> errorMessage,
+            Optional<OffsetDateTime> circuitOpenUntil,
+            OffsetDateTime now
     ) {
-        OffsetDateTime now = OffsetDateTime.now();
         return new OcrNode(node.id(), node.modelKey(), node.deploymentType(), node.name(), node.host(), node.port(),
                 node.channelKey(), node.providerModel(), node.credentialRef(), node.credentialConfigured(),
                 node.enabled(), node.participateGlobal(), node.weight(), node.maxConcurrency(), status, failureCount,
                 successCount, node.avgLatencyMs(), node.p95LatencyMs(), Optional.of(now), successAt(successCount, now),
-                failureAt(failureCount, now), errorMessage, node.circuitOpenUntil(), node.lastManualRecoveryAt(),
+                failureAt(failureCount, now), errorMessage, circuitOpenUntil, node.lastManualRecoveryAt(),
                 node.createdAt(), now);
+    }
+
+    /**
+     * 判断当前是否应探测节点。
+     *
+     * @param node OCR 节点
+     * @param now 当前时间
+     * @return 是否应探测
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean shouldProbe(OcrNode node, OffsetDateTime now) {
+        return node.circuitOpenUntil().isEmpty() || !node.circuitOpenUntil().get().isAfter(now);
     }
 
     /**

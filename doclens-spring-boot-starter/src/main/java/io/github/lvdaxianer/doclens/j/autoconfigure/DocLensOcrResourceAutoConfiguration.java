@@ -122,7 +122,7 @@ public class DocLensOcrResourceAutoConfiguration {
     ) {
         return new OcrHealthChecker(nodeRepository, healthClient, healthExecutor,
                 new OcrHealthCheckProperties(properties.ocr().failureThreshold(),
-                        properties.ocr().recoverySuccessThreshold()));
+                        properties.ocr().recoverySuccessThreshold(), properties.ocr().circuitOpenSeconds()));
     }
 
     /**
