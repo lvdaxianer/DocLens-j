@@ -105,7 +105,7 @@ public class DocLensAutoConfiguration {
                 new DocLensProperties.PaddleOcrProperties(properties.paddleOcr().enabled(),
                         properties.paddleOcr().endpoint(), properties.paddleOcr().timeoutSeconds(),
                         properties.paddleOcr().visualize()),
-                new DocLensProperties.OcrHealthProperties(properties.ocr().healthFailureThreshold(),
+                new DocLensProperties.OcrHealthProperties(properties.ocr().failureThreshold(),
                         properties.ocr().recoverySuccessThreshold()),
                 new DocLensProperties.ExtractionProperties(properties.extraction().ocrConcurrency()),
                 new DocLensProperties.PdfRenderProperties(properties.pdfRender().dpi(),

@@ -34,12 +34,17 @@ doclens:
     default-key: paddle_ocr
   ocr:
     default-routing-mode: GLOBAL_LOAD_BALANCE
-    load-balance-strategy: least-inflight
+    load-balance-strategy: weighted-idle
+    idle-factor: 0.7
+    weight-factor: 0.3
+    top-bucket-threshold: 0.15
     request-retry-times: 3
-    health-check-interval-seconds: 30
+    probe-interval-seconds: 60
     health-check-timeout-seconds: 5
-    health-failure-threshold: 3
-    recovery-success-threshold: 2
+    failure-threshold: 3
+    circuit-open-seconds: 86400
+    recovery-success-threshold: 3
+    manual-recovery-attempts: 3
     specific-node-fallback-enabled: false
   paddle-ocr:
     enabled: true
@@ -52,10 +57,10 @@ doclens:
         port: 8080
         enabled: true
         participate-global: true
-        weight: 100
-        max-concurrency: 4
+        weight: 50
+        max-concurrency: 10
   extraction:
-    ocr-concurrency: 1
+    ocr-concurrency: 4
   pdf-render:
     dpi: 36
     image-format: png

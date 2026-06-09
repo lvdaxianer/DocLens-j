@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingDependencies;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
@@ -116,7 +117,7 @@ public class DocLensOcrResourceAutoConfiguration {
             DocLensSpringProperties properties
     ) {
         return new OcrHealthChecker(nodeRepository, healthClient, healthExecutor,
-                new OcrHealthCheckProperties(properties.ocr().healthFailureThreshold(),
+                new OcrHealthCheckProperties(properties.ocr().failureThreshold(),
                         properties.ocr().recoverySuccessThreshold()));
     }
 
@@ -153,7 +154,7 @@ public class DocLensOcrResourceAutoConfiguration {
             DocLensSpringProperties properties
     ) {
         return new OcrHealthCheckScheduler(healthChecker, nodePool, schedulerExecutor,
-                properties.ocr().healthCheckIntervalSeconds());
+                properties.ocr().probeIntervalSeconds());
     }
 
     /**
@@ -179,7 +180,11 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-09
      */
     private OcrRoutingServiceProperties routingProperties(DocLensSpringProperties.OcrProperties properties) {
-        return new OcrRoutingServiceProperties(defaultPolicy(properties), properties.requestRetryTimes(),
+        return new OcrRoutingServiceProperties(defaultPolicy(properties), properties.idleFactor(),
+                properties.weightFactor(), properties.topBucketThreshold(), properties.requestRetryTimes(),
+                new OcrHealthGovernance(properties.failureThreshold(), properties.probeIntervalSeconds(),
+                        properties.circuitOpenSeconds(), properties.recoverySuccessThreshold(),
+                        properties.manualRecoveryAttempts()),
                 properties.specificNodeFallbackEnabled());
     }
 

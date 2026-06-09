@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -40,15 +42,18 @@ public record DocLensSpringProperties(
         ThreadPoolsProperties threadPools
 ) {
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
+    private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
+    private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
+    private static final int DEFAULT_NODE_WEIGHT = 50;
+    private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
     public DocLensSpringProperties {
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
         adapter = adapter == null ? new AdapterProperties("paddle_ocr") : adapter;
-        ocr = ocr == null ? new OcrProperties(OcrRoutingMode.GLOBAL_LOAD_BALANCE, "least-inflight", 3, 30, 5,
-                3, 2, false) : ocr;
+        ocr = ocr == null ? defaultOcrProperties() : ocr;
         paddleOcr = paddleOcr == null ? defaultPaddleOcr() : paddleOcr;
-        ocrHealth = ocrHealth == null ? new OcrHealthProperties(3, 2) : ocrHealth;
-        extraction = extraction == null ? new ExtractionProperties(1) : extraction;
+        ocrHealth = ocrHealth == null ? defaultOcrHealth() : ocrHealth;
+        extraction = extraction == null ? new ExtractionProperties(DEFAULT_EXTRACTION_OCR_CONCURRENCY) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
         llmMarkdown = llmMarkdown == null ? new LlmMarkdownProperties("", "", "") : llmMarkdown;
@@ -67,14 +72,45 @@ public record DocLensSpringProperties(
     }
 
     /**
+     * 创建默认 OCR 路由配置。
+     *
+     * @return 默认 OCR 路由配置
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static OcrProperties defaultOcrProperties() {
+        return new OcrProperties(OcrRoutingMode.GLOBAL_LOAD_BALANCE, OcrRoutingServiceProperties.DEFAULT_LOAD_BALANCE_STRATEGY,
+                OcrRoutingServiceProperties.DEFAULT_IDLE_FACTOR, OcrRoutingServiceProperties.DEFAULT_WEIGHT_FACTOR,
+                OcrRoutingServiceProperties.DEFAULT_TOP_BUCKET_THRESHOLD,
+                OcrRoutingServiceProperties.DEFAULT_REQUEST_RETRY_TIMES,
+                OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS, DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
+                OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD, OcrHealthGovernance.DEFAULT_CIRCUIT_OPEN_SECONDS,
+                OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD,
+                OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS, false);
+    }
+
+    /**
+     * 创建默认 OCR 健康检查配置。
+     *
+     * @return 默认 OCR 健康检查配置
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static OcrHealthProperties defaultOcrHealth() {
+        return new OcrHealthProperties(OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD,
+                OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD);
+    }
+
+    /**
      * 创建默认 PaddleOCR 启动节点。
      *
      * @return PaddleOCR 启动节点
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private static PaddleOcrNodeProperties defaultPaddleNode() {
-        return new PaddleOcrNodeProperties("paddle-215", "10.100.30.215", 8080, true, true, 100, 4);
+    static PaddleOcrNodeProperties defaultPaddleNode() {
+        return new PaddleOcrNodeProperties("paddle-215", "10.100.30.215", 8080, true, true, DEFAULT_NODE_WEIGHT,
+                DEFAULT_NODE_MAX_CONCURRENCY);
     }
 
     /**
@@ -103,11 +139,16 @@ public record DocLensSpringProperties(
      *
      * @param defaultRoutingMode 默认路由模式
      * @param loadBalanceStrategy 默认负载均衡策略
+     * @param idleFactor 空闲容量评分权重
+     * @param weightFactor 节点权重评分权重
+     * @param topBucketThreshold Top Bucket 分桶阈值
      * @param requestRetryTimes 请求重试次数
-     * @param healthCheckIntervalSeconds 健康检查间隔秒数
+     * @param probeIntervalSeconds 健康检查间隔秒数
      * @param healthCheckTimeoutSeconds 健康检查超时秒数
-     * @param healthFailureThreshold 健康失败摘除阈值
+     * @param failureThreshold 健康失败摘除阈值
+     * @param circuitOpenSeconds 熔断打开持续秒数
      * @param recoverySuccessThreshold 恢复成功阈值
+     * @param manualRecoveryAttempts 手动恢复尝试次数
      * @param specificNodeFallbackEnabled 指定节点是否允许回退
      * @author lvdaxianerplus
      * @date 2026-06-09
@@ -115,11 +156,16 @@ public record DocLensSpringProperties(
     public record OcrProperties(
             OcrRoutingMode defaultRoutingMode,
             String loadBalanceStrategy,
+            double idleFactor,
+            double weightFactor,
+            double topBucketThreshold,
             int requestRetryTimes,
-            int healthCheckIntervalSeconds,
+            int probeIntervalSeconds,
             int healthCheckTimeoutSeconds,
-            int healthFailureThreshold,
+            int failureThreshold,
+            int circuitOpenSeconds,
             int recoverySuccessThreshold,
+            int manualRecoveryAttempts,
             boolean specificNodeFallbackEnabled
     ) {
     }
