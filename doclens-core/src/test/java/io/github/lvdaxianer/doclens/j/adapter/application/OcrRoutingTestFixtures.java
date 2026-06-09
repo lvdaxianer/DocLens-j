@@ -34,6 +34,7 @@ final class OcrRoutingTestFixtures {
 
         private final Map<String, OcrRuntimeNodeView> nodes = new HashMap<>(TEST_CALL_CAPACITY);
         private final Map<String, Integer> inflightImages = new HashMap<>(TEST_CALL_CAPACITY);
+        private final Map<String, Integer> queuedImages = new HashMap<>(TEST_CALL_CAPACITY);
 
         /**
          * 创建内存运行时节点提供器。
@@ -46,6 +47,7 @@ final class OcrRoutingTestFixtures {
             nodes.forEach(node -> {
                 this.nodes.put(node.nodeId(), node);
                 this.inflightImages.put(node.nodeId(), node.inflightImages());
+                this.queuedImages.put(node.nodeId(), node.queuedImages());
             });
         }
 
@@ -62,6 +64,28 @@ final class OcrRoutingTestFixtures {
         @Override
         public Optional<OcrRuntimeNodeView> decrementInflight(String nodeId) {
             return updateInflight(nodeId, -1);
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
+            return Optional.ofNullable(nodes.get(nodeId))
+                    .filter(node -> availableSlots(nodeId) > 0)
+                    .flatMap(node -> updateInflight(nodeId, 1));
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
+            return updateInflight(nodeId, -1);
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> incrementQueued(String nodeId) {
+            return updateQueued(nodeId, 1);
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> decrementQueued(String nodeId) {
+            return updateQueued(nodeId, -1);
         }
 
         /**
@@ -94,6 +118,23 @@ final class OcrRoutingTestFixtures {
         }
 
         /**
+         * 更新节点排队图片数。
+         *
+         * @param nodeId 节点 ID
+         * @param delta 增量
+         * @return 更新后的节点视图
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        private Optional<OcrRuntimeNodeView> updateQueued(String nodeId, int delta) {
+            return Optional.ofNullable(nodes.get(nodeId)).map(node -> {
+                Integer currentValue = Optional.ofNullable(queuedImages.get(nodeId)).orElse(0);
+                queuedImages.put(nodeId, Math.max(0, currentValue + delta));
+                return withInflight(node);
+            });
+        }
+
+        /**
          * 使用最新解析中图片数重建节点视图。
          *
          * @param node 节点视图
@@ -102,9 +143,26 @@ final class OcrRoutingTestFixtures {
          * @date 2026-06-08
          */
         private OcrRuntimeNodeView withInflight(OcrRuntimeNodeView node) {
+            int inflight = inflightImages.getOrDefault(node.nodeId(), 0);
+            int queued = queuedImages.getOrDefault(node.nodeId(), 0);
             return new OcrRuntimeNodeView(node.nodeId(), node.modelKey(), node.enabled(), node.participateGlobal(),
-                    node.status(), node.maxConcurrency(), inflightImages.getOrDefault(node.nodeId(), 0),
-                    node.avgLatencyMs());
+                    node.status(), node.weight(), node.maxConcurrency(), inflight, queued,
+                    availableSlots(node.nodeId()), node.avgLatencyMs(), node.circuitOpenUntil(),
+                    node.consecutiveFailureCount(), node.recoverySuccessCount());
+        }
+
+        /**
+         * 计算节点当前可用槽位。
+         *
+         * @param nodeId 节点 ID
+         * @return 可用槽位数
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        private int availableSlots(String nodeId) {
+            OcrRuntimeNodeView node = nodes.get(nodeId);
+            int inflight = inflightImages.getOrDefault(nodeId, 0);
+            return Math.max(0, node.maxConcurrency() - inflight);
         }
     }
 

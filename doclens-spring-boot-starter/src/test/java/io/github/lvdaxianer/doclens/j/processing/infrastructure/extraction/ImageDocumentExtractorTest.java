@@ -154,6 +154,26 @@ class ImageDocumentExtractorTest {
             inflightImages = Math.max(0, inflightImages - 1);
             return snapshot().stream().filter(node -> node.nodeId().equals(nodeId)).findFirst();
         }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
+            return incrementInflight(nodeId);
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
+            return decrementInflight(nodeId);
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> incrementQueued(String nodeId) {
+            return snapshot().stream().filter(node -> node.nodeId().equals(nodeId)).findFirst();
+        }
+
+        @Override
+        public Optional<OcrRuntimeNodeView> decrementQueued(String nodeId) {
+            return snapshot().stream().filter(node -> node.nodeId().equals(nodeId)).findFirst();
+        }
     }
 
     /**
