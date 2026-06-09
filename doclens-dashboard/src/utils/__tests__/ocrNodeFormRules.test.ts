@@ -7,7 +7,7 @@ import {
   fillOcrNodeFormFromNode,
   isOcrNodeFormSubmittable,
   shouldShowOcrModelSelect
-} from '../ocrNodeFormRules'
+} from '../ocrNodeFormRules.ts'
 
 test('offline node form submits only host and port endpoint fields', () => {
   const form = createDefaultOcrNodeForm('paddle_ocr')

@@ -5,7 +5,7 @@ import {
   displayModelName,
   displayNodeName,
   displayNodeSubtitle
-} from '../ocrDisplayRules'
+} from '../ocrDisplayRules.ts'
 
 test('node display prefers alias over internal node id', () => {
   const node = { id: 'ocr_node_215', name: '财务发票节点' }
@@ -19,7 +19,13 @@ test('node display falls back to id only when alias is blank', () => {
   assert.equal(displayNodeName(node), 'ocr_node_215')
 })
 
-test('node subtitle keeps internal id secondary', () => {
+test('node subtitle prefers alias over internal id when alias exists', () => {
+  const node = { id: 'ocr_node_215', name: '财务发票节点', modelKey: 'paddle_ocr', imageCount: 12 }
+
+  assert.equal(displayNodeSubtitle(node), 'paddle_ocr · 财务发票节点 · 12 张图片')
+})
+
+test('node subtitle falls back to internal id only when alias is missing', () => {
   const node = { id: 'ocr_node_215', modelKey: 'paddle_ocr', imageCount: 12 }
 
   assert.equal(displayNodeSubtitle(node), 'paddle_ocr · ocr_node_215 · 12 张图片')

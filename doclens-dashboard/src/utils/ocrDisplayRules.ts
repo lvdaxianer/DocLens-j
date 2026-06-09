@@ -13,6 +13,8 @@ export interface OcrModelDisplaySource {
 export interface OcrNodeSubtitleSource {
   id?: string
   nodeId?: string
+  name?: string
+  nodeName?: string
   modelKey?: string
   imageCount?: number
 }
@@ -47,7 +49,7 @@ export function displayNodeName(node: OcrNodeDisplaySource): string {
 export function displayNodeSubtitle(node: OcrNodeSubtitleSource): string {
   const parts = [
     node.modelKey?.trim(),
-    (node.nodeId ?? node.id)?.trim(),
+    displayNodeName(node),
     typeof node.imageCount === 'number' ? `${node.imageCount} 张图片` : ''
   ].filter((part): part is string => Boolean(part))
   return parts.join(' · ')
