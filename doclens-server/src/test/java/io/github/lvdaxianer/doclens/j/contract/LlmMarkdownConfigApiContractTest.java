@@ -236,6 +236,26 @@ class LlmMarkdownConfigApiContractTest {
     }
 
     /**
+     * DashScope 基础兼容地址应自动补全 chat completions 路径。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void updateConfigCompletesDashScopeCompatibleBaseUrl() throws Exception {
+        mockMvc.perform(put("/api/v1/llm-markdown-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson("https://dashscope.aliyuncs.com/compatible-mode/v1",
+                                "qwen-vl-ocr-2025-11-20", "sk-dashscope-secret")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url")
+                        .value("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
+                .andExpect(jsonPath("$.model").value("qwen-vl-ocr-2025-11-20"))
+                .andExpect(jsonPath("$.credential_configured").value(true));
+    }
+
+    /**
      * 保存 LLM Markdown 配置。
      *
      * @param url 接口地址

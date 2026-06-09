@@ -22,17 +22,18 @@ class ProcessingTrackAssembler {
     private static final int STEP_RENDERING = 3;
     private static final int STEP_OCR = 4;
     private static final int STEP_MERGE = 5;
-    private static final int STEP_SAVE = 6;
+    private static final int STEP_LLM_MARKDOWN = 6;
+    private static final int STEP_SAVE = 7;
     private static final Map<DocumentType, ProcessingTrackProfile> TRACK_PROFILES =
             ProcessingTrackProfile.trackProfiles();
     private static final Map<ProcessingStage, ProcessingStage> NORMALIZED_STAGES = normalizedStages();
     private static final Map<ProcessingStage, Integer> STAGE_STEP_RANKS = stageStepRanks();
 
     /**
-     * 组装文档七步处理轨道。
+     * 组装文档八步处理轨道。
      *
      * @param document 文档任务
-     * @return 七步处理轨道节点
+     * @return 八步处理轨道节点
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -45,6 +46,7 @@ class ProcessingTrackAssembler {
                 node(document, ProcessingTrackStep.RENDERING, profile.hasPageRendering()),
                 node(document, ProcessingTrackStep.OCR, profile.hasOcr()),
                 node(document, ProcessingTrackStep.MERGE, profile.hasMerge()),
+                node(document, ProcessingTrackStep.LLM_MARKDOWN, profile.hasMerge()),
                 node(document, ProcessingTrackStep.SAVE, true)
         );
     }
@@ -315,7 +317,8 @@ class ProcessingTrackAssembler {
         ranks.put(ProcessingStage.OCR_IMAGES, STEP_OCR);
         ranks.put(ProcessingStage.MERGE_TEXT, STEP_MERGE);
         ranks.put(ProcessingStage.DIRECT_TEXT_SAVED, STEP_SAVE);
-        ranks.put(ProcessingStage.SAVE_TEXT, STEP_SAVE);
+        ranks.put(ProcessingStage.SAVE_TEXT, STEP_LLM_MARKDOWN);
+        ranks.put(ProcessingStage.COMPLETED, STEP_SAVE);
         return Map.copyOf(ranks);
     }
 

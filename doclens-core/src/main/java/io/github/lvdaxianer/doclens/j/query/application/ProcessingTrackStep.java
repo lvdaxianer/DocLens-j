@@ -13,7 +13,8 @@ enum ProcessingTrackStep {
     RENDERING("渲染页图", 3),
     OCR("OCR", 4),
     MERGE("合并文本", 5),
-    SAVE("入库/落盘", 6);
+    LLM_MARKDOWN("LLM 排版", 6),
+    SAVE("入库/落盘", 7);
 
     private final String label;
     private final int rank;

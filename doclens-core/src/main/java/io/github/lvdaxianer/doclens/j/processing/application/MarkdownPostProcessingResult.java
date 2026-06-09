@@ -7,10 +7,11 @@ import java.util.List;
  *
  * @param markdown Markdown 文本
  * @param warnings 后处理警告
+ * @param markdownApplied 是否实际应用了 LLM Markdown 排版
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-public record MarkdownPostProcessingResult(String markdown, List<String> warnings) {
+public record MarkdownPostProcessingResult(String markdown, List<String> warnings, boolean markdownApplied) {
 
     /**
      * 创建成功的 Markdown 后处理结果。
@@ -21,7 +22,19 @@ public record MarkdownPostProcessingResult(String markdown, List<String> warning
      * @date 2026-06-09
      */
     public static MarkdownPostProcessingResult markdown(String markdown) {
-        return new MarkdownPostProcessingResult(markdown, List.of());
+        return new MarkdownPostProcessingResult(markdown, List.of(), true);
+    }
+
+    /**
+     * 创建未启用 LLM 的直通结果。
+     *
+     * @param markdown 直通文本
+     * @return 未应用 LLM 的结果
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public static MarkdownPostProcessingResult passthrough(String markdown) {
+        return new MarkdownPostProcessingResult(markdown, List.of(), false);
     }
 
     /**

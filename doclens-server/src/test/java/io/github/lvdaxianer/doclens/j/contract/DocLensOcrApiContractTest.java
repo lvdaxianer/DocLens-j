@@ -93,6 +93,7 @@ class DocLensOcrApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.summary.pageCount").value(1))
                 .andExpect(jsonPath("$.result.finalText").value("# A\n正文"))
+                .andExpect(jsonPath("$.result.llm_markdown_applied").value(false))
                 .andExpect(jsonPath("$.result.markdownStorageUri").isString())
                 .andExpect(jsonPath("$.result.chunks").doesNotExist());
 

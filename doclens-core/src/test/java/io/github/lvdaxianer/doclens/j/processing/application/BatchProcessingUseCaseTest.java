@@ -158,7 +158,9 @@ class BatchProcessingUseCaseTest {
 
         assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
             assertThat(result.finalText()).isEqualTo("# 发票\n\n原始 OCR 文本");
-            assertThat(result.rawVendorOutput()).containsEntry("ocr_text", "原始 OCR 文本");
+            assertThat(result.rawVendorOutput())
+                    .containsEntry("ocr_text", "原始 OCR 文本")
+                    .containsEntry("llm_markdown_applied", true);
         });
         assertThat(eventRepository.events)
                 .filteredOn(event -> DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(event.eventType()))
@@ -188,6 +190,29 @@ class BatchProcessingUseCaseTest {
         assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
             assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
             assertThat(result.warnings()).contains("llm_markdown_post_processing_failed");
+            assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", false);
+        });
+    }
+
+    /**
+     * 未配置 LLM 后处理时应明确标记未应用 Markdown 排版。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void processBatchMarksLlmMarkdownAsNotAppliedWhenNoopProcessorIsUsed() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"), MarkdownPostProcessor.noop());
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
+            assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", false);
         });
     }
 

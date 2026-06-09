@@ -16,6 +16,9 @@ public class LlmMarkdownConfigService {
 
     private static final String SCHEME_HTTP = "http";
     private static final String SCHEME_HTTPS = "https";
+    private static final String DASHSCOPE_HOST = "dashscope.aliyuncs.com";
+    private static final String DASHSCOPE_COMPATIBLE_BASE_PATH = "/compatible-mode/v1";
+    private static final String DASHSCOPE_CHAT_COMPLETIONS_PATH = "/compatible-mode/v1/chat/completions";
 
     private final LlmMarkdownConfigRepository repository;
 
@@ -86,9 +89,86 @@ public class LlmMarkdownConfigService {
         String url = required(value, "llm markdown url is required");
         URI uri = parseUrl(url);
         if (hasHttpScheme(uri) && hasHost(uri)) {
-            return url;
+            return normalizeCompatibleEndpoint(uri).toString();
         } else {
             throw new IllegalArgumentException("llm markdown url must be http or https URL");
+        }
+    }
+
+    /**
+     * 规整兼容模式 endpoint，避免仅填写 DashScope 基础路径时运行时请求失败。
+     *
+     * @param uri 原始 URI
+     * @return 规整后的 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public static URI normalizeCompatibleEndpoint(URI uri) {
+        if (isDashScopeCompatibleBaseUri(uri)) {
+            return URI.create(buildDashScopeChatCompletionsUrl(uri));
+        } else {
+            return uri;
+        }
+    }
+
+    /**
+     * 判断是否为 DashScope 兼容模式基础地址。
+     *
+     * @param uri 原始 URI
+     * @return 是否需要补全 chat completions 路径
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static boolean isDashScopeCompatibleBaseUri(URI uri) {
+        String host = uri.getHost();
+        String path = uri.getPath();
+        return host != null
+                && DASHSCOPE_HOST.equalsIgnoreCase(host)
+                && DASHSCOPE_COMPATIBLE_BASE_PATH.equals(trimTrailingSlash(path));
+    }
+
+    /**
+     * 组装 DashScope chat completions endpoint。
+     *
+     * @param uri 原始 URI
+     * @return 完整 endpoint 字符串
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static String buildDashScopeChatCompletionsUrl(URI uri) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(uri.getScheme()).append("://").append(uri.getAuthority())
+                .append(DASHSCOPE_CHAT_COMPLETIONS_PATH);
+        if (uri.getQuery() != null && !uri.getQuery().isBlank()) {
+            // 保留调用方显式传入的查询参数。
+            builder.append("?").append(uri.getQuery());
+        } else {
+            // 无查询参数时保持最小 endpoint。
+        }
+        if (uri.getFragment() != null && !uri.getFragment().isBlank()) {
+            // 保留片段信息，避免意外丢失。
+            builder.append("#").append(uri.getFragment());
+        } else {
+            // 无片段时无需追加。
+        }
+        return builder.toString();
+    }
+
+    /**
+     * 去除路径末尾斜杠，避免基础路径匹配误差。
+     *
+     * @param path 原始路径
+     * @return 去除末尾斜杠后的路径
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static String trimTrailingSlash(String path) {
+        if (path == null || path.isBlank()) {
+            return "";
+        } else if (path.endsWith("/") && path.length() > 1) {
+            return path.substring(0, path.length() - 1);
+        } else {
+            return path;
         }
     }
 

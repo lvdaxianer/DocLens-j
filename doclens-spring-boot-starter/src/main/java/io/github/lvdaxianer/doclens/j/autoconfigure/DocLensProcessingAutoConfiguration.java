@@ -135,7 +135,8 @@ public class DocLensProcessingAutoConfiguration {
         if (isConfigured(llmMarkdown)) {
             // URL 与模型已配置时启用 HTTP LLM Markdown 后处理。
             HttpMarkdownPostProcessorOptions options = new HttpMarkdownPostProcessorOptions(
-                    URI.create(llmMarkdown.url()), llmMarkdown.model(), llmMarkdown.apiKey(),
+                    LlmMarkdownConfigService.normalizeCompatibleEndpoint(URI.create(llmMarkdown.url())),
+                    llmMarkdown.model(), llmMarkdown.apiKey(),
                     Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
             return new HttpMarkdownPostProcessor(objectMapper, options);
         } else {

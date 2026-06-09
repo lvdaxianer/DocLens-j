@@ -121,6 +121,7 @@ public class OcrQueryService {
         );
         Map<String, Object> payload = Map.ofEntries(
                 Map.entry("finalText", result.finalText()),
+                Map.entry("llm_markdown_applied", llmMarkdownApplied(result)),
                 Map.entry("markdownStorageUri", result.markdownStorageUri()),
                 Map.entry("pages", result.structuredDocument().getOrDefault("pages", List.of())),
                 Map.entry("structuredDocument", result.structuredDocument()),
@@ -134,6 +135,19 @@ public class OcrQueryService {
                 Map.entry("summary", summary)
         );
         return Map.of("document_id", documentId, "result_id", result.resultId(), "result", payload);
+    }
+
+    /**
+     * 判断当前结果是否实际应用了 LLM Markdown 排版。
+     *
+     * @param result OCR 结果
+     * @return 是否已应用 LLM Markdown
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private boolean llmMarkdownApplied(OcrResult result) {
+        Object rawFlag = result.rawVendorOutput().get("llm_markdown_applied");
+        return rawFlag instanceof Boolean applied && applied;
     }
 
     /**

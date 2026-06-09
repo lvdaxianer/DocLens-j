@@ -26,6 +26,6 @@ public interface MarkdownPostProcessor {
      * @date 2026-06-09
      */
     static MarkdownPostProcessor noop() {
-        return request -> MarkdownPostProcessingResult.markdown(request.ocrText());
+        return request -> MarkdownPostProcessingResult.passthrough(request.ocrText());
     }
 }

@@ -12,6 +12,16 @@ const props = defineProps<{
 
 const nodes = computed(() => props.track ?? [])
 const STEP_NUMBER_OFFSET = 1
+const MIN_RAIL_TRACK_WIDTH = 720
+const MIN_NODE_WIDTH = 86
+const railStyle = computed(() => {
+  const safeNodeCount = Math.max(nodes.value.length, 1)
+  const minWidth = Math.max(MIN_RAIL_TRACK_WIDTH, safeNodeCount * MIN_NODE_WIDTH)
+  return {
+    gridTemplateColumns: `repeat(${safeNodeCount}, minmax(${MIN_NODE_WIDTH}px, 1fr))`,
+    minWidth: `${minWidth}px`
+  }
+})
 
 const fallbackDescriptions: Record<TrackState, string> = {
   done: '已完成',
@@ -80,7 +90,12 @@ function nodeNumber(index: number): number {
 </script>
 
 <template>
-  <div class="processing-rail" :class="{ 'processing-rail--failed': failed }" aria-label="处理轨道">
+  <div
+    class="processing-rail"
+    :class="{ 'processing-rail--failed': failed }"
+    :style="railStyle"
+    aria-label="处理轨道"
+  >
     <span
       v-for="(node, index) in nodes"
       :key="node.name"
@@ -101,9 +116,7 @@ function nodeNumber(index: number): number {
 <style scoped>
 .processing-rail {
   display: grid;
-  grid-template-columns: repeat(7, minmax(86px, 1fr));
   gap: 0;
-  min-width: 720px;
 }
 
 .processing-rail__node {

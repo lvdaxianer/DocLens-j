@@ -8,6 +8,8 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcess
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,29 @@ class DocLensProcessingAutoConfigurationTest {
     }
 
     /**
+     * Spring 配置中的 DashScope 基础兼容地址也应被规整。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void createsHttpMarkdownPostProcessorWithNormalizedDashScopeBaseUrl() {
+        DocLensSpringProperties.LlmMarkdownProperties llmMarkdown =
+                new DocLensSpringProperties.LlmMarkdownProperties(
+                        "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                        "qwen-vl-ocr-2025-11-20", "sk-configured");
+        DocLensSpringProperties properties = new DocLensSpringProperties(null, false, null, null, null, null, null,
+                null, null, null, null, llmMarkdown, null);
+
+        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+                .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
+
+        assertThat(processor).isInstanceOf(HttpMarkdownPostProcessor.class);
+        assertThat(readEndpoint((HttpMarkdownPostProcessor) processor).toString())
+                .isEqualTo("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
+    }
+
+    /**
      * 默认 Markdown 后处理器应支持运行时配置覆盖。
      *
      * @author lvdaxianerplus
@@ -81,6 +106,26 @@ class DocLensProcessingAutoConfigurationTest {
      */
     private MarkdownPostProcessingRequest request() {
         return new MarkdownPostProcessingRequest("doc-1", "demo.txt", Map.of(), "OCR 文本");
+    }
+
+    /**
+     * 读取 HTTP Markdown 后处理器内部 endpoint。
+     *
+     * @param processor 被测处理器
+     * @return 规范化后的 endpoint
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private java.net.URI readEndpoint(HttpMarkdownPostProcessor processor) {
+        try {
+            Field optionsField = HttpMarkdownPostProcessor.class.getDeclaredField("options");
+            optionsField.setAccessible(true);
+            HttpMarkdownPostProcessorOptions options =
+                    (HttpMarkdownPostProcessorOptions) optionsField.get(processor);
+            return options.endpoint();
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("read endpoint failed", ex);
+        }
     }
 
     /**

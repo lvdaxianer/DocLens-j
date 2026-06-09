@@ -68,7 +68,7 @@ export function stageLabel(stage: string | undefined): string {
     pdf_to_images_completed: 'PDF 转图片完成',
     ocr_images: 'OCR 图片解析中',
     merge_text: '文本合并中',
-    save_text: '文本保存中',
+    save_text: 'LLM 排版中',
     completed: '解析完成',
     failed: '解析失败',
     rendering: 'PDF 转图片中',

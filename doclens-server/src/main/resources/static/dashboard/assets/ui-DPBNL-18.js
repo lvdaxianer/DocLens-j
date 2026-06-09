@@ -166,15 +166,15 @@ ${t}
  border-radius: var(--n-scrollbar-border-radius);
  right: 0;
  `)])]),N("horizontal--top",`
- top: var(--n-scrollbar-rail-top-horizontal-top);
- right: var(--n-scrollbar-rail-right-horizontal-top);
- bottom: var(--n-scrollbar-rail-bottom-horizontal-top);
- left: var(--n-scrollbar-rail-left-horizontal-top);
+ top: var(--n-scrollbar-rail-top-horizontal-top); 
+ right: var(--n-scrollbar-rail-right-horizontal-top); 
+ bottom: var(--n-scrollbar-rail-bottom-horizontal-top); 
+ left: var(--n-scrollbar-rail-left-horizontal-top); 
  `),N("horizontal--bottom",`
- top: var(--n-scrollbar-rail-top-horizontal-bottom);
- right: var(--n-scrollbar-rail-right-horizontal-bottom);
- bottom: var(--n-scrollbar-rail-bottom-horizontal-bottom);
- left: var(--n-scrollbar-rail-left-horizontal-bottom);
+ top: var(--n-scrollbar-rail-top-horizontal-bottom); 
+ right: var(--n-scrollbar-rail-right-horizontal-bottom); 
+ bottom: var(--n-scrollbar-rail-bottom-horizontal-bottom); 
+ left: var(--n-scrollbar-rail-left-horizontal-bottom); 
  `),N("vertical",`
  width: var(--n-scrollbar-width);
  `,[I(">",[A("scrollbar",`
@@ -182,15 +182,15 @@ ${t}
  border-radius: var(--n-scrollbar-border-radius);
  bottom: 0;
  `)])]),N("vertical--left",`
- top: var(--n-scrollbar-rail-top-vertical-left);
- right: var(--n-scrollbar-rail-right-vertical-left);
- bottom: var(--n-scrollbar-rail-bottom-vertical-left);
- left: var(--n-scrollbar-rail-left-vertical-left);
+ top: var(--n-scrollbar-rail-top-vertical-left); 
+ right: var(--n-scrollbar-rail-right-vertical-left); 
+ bottom: var(--n-scrollbar-rail-bottom-vertical-left); 
+ left: var(--n-scrollbar-rail-left-vertical-left); 
  `),N("vertical--right",`
- top: var(--n-scrollbar-rail-top-vertical-right);
- right: var(--n-scrollbar-rail-right-vertical-right);
- bottom: var(--n-scrollbar-rail-bottom-vertical-right);
- left: var(--n-scrollbar-rail-left-vertical-right);
+ top: var(--n-scrollbar-rail-top-vertical-right); 
+ right: var(--n-scrollbar-rail-right-vertical-right); 
+ bottom: var(--n-scrollbar-rail-bottom-vertical-right); 
+ left: var(--n-scrollbar-rail-left-vertical-right); 
  `),N("disabled",[I(">",[A("scrollbar","pointer-events: none;")])]),I(">",[A("scrollbar",`
  z-index: 1;
  position: absolute;
@@ -264,7 +264,7 @@ ${t}
  `),A("header",`
  padding: 8px var(--n-option-padding-left);
  font-size: var(--n-option-font-size);
- transition:
+ transition: 
  color .3s var(--n-bezier),
  border-color .3s var(--n-bezier);
  border-bottom: 1px solid var(--n-action-divider-color);
@@ -272,7 +272,7 @@ ${t}
  `),A("action",`
  padding: 8px var(--n-option-padding-left);
  font-size: var(--n-option-font-size);
- transition:
+ transition: 
  color .3s var(--n-bezier),
  border-color .3s var(--n-bezier);
  border-top: 1px solid var(--n-action-divider-color);
@@ -457,7 +457,7 @@ ${t}
  border-radius: var(--n-border-radius);
  color: var(--n-text-color);
  background-color: var(--n-color);
- transition:
+ transition: 
  border-color .3s var(--n-bezier),
  background-color .3s var(--n-bezier),
  color .3s var(--n-bezier),
@@ -628,7 +628,7 @@ ${t}
  `,[A("content",`
  text-overflow: ellipsis;
  overflow: hidden;
- white-space: nowrap;
+ white-space: nowrap; 
  `)]),A("render-label",`
  color: var(--n-text-color);
  `)]),Ke("disabled",[I("&:hover",[A("state-border",`
@@ -896,7 +896,7 @@ ${t}
  line-height: var(--n-height);
  `,[I("&[type=password]::-ms-reveal","display: none;"),I("+",[A("placeholder",`
  display: flex;
- align-items: center;
+ align-items: center; 
  `)])]),Ke("textarea",[A("placeholder","white-space: nowrap;")]),A("eye",`
  display: flex;
  align-items: center;
@@ -1384,7 +1384,7 @@ ${t}
  border-radius: 50%;
  transform: scale(.8);
  background: var(--n-dot-color-active);
- transition:
+ transition: 
  opacity .3s var(--n-bezier),
  background-color .3s var(--n-bezier),
  transform .3s var(--n-bezier);
@@ -1793,7 +1793,7 @@ ${t}
  transition: background-color .3s var(--n-bezier);
  z-index: 1;
  content: '';
- `),N("active",[I("&::after",`
+ `),N("active",[I("&::after",` 
  background-color: var(--n-th-icon-color-active);
  `)]),I("&:hover::after",`
  background-color: var(--n-th-icon-color-active);
@@ -2183,7 +2183,7 @@ ${t}
  color: var(--n-text-color);
  box-sizing: border-box;
  `,[yw(),gw(),Cw(),hw(),N("unselectable",`
- user-select: none;
+ user-select: none; 
  -webkit-user-select: none;
  `),N("native-scrollbar",[k("drawer-content-wrapper",`
  overflow: auto;
@@ -2348,7 +2348,7 @@ ${t}
  grid-area: mark;
  user-select: none;
  -webkit-user-select: none;
- visibility: hidden;
+ visibility: hidden; 
  `)]),k("form-item-blank",`
  grid-area: blank;
  min-height: var(--n-blank-height);
@@ -2374,17 +2374,17 @@ ${t}
  "mark text"
  ". text";
  `),N("right-mark",`
- grid-template-areas:
+ grid-template-areas: 
  "text mark"
  "text .";
  `),N("right-hanging-mark",`
- grid-template-areas:
+ grid-template-areas: 
  "text mark"
  "text .";
  `),A("text",`
- grid-area: text;
+ grid-area: text; 
  `),A("asterisk",`
- grid-area: mark;
+ grid-area: mark; 
  align-self: end;
  `)])]),N("top-labelled",`
  grid-template-areas:
@@ -2721,7 +2721,7 @@ ${t}
  align-items: center;
  line-height: 1;
  `,[It()]),A("button",`
- align-items: center;
+ align-items: center; 
  top: var(--n-offset);
  left: var(--n-offset);
  height: var(--n-button-height);

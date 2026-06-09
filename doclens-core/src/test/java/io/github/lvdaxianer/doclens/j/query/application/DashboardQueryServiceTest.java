@@ -170,13 +170,14 @@ class DashboardQueryServiceTest {
         Map<?, ?> wordDocument = (Map<?, ?>) documents.get(1);
         List<?> track = (List<?>) wordDocument.get("track");
         List<Boolean> activeNodes = track.stream().map(node -> (Boolean) ((Map<?, ?>) node).get("active")).toList();
-        assertThat(activeNodes).containsExactly(true, true, true, true, true, true, true);
+        assertThat(activeNodes).containsExactly(true, true, true, true, true, true, true, true);
         List<String> wordStates = track.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
-        assertThat(wordStates).containsExactly("done", "done", "done", "done", "done", "done", "done");
+        assertThat(wordStates).containsExactly("done", "done", "done", "done", "done", "done", "done", "done");
         Map<?, ?> textDocument = (Map<?, ?>) documents.get(0);
         List<?> textTrack = (List<?>) textDocument.get("track");
         List<String> textStates = textTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
-        assertThat(textStates).containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "done");
+        assertThat(textStates).containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "skipped",
+                "done");
     }
 
     /**
@@ -226,7 +227,8 @@ class DashboardQueryServiceTest {
         Map<?, ?> document = (Map<?, ?>) documents.getFirst();
         List<?> track = (List<?>) document.get("track");
         List<String> states = track.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
-        assertThat(states).containsExactly("done", "current", "skipped", "pending", "pending", "pending", "pending");
+        assertThat(states).containsExactly("done", "current", "skipped", "pending", "pending", "pending", "pending",
+                "pending");
     }
 
     /**
@@ -254,12 +256,13 @@ class DashboardQueryServiceTest {
         List<String> processingStates = processingTrack.stream()
                 .map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
         assertThat(processingStates).containsExactly("done", "done", "skipped", "done", "current", "pending",
-                "pending");
+                "pending", "pending");
         Map<?, ?> failedDocument = (Map<?, ?>) documents.get(1);
         List<?> failedTrack = (List<?>) failedDocument.get("track");
         List<String> failedStates = failedTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state"))
                 .toList();
-        assertThat(failedStates).containsExactly("done", "done", "skipped", "done", "failed", "pending", "pending");
+        assertThat(failedStates).containsExactly("done", "done", "skipped", "done", "failed", "pending", "pending",
+                "pending");
     }
 
     /**
@@ -286,7 +289,33 @@ class DashboardQueryServiceTest {
         List<String> failedStates = failedTrack.stream().map(node -> (String) ((Map<?, ?>) node).get("state"))
                 .toList();
         assertThat(failedStates).containsExactly("done", "done", "failed", "pending", "pending", "pending",
-                "pending");
+                "pending", "pending");
+    }
+
+    /**
+     * 批次详情应展示独立的 LLM Markdown 后处理步骤。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void batchDetailShowsLlmMarkdownStepBetweenMergeAndSave() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
+                stagedDocument("doc-word", DocumentType.WORD, ProcessingStage.SAVE_TEXT, 4, 4, 0)
+        ));
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        List<?> documents = (List<?>) detail.get("documents");
+        Map<?, ?> document = (Map<?, ?>) documents.getFirst();
+        List<?> track = (List<?>) document.get("track");
+        List<String> labels = track.stream().map(node -> (String) ((Map<?, ?>) node).get("name")).toList();
+        List<String> states = track.stream().map(node -> (String) ((Map<?, ?>) node).get("state")).toList();
+        assertThat(labels).containsExactly("上传", "类型识别", "转换", "渲染页图", "OCR", "合并文本", "LLM 排版", "入库/落盘");
+        assertThat(states).containsExactly("done", "done", "done", "done", "done", "done", "current", "pending");
     }
 
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import {
   NAlert,
   NButton,
@@ -12,6 +13,11 @@ import {
 
 import type { DocumentResultResponse, DocumentRow } from '@/types/dashboard'
 import { formatNumber, formatPercent } from '@/utils/formatters'
+import {
+  isLlmMarkdownApplied,
+  llmPostProcessingStatus,
+  resultTextTitle
+} from '@/utils/llmResultDisplayRules'
 
 const RESULT_DRAWER_WIDTH = 720
 const TEXT_PREVIEW_MAX_HEIGHT = '52vh'
@@ -24,7 +30,7 @@ const TEXT_PREVIEW_MAX_HEIGHT = '52vh'
  */
 const isOpen = defineModel<boolean>('show', { required: true })
 
-defineProps<{
+const props = defineProps<{
   document: DocumentRow | null
   result: DocumentResultResponse | null
   loading: boolean
@@ -34,6 +40,11 @@ defineProps<{
 const emit = defineEmits<{
   retry: []
 }>()
+
+const textTitle = computed(() => props.result ? resultTextTitle(props.result.result) : '解析内容')
+const textLength = computed(() => props.result?.result.finalText.length ?? 0)
+const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
+const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
 </script>
 
 <template>
@@ -74,19 +85,24 @@ const emit = defineEmits<{
               <NDescriptionsItem label="置信度">
                 {{ formatPercent(result.result.confidence * 100) }}
               </NDescriptionsItem>
+              <NDescriptionsItem label="LLM 排版">
+                <NTag :type="llmApplied ? 'success' : 'warning'" round>
+                  {{ llmStatus }}
+                </NTag>
+              </NDescriptionsItem>
             </NDescriptions>
 
             <section class="document-result__text">
               <div class="document-result__text-header">
-                <span>纯文本内容</span>
-                <NTag round>{{ formatNumber(result.result.finalText.length) }} 字符</NTag>
+                <span>{{ textTitle }}</span>
+                <NTag round>{{ formatNumber(textLength) }} 字符</NTag>
               </div>
               <pre>{{ result.result.finalText || '暂无文本内容' }}</pre>
             </section>
           </template>
 
           <NAlert v-else-if="!loading && !error" type="info" title="暂无解析内容">
-            文档解析完成后会在这里显示最终纯文本。
+            文档解析完成后会在这里显示最终内容。
           </NAlert>
         </NSpin>
       </div>
