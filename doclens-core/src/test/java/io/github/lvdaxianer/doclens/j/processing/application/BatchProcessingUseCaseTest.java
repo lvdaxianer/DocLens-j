@@ -139,6 +139,59 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 配置 LLM 后处理时应优先保存 Markdown，并保留原始 OCR 文本。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void processBatchUsesLlmMarkdownWhenConfigured() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        documentRepository.save(document("doc-1", 0, new JsonPayload(Map.of("kind", "invoice"))));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, eventRepository,
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"),
+                new FixedMarkdownPostProcessor("# 发票\n\n原始 OCR 文本"));
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("# 发票\n\n原始 OCR 文本");
+            assertThat(result.rawVendorOutput()).containsEntry("ocr_text", "原始 OCR 文本");
+        });
+        assertThat(eventRepository.events)
+                .filteredOn(event -> DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(event.eventType()))
+                .singleElement()
+                .satisfies(event -> assertThat(event.resultSummary()).extracting("callback_body")
+                        .isEqualTo(Map.of("meta", Map.of("kind", "invoice"), "text", "# 发票\n\n原始 OCR 文本",
+                                "idempotency_key", "")));
+    }
+
+    /**
+     * LLM 后处理失败时应回退原始 OCR 文本并记录警告。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Test
+    void processBatchFallsBackToOcrTextWhenLlmFails() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"),
+                new FailingMarkdownPostProcessor());
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
+            assertThat(result.warnings()).contains("llm_markdown_post_processing_failed");
+        });
+    }
+
+    /**
      * 创建批次处理用例。
      *
      * @param documentRepository 文档仓储
@@ -171,10 +224,35 @@ class BatchProcessingUseCaseTest {
             InMemoryBatchRepository batchRepository,
             DocumentTextExtractor extractor
     ) {
+        return useCase(documentRepository, new InMemoryOcrResultRepository(), eventRepository, batchRepository,
+                extractor, MarkdownPostProcessor.noop());
+    }
+
+    /**
+     * 创建批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @param markdownPostProcessor Markdown 后处理器
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrResultRepository resultRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor,
+            MarkdownPostProcessor markdownPostProcessor
+    ) {
         BatchProcessingDependencies dependencies = new BatchProcessingDependencies(documentRepository,
-                new InMemoryOcrResultRepository(), eventRepository, batchRepository, new DefaultAdapterRegistry(
+                resultRepository, eventRepository, batchRepository, new DefaultAdapterRegistry(
                 List.of(new StubAdapter())), new InMemoryObjectStorage(), extractor, new IdGenerator(),
-                new OcrEventFactory(new IdGenerator()));
+                new OcrEventFactory(new IdGenerator()), markdownPostProcessor);
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
     }
 
@@ -293,6 +371,34 @@ class BatchProcessingUseCaseTest {
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
             return DocumentTextExtractionResult.plainText(request.document().documentId(),
                     request.document().fileName(), text);
+        }
+    }
+
+    /**
+     * 返回固定 Markdown 的 LLM 后处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private record FixedMarkdownPostProcessor(String markdown) implements MarkdownPostProcessor {
+
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            return MarkdownPostProcessingResult.markdown(markdown);
+        }
+    }
+
+    /**
+     * 固定失败的 LLM 后处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private static class FailingMarkdownPostProcessor implements MarkdownPostProcessor {
+
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            throw new IllegalStateException("llm unavailable");
         }
     }
 

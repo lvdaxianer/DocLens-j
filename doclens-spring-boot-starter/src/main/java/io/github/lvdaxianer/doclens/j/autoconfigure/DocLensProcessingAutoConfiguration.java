@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchProcessingScheduler;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependencies;
@@ -8,7 +9,10 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.AsyncBatchProcessingScheduler;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -17,6 +21,8 @@ import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
+import java.net.URI;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -40,6 +46,7 @@ public class DocLensProcessingAutoConfiguration {
     private static final int BATCH_WORKER_POOL_SIZE = 1;
     private static final int BATCH_WORKER_QUEUE_CAPACITY = 1000;
     private static final int THREAD_KEEP_ALIVE_SECONDS = 60;
+    private static final int LLM_MARKDOWN_TIMEOUT_SECONDS = 60;
 
     /**
      * 创建批次处理用例。
@@ -73,7 +80,45 @@ public class DocLensProcessingAutoConfiguration {
         return new BatchProcessingDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
-                dependencies.eventFactory());
+                dependencies.eventFactory(), dependencies.markdownPostProcessor());
+    }
+
+    /**
+     * 创建默认直通 Markdown 后处理器。
+     *
+     * @param objectMapper JSON 映射器
+     * @param properties Spring 配置属性
+     * @return Markdown 后处理器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    MarkdownPostProcessor markdownPostProcessor(ObjectMapper objectMapper, DocLensSpringProperties properties) {
+        DocLensSpringProperties.LlmMarkdownProperties llmMarkdown = properties.llmMarkdown();
+        if (isConfigured(llmMarkdown)) {
+            // URL 与模型已配置时启用 HTTP LLM Markdown 后处理。
+            HttpMarkdownPostProcessorOptions options = new HttpMarkdownPostProcessorOptions(
+                    URI.create(llmMarkdown.url()), llmMarkdown.model(), llmMarkdown.apiKey(),
+                    Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
+            return new HttpMarkdownPostProcessor(objectMapper, options);
+        } else {
+            // 未配置 URL 或模型时保持 OCR 合并纯文本直通。
+            return MarkdownPostProcessor.noop();
+        }
+    }
+
+    /**
+     * 判断 LLM Markdown 是否已配置。
+     *
+     * @param properties LLM Markdown 配置
+     * @return 是否已配置
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private boolean isConfigured(DocLensSpringProperties.LlmMarkdownProperties properties) {
+        return properties.url() != null && !properties.url().isBlank()
+                && properties.model() != null && !properties.model().isBlank();
     }
 
     /**
@@ -91,7 +136,7 @@ public class DocLensProcessingAutoConfiguration {
         return new BatchProcessingBeanDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
-                dependencies.eventFactory());
+                dependencies.eventFactory(), dependencies.markdownPostProcessor());
     }
 
     /**
@@ -204,7 +249,8 @@ public class DocLensProcessingAutoConfiguration {
                 context.getBean(OcrResultRepository.class), context.getBean(OcrEventRepository.class),
                 context.getBean(BatchRepository.class), context.getBean(DefaultAdapterRegistry.class),
                 context.getBean(ObjectStorage.class), context.getBean(DocumentTextExtractor.class),
-                context.getBean(IdGenerator.class), context.getBean(OcrEventFactory.class));
+                context.getBean(IdGenerator.class), context.getBean(OcrEventFactory.class),
+                context.getBean(MarkdownPostProcessor.class));
     }
 
     /**
@@ -219,6 +265,7 @@ public class DocLensProcessingAutoConfiguration {
      * @param documentTextExtractor 文档文本提取器
      * @param idGenerator ID 生成器
      * @param eventFactory 事件工厂
+     * @param markdownPostProcessor Markdown 后处理器
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -231,7 +278,8 @@ public class DocLensProcessingAutoConfiguration {
             ObjectStorage objectStorage,
             DocumentTextExtractor documentTextExtractor,
             IdGenerator idGenerator,
-            OcrEventFactory eventFactory
+            OcrEventFactory eventFactory,
+            MarkdownPostProcessor markdownPostProcessor
     ) {
     }
 

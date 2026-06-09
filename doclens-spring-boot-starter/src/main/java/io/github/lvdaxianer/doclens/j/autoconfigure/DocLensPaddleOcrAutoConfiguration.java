@@ -31,6 +31,8 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration(after = DocLensAutoConfiguration.class)
 public class DocLensPaddleOcrAutoConfiguration {
 
+    private static final int MIN_HTTP_TIMEOUT_SECONDS = 1;
+
     /**
      * 创建 PaddleOCR 响应映射器。
      *
@@ -93,7 +95,7 @@ public class DocLensPaddleOcrAutoConfiguration {
     @ConditionalOnMissingBean
     DashScopeOnlineOcrClient dashScopeOnlineOcrClient(ObjectMapper objectMapper, DocLensProperties properties) {
         return new DashScopeOnlineOcrClient(objectMapper, DashScopeOnlineOcrClient.DEFAULT_ENDPOINT,
-                Duration.ofSeconds(properties.paddleOcr().timeoutSeconds()));
+                Duration.ofSeconds(Math.max(MIN_HTTP_TIMEOUT_SECONDS, properties.paddleOcr().timeoutSeconds())));
     }
 
     /**

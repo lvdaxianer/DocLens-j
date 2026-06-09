@@ -24,6 +24,7 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,9 @@ public class BatchProcessingUseCase {
     private static final String TABLE_COUNT_FIELD = "tableCount";
     private static final String CONFIDENCE_FIELD = "confidence";
     private static final String CALLBACK_BODY_FIELD = "callback_body";
+    private static final String OCR_TEXT_FIELD = "ocr_text";
+    private static final String LLM_MARKDOWN_WARNING = "llm_markdown_post_processing_failed";
+    private static final int RAW_OUTPUT_TRACE_CAPACITY = 2;
 
     private final DocumentJobRepository documentRepository;
     private final OcrResultRepository resultRepository;
@@ -57,6 +61,7 @@ public class BatchProcessingUseCase {
     private final DocumentTextExtractor documentTextExtractor;
     private final IdGenerator idGenerator;
     private final OcrEventFactory eventFactory;
+    private final MarkdownPostProcessor markdownPostProcessor;
     private final TransactionRunner transactionRunner;
 
     /**
@@ -77,6 +82,7 @@ public class BatchProcessingUseCase {
         this.documentTextExtractor = dependencies.documentTextExtractor();
         this.idGenerator = dependencies.idGenerator();
         this.eventFactory = dependencies.eventFactory();
+        this.markdownPostProcessor = dependencies.markdownPostProcessor();
         this.transactionRunner = transactionRunner;
     }
 
@@ -160,11 +166,93 @@ public class BatchProcessingUseCase {
                 extracted.pageText().size());
         stageReporter(document).report(ProcessingStage.SAVE_TEXT, extracted.pageText().size(),
                 extracted.pageText().size());
-        String markdownStorageUri = writeMarkdownResult(document, extracted.finalText());
+        PostProcessedText postProcessed = postProcessMarkdown(document, extracted);
+        String markdownStorageUri = writeMarkdownResult(document, postProcessed.finalText());
         String resultId = idGenerator.newResultId();
-        return new OcrResult(resultId, document.documentId(), extracted.finalText(), markdownStorageUri,
-                extracted.rawOutput(), extracted.structuredDocument(), extracted.pageText(), extracted.layoutBlocks(),
-                extracted.tables(), extracted.images(), extracted.confidence(), extracted.warnings(), OffsetDateTime.now());
+        return new OcrResult(resultId, document.documentId(), postProcessed.finalText(), markdownStorageUri,
+                rawOutputWithOcrText(extracted), extracted.structuredDocument(), extracted.pageText(),
+                extracted.layoutBlocks(), extracted.tables(), extracted.images(), extracted.confidence(),
+                postProcessed.warnings(), OffsetDateTime.now());
+    }
+
+    /**
+     * 执行可选 Markdown 后处理。
+     *
+     * @param document 文档任务
+     * @param extracted 文本提取结果
+     * @return 后处理后的文本
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private PostProcessedText postProcessMarkdown(DocumentJob document, DocumentTextExtractionResult extracted) {
+        try {
+            MarkdownPostProcessingResult result = markdownPostProcessor.process(markdownRequest(document, extracted));
+            return new PostProcessedText(result.markdown(), mergeWarnings(extracted.warnings(), result.warnings()));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("[LLM后处理] Markdown 后处理失败并回退 OCR 原文 documentId={}, errorType={}",
+                    document.documentId(), ex.getClass().getSimpleName());
+            return new PostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()));
+        }
+    }
+
+    /**
+     * 构建 Markdown 后处理请求。
+     *
+     * @param document 文档任务
+     * @param extracted 文本提取结果
+     * @return Markdown 后处理请求
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private MarkdownPostProcessingRequest markdownRequest(DocumentJob document, DocumentTextExtractionResult extracted) {
+        return new MarkdownPostProcessingRequest(document.documentId(), document.fileName(),
+                document.metadata().values(), extracted.finalText());
+    }
+
+    /**
+     * 在原始输出中保留 OCR 合并文本。
+     *
+     * @param extracted 文本提取结果
+     * @return 带 OCR 原文追溯字段的原始输出
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private Map<String, Object> rawOutputWithOcrText(DocumentTextExtractionResult extracted) {
+        Map<String, Object> rawOutput = new LinkedHashMap<>(extracted.rawOutput().size() + RAW_OUTPUT_TRACE_CAPACITY);
+        rawOutput.putAll(extracted.rawOutput());
+        rawOutput.put(OCR_TEXT_FIELD, extracted.finalText());
+        return rawOutput;
+    }
+
+    /**
+     * 合并 OCR 与 Markdown 后处理警告。
+     *
+     * @param ocrWarnings OCR 警告
+     * @param markdownWarnings Markdown 后处理警告
+     * @return 合并后的警告
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private List<String> mergeWarnings(List<String> ocrWarnings, List<String> markdownWarnings) {
+        List<String> warnings = new ArrayList<>(ocrWarnings.size() + markdownWarnings.size());
+        warnings.addAll(ocrWarnings);
+        warnings.addAll(markdownWarnings);
+        return warnings;
+    }
+
+    /**
+     * 构建 LLM 失败后的警告集合。
+     *
+     * @param ocrWarnings OCR 警告
+     * @return 带失败警告的集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private List<String> failedWarnings(List<String> ocrWarnings) {
+        List<String> warnings = new ArrayList<>(ocrWarnings.size() + 1);
+        warnings.addAll(ocrWarnings);
+        warnings.add(LLM_MARKDOWN_WARNING);
+        return warnings;
     }
 
     private String writeMarkdownResult(DocumentJob document, String finalText) {
@@ -289,6 +377,17 @@ public class BatchProcessingUseCase {
             OcrResult result,
             Optional<Batch> batch
     ) {
+    }
+
+    /**
+     * Markdown 后处理后的文本和警告。
+     *
+     * @param finalText 最终文本
+     * @param warnings 警告集合
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private record PostProcessedText(String finalText, List<String> warnings) {
     }
 
     void persistDocumentProcessing(DocumentProcessingResult result) {

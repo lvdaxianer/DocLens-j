@@ -18,6 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param extraction 提取配置
  * @param pdfRender PDF 渲染配置
  * @param wordConversion Word 转 PDF 配置
+ * @param llmMarkdown LLM Markdown 后处理配置
  * @param threadPools 线程池隔离配置
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -35,6 +36,7 @@ public record DocLensSpringProperties(
         ExtractionProperties extraction,
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion,
+        LlmMarkdownProperties llmMarkdown,
         ThreadPoolsProperties threadPools
 ) {
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
@@ -49,6 +51,7 @@ public record DocLensSpringProperties(
         extraction = extraction == null ? new ExtractionProperties(1) : extraction;
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
+        llmMarkdown = llmMarkdown == null ? new LlmMarkdownProperties("", "", "") : llmMarkdown;
         threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
     }
 
@@ -210,6 +213,18 @@ public record DocLensSpringProperties(
      * @date 2026-06-08
      */
     public record WordConversionProperties(String command, int timeoutSeconds) {
+    }
+
+    /**
+     * LLM Markdown 后处理属性。
+     *
+     * @param url OpenAI compatible endpoint
+     * @param model 模型名称
+     * @param apiKey API Key，可为空
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public record LlmMarkdownProperties(String url, String model, String apiKey) {
     }
 
     /**

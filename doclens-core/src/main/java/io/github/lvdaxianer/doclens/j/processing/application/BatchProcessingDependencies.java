@@ -22,6 +22,7 @@ import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
  * @param documentTextExtractor 文档文本提取器
  * @param idGenerator ID 生成器
  * @param eventFactory OCR 事件工厂
+ * @param markdownPostProcessor Markdown 后处理器
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -34,6 +35,7 @@ public record BatchProcessingDependencies(
         ObjectStorage objectStorage,
         DocumentTextExtractor documentTextExtractor,
         IdGenerator idGenerator,
-        OcrEventFactory eventFactory
+        OcrEventFactory eventFactory,
+        MarkdownPostProcessor markdownPostProcessor
 ) {
 }
