@@ -36,7 +36,7 @@ const emit = defineEmits<{
   submit: [payload: OcrNodeSubmitPayload]
 }>()
 
-const form = reactive(createDefaultOcrNodeForm(''))
+let form = reactive(createDefaultOcrNodeForm(''))
 
 const title = computed(() => (props.node ? '编辑 OCR 节点' : '新增 OCR 节点'))
 const isEditing = computed(() => Boolean(props.node))

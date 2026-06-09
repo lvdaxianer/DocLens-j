@@ -44,7 +44,7 @@ const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
 const message = useMessage()
 const selectedFiles = shallowRef<File[]>([])
-const form = reactive<UploadAdvancedOptionsValue>({
+let form = reactive<UploadAdvancedOptionsValue>({
   metadata: EMPTY_UPLOAD_OPTIONS.metadata,
   callbackUrl: EMPTY_UPLOAD_OPTIONS.callbackUrl,
   idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey

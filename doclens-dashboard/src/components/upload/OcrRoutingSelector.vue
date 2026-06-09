@@ -19,7 +19,7 @@ const nodes = shallowRef<OcrNode[]>([])
 const loadingModels = shallowRef(false)
 const loadingNodes = shallowRef(false)
 const errorMessage = shallowRef('')
-const form = reactive<UploadOcrRoutingOptions>(createDefaultUploadOcrRouting())
+let form = reactive<UploadOcrRoutingOptions>(createDefaultUploadOcrRouting())
 
 const modelOptions = computed(() => models.value.map((model) => ({
   label: model.name,
