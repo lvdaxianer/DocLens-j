@@ -97,8 +97,33 @@ public class OcrHealthChecker {
      * @date 2026-06-09
      */
     public boolean checkNode(OcrNode node) {
+        return checkNode(node, false);
+    }
+
+    /**
+     * 执行一次忽略熔断窗口的手动健康探测。
+     *
+     * @param node OCR 节点
+     * @return 节点是否健康
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public boolean checkNodeIgnoringCircuitWindow(OcrNode node) {
+        return checkNode(node, true);
+    }
+
+    /**
+     * 按指定模式执行单个 OCR 节点健康检查并更新状态。
+     *
+     * @param node OCR 节点
+     * @param ignoreCircuitWindow 是否忽略熔断窗口
+     * @return 节点是否健康
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean checkNode(OcrNode node, boolean ignoreCircuitWindow) {
         OffsetDateTime now = nowSupplier.get();
-        if (!shouldProbe(node, now)) {
+        if (!shouldProbe(node, now, ignoreCircuitWindow)) {
             return false;
         }
         boolean healthy = isHealthy(node);
@@ -299,8 +324,12 @@ public class OcrHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private boolean shouldProbe(OcrNode node, OffsetDateTime now) {
-        return node.circuitOpenUntil().isEmpty() || !node.circuitOpenUntil().get().isAfter(now);
+    private boolean shouldProbe(OcrNode node, OffsetDateTime now, boolean ignoreCircuitWindow) {
+        if (ignoreCircuitWindow) {
+            return true;
+        } else {
+            return node.circuitOpenUntil().isEmpty() || !node.circuitOpenUntil().get().isAfter(now);
+        }
     }
 
     /**

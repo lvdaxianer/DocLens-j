@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeManagementService;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrManualRecoveryService;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class OcrNodeMaintenanceController {
 
     private final OcrNodeManagementService managementService;
     private final ObjectProvider<OcrHealthChecker> healthCheckerProvider;
+    private final ObjectProvider<OcrManualRecoveryService> manualRecoveryServiceProvider;
     private final ObjectProvider<OcrRuntimeNodePool> nodePoolProvider;
 
     /**
@@ -32,6 +34,7 @@ public class OcrNodeMaintenanceController {
      *
      * @param managementService OCR 节点管理服务
      * @param healthCheckerProvider OCR 健康检查器提供器
+     * @param manualRecoveryServiceProvider OCR 手动恢复服务提供器
      * @param nodePoolProvider OCR 运行时节点池提供器
      * @author lvdaxianerplus
      * @date 2026-06-09
@@ -39,10 +42,12 @@ public class OcrNodeMaintenanceController {
     public OcrNodeMaintenanceController(
             OcrNodeManagementService managementService,
             ObjectProvider<OcrHealthChecker> healthCheckerProvider,
+            ObjectProvider<OcrManualRecoveryService> manualRecoveryServiceProvider,
             ObjectProvider<OcrRuntimeNodePool> nodePoolProvider
     ) {
         this.managementService = managementService;
         this.healthCheckerProvider = healthCheckerProvider;
+        this.manualRecoveryServiceProvider = manualRecoveryServiceProvider;
         this.nodePoolProvider = nodePoolProvider;
     }
 
@@ -77,6 +82,25 @@ public class OcrNodeMaintenanceController {
     }
 
     /**
+     * 手动触发 OCR 节点恢复探测。
+     *
+     * @param nodeId OCR 节点 ID
+     * @return 节点重连响应
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @PostMapping("/{nodeId}/reconnect")
+    public OcrNodeReconnectResponse reconnectNode(@PathVariable String nodeId) {
+        OcrNode node = managementService.requireNode(nodeId);
+        OcrManualRecoveryService recoveryService = manualRecoveryServiceProvider.getIfAvailable();
+        if (recoveryService == null) {
+            throw new IllegalStateException("ocr manual recovery service is not configured");
+        } else {
+            return reconnectNode(node, recoveryService);
+        }
+    }
+
+    /**
      * 执行节点健康测试。
      *
      * @param node OCR 节点
@@ -93,5 +117,21 @@ public class OcrNodeMaintenanceController {
         } else {
             return new OcrNodeTestResponse(false, "ocr node health check failed");
         }
+    }
+
+    /**
+     * 执行节点手动恢复并返回恢复结果。
+     *
+     * @param node OCR 节点
+     * @param recoveryService OCR 手动恢复服务
+     * @return 节点重连响应
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrNodeReconnectResponse reconnectNode(OcrNode node, OcrManualRecoveryService recoveryService) {
+        OcrManualRecoveryService.ManualRecoveryResult result = recoveryService.recover(node);
+        nodePoolProvider.ifAvailable(OcrRuntimeNodePool::refresh);
+        return OcrNodeReconnectResponse.of(result.healthy(), result.attempts(), result.node().status().name(),
+                result.node().circuitOpenUntil());
     }
 }

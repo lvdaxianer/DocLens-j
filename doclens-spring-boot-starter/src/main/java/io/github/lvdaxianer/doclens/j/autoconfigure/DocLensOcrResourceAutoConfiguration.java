@@ -17,6 +17,7 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckPrope
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrManualRecoveryService;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -38,7 +39,6 @@ import org.springframework.context.annotation.Bean;
  * @date 2026-06-08
  */
 @AutoConfiguration(after = DocLensPaddleOcrAutoConfiguration.class)
-@ConditionalOnBean(OcrNodeImageExecutor.class)
 public class DocLensOcrResourceAutoConfiguration {
 
     /**
@@ -54,6 +54,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
+    @ConditionalOnBean(OcrNodeImageExecutor.class)
     @ConditionalOnMissingBean
     OcrRoutingAutoConfigurationDependencies ocrRoutingAutoConfigurationDependencies(
             OcrRuntimeNodePool nodePool,
@@ -77,6 +78,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
+    @ConditionalOnBean(OcrRoutingAutoConfigurationDependencies.class)
     @ConditionalOnMissingBean
     OcrRoutingService ocrRoutingService(
             OcrRoutingAutoConfigurationDependencies dependencies,
@@ -113,6 +115,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
+    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthClient.class})
     @ConditionalOnMissingBean
     OcrHealthChecker ocrHealthChecker(
             OcrNodeRepository nodeRepository,
@@ -150,6 +153,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-09
      */
     @Bean
+    @ConditionalOnBean({OcrHealthChecker.class, OcrRuntimeNodePool.class})
     @ConditionalOnMissingBean
     OcrHealthCheckScheduler ocrHealthCheckScheduler(
             OcrHealthChecker healthChecker,
@@ -170,9 +174,31 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-09
      */
     @Bean
+    @ConditionalOnBean(OcrHealthCheckScheduler.class)
     @ConditionalOnMissingBean(name = "ocrHealthCheckSchedulerRunner")
     ApplicationRunner ocrHealthCheckSchedulerRunner(OcrHealthCheckScheduler scheduler) {
         return args -> scheduler.start();
+    }
+
+    /**
+     * 创建 OCR 节点手动恢复服务。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param healthChecker OCR 健康检查器
+     * @param properties DocLens 配置
+     * @return OCR 节点手动恢复服务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthChecker.class})
+    @ConditionalOnMissingBean
+    OcrManualRecoveryService ocrManualRecoveryService(
+            OcrNodeRepository nodeRepository,
+            OcrHealthChecker healthChecker,
+            DocLensSpringProperties properties
+    ) {
+        return new OcrManualRecoveryService(nodeRepository, healthChecker, properties.ocr().manualRecoveryAttempts());
     }
 
     /**
