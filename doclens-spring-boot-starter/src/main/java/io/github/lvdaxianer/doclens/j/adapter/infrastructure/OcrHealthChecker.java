@@ -65,6 +65,24 @@ public class OcrHealthChecker {
     }
 
     /**
+     * 执行单个 OCR 节点健康检查并更新状态。
+     *
+     * @param node OCR 节点
+     * @return 节点是否健康
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public boolean checkNode(OcrNode node) {
+        boolean healthy = healthClient.isHealthy(node);
+        if (healthy) {
+            nodeRepository.update(successNode(node));
+        } else {
+            nodeRepository.update(failedNode(node, "health check failed"));
+        }
+        return healthy;
+    }
+
+    /**
      * 创建单节点健康检查任务。
      *
      * @param node OCR 节点
@@ -77,21 +95,6 @@ public class OcrHealthChecker {
             checkNode(node);
             return null;
         };
-    }
-
-    /**
-     * 执行单节点健康检查。
-     *
-     * @param node OCR 节点
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private void checkNode(OcrNode node) {
-        if (healthClient.isHealthy(node)) {
-            nodeRepository.update(successNode(node));
-        } else {
-            nodeRepository.update(failedNode(node, "health check failed"));
-        }
     }
 
     /**

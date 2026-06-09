@@ -11,13 +11,18 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckProperties;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -113,6 +118,56 @@ public class DocLensOcrResourceAutoConfiguration {
         return new OcrHealthChecker(nodeRepository, healthClient, healthExecutor,
                 new OcrHealthCheckProperties(properties.ocr().healthFailureThreshold(),
                         properties.ocr().recoverySuccessThreshold()));
+    }
+
+    /**
+     * 创建 OCR 健康检查调度线程池。
+     *
+     * @return OCR 健康检查调度线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "doclensOcrHealthSchedulerExecutor")
+    ScheduledExecutorService doclensOcrHealthSchedulerExecutor() {
+        return Executors.newSingleThreadScheduledExecutor(new NamedThreadPoolFactory("doclens-ocr-health-scheduler-"));
+    }
+
+    /**
+     * 创建 OCR 健康检查周期调度器。
+     *
+     * @param healthChecker OCR 健康检查器
+     * @param nodePool OCR 运行时节点池
+     * @param schedulerExecutor OCR 健康检查调度线程池
+     * @param properties DocLens 配置
+     * @return OCR 健康检查周期调度器
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrHealthCheckScheduler ocrHealthCheckScheduler(
+            OcrHealthChecker healthChecker,
+            OcrRuntimeNodePool nodePool,
+            @Qualifier("doclensOcrHealthSchedulerExecutor") ScheduledExecutorService schedulerExecutor,
+            DocLensSpringProperties properties
+    ) {
+        return new OcrHealthCheckScheduler(healthChecker, nodePool, schedulerExecutor,
+                properties.ocr().healthCheckIntervalSeconds());
+    }
+
+    /**
+     * 应用启动完成后启动 OCR 健康检查调度。
+     *
+     * @param scheduler OCR 健康检查调度器
+     * @return 应用启动任务
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "ocrHealthCheckSchedulerRunner")
+    ApplicationRunner ocrHealthCheckSchedulerRunner(OcrHealthCheckScheduler scheduler) {
+        return args -> scheduler.start();
     }
 
     /**

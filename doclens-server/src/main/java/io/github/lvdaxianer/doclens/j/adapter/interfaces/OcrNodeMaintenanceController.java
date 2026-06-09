@@ -2,7 +2,8 @@ package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeManagementService;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
-import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,22 +24,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class OcrNodeMaintenanceController {
 
     private final OcrNodeManagementService managementService;
-    private final ObjectProvider<OcrHealthClient> healthClientProvider;
+    private final ObjectProvider<OcrHealthChecker> healthCheckerProvider;
+    private final ObjectProvider<OcrRuntimeNodePool> nodePoolProvider;
 
     /**
      * 创建 OCR 节点维护控制器。
      *
      * @param managementService OCR 节点管理服务
-     * @param healthClientProvider OCR 健康检查客户端提供器
+     * @param healthCheckerProvider OCR 健康检查器提供器
+     * @param nodePoolProvider OCR 运行时节点池提供器
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     public OcrNodeMaintenanceController(
             OcrNodeManagementService managementService,
-            ObjectProvider<OcrHealthClient> healthClientProvider
+            ObjectProvider<OcrHealthChecker> healthCheckerProvider,
+            ObjectProvider<OcrRuntimeNodePool> nodePoolProvider
     ) {
         this.managementService = managementService;
-        this.healthClientProvider = healthClientProvider;
+        this.healthCheckerProvider = healthCheckerProvider;
+        this.nodePoolProvider = nodePoolProvider;
     }
 
     /**
@@ -65,23 +70,24 @@ public class OcrNodeMaintenanceController {
     @PostMapping("/{nodeId}/test")
     public OcrNodeTestResponse testNode(@PathVariable String nodeId) {
         OcrNode node = managementService.requireNode(nodeId);
-        OcrHealthClient healthClient = healthClientProvider.getIfAvailable();
-        return healthClient == null
-                ? new OcrNodeTestResponse(false, "ocr health client is not configured")
-                : testNodeHealth(node, healthClient);
+        OcrHealthChecker healthChecker = healthCheckerProvider.getIfAvailable();
+        return healthChecker == null
+                ? new OcrNodeTestResponse(false, "ocr health checker is not configured")
+                : testNodeHealth(node, healthChecker);
     }
 
     /**
      * 执行节点健康测试。
      *
      * @param node OCR 节点
-     * @param healthClient OCR 健康检查客户端
+     * @param healthChecker OCR 健康检查器
      * @return 节点测试响应
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private OcrNodeTestResponse testNodeHealth(OcrNode node, OcrHealthClient healthClient) {
-        boolean healthy = healthClient.isHealthy(node);
+    private OcrNodeTestResponse testNodeHealth(OcrNode node, OcrHealthChecker healthChecker) {
+        boolean healthy = healthChecker.checkNode(node);
+        nodePoolProvider.ifAvailable(OcrRuntimeNodePool::refresh);
         if (healthy) {
             return new OcrNodeTestResponse(true, "ocr node is healthy");
         } else {
