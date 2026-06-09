@@ -45,6 +45,7 @@ class OcrHealthCheckSchedulerTest {
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(repository);
         OcrHealthCheckScheduler scheduler = new OcrHealthCheckScheduler(checker, nodePool, schedulerExecutor, 60);
 
+        nodePool.initialize();
         scheduler.start();
         Thread.sleep(200);
         schedulerExecutor.shutdownNow();

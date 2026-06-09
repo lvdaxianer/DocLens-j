@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class OcrRuntimeNode {
 
-    private final OcrNode node;
+    private volatile OcrNode node;
     private final AtomicInteger inflightImages = new AtomicInteger(0);
 
     /**
@@ -24,6 +24,19 @@ public class OcrRuntimeNode {
      */
     public OcrRuntimeNode(OcrNode node) {
         this.node = node;
+    }
+
+    /**
+     * 使用最新节点元数据更新运行时节点。
+     *
+     * @param latestNode 最新 OCR 节点领域对象
+     * @return 当前运行时节点
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    public OcrRuntimeNode refresh(OcrNode latestNode) {
+        this.node = latestNode;
+        return this;
     }
 
     /**

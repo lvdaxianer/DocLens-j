@@ -142,7 +142,9 @@ public class OcrRuntimeNodePool implements OcrRuntimeNodeProvider {
      * @date 2026-06-08
      */
     private OcrRuntimeNode existingOrNew(OcrNode node) {
-        return Optional.ofNullable(nodes.get(node.id())).orElseGet(() -> new OcrRuntimeNode(node));
+        return Optional.ofNullable(nodes.get(node.id()))
+                .map(runtimeNode -> runtimeNode.refresh(node))
+                .orElseGet(() -> new OcrRuntimeNode(node));
     }
 
     /**
