@@ -13,6 +13,9 @@ spring:
       max-file-size: 50MB
       max-request-size: 200MB
 
+server:
+  port: 10003
+
 management:
   endpoint:
     health:
