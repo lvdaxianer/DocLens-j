@@ -39,7 +39,8 @@ const ROUTING_MODE_LABELS: Record<string, string> = {
 }
 
 const LOAD_BALANCE_STRATEGY_LABELS: Record<string, string> = {
-  'least-inflight': '最少解析中图片'
+  'least-inflight': '最少解析中图片',
+  'weighted-idle': '加权空闲优先'
 }
 
 /**

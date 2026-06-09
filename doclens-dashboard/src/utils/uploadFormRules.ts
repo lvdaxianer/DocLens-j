@@ -1,7 +1,7 @@
 import type { UploadAdvancedOptionsValue, UploadOcrRoutingOptions } from '@/types/upload'
 
 export const DEFAULT_UPLOAD_METADATA_JSON = '{}'
-export const DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY = 'least-inflight'
+export const DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY = 'weighted-idle'
 const CALLBACK_TEXT_SOURCE_HINT = '若启用且成功执行 LLM Markdown 后处理则返回 Markdown，否则返回 OCR 合并纯文本'
 
 export interface UploadCallbackContractHints {

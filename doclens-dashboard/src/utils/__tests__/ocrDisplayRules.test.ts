@@ -49,6 +49,7 @@ test('routing mode display hides internal default semantics from dashboard users
 
 test('load balance strategy display prefers product wording', () => {
   assert.equal(displayLoadBalanceStrategy('least-inflight'), '最少解析中图片')
+  assert.equal(displayLoadBalanceStrategy('weighted-idle'), '加权空闲优先')
   assert.equal(displayLoadBalanceStrategy('weighted-random'), 'weighted-random')
   assert.equal(displayLoadBalanceStrategy(''), '-')
 })

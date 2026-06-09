@@ -36,7 +36,7 @@ const hasStrategySelect = computed(() => form.ocrRoutingMode === 'GLOBAL_LOAD_BA
 const validationMessage = computed(() => validateRouting())
 
 const strategyOptions = [
-  { label: '最少解析中图片', value: DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY }
+  { label: '加权空闲优先', value: DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY }
 ]
 
 /**

@@ -14,7 +14,7 @@ test('upload routing defaults to global load balance', () => {
   assert.equal(routing.ocrRoutingMode, 'GLOBAL_LOAD_BALANCE')
   assert.equal(routing.ocrModelKey, '')
   assert.equal(routing.ocrNodeId, '')
-  assert.equal(routing.ocrLoadBalanceStrategy, 'least-inflight')
+  assert.equal(routing.ocrLoadBalanceStrategy, 'weighted-idle')
 })
 
 test('advanced upload options expose only user-facing fields', () => {
