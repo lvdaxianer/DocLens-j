@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvi
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -80,11 +81,13 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      */
     @Override
     public List<Map<String, Object>> hitNodesByBatch(String batchId) {
+        Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
+                .collect(Collectors.toMap(OcrNode::id, node -> node));
         return callRepository.listByBatchId(batchId).stream()
                 .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()))
                 .entrySet()
                 .stream()
-                .map(entry -> hitNodeRow(entry.getKey(), entry.getValue()))
+                .map(entry -> hitNodeRow(nodesById, entry.getKey(), entry.getValue()))
                 .toList();
     }
 
@@ -166,8 +169,26 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> hitNodeRow(HitNodeKey key, long imageCount) {
-        return Map.of("model_key", key.modelKey(), "node_id", key.nodeId(), "image_count", imageCount);
+    private Map<String, Object> hitNodeRow(Map<String, OcrNode> nodesById, HitNodeKey key, long imageCount) {
+        return Map.ofEntries(
+                Map.entry("model_key", key.modelKey()),
+                Map.entry("node_id", key.nodeId()),
+                Map.entry("node_name", nodeName(nodesById, key.nodeId())),
+                Map.entry("image_count", imageCount)
+        );
+    }
+
+    /**
+     * 返回节点名称，缺失时回退为空串。
+     *
+     * @param nodesById 节点索引
+     * @param nodeId 节点 ID
+     * @return 节点名称
+     * @author lvdaxianerplus
+     * @date 2026-06-09
+     */
+    private String nodeName(Map<String, OcrNode> nodesById, String nodeId) {
+        return Optional.ofNullable(nodesById.get(nodeId)).map(OcrNode::name).orElse("");
     }
 
     /**
