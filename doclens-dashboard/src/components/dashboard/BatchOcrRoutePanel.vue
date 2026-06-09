@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { BatchOcrHitNode, BatchOcrRoutePolicy } from '@/types/dashboard'
 import { formatNumber } from '@/utils/formatters'
-import { displayModelName, displayNodeName, displayNodeSubtitle } from '@/utils/ocrDisplayRules'
+import {
+  displayLoadBalanceStrategy,
+  displayModelName,
+  displayNodeName,
+  displayNodeSubtitle,
+  displayRoutingMode
+} from '@/utils/ocrDisplayRules'
 
 defineProps<{
   routePolicy?: BatchOcrRoutePolicy | null
@@ -20,7 +26,7 @@ defineProps<{
     <dl class="batch-ocr-route__policy">
       <div>
         <dt>路由模式</dt>
-        <dd>{{ routePolicy?.routing_mode || 'DEFAULT' }}</dd>
+        <dd>{{ displayRoutingMode(routePolicy?.routing_mode) }}</dd>
       </div>
       <div>
         <dt>OCR 模型</dt>
@@ -32,7 +38,7 @@ defineProps<{
       </div>
       <div>
         <dt>负载均衡</dt>
-        <dd>{{ routePolicy?.load_balance_strategy || '-' }}</dd>
+        <dd>{{ displayLoadBalanceStrategy(routePolicy?.load_balance_strategy) }}</dd>
       </div>
     </dl>
     <div v-if="hitNodes.length > 0" class="batch-ocr-route__hits">

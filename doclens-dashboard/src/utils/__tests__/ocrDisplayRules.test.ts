@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  displayLoadBalanceStrategy,
+  displayRoutingMode,
   displayModelName,
   displayNodeName,
   displayNodeSubtitle
@@ -35,4 +37,17 @@ test('model display prefers readable model name', () => {
   const model = { modelKey: 'paddle_ocr', name: 'PaddleOCR' }
 
   assert.equal(displayModelName(model), 'PaddleOCR')
+})
+
+test('routing mode display hides internal default semantics from dashboard users', () => {
+  assert.equal(displayRoutingMode('DEFAULT'), '全局负载均衡')
+  assert.equal(displayRoutingMode('GLOBAL_LOAD_BALANCE'), '全局负载均衡')
+  assert.equal(displayRoutingMode('MODEL_LOAD_BALANCE'), '指定 OCR')
+  assert.equal(displayRoutingMode('SPECIFIC_NODE'), '指定节点')
+})
+
+test('load balance strategy display prefers product wording', () => {
+  assert.equal(displayLoadBalanceStrategy('least-inflight'), '最少解析中图片')
+  assert.equal(displayLoadBalanceStrategy('weighted-random'), 'weighted-random')
+  assert.equal(displayLoadBalanceStrategy(''), '-')
 })

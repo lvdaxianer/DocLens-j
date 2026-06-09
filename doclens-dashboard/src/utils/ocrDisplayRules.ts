@@ -19,6 +19,17 @@ export interface OcrNodeSubtitleSource {
   imageCount?: number
 }
 
+const ROUTING_MODE_LABELS: Record<string, string> = {
+  DEFAULT: '全局负载均衡',
+  GLOBAL_LOAD_BALANCE: '全局负载均衡',
+  MODEL_LOAD_BALANCE: '指定 OCR',
+  SPECIFIC_NODE: '指定节点'
+}
+
+const LOAD_BALANCE_STRATEGY_LABELS: Record<string, string> = {
+  'least-inflight': '最少解析中图片'
+}
+
 /**
  * 优先返回 OCR 节点别名。
  *
@@ -71,5 +82,35 @@ export function displayModelName(model: OcrModelDisplaySource): string {
   } else {
     // 名称缺失时才回退模型 key。
     return model.modelKey?.trim() || '-'
+  }
+}
+
+/**
+ * 返回用户可理解的 OCR 路由模式展示文案。
+ *
+ * @param routingMode - 路由模式枚举值
+ * @returns 路由模式文案
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function displayRoutingMode(routingMode?: string): string {
+  const normalizedMode = routingMode?.trim() || 'DEFAULT'
+  return ROUTING_MODE_LABELS[normalizedMode] ?? normalizedMode
+}
+
+/**
+ * 返回用户可理解的负载均衡策略展示文案。
+ *
+ * @param strategy - 负载均衡策略
+ * @returns 策略文案
+ * @author lvdaxianerplus
+ * @date 2026-06-09
+ */
+export function displayLoadBalanceStrategy(strategy?: string): string {
+  const normalizedStrategy = strategy?.trim()
+  if (normalizedStrategy) {
+    return LOAD_BALANCE_STRATEGY_LABELS[normalizedStrategy] ?? normalizedStrategy
+  } else {
+    return '-'
   }
 }
