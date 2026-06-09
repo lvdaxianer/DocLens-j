@@ -11,6 +11,8 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeClie
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeResponseMapper;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import java.time.OffsetDateTime;
+import java.util.concurrent.ExecutorService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -82,6 +84,7 @@ public class DocLensPaddleOcrAutoConfiguration {
      * @param nodePool OCR 运行时节点池
      * @param client PaddleOCR 客户端
      * @param responseMapper PaddleOCR 响应映射器
+     * @param ocrRequestExecutor OCR 请求线程池
      * @return OCR 节点执行器
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -92,9 +95,10 @@ public class DocLensPaddleOcrAutoConfiguration {
     OcrNodeImageExecutor paddleOcrNodeImageExecutor(
             OcrRuntimeNodePool nodePool,
             PaddleOcrNativeClient client,
-            PaddleOcrNativeResponseMapper responseMapper
+            PaddleOcrNativeResponseMapper responseMapper,
+            @Qualifier("doclensOcrRequestExecutor") ExecutorService ocrRequestExecutor
     ) {
-        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper);
+        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper, ocrRequestExecutor);
     }
 
     /**
