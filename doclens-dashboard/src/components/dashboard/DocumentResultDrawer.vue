@@ -47,6 +47,10 @@ const textLength = computed(() => props.result?.result.finalText.length ?? 0)
 const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
 const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
 const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
+const llmErrorMessage = computed(() => {
+  const message = props.result?.result.llm_error_message?.trim() ?? ''
+  return message
+})
 </script>
 
 <template>
@@ -94,6 +98,9 @@ const llmDescription = computed(() => props.result ? llmStageDescription(props.r
               </NDescriptionsItem>
               <NDescriptionsItem label="LLM 结果说明">
                 {{ llmDescription }}
+              </NDescriptionsItem>
+              <NDescriptionsItem v-if="!llmApplied && llmErrorMessage" label="LLM 失败原因">
+                {{ llmErrorMessage }}
               </NDescriptionsItem>
             </NDescriptions>
 

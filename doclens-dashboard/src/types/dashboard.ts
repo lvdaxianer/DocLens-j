@@ -154,6 +154,7 @@ export interface BatchDetailResponse {
 export interface DocumentResultPayload {
   finalText: string
   llm_markdown_applied: boolean
+  llm_error_message?: string
   markdownStorageUri: string
   pages: unknown[]
   confidence: number

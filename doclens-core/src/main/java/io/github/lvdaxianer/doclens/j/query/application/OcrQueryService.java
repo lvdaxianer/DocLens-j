@@ -122,6 +122,7 @@ public class OcrQueryService {
         Map<String, Object> payload = Map.ofEntries(
                 Map.entry("finalText", result.finalText()),
                 Map.entry("llm_markdown_applied", llmMarkdownApplied(result)),
+                Map.entry("llm_error_message", llmErrorMessage(result)),
                 Map.entry("markdownStorageUri", result.markdownStorageUri()),
                 Map.entry("pages", result.structuredDocument().getOrDefault("pages", List.of())),
                 Map.entry("structuredDocument", result.structuredDocument()),
@@ -148,6 +149,23 @@ public class OcrQueryService {
     private boolean llmMarkdownApplied(OcrResult result) {
         Object rawFlag = result.rawVendorOutput().get("llm_markdown_applied");
         return rawFlag instanceof Boolean applied && applied;
+    }
+
+    /**
+     * 获取 LLM 回退时的失败原因。
+     *
+     * @param result OCR 结果
+     * @return 脱敏后的失败原因
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private String llmErrorMessage(OcrResult result) {
+        Object rawMessage = result.rawVendorOutput().get("llm_error_message");
+        if (rawMessage instanceof String message && !message.isBlank()) {
+            return message;
+        } else {
+            return DocLensConstants.EMPTY_VALUE;
+        }
     }
 
     /**
