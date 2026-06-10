@@ -57,6 +57,8 @@ public class BatchProcessingUseCase {
     private static final String LLM_MARKDOWN_APPLIED_FIELD = "llm_markdown_applied";
     private static final String LLM_ERROR_MESSAGE_FIELD = "llm_error_message";
     private static final String LLM_MARKDOWN_WARNING = "llm_markdown_post_processing_failed";
+    private static final String LLM_THINKING_WARNING = "llm_markdown_thinking_removed";
+    private static final String LLM_THINKING_FALLBACK_WARNING = "llm_markdown_thinking_only_fallback";
     private static final String UNKNOWN_ERROR_TYPE = "unknown";
     private static final int LLM_MARKDOWN_MAX_ATTEMPTS = 3;
     private static final int RAW_OUTPUT_TRACE_CAPACITY = 3;
@@ -294,8 +296,17 @@ public class BatchProcessingUseCase {
             DocumentTextExtractionResult extracted,
             MarkdownPostProcessingResult result
     ) {
-        return new PostProcessedText(result.markdown(), mergeWarnings(extracted.warnings(), result.warnings()),
-                result.markdownApplied(), Optional.empty());
+        MarkdownThinkingSanitizationResult sanitizationResult = MarkdownThinkingSanitizer.sanitize(result.markdown());
+        if (sanitizationResult.fallbackToOcrText()) {
+            // LLM 只返回思考内容时不能保存为解析结果，回退 OCR 原文保证用户看到的是文档正文。
+            return new PostProcessedText(extracted.finalText(), thinkingFallbackWarnings(extracted.warnings()),
+                    false, Optional.empty());
+        } else {
+            // 正常 Markdown 仅移除思考块，保留 LLM 排版结果。
+            return new PostProcessedText(sanitizationResult.markdown(),
+                    mergeWarnings(extracted.warnings(), thinkingWarnings(result.warnings(), result.markdown(),
+                            sanitizationResult.markdown())), result.markdownApplied(), Optional.empty());
+        }
     }
 
     /**
@@ -393,6 +404,48 @@ public class BatchProcessingUseCase {
         List<String> warnings = new ArrayList<>(ocrWarnings.size() + 1);
         warnings.addAll(ocrWarnings);
         warnings.add(LLM_MARKDOWN_WARNING);
+        return warnings;
+    }
+
+    /**
+     * 构建移除思考过程后的警告集合。
+     *
+     * @param markdownWarnings Markdown 后处理警告
+     * @param originalMarkdown 原始 Markdown
+     * @param sanitizedMarkdown 清洗后 Markdown
+     * @return 警告集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private List<String> thinkingWarnings(
+            List<String> markdownWarnings,
+            String originalMarkdown,
+            String sanitizedMarkdown
+    ) {
+        if (originalMarkdown.equals(sanitizedMarkdown)) {
+            // 未发生思考内容清洗时保持原警告集合。
+            return markdownWarnings;
+        } else {
+            // 发生清洗时补充可观测警告，方便排查模型输出不稳定。
+            List<String> warnings = new ArrayList<>(markdownWarnings.size() + 1);
+            warnings.addAll(markdownWarnings);
+            warnings.add(LLM_THINKING_WARNING);
+            return warnings;
+        }
+    }
+
+    /**
+     * 构建思考内容兜底回退警告集合。
+     *
+     * @param ocrWarnings OCR 警告
+     * @return 警告集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private List<String> thinkingFallbackWarnings(List<String> ocrWarnings) {
+        List<String> warnings = new ArrayList<>(ocrWarnings.size() + 1);
+        warnings.addAll(ocrWarnings);
+        warnings.add(LLM_THINKING_FALLBACK_WARNING);
         return warnings;
     }
 

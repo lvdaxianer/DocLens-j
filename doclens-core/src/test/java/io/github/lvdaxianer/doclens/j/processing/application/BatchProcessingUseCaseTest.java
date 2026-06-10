@@ -258,6 +258,52 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * LLM 返回成对 think 标签时应剥离思考过程，只保存最终 Markdown。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void processBatchRemovesThinkBlockFromLlmMarkdown() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"),
+                new FixedMarkdownPostProcessor("<think>\nI should analyze the OCR.\n</think>\n# 正文\n\n原始 OCR 文本"));
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("# 正文\n\n原始 OCR 文本");
+            assertThat(result.finalText()).doesNotContain("<think>").doesNotContain("I should analyze");
+        });
+    }
+
+    /**
+     * LLM 只返回未闭合 think 思考内容时应回退 OCR 原文，避免保存推理过程。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void processBatchFallsBackToOcrTextWhenLlmReturnsOnlyThinking() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"),
+                new FixedMarkdownPostProcessor("<think>\nThe user wants me to convert OCR text into Markdown."));
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
+            assertThat(result.finalText()).doesNotContain("<think>").doesNotContain("The user wants");
+        });
+    }
+
+    /**
      * LLM 后处理失败时应回退原始 OCR 文本并记录警告。
      *
      * @author lvdaxianerplus

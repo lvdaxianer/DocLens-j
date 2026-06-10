@@ -26,7 +26,8 @@ final class MarkdownPrompt {
             8. 如果某一行是否为标题、表格或正文无法判断，请优先保守处理为普通正文。
             9. 如果发现疑似 OCR 错字，不要自行纠正，除非它只是明显的空格、换行或字符粘连问题。
             10. 不要输出解释、备注、处理说明或代码块标记。
-            11. 最终只输出 Markdown 内容。
+            11. 禁止输出思考过程、推理过程、分析过程、<think> 标签或任何非正文说明。
+            12. 最终只输出 Markdown 内容。
             """;
     private static final String USER_PROMPT_TEMPLATE = """
             请将下面的 OCR 纯文本转换为 Markdown。
