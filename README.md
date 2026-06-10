@@ -39,6 +39,19 @@ DocLens Java 目标是把 OCR 批处理能力拆成清晰的核心引擎、基�
 mvn -pl doclens-server spring-boot:run
 ```
 
+推荐开发方式：
+
+```bash
+./scripts/dev-up.sh
+./scripts/dev-status.sh
+./scripts/dev-down.sh
+```
+
+- 前端开发地址：`http://127.0.0.1:10002/dashboard/`
+- 后端健康检查：`http://127.0.0.1:10003/actuator/health`
+- 后端会监听 `doclens-server`、`doclens-core`、`doclens-api`、`doclens-spring-boot-starter` 的 `src/main` 与相关 `pom.xml` 变化，变更后自动重新打包并重启
+- 运行日志输出到 `var/dev/frontend.log` 与 `var/dev/backend.log`
+
 默认配置使用 H2 文件数据库和本地文件存储：
 
 ```yaml
@@ -77,6 +90,8 @@ cd /Users/lvdaxianer/cache/soft/paddleocr-api
 ```bash
 mvn -pl doclens-server spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
 ```
+
+仓库自带开发脚本默认已经把 DocLens 服务固定到 `10003`，避免与本地 OCR 服务的 `8080` 冲突。
 
 文档转文本流水线：
 
