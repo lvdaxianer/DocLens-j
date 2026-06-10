@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchCommand;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.application.UploadFileCommand;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import java.util.EnumMap;
 import java.util.List;
@@ -26,6 +27,7 @@ public class DefaultDocLensEngine implements DocLensEngine {
     private final CreateBatchUseCase createBatchUseCase;
     private final OcrQueryService queryService;
     private final AdapterRegistry adapterRegistry;
+    private final DocumentRetryUseCase documentRetryUseCase;
 
     /**
      * 创建 DocLens 引擎。
@@ -33,17 +35,20 @@ public class DefaultDocLensEngine implements DocLensEngine {
      * @param createBatchUseCase 创建批次用例
      * @param queryService OCR 查询服务
      * @param adapterRegistry 适配器注册表
+     * @param documentRetryUseCase 文档重试用例
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
     public DefaultDocLensEngine(
             CreateBatchUseCase createBatchUseCase,
             OcrQueryService queryService,
-            AdapterRegistry adapterRegistry
+            AdapterRegistry adapterRegistry,
+            DocumentRetryUseCase documentRetryUseCase
     ) {
         this.createBatchUseCase = createBatchUseCase;
         this.queryService = queryService;
         this.adapterRegistry = adapterRegistry;
+        this.documentRetryUseCase = documentRetryUseCase;
     }
 
     @Override
@@ -64,6 +69,12 @@ public class DefaultDocLensEngine implements DocLensEngine {
     @Override
     public Map<String, Object> getDocumentResult(String documentId) {
         return queryService.getDocumentResult(documentId);
+    }
+
+    @Override
+    public Map<String, Object> retryDocument(String documentId) {
+        documentRetryUseCase.retry(documentId);
+        return Map.of("document_id", documentId, "status", "queued");
     }
 
     @Override

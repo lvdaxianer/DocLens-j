@@ -64,7 +64,7 @@ public class LlmMarkdownConfigController {
      * @date 2026-06-09
      */
     @PostMapping("/test")
-    public io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse testConfig(
+    public LlmMarkdownConfigTestResultResponse testConfig(
             @RequestBody LlmMarkdownConfigRequest request
     ) {
         return operations.testConfig(request);

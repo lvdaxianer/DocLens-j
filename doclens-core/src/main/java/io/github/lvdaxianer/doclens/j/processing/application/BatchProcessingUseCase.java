@@ -98,7 +98,7 @@ public class BatchProcessingUseCase {
      * @date 2026-06-07
      */
     public void processBatch(String batchId) {
-        List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
+        List<DocumentJob> documents = queuedDocuments(batchId);
         Optional<Batch> batch = batchRepository.findById(batchId);
         documents.stream()
                 .map(document -> processDocument(document, batch))
@@ -461,6 +461,20 @@ public class BatchProcessingUseCase {
             boolean llmMarkdownApplied,
             Optional<String> llmErrorMessage
     ) {
+    }
+
+    /**
+     * 读取批次内仍需执行的排队文档。
+     *
+     * @param batchId 批次 ID
+     * @return 待处理文档集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private List<DocumentJob> queuedDocuments(String batchId) {
+        return documentRepository.listByBatchId(batchId).stream()
+                .filter(document -> document.status() == DocumentStatus.QUEUED)
+                .toList();
     }
 
     void persistDocumentProcessing(DocumentProcessingResult result) {

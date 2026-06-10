@@ -38,7 +38,7 @@ defineProps<{
       </div>
 
       <div class="document-track__rail">
-        <ProcessingRail :track="document.track" :failed="document.status === 'failed'" />
+        <ProcessingRail :track="document.track" :failed="document.status === 'failed' || document.status === 'stalled'" />
       </div>
 
       <div class="document-track__footer">
@@ -48,7 +48,7 @@ defineProps<{
             :percentage="document.progress_percent"
             :height="12"
             :indicator-placement="'outside'"
-            :status="document.status === 'failed' ? 'error' : 'success'"
+            :status="document.status === 'failed' || document.status === 'stalled' ? 'error' : 'success'"
           >
             {{ formatPercent(document.progress_percent) }}
           </NProgress>

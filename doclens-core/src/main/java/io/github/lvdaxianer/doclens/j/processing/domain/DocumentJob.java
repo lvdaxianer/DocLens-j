@@ -180,6 +180,19 @@ public record DocumentJob(
                 Optional.of(code), Optional.ofNullable(message), now);
     }
 
+    /**
+     * 将失败或卡死文档重置为待重新调度状态。
+     *
+     * @param now 当前时间
+     * @return 重置后的文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentJob retry(OffsetDateTime now) {
+        return withState(DocumentStatus.QUEUED, ProcessingStage.QUEUED, DocLensConstants.ZERO_PROGRESS_PERCENT, 0,
+                totalPages, Optional.empty(), Optional.empty(), Optional.empty(), now);
+    }
+
     private int progressPercent(ProcessingStage nextStage, int nextCurrentPage, int nextTotalPages) {
         if (nextStage == ProcessingStage.COMPLETED) {
             return DocLensConstants.COMPLETED_PROGRESS_PERCENT;

@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -67,6 +68,19 @@ public class OcrQueryController {
     @GetMapping("/documents/{documentId}/result")
     public Map<String, Object> getDocumentResult(@PathVariable String documentId) {
         return docLensEngine.getDocumentResult(documentId);
+    }
+
+    /**
+     * 重试失败或卡死文档。
+     *
+     * @param documentId 文档 ID
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @PostMapping("/documents/{documentId}/retry")
+    public Map<String, Object> retryDocument(@PathVariable String documentId) {
+        return docLensEngine.retryDocument(documentId);
     }
 
     /**

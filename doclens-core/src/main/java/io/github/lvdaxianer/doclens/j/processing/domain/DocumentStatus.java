@@ -9,6 +9,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 public enum DocumentStatus {
     QUEUED,
     PROCESSING,
+    STALLED,
     COMPLETED,
     FAILED
 }

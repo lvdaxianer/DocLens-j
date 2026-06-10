@@ -52,6 +52,7 @@ export function statusLabel(status: string | undefined): string {
     completed: '成功',
     failed: '失败',
     processing: '处理中',
+    stalled: '已卡住',
     queued: '排队中',
     created: '已创建'
   }

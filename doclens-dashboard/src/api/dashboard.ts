@@ -10,9 +10,11 @@ import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 const DASHBOARD_API_BUSINESS = '[Dashboard API]'
 const JSON_ACCEPT_HEADER = 'application/json'
 const HTTP_GET_METHOD = 'GET'
+const HTTP_POST_METHOD = 'POST'
 const NETWORK_ERROR_STATUS = 'NETWORK_ERROR'
 
 interface DashboardRequestContext {
+  method: string
   path: string
   startedAt: number
   responseStatus: number | string
@@ -39,8 +41,9 @@ function toErrorMessage(error: unknown): string {
  * @author lvdaxianerplus
  * @date 2026-06-08
  */
-function createRequestContext(path: string): DashboardRequestContext {
+function createRequestContext(path: string, method: string): DashboardRequestContext {
   return {
+    method,
     path,
     startedAt: performance.now(),
     responseStatus: NETWORK_ERROR_STATUS,
@@ -61,7 +64,7 @@ function logRequest(context: DashboardRequestContext): void {
     business: DASHBOARD_API_BUSINESS,
     stage: 'REQUEST',
     message: '发起 Dashboard 接口请求',
-    context: { method: HTTP_GET_METHOD, path: context.path, headers: { Accept: JSON_ACCEPT_HEADER } }
+    context: { method: context.method, path: context.path, headers: { Accept: JSON_ACCEPT_HEADER } }
   })
 }
 
@@ -75,6 +78,7 @@ function logRequest(context: DashboardRequestContext): void {
  */
 function fetchDashboardJson(context: DashboardRequestContext): Promise<Response> {
   return fetch(context.path, {
+    method: context.method,
     headers: {
       Accept: JSON_ACCEPT_HEADER
     }
@@ -94,7 +98,7 @@ function logResponse(context: DashboardRequestContext): void {
     business: DASHBOARD_API_BUSINESS,
     stage: 'RESPONSE',
     message: '收到 Dashboard 接口响应',
-    context: { method: HTTP_GET_METHOD, path: context.path, status: context.responseStatus, durationMs: Math.round(performance.now() - context.startedAt), body: context.responseBody }
+    context: { method: context.method, path: context.path, status: context.responseStatus, durationMs: Math.round(performance.now() - context.startedAt), body: context.responseBody }
   })
 }
 
@@ -134,7 +138,7 @@ function logRequestError(context: DashboardRequestContext, error: unknown): void
     business: DASHBOARD_API_BUSINESS,
     stage: 'ERROR',
     message: 'Dashboard 接口请求失败',
-    context: { method: HTTP_GET_METHOD, path: context.path, status: context.responseStatus, body: context.responseBody, error: toErrorMessage(error) }
+    context: { method: context.method, path: context.path, status: context.responseStatus, body: context.responseBody, error: toErrorMessage(error) }
   })
 }
 
@@ -146,8 +150,8 @@ function logRequestError(context: DashboardRequestContext, error: unknown): void
  * @author lvdaxianerplus
  * @date 2026-06-08
  */
-async function requestJson<T>(path: string): Promise<T> {
-  const context = createRequestContext(path)
+async function requestJson<T>(path: string, method = HTTP_GET_METHOD): Promise<T> {
+  const context = createRequestContext(path, method)
   logRequest(context)
   try {
     return await parseResponse<T>(context, await fetchDashboardJson(context))
@@ -212,4 +216,19 @@ export function fetchDocumentResult(documentId: string): Promise<DocumentResultR
  */
 export function fetchOcrHealth(): Promise<OcrHealthResponse> {
   return requestJson<OcrHealthResponse>('/api/v1/dashboard/ocr-health')
+}
+
+/**
+ * 重试单个失败或卡死文档。
+ *
+ * @param documentId - 文档 ID
+ * @returns 重试结果
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function retryDocument(documentId: string): Promise<{ document_id: string; status: string }> {
+  return requestJson<{ document_id: string; status: string }>(
+    `/api/v1/documents/${encodeURIComponent(documentId)}/retry`,
+    HTTP_POST_METHOD
+  )
 }

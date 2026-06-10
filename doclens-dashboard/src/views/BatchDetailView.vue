@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import type { DataTableColumns } from 'naive-ui'
@@ -10,6 +10,7 @@ import {
   NProgress
 } from 'naive-ui'
 
+import { retryDocument } from '@/api/dashboard'
 import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
 import DocumentResultDrawer from '@/components/dashboard/DocumentResultDrawer.vue'
 import DocumentTrackCards from '@/components/dashboard/DocumentTrackCards.vue'
@@ -34,10 +35,12 @@ const { selectedBatch, detailState } = storeToRefs(store)
 
 const COMPLETED_STATUS = 'completed'
 const FAILED_STATUS = 'failed'
+const STALLED_STATUS = 'stalled'
 const PROGRESS_BAR_HEIGHT = 12
 const DOCUMENT_TABLE_SCROLL_X = 1120
 
 const batchId = computed(() => String(route.params.batchId ?? ''))
+const retryingDocumentId = ref('')
 const currentRouteDocument = computed(() => {
   const documents = selectedBatch.value?.documents ?? []
   return documents.find((document) => document.status === 'processing')
@@ -53,6 +56,36 @@ const {
   openDocumentResult,
   retryDocumentResult
 } = useDocumentResultDrawer()
+
+/**
+ * 判断文档当前状态是否允许显示重试操作。
+ *
+ * @param status 文档状态
+ * @returns 是否可重试
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function canRetryDocument(status: string): boolean {
+  return status === FAILED_STATUS || status === STALLED_STATUS
+}
+
+/**
+ * 执行文档重试并刷新当前批次详情。
+ *
+ * @param documentId 文档 ID
+ * @returns 重试完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+async function handleRetryDocument(documentId: string): Promise<void> {
+  retryingDocumentId.value = documentId
+  try {
+    await retryDocument(documentId)
+    await refresh()
+  } finally {
+    retryingDocumentId.value = ''
+  }
+}
 
 const columns: DataTableColumns<DocumentRow> = [
   {
@@ -113,9 +146,8 @@ const columns: DataTableColumns<DocumentRow> = [
   },
   {
     title: '操作',
-    key: 'actions',
+    key: 'result_action',
     width: 110,
-    fixed: 'right',
     render: (row) =>
       h(NButton, {
         size: 'small',
@@ -127,6 +159,23 @@ const columns: DataTableColumns<DocumentRow> = [
         }
       }, {
         default: () => '查看文本'
+      })
+  },
+  {
+    title: '重试',
+    key: 'retry_action',
+    fixed: 'right',
+    render: (row) =>
+      h(NButton, {
+        size: 'small',
+        secondary: true,
+        disabled: !canRetryDocument(row.status),
+        loading: retryingDocumentId.value === row.document_id,
+        onClick: () => {
+          void handleRetryDocument(row.document_id)
+        }
+      }, {
+        default: () => '重试'
       })
   }
 ]

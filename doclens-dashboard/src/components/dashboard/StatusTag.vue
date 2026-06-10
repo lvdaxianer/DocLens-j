@@ -16,6 +16,9 @@ const tagType = computed(() => {
   if (normalized === 'failed') {
     return 'error'
   }
+  if (normalized === 'stalled') {
+    return 'warning'
+  }
   if (normalized === 'processing') {
     return 'warning'
   }
