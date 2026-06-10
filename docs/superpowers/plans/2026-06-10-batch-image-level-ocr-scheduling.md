@@ -331,7 +331,7 @@ passed with 8 tests.
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/extraction/WordDocumentExtractor.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskPreparationServiceTest.java`
 
-- [ ] **Step 1: Write the failing preparation test**
+- [x] **Step 1: Write the failing preparation test**
 
 ```java
 @Test
@@ -346,13 +346,18 @@ void preparationCreatesOrderedPageTasksWithoutRunningOcr() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskPreparationServiceTest test`
 
 Expected: FAIL because preparation service and page-image result objects do not exist.
 
-- [ ] **Step 3: Refactor extraction flow to stop before OCR**
+RED evidence:
+`mvn -pl doclens-core -Dtest=DocumentPageTaskPreparationServiceTest test`
+failed because `PageImageRef`, `PreparedDocumentPages`, `PageImagePreparation`,
+`DocumentPageTaskPreparationService`, and `OCR_QUEUED` did not exist.
+
+- [x] **Step 3: Refactor extraction flow to stop before OCR**
 
 ```java
 public record PreparedDocumentPages(
@@ -377,6 +382,17 @@ public PreparedDocumentPages prepare(DocumentJob document) {
     return new PreparedDocumentPages(document.batchId(), document.documentId(), document.fileName(), pageImages);
 }
 ```
+
+Implemented so far:
+- Added `PageImageRef` and `PreparedDocumentPages`.
+- Added `PageImagePreparation` abstraction for page-image preparation.
+- Added `DocumentPageTaskPreparationService`.
+- Added `ProcessingStage.OCR_QUEUED` and `DocumentJob.markOcrQueued(...)`.
+- Added `IdGenerator.newPageTaskId()`.
+
+GREEN evidence:
+`mvn -pl doclens-core -am -Dtest=DocumentPageTaskPreparationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+passed with 1 test.
 
 - [ ] **Step 4: Change batch entrypoint to enqueue work instead of OCR whole documents**
 

@@ -13,6 +13,7 @@ public enum ProcessingStage {
     WORD_TO_PDF_COMPLETED,
     PDF_TO_IMAGES,
     PDF_TO_IMAGES_COMPLETED,
+    OCR_QUEUED,
     OCR_IMAGES,
     MERGE_TEXT,
     SAVE_TEXT,

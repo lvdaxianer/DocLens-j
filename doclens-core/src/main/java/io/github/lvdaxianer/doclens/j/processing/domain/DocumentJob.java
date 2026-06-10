@@ -112,6 +112,22 @@ public record DocumentJob(
     }
 
     /**
+     * 标记文档页图片已准备完成并等待页级 OCR 调度。
+     *
+     * @param nextTotalPages 总页数
+     * @param now 当前时间
+     * @return 等待页级 OCR 调度的文档
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentJob markOcrQueued(int nextTotalPages, OffsetDateTime now) {
+        int safeTotalPages = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, nextTotalPages);
+        return withState(DocumentStatus.PROCESSING, ProcessingStage.OCR_QUEUED,
+                DocLensConstants.START_PROGRESS_PERCENT, 0, safeTotalPages, resultId, Optional.empty(),
+                Optional.empty(), now);
+    }
+
+    /**
      * 推进文档处理阶段和图片页进度。
      *
      * @param nextStage 下一阶段

@@ -1,0 +1,114 @@
+package io.github.lvdaxianer.doclens.j.processing.application;
+
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskClaimRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 测试用内存页任务仓储。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
+
+    private static final int TEST_PAGE_CAPACITY = 4;
+
+    private final List<DocumentPageTask> tasks = new ArrayList<>(TEST_PAGE_CAPACITY);
+
+    /**
+     * 批量保存页任务。
+     *
+     * @param tasks 页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void saveAll(List<DocumentPageTask> tasks) {
+        this.tasks.addAll(tasks);
+    }
+
+    /**
+     * 查询等待任务。
+     *
+     * @param limit 最大返回数量
+     * @return 等待任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public List<DocumentPageTask> listQueued(int limit) {
+        return tasks.stream().filter(task -> task.status() == DocumentPageTaskStatus.QUEUED).limit(limit).toList();
+    }
+
+    /**
+     * 原子抢占等待任务。
+     *
+     * @param request 抢占请求
+     * @return 是否抢占成功
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public boolean tryMarkProcessing(DocumentPageTaskClaimRequest request) {
+        return false;
+    }
+
+    /**
+     * 标记任务完成。
+     *
+     * @param request 完成请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void markCompleted(DocumentPageTaskCompletionRequest request) {
+    }
+
+    /**
+     * 标记任务失败。
+     *
+     * @param request 失败请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void markFailed(DocumentPageTaskFailureRequest request) {
+    }
+
+    /**
+     * 按文档查询页任务。
+     *
+     * @param documentId 文档 ID
+     * @return 页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public List<DocumentPageTask> listByDocumentId(String documentId) {
+        return tasks.stream().filter(task -> documentId.equals(task.documentId())).toList();
+    }
+
+    /**
+     * 按文档与页码查询页任务。
+     *
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @return 可选页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public Optional<DocumentPageTask> findByDocumentIdAndPageNo(String documentId, int pageNo) {
+        return tasks.stream()
+                .filter(task -> documentId.equals(task.documentId()))
+                .filter(task -> task.pageNo() == pageNo)
+                .findFirst();
+    }
+}
