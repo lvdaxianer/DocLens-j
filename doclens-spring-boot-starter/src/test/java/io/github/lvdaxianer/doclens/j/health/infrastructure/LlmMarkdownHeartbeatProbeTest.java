@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  */
 class LlmMarkdownHeartbeatProbeTest {
 
-    private static final String SECRET_KEY = "sk-secret";
+    private static final String DUMMY_API_KEY = "dummy-test-api-key";
 
     /**
      * LLM 配置连通时探针应返回成功。
@@ -31,8 +31,7 @@ class LlmMarkdownHeartbeatProbeTest {
      */
     @Test
     void reachableConfigReturnsSuccess() {
-        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()),
-                settings -> LlmMarkdownConfigTestResponse.reachable());
+        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()), reachableTester());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
@@ -65,8 +64,7 @@ class LlmMarkdownHeartbeatProbeTest {
      */
     @Test
     void missingConfigReturnsBadResponse() {
-        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(null),
-                settings -> LlmMarkdownConfigTestResponse.reachable());
+        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(null), reachableTester());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
@@ -81,13 +79,12 @@ class LlmMarkdownHeartbeatProbeTest {
      */
     @Test
     void unreachableConfigReturnsBadResponseWithoutSecret() {
-        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()),
-                settings -> LlmMarkdownConfigTestResponse.unreachable("invalid api key " + SECRET_KEY));
+        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()), unreachableTester());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
         assertThat(result.failureType()).isEqualTo(ModelHealthFailureType.BAD_RESPONSE);
-        assertThat(result.message()).doesNotContain(SECRET_KEY);
+        assertThat(result.message()).doesNotContain(DUMMY_API_KEY);
     }
 
     /**
@@ -98,14 +95,12 @@ class LlmMarkdownHeartbeatProbeTest {
      */
     @Test
     void testerExceptionReturnsUnknownWithoutSecret() {
-        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()), settings -> {
-            throw new IllegalStateException("bad credential " + SECRET_KEY);
-        });
+        LlmMarkdownHeartbeatProbe probe = new LlmMarkdownHeartbeatProbe(repository(config()), exceptionTester());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
         assertThat(result.failureType()).isEqualTo(ModelHealthFailureType.UNKNOWN);
-        assertThat(result.message()).doesNotContain(SECRET_KEY);
+        assertThat(result.message()).doesNotContain(DUMMY_API_KEY);
     }
 
     /**
@@ -153,7 +148,42 @@ class LlmMarkdownHeartbeatProbeTest {
      */
     private LlmMarkdownConfig config() {
         return LlmMarkdownConfig.configured("default", LlmMarkdownApiType.ANTHROPIC,
-                "https://api.example.com/anthropic/v1/messages", "MiniMax-M3", SECRET_KEY);
+                "https://api.example.com/anthropic/v1/messages", "MiniMax-M3", DUMMY_API_KEY);
+    }
+
+    /**
+     * 创建返回连通成功的 LLM 配置测试器。
+     *
+     * @return LLM 配置测试器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private LlmMarkdownConfigTester reachableTester() {
+        return settings -> LlmMarkdownConfigTestResponse.reachable();
+    }
+
+    /**
+     * 创建返回连通失败的 LLM 配置测试器。
+     *
+     * @return LLM 配置测试器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private LlmMarkdownConfigTester unreachableTester() {
+        return settings -> LlmMarkdownConfigTestResponse.unreachable("invalid api key " + DUMMY_API_KEY);
+    }
+
+    /**
+     * 创建抛出异常的 LLM 配置测试器。
+     *
+     * @return LLM 配置测试器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private LlmMarkdownConfigTester exceptionTester() {
+        return settings -> {
+            throw new IllegalStateException("bad credential " + DUMMY_API_KEY);
+        };
     }
 
     /**
@@ -178,6 +208,14 @@ class LlmMarkdownHeartbeatProbeTest {
             this.response = response;
         }
 
+        /**
+         * 记录调用状态并返回预设响应。
+         *
+         * @param settings 测试配置参数
+         * @return 预设测试响应
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
         @Override
         public LlmMarkdownConfigTestResponse test(LlmMarkdownConfigSettings settings) {
             isCalled = true;

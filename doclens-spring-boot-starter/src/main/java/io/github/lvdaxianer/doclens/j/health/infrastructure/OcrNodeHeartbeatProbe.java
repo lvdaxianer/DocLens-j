@@ -54,6 +54,7 @@ public class OcrNodeHeartbeatProbe implements ModelHeartbeatProbe {
         try {
             return resultOf(healthClient.isHealthy(node));
         } catch (RuntimeException exception) {
+            // OCR 底层健康检查异常时记录脱敏上下文，并转为统一心跳失败结果。
             LOGGER.warn("[模型心跳] OCR节点心跳探测异常, nodeId={}, modelKey={}, exceptionType={}",
                     node.id(), node.modelKey(), exception.getClass().getName());
             return failureOf(exception);

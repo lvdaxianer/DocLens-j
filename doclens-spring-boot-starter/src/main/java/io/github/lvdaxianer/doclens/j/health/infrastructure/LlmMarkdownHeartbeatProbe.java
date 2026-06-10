@@ -77,6 +77,7 @@ public class LlmMarkdownHeartbeatProbe implements ModelHeartbeatProbe {
         try {
             return resultOf(configTester.test(settingsOf(config)));
         } catch (RuntimeException exception) {
+            // LLM 远端连通性测试异常时记录脱敏上下文，并转为未知心跳失败。
             LOGGER.warn("[模型心跳] LLM Markdown心跳探测异常, configId={}, apiType={}, model={}, exceptionType={}",
                     config.id(), config.apiType().value(), config.model(), exception.getClass().getName());
             return ModelHeartbeatProbeResult.failure(ModelHealthFailureType.UNKNOWN, UNKNOWN_MESSAGE);

@@ -33,7 +33,7 @@ class OcrNodeHeartbeatProbeTest {
      */
     @Test
     void healthyNodeReturnsSuccess() {
-        OcrNodeHeartbeatProbe probe = new OcrNodeHeartbeatProbe(node(), current -> true);
+        OcrNodeHeartbeatProbe probe = new OcrNodeHeartbeatProbe(node(), healthyClient());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
@@ -48,7 +48,7 @@ class OcrNodeHeartbeatProbeTest {
      */
     @Test
     void unhealthyNodeReturnsBadResponseFailure() {
-        OcrNodeHeartbeatProbe probe = new OcrNodeHeartbeatProbe(node(), current -> false);
+        OcrNodeHeartbeatProbe probe = new OcrNodeHeartbeatProbe(node(), unhealthyClient());
 
         ModelHeartbeatProbeResult result = probe.probe();
 
@@ -116,6 +116,28 @@ class OcrNodeHeartbeatProbeTest {
         return current -> {
             throw new IllegalStateException("ocr heartbeat failed", cause);
         };
+    }
+
+    /**
+     * 创建返回健康的 OCR 健康客户端。
+     *
+     * @return OCR 健康客户端
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrHealthClient healthyClient() {
+        return current -> true;
+    }
+
+    /**
+     * 创建返回不健康的 OCR 健康客户端。
+     *
+     * @return OCR 健康客户端
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrHealthClient unhealthyClient() {
+        return current -> false;
     }
 
     /**
