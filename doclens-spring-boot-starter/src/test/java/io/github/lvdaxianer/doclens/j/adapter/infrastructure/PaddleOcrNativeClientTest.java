@@ -96,7 +96,7 @@ class PaddleOcrNativeClientTest {
         OcrRuntimeNode node = runtimeNode("node_215", "10.100.30.215", 8080);
 
         assertThat(client.ocrUri(node)).isEqualTo(URI.create("http://10.100.30.215:8080/ocr"));
-        assertThat(client.healthUri(node)).isEqualTo(URI.create("http://10.100.30.215:8080/health"));
+        assertThat(client.healthUri(node)).isEqualTo(URI.create("http://10.100.30.215:8080/ocr"));
     }
 
     /**

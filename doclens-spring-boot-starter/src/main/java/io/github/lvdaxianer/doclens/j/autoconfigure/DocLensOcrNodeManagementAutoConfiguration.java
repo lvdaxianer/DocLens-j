@@ -34,7 +34,7 @@ public class DocLensOcrNodeManagementAutoConfiguration {
     OcrModelRegistry ocrModelRegistry() {
         OcrModelDefinition paddleOcr = OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
                 "paddle_ocr", "PaddleOCR", "PaddleOCR native-compatible HTTP API", List.of("image"),
-                "/ocr", "/health", true));
+                "/ocr", "/ocr", true));
         return new OcrModelRegistry(List.of(paddleOcr));
     }
 

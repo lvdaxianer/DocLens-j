@@ -63,5 +63,5 @@ test('ocr node display exposes reconnect affordance and circuit window state', (
 
   assert.equal(summary.canReconnect, true)
   assert.equal(summary.queueLabel, '排队 2 张')
-  assert.equal(summary.circuitLabel, '熔断至 2026-06-10T10:00:00+08:00')
+  assert.equal(summary.circuitLabel, '熔断至 2026-06-10 10:00:00')
 })

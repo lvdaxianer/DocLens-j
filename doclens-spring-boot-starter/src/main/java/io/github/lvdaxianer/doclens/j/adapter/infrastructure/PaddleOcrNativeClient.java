@@ -28,7 +28,6 @@ public class PaddleOcrNativeClient {
     private static final int ERROR_BODY_MAX_LENGTH = 500;
     private static final String PADDLE_OCR_MODEL_KEY = "paddle_ocr";
     private static final String OCR_PATH = "/ocr";
-    private static final String HEALTH_PATH = "/health";
     private static final String LEGACY_ENDPOINT_NODE_ID = "configured-endpoint";
     private static final String LEGACY_ENDPOINT_HOST = "configured";
     private static final int LEGACY_ENDPOINT_PORT = 0;
@@ -100,7 +99,7 @@ public class PaddleOcrNativeClient {
      * @date 2026-06-08
      */
     URI healthUri(OcrRuntimeNode node) {
-        return nodeUri(node, HEALTH_PATH);
+        return nodeUri(node, OCR_PATH);
     }
 
     /**

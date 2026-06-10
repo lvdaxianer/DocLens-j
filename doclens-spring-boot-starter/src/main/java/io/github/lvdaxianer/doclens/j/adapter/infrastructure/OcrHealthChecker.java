@@ -328,8 +328,13 @@ public class OcrHealthChecker {
      * @date 2026-06-10
      */
     private boolean shouldProbe(OcrNode node, OffsetDateTime now, boolean ignoreCircuitWindow) {
+        // 手动恢复探测需要绕过熔断窗口，立即验证用户刚修复的节点。
         if (ignoreCircuitWindow) {
             return true;
+        // 已失败或恢复中的节点需要持续探测，避免服务恢复后仍被熔断窗口挡住。
+        } else if (node.status() == OcrNodeStatus.DOWN || node.status() == OcrNodeStatus.RECOVERING) {
+            return true;
+        // 正常节点遵守熔断窗口，避免持续打爆异常服务。
         } else {
             return node.circuitOpenUntil().isEmpty() || !node.circuitOpenUntil().get().isAfter(now);
         }

@@ -75,6 +75,48 @@ class OcrHealthCheckerLifecycleTest {
     }
 
     /**
+     * RECOVERING 节点即使仍有熔断窗口，也应继续执行恢复探测。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void recoveringNodeContinuesProbingInsideCircuitWindow() {
+        OcrHealthChecker checker = checkerSequence(List.of(false, false, false, true),
+                properties(3, 3, 600));
+        OcrNode node = sampleNode();
+
+        failToOpenCircuit(checker, node);
+        checker.checkNodeIgnoringCircuitWindow(repository.findById(node.id()).orElseThrow());
+        checker.checkNode(repository.findById(node.id()).orElseThrow());
+
+        OcrNode reloaded = repository.findById(node.id()).orElseThrow();
+        assertThat(reloaded.status()).isEqualTo(OcrNodeStatus.RECOVERING);
+        assertThat(reloaded.successCount()).isEqualTo(2);
+    }
+
+    /**
+     * DOWN 节点即使仍处于熔断窗口，也应继续被后台心跳探测以便服务恢复后自动复活。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void downNodeContinuesProbingInsideCircuitWindow() {
+        OcrHealthChecker checker = checkerSequence(List.of(false, false, false, true),
+                properties(3, 3, 600));
+        OcrNode node = sampleNode();
+
+        failToOpenCircuit(checker, node);
+        checker.checkNode(repository.findById(node.id()).orElseThrow());
+
+        OcrNode reloaded = repository.findById(node.id()).orElseThrow();
+        assertThat(reloaded.status()).isEqualTo(OcrNodeStatus.RECOVERING);
+        assertThat(reloaded.successCount()).isEqualTo(1);
+        assertThat(reloaded.circuitOpenUntil()).isEmpty();
+    }
+
+    /**
      * 创建固定健康结果的健康检查器。
      *
      * @param healthy 是否健康

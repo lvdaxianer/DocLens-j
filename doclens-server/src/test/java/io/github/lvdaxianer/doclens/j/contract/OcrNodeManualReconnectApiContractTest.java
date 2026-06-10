@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -15,6 +16,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -144,5 +148,28 @@ class OcrNodeManualReconnectApiContractTest {
                   "max_concurrency": 10
                 }
                 """.formatted(name, providerModel, apiKey);
+    }
+
+    /**
+     * 隔离 OCR 健康探测，避免契约测试调用真实第三方服务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @TestConfiguration
+    static class TestOcrHealthConfiguration {
+
+        /**
+         * 创建固定成功的 DashScope 在线 OCR 测试客户端。
+         *
+         * @return 在线 OCR 测试客户端
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Bean
+        @Primary
+        OcrHealthClient ocrHealthClient() {
+            return node -> true;
+        }
     }
 }

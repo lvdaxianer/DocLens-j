@@ -42,6 +42,7 @@ const LOAD_BALANCE_STRATEGY_LABELS: Record<string, string> = {
   'least-inflight': '最少解析中图片',
   'weighted-idle': '加权空闲优先'
 }
+const ISO_DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/
 
 /**
  * 优先返回 OCR 节点别名。
@@ -179,8 +180,27 @@ function queueLabel(queuedImages?: number): string {
 function circuitLabel(circuitOpenUntil?: string): string {
   const value = circuitOpenUntil?.trim()
   if (value) {
-    return `熔断至 ${value}`
+    return `熔断至 ${formatCircuitOpenUntil(value)}`
   } else {
     return '未熔断'
+  }
+}
+
+/**
+ * 格式化熔断结束时间，避免直接暴露 ISO 字符串。
+ *
+ * @param value - 熔断结束时间
+ * @returns yyyy-MM-dd HH:mm:ss 格式时间
+ * @author lvdaxianerplus
+ * @date 2026-06-11
+ */
+function formatCircuitOpenUntil(value: string): string {
+  const matched = ISO_DATE_TIME_PATTERN.exec(value)
+  // ISO 时间只展示到秒，隐藏时区与 T 分隔符，保持表格可读。
+  if (matched) {
+    return `${matched[1]} ${matched[2]}`
+  // 非 ISO 输入保持原样，避免把未知服务端格式误格式化成错误时间。
+  } else {
+    return value
   }
 }

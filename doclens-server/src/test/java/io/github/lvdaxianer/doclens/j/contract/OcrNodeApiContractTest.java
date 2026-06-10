@@ -89,7 +89,7 @@ class OcrNodeApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].model_key").value("paddle_ocr"))
                 .andExpect(jsonPath("$.items[0].ocr_path").value("/ocr"))
-                .andExpect(jsonPath("$.items[0].health_path").value("/health"));
+                .andExpect(jsonPath("$.items[0].health_path").value("/ocr"));
     }
 
     /**
