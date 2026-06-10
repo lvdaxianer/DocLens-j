@@ -57,7 +57,13 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
      */
     @Override
     public boolean tryMarkProcessing(DocumentPageTaskClaimRequest request) {
-        return false;
+        Optional<DocumentPageTask> task = findByTaskId(request.taskId());
+        if (task.isPresent() && task.get().status() == DocumentPageTaskStatus.QUEUED) {
+            replace(task.get().markProcessing(request.workerId(), request.lockedUntil(), request.now()));
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -69,6 +75,8 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
      */
     @Override
     public void markCompleted(DocumentPageTaskCompletionRequest request) {
+        findByTaskId(request.taskId()).ifPresent(task -> replace(task.markCompleted(request.workerId(),
+                request.now())));
     }
 
     /**
@@ -80,6 +88,8 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
      */
     @Override
     public void markFailed(DocumentPageTaskFailureRequest request) {
+        findByTaskId(request.taskId()).ifPresent(task -> replace(task.markFailed(request.errorCode(),
+                request.errorMessage(), request.now())));
     }
 
     /**
@@ -110,5 +120,31 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
                 .filter(task -> documentId.equals(task.documentId()))
                 .filter(task -> task.pageNo() == pageNo)
                 .findFirst();
+    }
+
+    /**
+     * 按任务 ID 查询页任务。
+     *
+     * @param taskId 页任务 ID
+     * @return 可选页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private Optional<DocumentPageTask> findByTaskId(String taskId) {
+        return tasks.stream().filter(task -> taskId.equals(task.taskId())).findFirst();
+    }
+
+    /**
+     * 替换已有页任务。
+     *
+     * @param nextTask 新页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void replace(DocumentPageTask nextTask) {
+        findByTaskId(nextTask.taskId()).ifPresent(currentTask -> {
+            tasks.remove(currentTask);
+            tasks.add(nextTask);
+        });
     }
 }

@@ -247,7 +247,7 @@ Run: `mvn -pl doclens-spring-boot-starter -Dtest=MybatisPlusDocumentPageTaskRepo
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTask.java \
@@ -458,7 +458,7 @@ git commit -m "refactor(ocr): 拆分文档预处理与图片调度"
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/autoconfigure/DocLensExtractionAutoConfiguration.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskExecutionServiceTest.java`
 
-- [ ] **Step 1: Write the failing worker test**
+- [x] **Step 1: Write the failing worker test**
 
 ```java
 @Test
@@ -473,13 +473,16 @@ void workerConsumesQueuedPagesAcrossDocumentsAndPreservesTaskIdentity() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskExecutionServiceTest test`
 
 Expected: FAIL because there is no page-task worker service yet.
 
-- [ ] **Step 3: Implement global page-task execution**
+Evidence: RED covered by `DocumentPageTaskExecutionServiceTest`, including cross-document page identity and
+non-blocking task submission expectations before the execution service existed.
+
+- [x] **Step 3: Implement global page-task execution**
 
 ```java
 public void runOnce() {
@@ -504,7 +507,7 @@ private void execute(DocumentPageTask task) {
 }
 ```
 
-- [ ] **Step 4: Reuse existing dispatch coordinator instead of reimplementing slot logic**
+- [x] **Step 4: Reuse existing dispatch coordinator instead of reimplementing slot logic**
 
 ```java
 OcrRouteExecutionResult routeResult = routingService.recognize(request, document.ocrRoutePolicy());
@@ -512,11 +515,15 @@ OcrRouteExecutionResult routeResult = routingService.recognize(request, document
 
 This step explicitly keeps `OcrDispatchCoordinator`, `OcrPendingRequestQueue`, node slot acquisition, and node failover intact.
 
-- [ ] **Step 5: Run focused execution tests**
+- [x] **Step 5: Run focused execution tests**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskExecutionServiceTest test`
 
 Expected: PASS.
+
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskExecutionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskExecutionServiceTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 - [ ] **Step 6: Commit**
 
