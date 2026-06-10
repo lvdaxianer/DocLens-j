@@ -198,7 +198,12 @@ defineExpose({ reset, validateRouting })
     </NFormItem>
 
     <div class="ocr-routing-selector__grid">
-      <NFormItem v-if="hasModelSelect" label="OCR 模型">
+      <NFormItem
+        v-if="hasModelSelect"
+        label="OCR 模型"
+        :feedback="validationMessage"
+        :validation-status="validationMessage && !form.ocrModelKey ? 'warning' : undefined"
+      >
         <NSelect
           v-model:value="form.ocrModelKey"
           :loading="loadingModels"
@@ -206,7 +211,12 @@ defineExpose({ reset, validateRouting })
           placeholder="选择系统支持的 OCR"
         />
       </NFormItem>
-      <NFormItem v-if="hasNodeSelect" label="OCR 节点">
+      <NFormItem
+        v-if="hasNodeSelect"
+        label="OCR 节点"
+        :feedback="validationMessage"
+        :validation-status="validationMessage && !form.ocrNodeId ? 'warning' : undefined"
+      >
         <NSelect
           v-model:value="form.ocrNodeId"
           :loading="loadingNodes"

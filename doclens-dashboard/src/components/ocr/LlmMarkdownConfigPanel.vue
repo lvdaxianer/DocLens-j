@@ -1,17 +1,38 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, useTemplateRef } from 'vue'
 import { FlaskConical, RefreshCcw, Save } from '@lucide/vue'
 import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NSelect, NTag, useMessage } from 'naive-ui'
+import type { FormInst } from 'naive-ui'
 
 import { useLlmMarkdownConfig } from '@/composables/useLlmMarkdownConfig'
 import { formatDateTime } from '@/utils/formatters'
+import { createLlmMarkdownConfigFormRules } from '@/utils/llmMarkdownConfigRules'
 
 const message = useMessage()
 const llmConfig = useLlmMarkdownConfig(message)
+const formRef = useTemplateRef<FormInst>('formRef')
+const formRules = computed(() => createLlmMarkdownConfigFormRules(llmConfig.form))
 const apiTypeOptions = [
   { label: 'OpenAI compatible', value: 'openai' },
   { label: 'Anthropic', value: 'anthropic' }
 ]
+
+/**
+ * 校验并保存 LLM Markdown 配置。
+ *
+ * @returns 保存完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+async function saveConfig(): Promise<void> {
+  try {
+    await formRef.value?.validate()
+    await llmConfig.saveConfig()
+  } catch {
+    // 表单校验未通过时由 Naive UI 展示字段错误，同时给出全局提示。
+    message.warning('请先修正 LLM Markdown 配置表单')
+  }
+}
 
 onMounted(llmConfig.loadConfig)
 </script>
@@ -56,17 +77,17 @@ onMounted(llmConfig.loadConfig)
       最近心跳：{{ formatDateTime(llmConfig.form.lastHealthAt) }}
     </NAlert>
 
-    <NForm class="llm-config-panel__form" label-placement="top">
-      <NFormItem label="协议">
+    <NForm ref="formRef" class="llm-config-panel__form" label-placement="top" :model="llmConfig.form" :rules="formRules">
+      <NFormItem label="协议" path="apiType">
         <NSelect v-model:value="llmConfig.form.apiType" :options="apiTypeOptions" />
       </NFormItem>
-      <NFormItem label="URL">
+      <NFormItem label="URL" path="url">
         <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.endpointExample" />
       </NFormItem>
-      <NFormItem label="模型名称">
+      <NFormItem label="模型名称" path="model">
         <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />
       </NFormItem>
-      <NFormItem label="API Key">
+      <NFormItem label="API Key" path="apiKey">
         <NInput
           v-model:value="llmConfig.form.apiKey"
           type="password"
@@ -93,7 +114,7 @@ onMounted(llmConfig.loadConfig)
         </template>
         测试配置
       </NButton>
-      <NButton type="primary" :loading="llmConfig.isSaving.value" :disabled="!llmConfig.canSubmit.value" @click="llmConfig.saveConfig">
+      <NButton type="primary" :loading="llmConfig.isSaving.value" @click="saveConfig">
         <template #icon>
           <NIcon :component="Save" />
         </template>

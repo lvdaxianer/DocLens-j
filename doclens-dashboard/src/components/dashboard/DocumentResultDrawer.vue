@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
 import {
   NAlert,
   NButton,
@@ -19,9 +19,13 @@ import {
   llmPostProcessingStatus,
   resultTextTitle
 } from '@/utils/llmResultDisplayRules'
+import { renderMarkdownPreviewHtml } from '@/utils/markdownPreviewRules'
 
 const RESULT_DRAWER_WIDTH = 720
 const TEXT_PREVIEW_MAX_HEIGHT = '52vh'
+const COPY_MARKDOWN_IDLE_LABEL = '复制 Markdown'
+const COPY_MARKDOWN_DONE_LABEL = '已复制'
+const COPY_MARKDOWN_FAILED_LABEL = '复制失败'
 
 /**
  * 文档解析结果抽屉，展示上传文件名、纯文本结果和落盘路径。
@@ -42,8 +46,10 @@ const emit = defineEmits<{
   retry: []
 }>()
 
+const copyButtonLabel = shallowRef(COPY_MARKDOWN_IDLE_LABEL)
 const textTitle = computed(() => props.result ? resultTextTitle(props.result.result) : '解析内容')
 const textLength = computed(() => props.result?.result.finalText.length ?? 0)
+const markdownPreviewHtml = computed(() => renderMarkdownPreviewHtml(props.result?.result.finalText ?? ''))
 const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
 const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
 const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
@@ -51,6 +57,23 @@ const llmErrorMessage = computed(() => {
   const message = props.result?.result.llm_error_message?.trim() ?? ''
   return message
 })
+
+/**
+ * 复制当前 Markdown 解析内容。
+ *
+ * @returns 复制完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+async function copyMarkdown(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(props.result?.result.finalText ?? '')
+    copyButtonLabel.value = COPY_MARKDOWN_DONE_LABEL
+  } catch {
+    // 浏览器拒绝剪贴板权限时只更新按钮状态，不影响用户继续查看内容。
+    copyButtonLabel.value = COPY_MARKDOWN_FAILED_LABEL
+  }
+}
 </script>
 
 <template>
@@ -107,9 +130,14 @@ const llmErrorMessage = computed(() => {
             <section class="document-result__text">
               <div class="document-result__text-header">
                 <span>{{ textTitle }}</span>
-                <NTag round>{{ formatNumber(textLength) }} 字符</NTag>
+                <div class="document-result__text-actions">
+                  <NTag round>{{ formatNumber(textLength) }} 字符</NTag>
+                  <NButton size="tiny" secondary :disabled="!textLength" @click="copyMarkdown">
+                    {{ copyButtonLabel }}
+                  </NButton>
+                </div>
               </div>
-              <pre>{{ result.result.finalText || '暂无文本内容' }}</pre>
+              <article class="document-result__markdown" v-html="markdownPreviewHtml" />
             </section>
           </template>
 
@@ -167,7 +195,13 @@ const llmErrorMessage = computed(() => {
   gap: 12px;
 }
 
-.document-result__text pre {
+.document-result__text-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.document-result__markdown {
   max-height: var(--document-result-text-max-height);
   margin: 0;
   padding: 14px 16px;
@@ -176,10 +210,33 @@ const llmErrorMessage = computed(() => {
   overflow: auto;
   background: var(--surface-inset);
   color: var(--ink-strong);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   line-height: 1.65;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.document-result__markdown :deep(h1),
+.document-result__markdown :deep(h2),
+.document-result__markdown :deep(h3),
+.document-result__markdown :deep(h4),
+.document-result__markdown :deep(h5),
+.document-result__markdown :deep(h6) {
+  margin: 0 0 10px;
+  color: var(--ink-strong);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.document-result__markdown :deep(p) {
+  margin: 0 0 12px;
+}
+
+.document-result__markdown :deep(a) {
+  color: var(--active);
+  font-weight: 700;
+}
+
+.document-result__markdown :deep(strong) {
+  color: var(--ink-strong);
 }
 </style>

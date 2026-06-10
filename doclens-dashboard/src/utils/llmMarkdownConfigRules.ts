@@ -1,4 +1,5 @@
 import type { LlmMarkdownApiType, LlmMarkdownConfigPayload, LlmMarkdownConfigResponse } from '@/types/llmMarkdownConfig'
+import type { FormRules } from 'naive-ui'
 
 export interface LlmMarkdownConfigFormState {
   apiType: LlmMarkdownApiType
@@ -25,6 +26,29 @@ const OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE = 'https://dashscope.aliyuncs.com/compa
 const ANTHROPIC_ENDPOINT_EXAMPLE = 'https://api.minimaxi.com/anthropic'
 const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
+
+/**
+ * 创建 LLM Markdown 配置表单校验规则。
+ *
+ * @param form - LLM Markdown 配置表单状态
+ * @returns Naive UI 表单校验规则
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function createLlmMarkdownConfigFormRules(form: LlmMarkdownConfigFormState): FormRules {
+  return {
+    url: [{
+      validator: () => validateLlmUrl(form),
+      message: '填写 LLM 配置时必须提供有效 HTTP URL',
+      trigger: ['input', 'blur']
+    }],
+    model: [{
+      validator: () => validateLlmModel(form),
+      message: '填写 LLM URL 后必须填写模型名称',
+      trigger: ['input', 'blur']
+    }]
+  }
+}
 
 /**
  * 创建 LLM Markdown 配置表单默认值。
@@ -156,5 +180,41 @@ function isHttpUrl(value: string): boolean {
     return Boolean(url.host) && (url.protocol === HTTP_PROTOCOL || url.protocol === HTTPS_PROTOCOL)
   } catch {
     return false
+  }
+}
+
+/**
+ * 校验 LLM URL 字段。
+ *
+ * @param form - LLM Markdown 配置表单状态
+ * @returns 是否通过
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function validateLlmUrl(form: LlmMarkdownConfigFormState): boolean {
+  if (!form.url.trim() && !form.model.trim()) {
+    // 两个核心字段都为空表示关闭 LLM 后处理。
+    return true
+  } else {
+    // 只要进入配置状态，URL 必须是可调用 HTTP 地址。
+    return form.url.trim() !== '' && isHttpUrl(form.url)
+  }
+}
+
+/**
+ * 校验 LLM 模型字段。
+ *
+ * @param form - LLM Markdown 配置表单状态
+ * @returns 是否通过
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function validateLlmModel(form: LlmMarkdownConfigFormState): boolean {
+  if (!form.url.trim() && !form.model.trim()) {
+    // 两个核心字段都为空表示关闭 LLM 后处理。
+    return true
+  } else {
+    // 只要填写 URL 或模型任一项，就必须补齐模型名称。
+    return form.model.trim() !== ''
   }
 }

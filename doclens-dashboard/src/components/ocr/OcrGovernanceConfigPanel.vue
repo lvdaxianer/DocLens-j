@@ -1,13 +1,34 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, useTemplateRef } from 'vue'
 import { RefreshCcw, Save, ShieldCheck } from '@lucide/vue'
 import { NAlert, NButton, NForm, NFormItem, NIcon, NInputNumber, useMessage } from 'naive-ui'
+import type { FormInst } from 'naive-ui'
 
 import { useOcrGovernanceConfig } from '@/composables/useOcrGovernanceConfig'
 import { formatDateTime } from '@/utils/formatters'
+import { createOcrGovernanceConfigFormRules } from '@/utils/ocrGovernanceConfigRules'
 
 const message = useMessage()
 const governanceConfig = useOcrGovernanceConfig(message)
+const formRef = useTemplateRef<FormInst>('formRef')
+const formRules = computed(() => createOcrGovernanceConfigFormRules(governanceConfig.form))
+
+/**
+ * 校验并保存 OCR 全局治理配置。
+ *
+ * @returns 保存完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+async function saveConfig(): Promise<void> {
+  try {
+    await formRef.value?.validate()
+    await governanceConfig.saveConfig()
+  } catch {
+    // 表单校验未通过时由 Naive UI 展示字段错误，同时给出全局提示。
+    message.warning('请先修正 OCR 全局治理配置')
+  }
+}
 
 onMounted(governanceConfig.loadConfig)
 </script>
@@ -39,20 +60,20 @@ onMounted(governanceConfig.loadConfig)
       周期探测与手动连接都会读取当前最新治理配置，不需要重启服务。
     </NAlert>
 
-    <NForm class="ocr-governance-panel__form" label-placement="top">
-      <NFormItem label="连续失败摘除阈值">
+    <NForm ref="formRef" class="ocr-governance-panel__form" label-placement="top" :model="governanceConfig.form" :rules="formRules">
+      <NFormItem label="连续失败摘除阈值" path="failureThreshold">
         <NInputNumber v-model:value="governanceConfig.form.failureThreshold" :min="1" :precision="0" />
       </NFormItem>
-      <NFormItem label="周期探测间隔（秒）">
+      <NFormItem label="周期探测间隔（秒）" path="probeIntervalSeconds">
         <NInputNumber v-model:value="governanceConfig.form.probeIntervalSeconds" :min="1" :precision="0" />
       </NFormItem>
-      <NFormItem label="熔断打开时长（秒）">
+      <NFormItem label="熔断打开时长（秒）" path="circuitOpenSeconds">
         <NInputNumber v-model:value="governanceConfig.form.circuitOpenSeconds" :min="1" :precision="0" />
       </NFormItem>
-      <NFormItem label="恢复成功阈值">
+      <NFormItem label="恢复成功阈值" path="recoverySuccessThreshold">
         <NInputNumber v-model:value="governanceConfig.form.recoverySuccessThreshold" :min="1" :precision="0" />
       </NFormItem>
-      <NFormItem label="手动恢复尝试次数">
+      <NFormItem label="手动恢复尝试次数" path="manualRecoveryAttempts">
         <NInputNumber v-model:value="governanceConfig.form.manualRecoveryAttempts" :min="1" :precision="0" />
       </NFormItem>
     </NForm>
@@ -62,8 +83,7 @@ onMounted(governanceConfig.loadConfig)
       <NButton
         type="primary"
         :loading="governanceConfig.isSaving.value"
-        :disabled="!governanceConfig.canSubmit.value"
-        @click="governanceConfig.saveConfig"
+        @click="saveConfig"
       >
         <template #icon>
           <NIcon :component="Save" />

@@ -6,6 +6,8 @@ import type {
   OcrOnlineChannelKey
 } from '@/types/ocrResources'
 
+export { createOcrNodeFormRules } from './ocrNodeFormValidationRules.ts'
+
 const DEFAULT_PORT = 8080
 const DEFAULT_WEIGHT = 50
 const DEFAULT_MAX_CONCURRENCY = 10
