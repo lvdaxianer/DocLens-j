@@ -110,7 +110,7 @@ class DashboardBatchRowAssembler {
     private BatchStatus nonProcessingBatchStatus(Batch batch, List<DocumentJob> documents) {
         long queued = statusCount(documents, DocumentStatus.QUEUED);
         long completed = statusCount(documents, DocumentStatus.COMPLETED);
-        long failed = statusCount(documents, DocumentStatus.FAILED);
+        long failed = failureLikeCount(documents);
         if (queued > 0 && (completed > 0 || failed > 0)) {
             return BatchStatus.PROCESSING;
         } else {
@@ -218,7 +218,7 @@ class DashboardBatchRowAssembler {
         if (documents.isEmpty()) {
             return batch.failedFiles();
         } else {
-            return Math.toIntExact(statusCount(documents, DocumentStatus.FAILED));
+            return Math.toIntExact(failureLikeCount(documents));
         }
     }
 
@@ -233,6 +233,18 @@ class DashboardBatchRowAssembler {
      */
     private long statusCount(List<DocumentJob> documents, DocumentStatus status) {
         return documents.stream().filter(document -> document.status() == status).count();
+    }
+
+    /**
+     * 统计失败类终态文档数量。
+     *
+     * @param documents 文档任务集合
+     * @return 失败类终态数量
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private long failureLikeCount(List<DocumentJob> documents) {
+        return documents.stream().filter(document -> document.status().isFailureLike()).count();
     }
 
     /**

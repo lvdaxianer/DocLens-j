@@ -98,7 +98,7 @@ public class BatchProcessingUseCase {
      * @date 2026-06-07
      */
     public void processBatch(String batchId) {
-        List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
+        List<DocumentJob> documents = queuedDocuments(batchId);
         Optional<Batch> batch = batchRepository.findById(batchId);
         documents.stream()
                 .map(document -> processDocument(document, batch))
@@ -463,6 +463,20 @@ public class BatchProcessingUseCase {
     ) {
     }
 
+    /**
+     * 读取批次内仍需执行的排队文档。
+     *
+     * @param batchId 批次 ID
+     * @return 待处理文档集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private List<DocumentJob> queuedDocuments(String batchId) {
+        return documentRepository.listByBatchId(batchId).stream()
+                .filter(document -> document.status() == DocumentStatus.QUEUED)
+                .toList();
+    }
+
     void persistDocumentProcessing(DocumentProcessingResult result) {
         documentRepository.updateAll(List.of(result.document()));
         resultRepository.saveAll(result.result().stream().toList());
@@ -472,7 +486,7 @@ public class BatchProcessingUseCase {
     private void finishBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         long completed = documents.stream().filter(document -> document.status() == DocumentStatus.COMPLETED).count();
-        long failed = documents.stream().filter(document -> document.status() == DocumentStatus.FAILED).count();
+        long failed = documents.stream().filter(document -> document.status().isFailureLike()).count();
         BatchStatus status = resolveBatchStatus(documents.size(), completed, failed);
         batchRepository.updateSummary(batchId, Math.toIntExact(completed), Math.toIntExact(failed), status);
         if (!documents.isEmpty()) {

@@ -31,15 +31,28 @@ public class EmptyDashboardOcrMetricsProvider implements DashboardOcrMetricsProv
     }
 
     /**
-     * 获取空批次命中节点。
+     * 获取空批次调度命中节点。
      *
      * @param batchId 批次 ID
      * @return 空命中节点列表
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     @Override
-    public List<Map<String, Object>> hitNodesByBatch(String batchId) {
+    public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
         return List.of();
+    }
+
+    /**
+     * 获取空批次文档最终分配节点映射。
+     *
+     * @param batchId 批次 ID
+     * @return 空最终分配节点映射
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId) {
+        return Map.of();
     }
 }

@@ -281,6 +281,7 @@ class ProcessingTrackAssembler {
         EnumMap<DocumentStatus, TrackStateResolver> resolvers = new EnumMap<>(DocumentStatus.class);
         resolvers.put(DocumentStatus.COMPLETED, (document, stepRank) -> ProcessingTrackState.DONE);
         resolvers.put(DocumentStatus.FAILED, this::failedNodeState);
+        resolvers.put(DocumentStatus.STALLED, this::failedNodeState);
         return resolvers;
     }
 

@@ -8,6 +8,9 @@ const dashboardApiTarget = process.env.DASHBOARD_API_TARGET ?? 'http://127.0.0.1
 export default defineConfig({
   base: '/dashboard/',
   plugins: [vue()],
+  test: {
+    environment: 'jsdom'
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

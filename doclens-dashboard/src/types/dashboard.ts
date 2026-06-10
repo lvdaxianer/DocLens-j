@@ -88,6 +88,7 @@ export interface DocumentRow {
   total_pages: number
   duration_ms: number
   track: ProcessingTrackNode[]
+  ocr_final_hit_nodes: BatchOcrHitNode[]
   error_code: string
   error_message: string
   updated_at: string
@@ -141,7 +142,7 @@ export interface BatchDetailResponse {
   documents: DocumentRow[]
   events: OcrEventRow[]
   ocr_route_policy: BatchOcrRoutePolicy
-  ocr_hit_nodes: BatchOcrHitNode[]
+  batch_dispatch_hit_nodes: BatchOcrHitNode[]
   failure_summary: Record<string, number>
 }
 

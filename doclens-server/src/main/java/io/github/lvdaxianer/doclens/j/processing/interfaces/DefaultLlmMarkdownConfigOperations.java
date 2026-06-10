@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.interfaces;
 
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
-import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import org.springframework.stereotype.Component;
 
@@ -66,7 +65,8 @@ public class DefaultLlmMarkdownConfigOperations implements LlmMarkdownConfigOper
      * @date 2026-06-09
      */
     @Override
-    public LlmMarkdownConfigTestResponse testConfig(LlmMarkdownConfigRequest request) {
-        return configTester.test(configService.settingsForTest(request.toSettings()));
+    public LlmMarkdownConfigTestResultResponse testConfig(LlmMarkdownConfigRequest request) {
+        return LlmMarkdownConfigTestResultResponse.from(
+                configTester.test(configService.settingsForTest(request.toSettings())));
     }
 }

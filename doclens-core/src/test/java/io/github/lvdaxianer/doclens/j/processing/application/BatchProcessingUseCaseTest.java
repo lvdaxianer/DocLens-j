@@ -90,6 +90,25 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 批次处理应跳过非排队文档，避免文档级重试时重跑同批次已完成文档。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void processBatchSkipsDocumentsThatAreNotQueued() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        documentRepository.save(completedDocument("doc-completed", 0));
+        documentRepository.save(document("doc-queued", 1));
+        CountingDocumentTextExtractor extractor = new CountingDocumentTextExtractor();
+        BatchProcessingUseCase useCase = useCase(documentRepository, extractor);
+
+        useCase.processBatch("batch-test");
+
+        assertThat(extractor.processedDocumentIds).containsExactly("doc-queued");
+    }
+
+    /**
      * 提取中失败时应保留已上报的图片页进度，便于 Dashboard 定位失败位置。
      *
      * @author lvdaxianerplus
@@ -368,6 +387,20 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 创建已完成的测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param sortOrder 排序
+     * @return 已完成文档
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private DocumentJob completedDocument(String documentId, int sortOrder) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return document(documentId, sortOrder).startProcessing(now).complete("result-" + documentId, now.plusSeconds(1));
+    }
+
+    /**
      * 记录第二个文档处理时第一个文档状态的提取器。
      *
      * @author lvdaxianerplus
@@ -452,6 +485,24 @@ class BatchProcessingUseCaseTest {
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
             return DocumentTextExtractionResult.plainText(request.document().documentId(),
                     request.document().fileName(), text);
+        }
+    }
+
+    /**
+     * 记录实际被处理文档 ID 的提取器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static class CountingDocumentTextExtractor implements DocumentTextExtractor {
+
+        private final List<String> processedDocumentIds = new ArrayList<>();
+
+        @Override
+        public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+            processedDocumentIds.add(request.document().documentId());
+            return DocumentTextExtractionResult.plainText(request.document().documentId(),
+                    request.document().fileName(), "text-" + request.document().documentId());
         }
     }
 

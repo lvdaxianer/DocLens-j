@@ -26,6 +26,8 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownConfigMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
@@ -321,6 +323,8 @@ public class DocLensAutoConfiguration {
      *
      * @param createBatchUseCase 创建批次用例
      * @param queryService 查询服务
+     * @param documentRetryUseCase 文档重试用例
+     * @param documentDeleteUseCase 文档删除用例
      * @return DocLens 引擎
      * @author lvdaxianerplus
      * @date 2026-06-07
@@ -330,9 +334,12 @@ public class DocLensAutoConfiguration {
     DocLensEngine docLensEngine(
             CreateBatchUseCase createBatchUseCase,
             OcrQueryService queryService,
-            DefaultAdapterRegistry adapterRegistry
+            DefaultAdapterRegistry adapterRegistry,
+            DocumentRetryUseCase documentRetryUseCase,
+            DocumentDeleteUseCase documentDeleteUseCase
     ) {
-        return new DefaultDocLensEngine(createBatchUseCase, queryService, adapterRegistry);
+        return new DefaultDocLensEngine(createBatchUseCase, queryService, adapterRegistry, documentRetryUseCase,
+                documentDeleteUseCase);
     }
 
 }

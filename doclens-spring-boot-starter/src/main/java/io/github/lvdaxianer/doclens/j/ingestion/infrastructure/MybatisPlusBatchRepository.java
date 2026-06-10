@@ -118,6 +118,38 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
+     * 更新批次完成摘要，并同步总文件数。
+     *
+     * @param batchId 批次 ID
+     * @param totalFiles 总文件数
+     * @param completedFiles 已完成文件数
+     * @param failedFiles 失败文件数
+     * @param status 最终批次状态
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void updateSummary(
+            String batchId,
+            int totalFiles,
+            int completedFiles,
+            int failedFiles,
+            BatchStatus status
+    ) {
+        LambdaUpdateWrapper<BatchEntity> wrapper = new LambdaUpdateWrapper<BatchEntity>()
+                .eq(BatchEntity::getBatchId, batchId)
+                .set(BatchEntity::getStatus, status.name().toLowerCase())
+                .set(BatchEntity::getTotalFiles, totalFiles)
+                .set(BatchEntity::getCompletedFiles, completedFiles)
+                .set(BatchEntity::getFailedFiles, failedFiles)
+                .set(BatchEntity::getCurrentDocumentId, null)
+                .set(BatchEntity::getCurrentDocumentName, null)
+                .set(BatchEntity::getCurrentStage, status.name().toLowerCase())
+                .set(BatchEntity::getUpdatedAt, OffsetDateTime.now());
+        update(wrapper);
+    }
+
+    /**
      * 将领域批次转换为持久化实体。
      *
      * @param batch 批次聚合

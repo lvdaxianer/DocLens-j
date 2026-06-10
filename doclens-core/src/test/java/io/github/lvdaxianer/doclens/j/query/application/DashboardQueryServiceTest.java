@@ -181,13 +181,13 @@ class DashboardQueryServiceTest {
     }
 
     /**
-     * 批次详情应返回 OCR 路由策略和实际命中节点。
+     * 批次详情应返回 OCR 路由策略，并拆分批次调度命中与文档最终分配节点。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     @Test
-    void batchDetailExposesOcrRoutePolicyAndHitNodes() {
+    void batchDetailExposesOcrRoutePolicyAndDispatchHits() {
         DocumentJob document = routedDocument();
         DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
                 new InMemoryDocumentJobRepository(List.of(document)), new InMemoryOcrEventRepository(),
@@ -199,11 +199,79 @@ class DashboardQueryServiceTest {
                 .containsEntry("routing_mode", "MODEL_LOAD_BALANCE")
                 .containsEntry("model_key", "paddle_ocr")
                 .containsEntry("load_balance_strategy", "least-inflight");
-        assertThat(detail.get("ocr_hit_nodes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+        assertThat(detail.get("batch_dispatch_hit_nodes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
                 .singleElement()
                 .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("node_id", "node-1")
                 .containsEntry("image_count", 2L);
+        assertThat(detail.get("documents")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .extractingByKey("ocr_final_hit_nodes")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("node_id", "node-1")
+                .containsEntry("image_count", 2L);
+    }
+
+    /**
+     * 批次详情中的文档最终分配节点不能串入其他文档的 OCR 命中数据。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void batchDetailKeepsFinalHitNodesScopedPerDocument() {
+        DocumentJob firstDocument = completedDocument("doc-1", DocumentType.PDF, 0);
+        DocumentJob secondDocument = completedDocument("doc-2", DocumentType.PDF, 1);
+        DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
+                new InMemoryDocumentJobRepository(List.of(firstDocument, secondDocument)),
+                new InMemoryOcrEventRepository(), new DashboardOcrMetricsProvider() {
+                    @Override
+                    public Map<String, Object> ocrResources() {
+                        return Map.of();
+                    }
+
+                    @Override
+                    public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
+                        return List.of(
+                                Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L),
+                                Map.of("model_key", "paddle_ocr", "node_id", "node-2", "image_count", 1L));
+                    }
+
+                    @Override
+                    public Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId) {
+                        return Map.of(
+                                "doc-1",
+                                List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L)),
+                                "doc-2",
+                                List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-2", "image_count", 1L))
+                        );
+                    }
+                });
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        assertThat(detail.get("documents")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .satisfies(documents -> {
+                    Map<?, ?> first = (Map<?, ?>) documents.get(0);
+                    Map<?, ?> second = (Map<?, ?>) documents.get(1);
+                    assertThat(first.get("document_id")).isEqualTo("doc-1");
+                    assertThat(first.get("ocr_final_hit_nodes"))
+                            .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                            .singleElement()
+                            .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                            .containsEntry("node_id", "node-1")
+                            .doesNotContainEntry("node_id", "node-2");
+                    assertThat(second.get("document_id")).isEqualTo("doc-2");
+                    assertThat(second.get("ocr_final_hit_nodes"))
+                            .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                            .singleElement()
+                            .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                            .containsEntry("node_id", "node-2")
+                            .doesNotContainEntry("node_id", "node-1");
+                });
     }
 
     /**

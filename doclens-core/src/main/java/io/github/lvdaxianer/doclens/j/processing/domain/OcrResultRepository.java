@@ -37,4 +37,15 @@ public interface OcrResultRepository {
      * @date 2026-06-07
      */
     Optional<OcrResult> findByDocumentId(String documentId);
+
+    /**
+     * 根据文档 ID 删除 OCR 结果。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void deleteByDocumentId(String documentId) {
+        throw new UnsupportedOperationException("ocr result delete is not supported");
+    }
 }

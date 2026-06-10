@@ -93,7 +93,7 @@ class DashboardStageMetricsAssembler {
      */
     private Map<String, Object> failedStageStatusRow(List<DocumentJob> documents) {
         long failedDocuments = documents.stream()
-                .filter(document -> document.status() == DocumentStatus.FAILED)
+                .filter(document -> document.status().isFailureLike())
                 .count();
         return Map.of("stage", "failed", "label", "解析失败", "document_count", failedDocuments,
                 "completed_images", 0L, "total_images", 0L);
@@ -172,4 +172,5 @@ class DashboardStageMetricsAssembler {
         }
         return value;
     }
+
 }

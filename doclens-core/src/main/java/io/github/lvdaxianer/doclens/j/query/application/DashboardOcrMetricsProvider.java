@@ -21,12 +21,22 @@ public interface DashboardOcrMetricsProvider {
     Map<String, Object> ocrResources();
 
     /**
-     * 获取批次实际命中的 OCR 节点。
+     * 获取批次级 OCR 调度命中节点。
      *
      * @param batchId 批次 ID
-     * @return OCR 命中节点列表
+     * @return OCR 调度命中节点列表
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
-    List<Map<String, Object>> hitNodesByBatch(String batchId);
+    List<Map<String, Object>> dispatchHitNodesByBatch(String batchId);
+
+    /**
+     * 获取批次内各文档最终成功分配到的 OCR 节点。
+     *
+     * @param batchId 批次 ID
+     * @return 文档最终分配节点映射
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId);
 }

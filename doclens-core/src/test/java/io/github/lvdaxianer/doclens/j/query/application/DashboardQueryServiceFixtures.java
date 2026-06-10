@@ -328,8 +328,22 @@ final class DashboardQueryServiceFixtures {
         }
 
         @Override
-        public List<Map<String, Object>> hitNodesByBatch(String batchId) {
+        public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
             return List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L));
+        }
+
+        /**
+         * 返回测试文档的最终分配节点。
+         *
+         * @param documentId 文档 ID
+         * @return 最终分配节点列表
+         * @author lvdaxianerplus
+         * @date 2026-06-10
+         */
+        @Override
+        public Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId) {
+            return Map.of("doc-routed",
+                    List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L)));
         }
     }
 }

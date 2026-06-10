@@ -86,6 +86,20 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
+     * 根据文档 ID 删除 OCR 结果。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        LambdaQueryWrapper<OcrResultEntity> wrapper = new LambdaQueryWrapper<OcrResultEntity>()
+                .eq(OcrResultEntity::getDocumentId, documentId);
+        remove(wrapper);
+    }
+
+    /**
      * 将领域 OCR 结果转换为持久化实体。
      *
      * @param result OCR 结果

@@ -52,6 +52,26 @@ public interface DocLensEngine {
     Map<String, Object> getDocumentResult(String documentId);
 
     /**
+     * 重试单个失败或卡死文档。
+     *
+     * @param documentId 文档标识
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    Map<String, Object> retryDocument(String documentId);
+
+    /**
+     * 删除单个已完成、失败或卡死文档。
+     *
+     * @param documentId 文档标识
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    Map<String, Object> deleteDocument(String documentId);
+
+    /**
      * 获取单个批次的事件时间线。
      *
      * @param batchId 批次标识
