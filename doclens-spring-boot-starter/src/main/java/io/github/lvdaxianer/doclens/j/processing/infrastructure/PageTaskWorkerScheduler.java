@@ -1,6 +1,8 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionService;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryService;
+import java.time.OffsetDateTime;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,27 +20,31 @@ public class PageTaskWorkerScheduler {
     private static final Logger LOGGER = LoggerFactory.getLogger(PageTaskWorkerScheduler.class);
 
     private final DocumentPageTaskExecutionService executionService;
+    private final DocumentPageTaskRecoveryService recoveryService;
     private final ScheduledExecutorService schedulerExecutor;
     private final int intervalMillis;
+    private final int recoveryLimit;
     private final AtomicBoolean started = new AtomicBoolean();
 
     /**
      * 创建页任务 OCR worker 周期调度器。
      *
-     * @param executionService 页任务执行服务
-     * @param schedulerExecutor 调度线程池
+     * @param dependencies 调度依赖
      * @param intervalMillis 调度间隔毫秒
+     * @param recoveryLimit 每轮最大恢复数量
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
     public PageTaskWorkerScheduler(
-            DocumentPageTaskExecutionService executionService,
-            ScheduledExecutorService schedulerExecutor,
-            int intervalMillis
+            PageTaskWorkerSchedulerDependencies dependencies,
+            int intervalMillis,
+            int recoveryLimit
     ) {
-        this.executionService = executionService;
-        this.schedulerExecutor = schedulerExecutor;
+        this.executionService = dependencies.executionService();
+        this.recoveryService = dependencies.recoveryService();
+        this.schedulerExecutor = dependencies.schedulerExecutor();
         this.intervalMillis = Math.max(1, intervalMillis);
+        this.recoveryLimit = Math.max(1, recoveryLimit);
     }
 
     /**
@@ -64,8 +70,12 @@ public class PageTaskWorkerScheduler {
      */
     private void runSafely() {
         try {
+            // 先恢复过期 PROCESSING 页任务，再抢占 QUEUED 页任务。
+            // 这样应用重启后，遗留锁不会长期占住 OCR 并发槽位。
+            int recoveredCount = recoveryService.recoverExpiredTasks(OffsetDateTime.now(), recoveryLimit);
             int claimedCount = executionService.runOnce();
-            LOGGER.info("[页任务OCR] 页任务扫描完成, claimedCount={}", claimedCount);
+            LOGGER.info("[页任务OCR] 页任务扫描完成, recoveredCount={}, claimedCount={}", recoveredCount,
+                    claimedCount);
         } catch (RuntimeException ex) {
             LOGGER.warn("[页任务OCR] 页任务扫描失败, error={}", ex.getMessage(), ex);
         } finally {
@@ -100,5 +110,21 @@ public class PageTaskWorkerScheduler {
         } else {
             // 调度线程池销毁后不再继续排新任务。
         }
+    }
+
+    /**
+     * 页任务 worker 调度器依赖集合。
+     *
+     * @param executionService 页任务执行服务
+     * @param recoveryService 页任务恢复服务
+     * @param schedulerExecutor 调度线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    public record PageTaskWorkerSchedulerDependencies(
+            DocumentPageTaskExecutionService executionService,
+            DocumentPageTaskRecoveryService recoveryService,
+            ScheduledExecutorService schedulerExecutor
+    ) {
     }
 }

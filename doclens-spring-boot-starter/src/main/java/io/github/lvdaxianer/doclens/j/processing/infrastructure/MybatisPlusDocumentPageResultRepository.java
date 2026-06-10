@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
+import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
 import java.util.List;
@@ -87,6 +88,28 @@ public class MybatisPlusDocumentPageResultRepository
         LambdaQueryWrapper<DocumentPageResultEntity> wrapper = byDocument(documentId)
                 .orderByAsc(DocumentPageResultEntity::getPageNo);
         return page(MybatisPlusPages.listLimit(), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 按文档集合批量查询页 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @return 页 OCR 结果集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public List<DocumentPageResult> listByDocumentIds(List<String> documentIds) {
+        if (documentIds.isEmpty()) {
+            return List.of();
+        } else {
+            LambdaQueryWrapper<DocumentPageResultEntity> wrapper = new LambdaQueryWrapper<DocumentPageResultEntity>()
+                    .in(DocumentPageResultEntity::getDocumentId, documentIds)
+                    .orderByAsc(DocumentPageResultEntity::getDocumentId)
+                    .orderByAsc(DocumentPageResultEntity::getPageNo);
+            return page(MybatisPlusPages.limit(documentIds.size() * DocLensConstants.DEFAULT_QUERY_LIMIT), wrapper)
+                    .getRecords().stream().map(this::toDomain).toList();
+        }
     }
 
     /**

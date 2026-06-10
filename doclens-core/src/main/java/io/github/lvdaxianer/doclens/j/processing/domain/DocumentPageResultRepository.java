@@ -40,4 +40,14 @@ public interface DocumentPageResultRepository {
      * @date 2026-06-10
      */
     List<DocumentPageResult> listByDocumentId(String documentId);
+
+    /**
+     * 按文档集合批量查询页 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @return 页 OCR 结果集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    List<DocumentPageResult> listByDocumentIds(List<String> documentIds);
 }

@@ -203,6 +203,33 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
     }
 
     /**
+     * 过期处理中页任务应能被扫描并批量重置为等待重试。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void listProcessingExpiredAndUpdateAllSupportRestartRecovery() {
+        DocumentPageTask expired = task("task-10", "doc-8", 1, "page://10")
+                .markProcessing("worker-a", BASE_TIME.minusSeconds(1), BASE_TIME.minusMinutes(1));
+        DocumentPageTask fresh = task("task-11", "doc-8", 2, "page://11")
+                .markProcessing("worker-a", BASE_TIME.plusSeconds(30), BASE_TIME);
+        repository.saveAll(List.of(expired, fresh));
+
+        List<DocumentPageTask> expiredTasks = repository.listProcessingExpired(BASE_TIME, 10);
+        repository.updateAll(expiredTasks.stream().map(task -> task.resetForRetry(BASE_TIME)).toList());
+
+        assertThat(expiredTasks).extracting(DocumentPageTask::taskId).containsExactly("task-10");
+        assertThat(repository.findByDocumentIdAndPageNo("doc-8", 1)).get().satisfies(task -> {
+            assertThat(task.status()).isEqualTo(DocumentPageTaskStatus.QUEUED);
+            assertThat(task.retryCount()).isEqualTo(1);
+        });
+        assertThat(repository.findByDocumentIdAndPageNo("doc-8", 2)).get()
+                .extracting(DocumentPageTask::status)
+                .isEqualTo(DocumentPageTaskStatus.PROCESSING);
+    }
+
+    /**
      * 创建测试页任务。
      *
      * @param taskId 任务 ID

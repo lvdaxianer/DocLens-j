@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompleti
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +46,36 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
     @Override
     public List<DocumentPageTask> listQueued(int limit) {
         return tasks.stream().filter(task -> task.status() == DocumentPageTaskStatus.QUEUED).limit(limit).toList();
+    }
+
+    /**
+     * 查询抢占锁已过期的处理中任务。
+     *
+     * @param now 当前时间
+     * @param limit 最大返回数量
+     * @return 过期处理中任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public List<DocumentPageTask> listProcessingExpired(OffsetDateTime now, int limit) {
+        return tasks.stream()
+                .filter(task -> task.status() == DocumentPageTaskStatus.PROCESSING)
+                .filter(task -> task.lockedUntil().map(lockedUntil -> lockedUntil.isBefore(now)).orElse(false))
+                .limit(limit)
+                .toList();
+    }
+
+    /**
+     * 批量更新页任务。
+     *
+     * @param tasks 页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public void updateAll(List<DocumentPageTask> tasks) {
+        tasks.forEach(this::replace);
     }
 
     /**

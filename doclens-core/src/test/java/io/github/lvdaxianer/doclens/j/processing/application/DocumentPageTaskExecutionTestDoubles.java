@@ -113,6 +113,19 @@ final class DocumentPageTaskExecutionTestDoubles {
         }
 
         /**
+         * 按文档集合批量查询页结果。
+         *
+         * @param documentIds 文档 ID 集合
+         * @return 页结果列表
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public List<DocumentPageResult> listByDocumentIds(List<String> documentIds) {
+            return results.values().stream().filter(result -> documentIds.contains(result.documentId())).toList();
+        }
+
+        /**
          * 生成页结果唯一键。
          *
          * @param documentId 文档 ID

@@ -6,11 +6,14 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAgg
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionOptions;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionService;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryService;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.PageTaskWorkerScheduler;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.PageTaskWorkerScheduler.PageTaskWorkerSchedulerDependencies;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
@@ -44,6 +47,8 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     private static final int PAGE_TASK_WORKER_BATCH_SIZE = 8;
     /** 页任务抢占锁默认 60 秒，后续恢复任务会负责处理进程崩溃后的过期锁。 */
     private static final int PAGE_TASK_LOCK_SECONDS = 60;
+    /** 单轮恢复最多扫描 32 个过期页任务，避免启动瞬间恢复任务压垮数据库。 */
+    private static final int PAGE_TASK_RECOVERY_LIMIT = 32;
     /**
      * 页任务 OCR 执行线程数，独立于批次调度和心跳线程池，避免互相挤占。
      * 默认值和单轮扫描批量大小一致，确保调度器每次补位都能打满执行池。
@@ -118,6 +123,43 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     }
 
     /**
+     * 创建文档页任务恢复服务。
+     *
+     * @param dependencies 恢复依赖
+     * @param transactionRunner 事务执行器
+     * @param aggregationService 聚合服务
+     * @return 文档页任务恢复服务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Bean
+    @ConditionalOnBean(OcrRoutingService.class)
+    @ConditionalOnMissingBean
+    DocumentPageTaskRecoveryService documentPageTaskRecoveryService(
+            DocumentPageTaskRecoveryDependencies dependencies,
+            TransactionRunner transactionRunner,
+            DocumentPageTaskAggregationService aggregationService
+    ) {
+        return new DocumentPageTaskRecoveryService(dependencies, transactionRunner, aggregationService::recordSuccess);
+    }
+
+    /**
+     * 创建文档页任务恢复依赖集合。
+     *
+     * @param context Spring 上下文
+     * @return 文档页任务恢复依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Bean
+    @ConditionalOnBean(OcrRoutingService.class)
+    @ConditionalOnMissingBean
+    DocumentPageTaskRecoveryDependencies documentPageTaskRecoveryDependencies(ApplicationContext context) {
+        return new DocumentPageTaskRecoveryDependencies(context.getBean(DocumentPageTaskRepository.class),
+                context.getBean(DocumentPageResultRepository.class));
+    }
+
+    /**
      * 创建文档页任务执行依赖集合。
      *
      * @param context Spring 上下文
@@ -169,6 +211,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
      * 创建页任务 OCR worker 调度器。
      *
      * @param executionService 页任务执行服务
+     * @param recoveryService 页任务恢复服务
      * @param schedulerExecutor 页任务调度线程池
      * @return 页任务 OCR worker 调度器
      * @author lvdaxianerplus
@@ -179,9 +222,12 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     @ConditionalOnMissingBean
     PageTaskWorkerScheduler pageTaskWorkerScheduler(
             DocumentPageTaskExecutionService executionService,
+            DocumentPageTaskRecoveryService recoveryService,
             @Qualifier("doclensPageTaskWorkerSchedulerExecutor") ScheduledExecutorService schedulerExecutor
     ) {
-        return new PageTaskWorkerScheduler(executionService, schedulerExecutor, PAGE_TASK_WORKER_INTERVAL_MILLIS);
+        PageTaskWorkerSchedulerDependencies dependencies =
+                new PageTaskWorkerSchedulerDependencies(executionService, recoveryService, schedulerExecutor);
+        return new PageTaskWorkerScheduler(dependencies, PAGE_TASK_WORKER_INTERVAL_MILLIS, PAGE_TASK_RECOVERY_LIMIT);
     }
 
     /**

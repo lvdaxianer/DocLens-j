@@ -75,6 +75,20 @@ class MybatisPlusDocumentPageResultRepositoryTest {
                 .get()
                 .extracting(DocumentPageResult::pageText)
                 .isEqualTo("page two");
+        assertBatchLookupReturnsExistingDocumentPages();
+    }
+
+    /**
+     * 批量查询应只返回已存在文档的页结果。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void assertBatchLookupReturnsExistingDocumentPages() {
+        // 批量查询用于页任务恢复，必须一次读取多个文档的已完成页结果。
+        assertThat(repository.listByDocumentIds(List.of("doc-1", "doc-missing")))
+                .extracting(DocumentPageResult::pageNo)
+                .containsExactly(1, 2);
     }
 
     /**

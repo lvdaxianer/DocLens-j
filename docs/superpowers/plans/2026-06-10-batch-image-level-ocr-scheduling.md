@@ -525,7 +525,7 @@ Evidence:
 - `mvn -pl doclens-core -am -Dtest=DocumentPageTaskExecutionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
 - `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskExecutionServiceTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskExecutionService.java \
@@ -631,7 +631,7 @@ Evidence:
 - `mvn -pl doclens-core -am -Dtest=DocumentPageTaskExecutionServiceTest,DocumentPageTaskAggregationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
 - `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskAggregationServiceTest,DocumentPageTaskExecutionServiceTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskAggregationService.java \
@@ -650,7 +650,7 @@ git commit -m "feat(ocr): 按文档聚合页结果并保持页序"
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentJob.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskExecutionServiceTest.java`
 
-- [ ] **Step 1: Write the failing retry/resume test**
+- [x] **Step 1: Write the failing retry/resume test**
 
 ```java
 @Test
@@ -678,13 +678,17 @@ void recoveryMarksTaskCompletedWhenPageResultWasCommittedBeforeCrash() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskExecutionServiceTest test`
 
 Expected: FAIL because retry/idempotency semantics are incomplete.
 
-- [ ] **Step 3: Add idempotent retry rules**
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskRecoveryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- RED observed: `DocumentPageTaskRecoveryService` and `DocumentPageTaskRecoveryDependencies` did not exist.
+
+- [x] **Step 3: Add idempotent retry rules**
 
 ```java
 UNIQUE (document_id, page_no)
@@ -698,7 +702,7 @@ public DocumentPageTask resetForRetry(OffsetDateTime now) {
 }
 ```
 
-- [ ] **Step 4: Add restart recovery**
+- [x] **Step 4: Add restart recovery**
 
 ```java
 public void recoverStuckTasks() {
@@ -714,11 +718,16 @@ public void recoverStuckTasks() {
 
 This keeps page tasks persistent across process restarts and prevents “lost” pages from leaving a document forever half-done.
 
-- [ ] **Step 5: Run focused retry/recovery tests**
+- [x] **Step 5: Run focused retry/recovery tests**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskExecutionServiceTest,DocumentPageTaskAggregationServiceTest test`
 
 Expected: PASS.
+
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskRecoveryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-spring-boot-starter -am -Dtest=MybatisPlusDocumentPageTaskRepositoryTest,MybatisPlusDocumentPageResultRepositoryTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskRecoveryServiceTest,DocumentPageTaskExecutionServiceTest,DocumentPageTaskAggregationServiceTest,MybatisPlusDocumentPageTaskRepositoryTest,MybatisPlusDocumentPageResultRepositoryTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 - [ ] **Step 6: Commit**
 
@@ -730,6 +739,12 @@ git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/app
   doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskExecutionServiceTest.java
 git commit -m "fix(ocr): 增强页任务重试与重启恢复"
 ```
+
+Evidence:
+- `git diff --check`
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskRecoveryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskRecoveryServiceTest,DocumentPageTaskExecutionServiceTest,DocumentPageTaskAggregationServiceTest,MybatisPlusDocumentPageTaskRepositoryTest,MybatisPlusDocumentPageResultRepositoryTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `git commit -F /tmp/doclens-task5-commit.txt`
 
 ### Task 6: Update Query Models and Dashboard Labels
 

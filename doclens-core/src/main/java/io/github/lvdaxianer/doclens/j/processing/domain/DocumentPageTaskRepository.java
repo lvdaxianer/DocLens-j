@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.OffsetDateTime;
 
 /**
  * 文档页 OCR 任务仓储接口。
@@ -29,6 +30,26 @@ public interface DocumentPageTaskRepository {
      * @date 2026-06-10
      */
     List<DocumentPageTask> listQueued(int limit);
+
+    /**
+     * 查询抢占锁已过期的处理中页任务。
+     *
+     * @param now 当前时间
+     * @param limit 最大返回数量
+     * @return 过期处理中页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    List<DocumentPageTask> listProcessingExpired(OffsetDateTime now, int limit);
+
+    /**
+     * 批量更新页任务。
+     *
+     * @param tasks 页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    void updateAll(List<DocumentPageTask> tasks);
 
     /**
      * 原子抢占等待中的页任务。

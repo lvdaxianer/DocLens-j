@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureR
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -56,6 +57,42 @@ public class MybatisPlusDocumentPageTaskRepository
                 .orderByAsc(DocumentPageTaskEntity::getCreatedAt)
                 .orderByAsc(DocumentPageTaskEntity::getTaskId);
         return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 查询抢占锁已过期的处理中页任务。
+     *
+     * @param now 当前时间
+     * @param limit 最大返回数量
+     * @return 过期处理中页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public List<DocumentPageTask> listProcessingExpired(OffsetDateTime now, int limit) {
+        LambdaQueryWrapper<DocumentPageTaskEntity> wrapper = new LambdaQueryWrapper<DocumentPageTaskEntity>()
+                .eq(DocumentPageTaskEntity::getStatus, DocumentPageTaskStatus.PROCESSING.name())
+                .lt(DocumentPageTaskEntity::getLockedUntil, now)
+                .orderByAsc(DocumentPageTaskEntity::getLockedUntil)
+                .orderByAsc(DocumentPageTaskEntity::getTaskId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 批量更新页任务。
+     *
+     * @param tasks 页任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public void updateAll(List<DocumentPageTask> tasks) {
+        if (tasks.isEmpty()) {
+            // 空批次无需触发 MyBatis-Plus 批量更新，避免不同版本对空集合行为不一致。
+        } else {
+            // 非空批次一次性提交，避免恢复流程循环逐条写库。
+            updateBatchById(tasks.stream().map(this::toEntity).toList());
+        }
     }
 
     /**
