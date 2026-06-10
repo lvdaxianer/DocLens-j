@@ -3,6 +3,9 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskClaimRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages;
@@ -20,6 +23,11 @@ import org.springframework.stereotype.Repository;
 public class MybatisPlusDocumentPageTaskRepository
         extends ServiceImpl<DocumentPageTaskMapper, DocumentPageTaskEntity>
         implements DocumentPageTaskRepository {
+
+    private static final int UPDATED_ONE_ROW = 1;
+    private static final String COMPLETE_OPERATION = "complete";
+    private static final String FAIL_OPERATION = "fail";
+    private static final String STATE_UPDATE_FAILED_MESSAGE = "page task %s state update failed: %s";
 
     /**
      * 批量保存页任务。
@@ -48,6 +56,59 @@ public class MybatisPlusDocumentPageTaskRepository
                 .orderByAsc(DocumentPageTaskEntity::getCreatedAt)
                 .orderByAsc(DocumentPageTaskEntity::getTaskId);
         return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 原子抢占等待中的页任务。
+     *
+     * @param request 抢占请求
+     * @return true 表示当前工作线程抢占成功
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public boolean tryMarkProcessing(DocumentPageTaskClaimRequest request) {
+        return baseMapper.tryMarkProcessing(request) == UPDATED_ONE_ROW;
+    }
+
+    /**
+     * 标记页任务已完成。
+     *
+     * @param request 完成请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void markCompleted(DocumentPageTaskCompletionRequest request) {
+        ensureUpdated(baseMapper.markCompleted(request), request.taskId(), COMPLETE_OPERATION);
+    }
+
+    /**
+     * 标记页任务终态失败。
+     *
+     * @param request 失败请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void markFailed(DocumentPageTaskFailureRequest request) {
+        ensureUpdated(baseMapper.markFailed(request), request.taskId(), FAIL_OPERATION);
+    }
+
+    /**
+     * 校验页任务状态更新结果。
+     *
+     * @param updatedRows 更新行数
+     * @param taskId 页任务 ID
+     * @param operation 操作名称
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void ensureUpdated(int updatedRows, String taskId, String operation) {
+        // 条件更新 0 行说明锁归属或状态不匹配，继续当作成功会破坏恢复语义。
+        if (updatedRows != UPDATED_ONE_ROW) {
+            throw new IllegalStateException(STATE_UPDATE_FAILED_MESSAGE.formatted(operation, taskId));
+        }
     }
 
     /**

@@ -268,6 +268,57 @@ git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/dom
 git commit -m "feat(ocr): 增加页任务与页结果持久化"
 ```
 
+### Task 1.5: Add Atomic Page-Task Claim and Terminal State Writes
+
+**Files:**
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTask.java`
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTaskRepository.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTaskClaimRequest.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTaskCompletionRequest.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTaskFailureRequest.java`
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/DocumentPageTaskMapper.java`
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageTaskRepository.java`
+- Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageTaskRepositoryTest.java`
+
+- [x] **Step 1: Write failing atomic claim and terminal-state repository tests**
+
+Coverage:
+- `tryMarkProcessingOnlyClaimsQueuedTaskOnce`
+- `tryMarkProcessingRejectsAlreadyProcessingTask`
+- `markCompletedPersistsTerminalSuccessState`
+- `markCompletedRejectsWorkerThatDoesNotOwnTask`
+- `markFailedPersistsTerminalFailureState`
+
+RED evidence:
+`mvn -pl doclens-spring-boot-starter -am -Dtest=MybatisPlusDocumentPageTaskRepositoryTest -Dsurefire.failIfNoSpecifiedTests=false test`
+failed because claim/completion/failure request objects and repository methods did not exist.
+
+- [x] **Step 2: Implement database-backed atomic claim**
+
+Implementation uses a single conditional update:
+
+```sql
+UPDATE ocr_document_page_tasks
+SET status = 'PROCESSING', locked_by = :workerId, locked_until = :lockedUntil
+WHERE task_id = :taskId AND status = 'QUEUED';
+```
+
+Only `updatedRows == 1` means the worker owns the page.
+
+- [x] **Step 3: Implement immediate terminal state writes**
+
+Implementation adds repository methods for:
+- `markCompleted`
+- `markFailed`
+
+These methods persist terminal page state immediately so restart recovery and document aggregation do not depend on the in-memory queue.
+
+- [x] **Step 4: Run focused repository tests**
+
+GREEN evidence:
+`mvn -pl doclens-spring-boot-starter -am -Dtest=MybatisPlusDocumentPageTaskRepositoryTest,MybatisPlusDocumentPageResultRepositoryTest -Dsurefire.failIfNoSpecifiedTests=false test`
+passed with 8 tests.
+
 ### Task 2: Split Document Preparation From OCR Execution
 
 **Files:**

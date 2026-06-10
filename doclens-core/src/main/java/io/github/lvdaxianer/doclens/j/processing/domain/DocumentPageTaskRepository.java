@@ -31,6 +31,34 @@ public interface DocumentPageTaskRepository {
     List<DocumentPageTask> listQueued(int limit);
 
     /**
+     * 原子抢占等待中的页任务。
+     *
+     * @param request 抢占请求
+     * @return true 表示当前工作线程抢占成功
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    boolean tryMarkProcessing(DocumentPageTaskClaimRequest request);
+
+    /**
+     * 标记页任务已完成。
+     *
+     * @param request 完成请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    void markCompleted(DocumentPageTaskCompletionRequest request);
+
+    /**
+     * 标记页任务终态失败。
+     *
+     * @param request 失败请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    void markFailed(DocumentPageTaskFailureRequest request);
+
+    /**
      * 按文档查询页任务。
      *
      * @param documentId 文档 ID

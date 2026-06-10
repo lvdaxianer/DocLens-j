@@ -67,8 +67,53 @@ public record DocumentPageTask(
      * @date 2026-06-10
      */
     public DocumentPageTask markProcessing(String workerId, OffsetDateTime lockUntil) {
+        return markProcessing(workerId, lockUntil, updatedAt);
+    }
+
+    /**
+     * 标记页任务已被工作线程抢占。
+     *
+     * @param workerId 工作线程标识
+     * @param lockUntil 锁过期时间
+     * @param now 当前更新时间
+     * @return 处理中的页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentPageTask markProcessing(String workerId, OffsetDateTime lockUntil, OffsetDateTime now) {
         return new DocumentPageTask(taskId, batchId, documentId, pageNo, imageStorageUri,
                 DocumentPageTaskStatus.PROCESSING, Optional.of(workerId), Optional.of(lockUntil), retryCount,
-                errorCode, errorMessage, Optional.of(updatedAt), completedAt, createdAt, updatedAt);
+                Optional.empty(), Optional.empty(), Optional.of(now), Optional.empty(), createdAt, now);
+    }
+
+    /**
+     * 标记页任务 OCR 已完成。
+     *
+     * @param workerId 工作线程标识
+     * @param now 当前完成时间
+     * @return 已完成页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentPageTask markCompleted(String workerId, OffsetDateTime now) {
+        return new DocumentPageTask(taskId, batchId, documentId, pageNo, imageStorageUri,
+                DocumentPageTaskStatus.COMPLETED, Optional.of(workerId), lockedUntil, retryCount, Optional.empty(),
+                Optional.empty(), startedAt, Optional.of(now), createdAt, now);
+    }
+
+    /**
+     * 标记页任务 OCR 终态失败。
+     *
+     * @param errorCode 错误码
+     * @param errorMessage 错误信息
+     * @param now 当前失败时间
+     * @return 已失败页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentPageTask markFailed(String errorCode, String errorMessage, OffsetDateTime now) {
+        return new DocumentPageTask(taskId, batchId, documentId, pageNo, imageStorageUri,
+                DocumentPageTaskStatus.FAILED, lockedBy, lockedUntil, retryCount, Optional.of(errorCode),
+                Optional.of(errorMessage), startedAt, Optional.of(now), createdAt, now);
     }
 }
