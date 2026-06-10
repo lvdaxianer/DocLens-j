@@ -69,3 +69,39 @@ Placeholder scan:
 
 Type consistency:
 - Sanitizer output is consumed by `BatchProcessingUseCase` before constructing `PostProcessedText`.
+
+### Task 2: 兼容 LLM 思考标签变体
+
+**Files:**
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownThinkingSanitizer.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseTest.java`
+
+- [x] **Step 1: Write failing test**
+
+Add a test proving uppercase and whitespace variants such as `<THINK >...</THINK>` are removed before persistence.
+
+- [x] **Step 2: Run RED**
+
+Run:
+
+```bash
+mvn -pl doclens-core -Dtest=BatchProcessingUseCaseTest#processBatchRemovesThinkTagVariantsFromLlmMarkdown test
+```
+
+Expected: FAIL because the current sanitizer only matches exact lowercase `<think>` tags.
+
+- [x] **Step 3: Implement case-insensitive tag cleanup**
+
+Replace exact string matching with case-insensitive tag detection that supports whitespace inside the tag name and attributes after `think`.
+
+- [x] **Step 4: Verify and commit**
+
+Run:
+
+```bash
+mvn -pl doclens-core -Dtest=BatchProcessingUseCaseTest test
+mvn -pl doclens-spring-boot-starter -DskipTests compile
+git diff --check
+```
+
+Apply `code-review-spec`, fix issues, then commit with Chinese Conventional Commit.

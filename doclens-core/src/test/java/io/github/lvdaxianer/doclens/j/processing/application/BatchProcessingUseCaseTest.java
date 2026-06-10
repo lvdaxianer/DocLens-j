@@ -281,6 +281,29 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * LLM 返回大小写或空格变体 think 标签时也应剥离思考过程。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void processBatchRemovesThinkTagVariantsFromLlmMarkdown() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase useCase = useCase(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
+                new InMemoryBatchRepository(), new FixedTextExtractor("原始 OCR 文本"),
+                new FixedMarkdownPostProcessor("<THINK >\nI should analyze the OCR.\n</THINK>\n# 正文"));
+
+        useCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("# 正文");
+            assertThat(result.finalText()).doesNotContain("<THINK").doesNotContain("I should analyze");
+        });
+    }
+
+    /**
      * LLM 只返回未闭合 think 思考内容时应回退 OCR 原文，避免保存推理过程。
      *
      * @author lvdaxianerplus
