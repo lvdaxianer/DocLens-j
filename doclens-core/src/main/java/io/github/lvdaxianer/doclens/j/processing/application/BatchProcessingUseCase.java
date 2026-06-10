@@ -30,11 +30,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 按文档顺序处理单个批次的用例。
+ * 并发处理单个批次内排队文档的用例。
  *
  * @author lvdaxianerplus
  * @date 2026-06-07
@@ -67,6 +72,7 @@ public class BatchProcessingUseCase {
     private final OcrEventFactory eventFactory;
     private final MarkdownPostProcessor markdownPostProcessor;
     private final TransactionRunner transactionRunner;
+    private final ExecutorService documentProcessingExecutor;
 
     /**
      * 创建批次处理用例。
@@ -87,11 +93,12 @@ public class BatchProcessingUseCase {
         this.idGenerator = dependencies.idGenerator();
         this.eventFactory = dependencies.eventFactory();
         this.markdownPostProcessor = dependencies.markdownPostProcessor();
+        this.documentProcessingExecutor = dependencies.documentProcessingExecutor();
         this.transactionRunner = transactionRunner;
     }
 
     /**
-     * 处理批次中的每个文档。
+     * 并发处理批次中的排队文档。
      *
      * @param batchId 批次 ID
      * @author lvdaxianerplus
@@ -100,10 +107,77 @@ public class BatchProcessingUseCase {
     public void processBatch(String batchId) {
         List<DocumentJob> documents = queuedDocuments(batchId);
         Optional<Batch> batch = batchRepository.findById(batchId);
-        documents.stream()
-                .map(document -> processDocument(document, batch))
-                .forEach(result -> transactionRunner.requiredVoid(() -> persistDocumentProcessing(result)));
+        DocumentProcessingTaskBatch tasks = submitDocumentTasks(documents, batch);
+        int submittedTaskCount = tasks.size();
+        for (int index = 0; index < submittedTaskCount; index++) {
+            awaitCompletedDocumentResult(tasks)
+                    .ifPresent(result -> transactionRunner.requiredVoid(() -> persistDocumentProcessing(result)));
+        }
         transactionRunner.requiredVoid(() -> finishBatch(batchId));
+    }
+
+    /**
+     * 提交批次内文档任务，允许多个文档同时进入页级 OCR 队列。
+     *
+     * @param documents 待处理文档集合
+     * @param batch 可选批次
+     * @return 文档处理 Future 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private DocumentProcessingTaskBatch submitDocumentTasks(List<DocumentJob> documents, Optional<Batch> batch) {
+        CompletionService<DocumentProcessingResult> completionService =
+                new ExecutorCompletionService<>(documentProcessingExecutor);
+        Map<Future<DocumentProcessingResult>, DocumentJob> documentsByFuture = new LinkedHashMap<>(documents.size());
+        for (DocumentJob document : documents) {
+            Future<DocumentProcessingResult> future = completionService.submit(() -> processDocument(document, batch));
+            documentsByFuture.put(future, document);
+        }
+        return new DocumentProcessingTaskBatch(completionService, documentsByFuture);
+    }
+
+    /**
+     * 等待任意一个文档任务完成，并将线程池异常转换为文档失败结果。
+     *
+     * @param tasks 文档任务批次
+     * @return 已完成文档处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private Optional<DocumentProcessingResult> awaitCompletedDocumentResult(DocumentProcessingTaskBatch tasks) {
+        Future<DocumentProcessingResult> completedFuture = null;
+        try {
+            completedFuture = tasks.completionService().take();
+            DocumentProcessingResult result = completedFuture.get();
+            tasks.removeDocumentOf(completedFuture);
+            return Optional.of(result);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("[OCR处理] 等待文档处理被中断", ex);
+            throw new IllegalStateException("document processing interrupted", ex);
+        } catch (ExecutionException ex) {
+            LOGGER.warn("[OCR处理] 文档线程执行异常 error={}", ex.getMessage(), ex);
+            return Optional.of(failDocumentAfterExecutionException(tasks, completedFuture, ex));
+        }
+    }
+
+    /**
+     * 将 Future 执行异常转换为文档失败结果。
+     *
+     * @param tasks 文档任务批次
+     * @param completedFuture 已完成 Future
+     * @param ex Future 执行异常
+     * @return 文档失败结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private DocumentProcessingResult failDocumentAfterExecutionException(
+            DocumentProcessingTaskBatch tasks,
+            Future<DocumentProcessingResult> completedFuture,
+            ExecutionException ex
+    ) {
+        DocumentJob document = tasks.removeDocumentOf(completedFuture);
+        return failDocument(document, new IllegalStateException("document processing execution failed", ex));
     }
 
     /**
@@ -461,6 +535,44 @@ public class BatchProcessingUseCase {
             boolean llmMarkdownApplied,
             Optional<String> llmErrorMessage
     ) {
+    }
+
+    /**
+     * 文档线程池任务批次。
+     *
+     * @param completionService 文档完成服务
+     * @param documentsByFuture Future 与文档映射
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private record DocumentProcessingTaskBatch(
+            CompletionService<DocumentProcessingResult> completionService,
+            Map<Future<DocumentProcessingResult>, DocumentJob> documentsByFuture
+    ) {
+
+        /**
+         * 获取提交的文档任务数量。
+         *
+         * @return 文档任务数量
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        private int size() {
+            return documentsByFuture.size();
+        }
+
+        /**
+         * 移除并获取指定 Future 对应文档。
+         *
+         * @param completedFuture 已完成 Future
+         * @return Future 对应文档
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        private DocumentJob removeDocumentOf(Future<DocumentProcessingResult> completedFuture) {
+            return Optional.ofNullable(documentsByFuture.remove(completedFuture))
+                    .orElseThrow(() -> new IllegalStateException("document task not found"));
+        }
     }
 
     /**

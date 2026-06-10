@@ -35,6 +35,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -47,15 +53,17 @@ class BatchProcessingUseCaseTest {
 
     private static final int TEST_DOCUMENT_CAPACITY = 4;
     private static final int TEST_EVENT_CAPACITY = 8;
+    private static final int CONCURRENT_TEST_DOCUMENTS = 2;
+    private static final int CONCURRENT_TEST_TIMEOUT_SECONDS = 2;
 
     /**
-     * 每个文档完成后应立即持久化，避免长批次中途状态不可见。
+     * 每个文档完成后应持久化，避免长批次结束后才统一可见。
      *
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
     @Test
-    void processBatchPersistsEachDocumentBeforeProcessingNextOne() {
+    void processBatchPersistsEachCompletedDocument() {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
         documentRepository.saveAll(List.of(document("doc-1", 0), document("doc-2", 1)));
         RecordingDocumentTextExtractor extractor = new RecordingDocumentTextExtractor(documentRepository);
@@ -63,9 +71,69 @@ class BatchProcessingUseCaseTest {
 
         useCase.processBatch("batch-test");
 
-        assertThat(extractor.secondDocumentSawFirstCompleted).isTrue();
         assertThat(documentRepository.findById("doc-1")).get().extracting(DocumentJob::status)
                 .isEqualTo(DocumentStatus.COMPLETED);
+        assertThat(documentRepository.findById("doc-2")).get().extracting(DocumentJob::status)
+                .isEqualTo(DocumentStatus.COMPLETED);
+    }
+
+    /**
+     * 批次内多个文档应先并发进入提取器，避免第一个文档阻塞时其它 OCR 节点空转。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void processBatchStartsMultipleDocumentsBeforeWaitingForFirstCompletion() throws Exception {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        documentRepository.saveAll(List.of(document("doc-1", 0), document("doc-2", 1)));
+        BlockingDocumentTextExtractor extractor = new BlockingDocumentTextExtractor();
+        ExecutorService documentExecutor = Executors.newFixedThreadPool(CONCURRENT_TEST_DOCUMENTS);
+        BatchProcessingUseCase useCase = useCase(documentRepository, extractor, documentExecutor);
+        ExecutorService batchCaller = Executors.newSingleThreadExecutor();
+
+        try {
+            batchCaller.submit(() -> useCase.processBatch("batch-test"));
+
+            assertThat(extractor.awaitBothEntered()).isTrue();
+            extractor.release();
+        } finally {
+            extractor.release();
+            shutdownExecutor(batchCaller);
+            shutdownExecutor(documentExecutor);
+        }
+    }
+
+    /**
+     * 快文档完成后应先持久化，不能被同批次内慢文档阻塞。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void processBatchPersistsFastDocumentBeforeSlowDocumentCompletes() throws Exception {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        documentRepository.saveAll(List.of(document("doc-slow", 0), document("doc-fast", 1)));
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        SlowFirstDocumentTextExtractor extractor = new SlowFirstDocumentTextExtractor();
+        ExecutorService documentExecutor = Executors.newFixedThreadPool(CONCURRENT_TEST_DOCUMENTS);
+        BatchProcessingUseCase useCase = useCase(new UseCaseTestConfig(documentRepository, resultRepository,
+                new InMemoryOcrEventRepository(), new InMemoryBatchRepository(), extractor,
+                MarkdownPostProcessor.noop(), documentExecutor));
+        ExecutorService batchCaller = Executors.newSingleThreadExecutor();
+
+        try {
+            batchCaller.submit(() -> useCase.processBatch("batch-test"));
+
+            assertThat(extractor.awaitFastCompleted()).isTrue();
+            assertThat(resultRepository.awaitResult("doc-fast")).isTrue();
+            assertThat(resultRepository.findByDocumentId("doc-slow")).isEmpty();
+            extractor.releaseSlow();
+        } finally {
+            extractor.releaseSlow();
+            shutdownExecutor(batchCaller);
+            shutdownExecutor(documentExecutor);
+        }
     }
 
     /**
@@ -304,7 +372,26 @@ class BatchProcessingUseCaseTest {
             InMemoryDocumentJobRepository documentRepository,
             DocumentTextExtractor extractor
     ) {
-        return useCase(documentRepository, new InMemoryOcrEventRepository(), new InMemoryBatchRepository(), extractor);
+        return useCase(documentRepository, extractor, new InlineExecutorService());
+    }
+
+    /**
+     * 创建批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param extractor 文本提取器
+     * @param documentExecutor 文档处理线程池
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            DocumentTextExtractor extractor,
+            ExecutorService documentExecutor
+    ) {
+        return useCase(documentRepository, new InMemoryOcrEventRepository(), new InMemoryBatchRepository(), extractor,
+                documentExecutor);
     }
 
     /**
@@ -324,8 +411,30 @@ class BatchProcessingUseCaseTest {
             InMemoryBatchRepository batchRepository,
             DocumentTextExtractor extractor
     ) {
-        return useCase(documentRepository, new InMemoryOcrResultRepository(), eventRepository, batchRepository,
-                extractor, MarkdownPostProcessor.noop());
+        return useCase(documentRepository, eventRepository, batchRepository, extractor, new InlineExecutorService());
+    }
+
+    /**
+     * 创建批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @param documentExecutor 文档处理线程池
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor,
+            ExecutorService documentExecutor
+    ) {
+        return useCase(new UseCaseTestConfig(documentRepository, new InMemoryOcrResultRepository(), eventRepository,
+                batchRepository, extractor, MarkdownPostProcessor.noop(), documentExecutor));
     }
 
     /**
@@ -349,11 +458,35 @@ class BatchProcessingUseCaseTest {
             DocumentTextExtractor extractor,
             MarkdownPostProcessor markdownPostProcessor
     ) {
-        BatchProcessingDependencies dependencies = new BatchProcessingDependencies(documentRepository,
-                resultRepository, eventRepository, batchRepository, new DefaultAdapterRegistry(
-                List.of(new StubAdapter())), new InMemoryObjectStorage(), extractor, new IdGenerator(),
-                new OcrEventFactory(new IdGenerator()), markdownPostProcessor);
+        return useCase(new UseCaseTestConfig(documentRepository, resultRepository, eventRepository, batchRepository,
+                extractor, markdownPostProcessor, new InlineExecutorService()));
+    }
+
+    /**
+     * 创建批次处理用例。
+     *
+     * @param config 测试用例配置
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchProcessingUseCase useCase(UseCaseTestConfig config) {
+        BatchProcessingDependencies dependencies = new BatchProcessingDependencies(config.documentRepository(),
+                config.resultRepository(), config.eventRepository(), config.batchRepository(), new DefaultAdapterRegistry(
+                List.of(new StubAdapter())), new InMemoryObjectStorage(), config.extractor(), new IdGenerator(),
+                new OcrEventFactory(new IdGenerator()), config.markdownPostProcessor(), config.documentExecutor());
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
+    }
+
+    /**
+     * 关闭测试线程池。
+     *
+     * @param executor 待关闭线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void shutdownExecutor(ExecutorService executor) {
+        executor.shutdownNow();
     }
 
     /**
@@ -401,7 +534,31 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
-     * 记录第二个文档处理时第一个文档状态的提取器。
+     * 批次处理用例测试配置。
+     *
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @param markdownPostProcessor Markdown 后处理器
+     * @param documentExecutor 文档处理线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private record UseCaseTestConfig(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrResultRepository resultRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor,
+            MarkdownPostProcessor markdownPostProcessor,
+            ExecutorService documentExecutor
+    ) {
+    }
+
+    /**
+     * 记录进度实时可见性的提取器。
      *
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -409,7 +566,6 @@ class BatchProcessingUseCaseTest {
     private static class RecordingDocumentTextExtractor implements DocumentTextExtractor {
 
         private final DocumentJobRepository documentRepository;
-        private boolean secondDocumentSawFirstCompleted;
         private boolean stageWasVisibleDuringExtraction;
         private boolean currentPageWasVisibleDuringExtraction;
 
@@ -426,11 +582,8 @@ class BatchProcessingUseCaseTest {
 
         @Override
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
-            if ("doc-2".equals(request.document().documentId())) {
-                secondDocumentSawFirstCompleted = documentRepository.findById("doc-1")
-                        .filter(document -> document.status() == DocumentStatus.COMPLETED)
-                        .isPresent();
-            } else {
+            if ("doc-1".equals(request.document().documentId())) {
+                // 观测文档主动上报进度，用于验证进度落库实时可见。
                 request.progressReporter().report(ProcessingStage.OCR_IMAGES, 2, 5);
                 stageWasVisibleDuringExtraction = documentRepository.findById("doc-1")
                         .filter(document -> document.stage() == ProcessingStage.OCR_IMAGES)
@@ -439,6 +592,8 @@ class BatchProcessingUseCaseTest {
                         .filter(document -> document.currentPage() == 2)
                         .filter(document -> document.totalPages() == 5)
                         .isPresent();
+            } else {
+                // 非观测文档只返回文本，避免把并发语义锁回文档串行。
             }
             return DocumentTextExtractionResult.plainText(request.document().documentId(),
                     request.document().fileName(), "text-" + request.document().documentId());
@@ -457,6 +612,125 @@ class BatchProcessingUseCaseTest {
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
             request.progressReporter().report(ProcessingStage.OCR_IMAGES, 2, 5);
             throw new IllegalStateException("ocr failed");
+        }
+    }
+
+    /**
+     * 阻塞型文本提取器，用于验证批次是否能同时启动多个文档。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private static class BlockingDocumentTextExtractor implements DocumentTextExtractor {
+
+        private final CountDownLatch entered = new CountDownLatch(CONCURRENT_TEST_DOCUMENTS);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        /**
+         * 等待两个文档都进入提取器。
+         *
+         * @return 两个文档是否都进入提取器
+         * @throws InterruptedException 等待被中断时抛出
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        boolean awaitBothEntered() throws InterruptedException {
+            return entered.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }
+
+        /**
+         * 释放阻塞中的文档提取。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        void release() {
+            release.countDown();
+        }
+
+        @Override
+        public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+            entered.countDown();
+            awaitRelease();
+            return DocumentTextExtractionResult.plainText(request.document().documentId(),
+                    request.document().fileName(), "text-" + request.document().documentId());
+        }
+
+        /**
+         * 等待测试释放提取流程。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        private void awaitRelease() {
+            try {
+                release.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("blocking extractor interrupted", ex);
+            }
+        }
+    }
+
+    /**
+     * 首个文档阻塞、第二个文档快速完成的提取器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private static class SlowFirstDocumentTextExtractor implements DocumentTextExtractor {
+
+        private final CountDownLatch releaseSlow = new CountDownLatch(1);
+        private final CountDownLatch fastCompleted = new CountDownLatch(1);
+
+        /**
+         * 等待快文档完成提取。
+         *
+         * @return 快文档是否完成提取
+         * @throws InterruptedException 等待被中断时抛出
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        boolean awaitFastCompleted() throws InterruptedException {
+            return fastCompleted.await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }
+
+        /**
+         * 释放慢文档提取。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        void releaseSlow() {
+            releaseSlow.countDown();
+        }
+
+        @Override
+        public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
+            if ("doc-slow".equals(request.document().documentId())) {
+                // 慢文档阻塞时，快文档仍应能完成并先落库。
+                awaitSlowRelease();
+            } else {
+                // 快文档完成信号用于测试观察持久化是否被慢文档阻塞。
+                fastCompleted.countDown();
+            }
+            return DocumentTextExtractionResult.plainText(request.document().documentId(),
+                    request.document().fileName(), "text-" + request.document().documentId());
+        }
+
+        /**
+         * 等待慢文档释放。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        private void awaitSlowRelease() {
+            try {
+                releaseSlow.await();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("slow extractor interrupted", ex);
+            }
         }
     }
 
@@ -644,7 +918,7 @@ class BatchProcessingUseCaseTest {
      */
     private static class InMemoryDocumentJobRepository implements DocumentJobRepository {
 
-        private final Map<String, DocumentJob> documents = new HashMap<>(TEST_DOCUMENT_CAPACITY);
+        private final Map<String, DocumentJob> documents = new ConcurrentHashMap<>(TEST_DOCUMENT_CAPACITY);
 
         @Override
         public void save(DocumentJob document) {
@@ -698,11 +972,13 @@ class BatchProcessingUseCaseTest {
      */
     private static class InMemoryOcrResultRepository implements OcrResultRepository {
 
-        private final Map<String, OcrResult> results = new HashMap<>(TEST_DOCUMENT_CAPACITY);
+        private final Map<String, OcrResult> results = new ConcurrentHashMap<>(TEST_DOCUMENT_CAPACITY);
+        private final Map<String, CountDownLatch> resultSignals = new ConcurrentHashMap<>(TEST_DOCUMENT_CAPACITY);
 
         @Override
         public void save(OcrResult result) {
             results.put(result.documentId(), result);
+            signalResult(result.documentId());
         }
 
         @Override
@@ -713,6 +989,37 @@ class BatchProcessingUseCaseTest {
         @Override
         public Optional<OcrResult> findByDocumentId(String documentId) {
             return Optional.ofNullable(results.get(documentId));
+        }
+
+        /**
+         * 等待指定文档结果落库。
+         *
+         * @param documentId 文档 ID
+         * @return 结果是否已落库
+         * @throws InterruptedException 等待被中断时抛出
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        boolean awaitResult(String documentId) throws InterruptedException {
+            if (results.containsKey(documentId)) {
+                // 结果已存在时直接返回，避免错过先于等待注册发生的保存信号。
+                return true;
+            } else {
+                // 结果尚未保存时注册等待信号，观察完成顺序持久化行为。
+                return resultSignals.computeIfAbsent(documentId, ignored -> new CountDownLatch(1))
+                        .await(CONCURRENT_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            }
+        }
+
+        /**
+         * 通知指定文档结果已落库。
+         *
+         * @param documentId 文档 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        private void signalResult(String documentId) {
+            resultSignals.computeIfAbsent(documentId, ignored -> new CountDownLatch(1)).countDown();
         }
     }
 
@@ -838,6 +1145,48 @@ class BatchProcessingUseCaseTest {
         @Override
         public void requiredVoid(Runnable action) {
             action.run();
+        }
+    }
+
+    /**
+     * 直接执行任务的测试线程池，避免普通用例泄漏后台线程。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private static class InlineExecutorService extends AbstractExecutorService {
+
+        private boolean shutdown;
+
+        @Override
+        public void shutdown() {
+            shutdown = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdown = true;
+            return List.of();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return shutdown;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            command.run();
         }
     }
 }

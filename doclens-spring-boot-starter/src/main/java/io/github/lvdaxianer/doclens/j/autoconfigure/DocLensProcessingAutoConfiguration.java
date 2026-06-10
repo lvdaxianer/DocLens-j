@@ -91,17 +91,21 @@ public class DocLensProcessingAutoConfiguration {
      * 创建批次处理用例的依赖持有对象。
      *
      * @param dependencies 自动配置依赖
+     * @param documentProcessingExecutor 文档处理线程池
      * @return 依赖持有对象
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-11
      */
     @Bean
     @ConditionalOnMissingBean
-    BatchProcessingDependencies batchProcessingDependencies(BatchProcessingBeanDependencies dependencies) {
+    BatchProcessingDependencies batchProcessingDependencies(
+            BatchProcessingBeanDependencies dependencies,
+            @Qualifier("doclensDocumentProcessingExecutor") ExecutorService documentProcessingExecutor
+    ) {
         return new BatchProcessingDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
-                dependencies.eventFactory(), dependencies.markdownPostProcessor());
+                dependencies.eventFactory(), dependencies.markdownPostProcessor(), documentProcessingExecutor);
     }
 
     /**

@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
+import java.util.concurrent.ExecutorService;
 
 /**
  * 批次处理用例的依赖持有对象。
@@ -23,6 +24,7 @@ import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
  * @param idGenerator ID 生成器
  * @param eventFactory OCR 事件工厂
  * @param markdownPostProcessor Markdown 后处理器
+ * @param documentProcessingExecutor 文档处理线程池
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -36,6 +38,7 @@ public record BatchProcessingDependencies(
         DocumentTextExtractor documentTextExtractor,
         IdGenerator idGenerator,
         OcrEventFactory eventFactory,
-        MarkdownPostProcessor markdownPostProcessor
+        MarkdownPostProcessor markdownPostProcessor,
+        ExecutorService documentProcessingExecutor
 ) {
 }

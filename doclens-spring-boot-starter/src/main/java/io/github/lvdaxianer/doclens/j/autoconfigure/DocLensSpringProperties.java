@@ -44,6 +44,7 @@ public record DocLensSpringProperties(
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
     private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
     private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
+    private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 4;
     private static final int DEFAULT_NODE_WEIGHT = 50;
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
@@ -299,7 +300,8 @@ public record DocLensSpringProperties(
          */
         public static ThreadPoolsProperties defaults() {
             return new ThreadPoolsProperties(
-                    new ThreadPoolProperties(1, 1, 1000, 60, "doclens-document-processing-"),
+                    new ThreadPoolProperties(DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY,
+                            DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY, 1000, 60, "doclens-document-processing-"),
                     new ThreadPoolProperties(2, 4, 100, 60, "doclens-ocr-request-"),
                     new ThreadPoolProperties(1, 2, 100, 60, "doclens-ocr-health-"),
                     new ThreadPoolProperties(1, 2, 100, 60, "doclens-callback-")
