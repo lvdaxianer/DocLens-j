@@ -394,7 +394,7 @@ GREEN evidence:
 `mvn -pl doclens-core -am -Dtest=DocumentPageTaskPreparationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
 passed with 1 test.
 
-- [ ] **Step 4: Change batch entrypoint to enqueue work instead of OCR whole documents**
+- [x] **Step 4: Change batch entrypoint to enqueue work instead of OCR whole documents**
 
 ```java
 public void processBatch(String batchId) {
@@ -403,11 +403,37 @@ public void processBatch(String batchId) {
 }
 ```
 
-- [ ] **Step 5: Run focused preparation tests**
+Implemented:
+- `BatchProcessingUseCase` now enqueues `IMAGE`, `PDF`, and `WORD` documents through
+  `DocumentPageTaskPreparationService`, marks documents as `PROCESSING + OCR_QUEUED`,
+  and leaves `TEXT` / `MARKDOWN` on the existing synchronous text path.
+- Added `DefaultPageImagePreparation` and Spring beans so image documents reuse their
+  original storage URI, while PDF / Word documents are rendered into page images.
+- Registered `DocumentPageTaskMapper` and `MybatisPlusDocumentPageTaskRepository` in
+  the embedded starter auto-configuration so the page-task preparation bean starts.
+
+RED evidence:
+`mvn -pl doclens-spring-boot-starter -am -Dtest=DefaultPageImagePreparationTest -Dsurefire.failIfNoSpecifiedTests=false test`
+failed because image preparation read object storage before returning the original
+image URI.
+
+GREEN evidence:
+`mvn -pl doclens-spring-boot-starter -am -Dtest=DefaultPageImagePreparationTest -Dsurefire.failIfNoSpecifiedTests=false test`
+passed with 1 test after image preparation skipped storage reads.
+
+- [x] **Step 5: Run focused preparation tests**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskPreparationServiceTest test`
 
 Expected: PASS.
+
+Focused verification:
+`mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=BatchProcessingUseCaseTest,DefaultPageImagePreparationTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
+passed with the relevant core and starter tests.
+
+Broader verification:
+`mvn -pl doclens-core,doclens-spring-boot-starter -am test`
+passed with core 81 tests and starter 78 tests.
 
 - [ ] **Step 6: Commit**
 

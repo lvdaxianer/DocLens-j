@@ -16,6 +16,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.extraction.Document
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -106,6 +107,31 @@ class BatchProcessingUseCaseTest {
         useCase.processBatch("batch-test");
 
         assertThat(extractor.processedDocumentIds).containsExactly("doc-queued");
+    }
+
+    /**
+     * 图片类文档应只入页任务队列，不在批次入口同步执行 OCR。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void processBatchQueuesImageDocumentPagesWithoutSynchronousOcr() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryDocumentPageTaskRepository pageTaskRepository = new InMemoryDocumentPageTaskRepository();
+        FailingDocumentTextExtractor extractor = new FailingDocumentTextExtractor();
+        documentRepository.save(document("doc-image", 0, DocumentType.IMAGE));
+        BatchProcessingUseCase useCase = useCase(documentRepository, pageTaskRepository, extractor);
+
+        useCase.processBatch("batch-test");
+
+        assertThat(pageTaskRepository.listByDocumentId("doc-image"))
+                .extracting(DocumentPageTask::pageNo)
+                .containsExactly(1);
+        assertThat(documentRepository.findById("doc-image")).get().satisfies(document -> {
+            assertThat(document.status()).isEqualTo(DocumentStatus.PROCESSING);
+            assertThat(document.stage()).isEqualTo(ProcessingStage.OCR_QUEUED);
+        });
     }
 
     /**
@@ -308,6 +334,27 @@ class BatchProcessingUseCaseTest {
     }
 
     /**
+     * 创建带页任务仓储的批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param pageTaskRepository 页任务仓储
+     * @param extractor 文本提取器
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryDocumentPageTaskRepository pageTaskRepository,
+            DocumentTextExtractor extractor
+    ) {
+        BatchProcessingDependencies dependencies = dependencies(new TestBatchProcessingDependencies(documentRepository,
+                new InMemoryOcrResultRepository(), new InMemoryOcrEventRepository(), new InMemoryBatchRepository(),
+                extractor, MarkdownPostProcessor.noop(), pageTaskRepository));
+        return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
+    }
+
+    /**
      * 创建批次处理用例。
      *
      * @param documentRepository 文档仓储
@@ -349,11 +396,31 @@ class BatchProcessingUseCaseTest {
             DocumentTextExtractor extractor,
             MarkdownPostProcessor markdownPostProcessor
     ) {
-        BatchProcessingDependencies dependencies = new BatchProcessingDependencies(documentRepository,
-                resultRepository, eventRepository, batchRepository, new DefaultAdapterRegistry(
-                List.of(new StubAdapter())), new InMemoryObjectStorage(), extractor, new IdGenerator(),
-                new OcrEventFactory(new IdGenerator()), markdownPostProcessor);
+        BatchProcessingDependencies dependencies = dependencies(new TestBatchProcessingDependencies(documentRepository,
+                resultRepository, eventRepository, batchRepository, extractor, markdownPostProcessor,
+                new InMemoryDocumentPageTaskRepository()));
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
+    }
+
+    /**
+     * 创建批次处理依赖。
+     *
+     * @param dependencies 测试依赖
+     * @return 批次处理依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private BatchProcessingDependencies dependencies(TestBatchProcessingDependencies dependencies) {
+        PageImagePreparation pageImagePreparation = document -> List.of(new PageImageRef(1, document.storageUri()));
+        DocumentPageTaskPreparationService preparationService = new DocumentPageTaskPreparationService(
+                dependencies.documentRepository(), dependencies.pageTaskRepository(), pageImagePreparation,
+                new IdGenerator());
+        return new BatchProcessingDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
+                dependencies.eventRepository(), dependencies.batchRepository(),
+                new DefaultAdapterRegistry(List.of(new StubAdapter())), new InMemoryObjectStorage(),
+                dependencies.extractor(), new IdGenerator(), new OcrEventFactory(new IdGenerator()),
+                dependencies.markdownPostProcessor(),
+                preparationService);
     }
 
     /**
@@ -380,8 +447,37 @@ class BatchProcessingUseCaseTest {
      * @date 2026-06-09
      */
     private DocumentJob document(String documentId, int sortOrder, JsonPayload metadata) {
+        return document(documentId, sortOrder, DocumentType.TEXT, metadata);
+    }
+
+    /**
+     * 创建指定类型的测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param sortOrder 排序
+     * @param fileType 文档类型
+     * @return 文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private DocumentJob document(String documentId, int sortOrder, DocumentType fileType) {
+        return document(documentId, sortOrder, fileType, JsonPayload.empty());
+    }
+
+    /**
+     * 创建指定类型和元数据的测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param sortOrder 排序
+     * @param fileType 文档类型
+     * @param metadata 文档元数据
+     * @return 文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private DocumentJob document(String documentId, int sortOrder, DocumentType fileType, JsonPayload metadata) {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
-                documentId + ".txt", DocumentType.TEXT, 5, 1, "local://" + documentId, "stub_ocr",
+                documentId + ".txt", fileType, 5, 1, "local://" + documentId, "stub_ocr",
                 Optional.empty(), metadata, sortOrder, OffsetDateTime.now());
         return DocumentJob.create(request);
     }
@@ -398,6 +494,30 @@ class BatchProcessingUseCaseTest {
     private DocumentJob completedDocument(String documentId, int sortOrder) {
         OffsetDateTime now = OffsetDateTime.now();
         return document(documentId, sortOrder).startProcessing(now).complete("result-" + documentId, now.plusSeconds(1));
+    }
+
+    /**
+     * 测试用批次处理依赖。
+     *
+     * @param documentRepository 文档仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @param markdownPostProcessor Markdown 后处理器
+     * @param pageTaskRepository 页任务仓储
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private record TestBatchProcessingDependencies(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrResultRepository resultRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor,
+            MarkdownPostProcessor markdownPostProcessor,
+            InMemoryDocumentPageTaskRepository pageTaskRepository
+    ) {
     }
 
     /**

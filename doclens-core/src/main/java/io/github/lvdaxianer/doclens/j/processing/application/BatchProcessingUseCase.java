@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.EventCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
@@ -66,6 +67,7 @@ public class BatchProcessingUseCase {
     private final IdGenerator idGenerator;
     private final OcrEventFactory eventFactory;
     private final MarkdownPostProcessor markdownPostProcessor;
+    private final DocumentPageTaskPreparationService pageTaskPreparationService;
     private final TransactionRunner transactionRunner;
 
     /**
@@ -87,6 +89,7 @@ public class BatchProcessingUseCase {
         this.idGenerator = dependencies.idGenerator();
         this.eventFactory = dependencies.eventFactory();
         this.markdownPostProcessor = dependencies.markdownPostProcessor();
+        this.pageTaskPreparationService = dependencies.pageTaskPreparationService();
         this.transactionRunner = transactionRunner;
     }
 
@@ -117,12 +120,47 @@ public class BatchProcessingUseCase {
      */
     private DocumentProcessingResult processDocument(DocumentJob document, Optional<Batch> batch) {
         try {
+            if (requiresPageOcrQueue(document)) {
+                return queueDocumentPages(document);
+            }
+            // 文本类文档不需要 OCR 节点，继续沿用同步直通链路。
             DocumentJob started = startDocument(document);
             return completeDocument(started, batch);
         } catch (RuntimeException ex) {
             LOGGER.warn("[OCR处理] 文档处理失败 documentId={}, error={}", document.documentId(), ex.getMessage(), ex);
             return failDocument(document, ex);
         }
+    }
+
+    /**
+     * 判断文档是否需要进入页级 OCR 队列。
+     *
+     * @param document 文档任务
+     * @return 是否需要页级 OCR 队列
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean requiresPageOcrQueue(DocumentJob document) {
+        return document.fileType() == DocumentType.IMAGE
+                || document.fileType() == DocumentType.PDF
+                || document.fileType() == DocumentType.WORD;
+    }
+
+    /**
+     * 准备文档页任务并等待 OCR worker 执行。
+     *
+     * @param document 文档任务
+     * @return 文档入队结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private DocumentProcessingResult queueDocumentPages(DocumentJob document) {
+        PreparedDocumentPages prepared = pageTaskPreparationService.prepare(document);
+        DocumentJob queued = latestDocument(document);
+        OcrEvent event = event(new DocumentEventPlan(queued, DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
+                pageProgress(queued), Map.of("stage", ProcessingStage.OCR_QUEUED.name().toLowerCase(),
+                PAGE_COUNT_FIELD, prepared.pageImages().size())));
+        return new DocumentProcessingResult(queued, Optional.empty(), List.of(event));
     }
 
     /**
