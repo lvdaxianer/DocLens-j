@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
@@ -43,8 +42,7 @@ public class MarkdownPostProcessorFactory {
      * @date 2026-06-10
      */
     public MarkdownPostProcessor create(LlmMarkdownConfig config) {
-        URI endpoint = LlmMarkdownConfigService.normalizeEndpoint(URI.create(config.url()), config.apiType());
-        return create(config.apiType(), endpoint, config.model(), config.credentialValue());
+        return create(config.apiType(), URI.create(config.url()), config.model(), config.credentialValue());
     }
 
     /**

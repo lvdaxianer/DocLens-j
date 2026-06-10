@@ -250,41 +250,40 @@ class LlmMarkdownConfigApiContractTest {
     }
 
     /**
-     * DashScope 基础兼容地址应自动补全 chat completions 路径。
+     * OpenAI compatible URL 应按用户输入原样保存。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
     @Test
-    void updateConfigCompletesDashScopeCompatibleBaseUrl() throws Exception {
+    void updateConfigKeepsOpenAiCompatibleUrlUnchanged() throws Exception {
         mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson("https://dashscope.aliyuncs.com/compatible-mode/v1",
                                 "qwen-vl-ocr-2025-11-20", "sk-dashscope-secret")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.url")
-                        .value("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
+                .andExpect(jsonPath("$.url").value("https://dashscope.aliyuncs.com/compatible-mode/v1"))
                 .andExpect(jsonPath("$.model").value("qwen-vl-ocr-2025-11-20"))
                 .andExpect(jsonPath("$.credential_configured").value(true));
     }
 
     /**
-     * Anthropic 基础地址应自动补全 messages 路径并返回协议类型。
+     * Anthropic URL 应按用户输入原样保存并返回协议类型。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-11
      */
     @Test
-    void updateConfigCompletesAnthropicBaseUrl() throws Exception {
+    void updateConfigKeepsAnthropicUrlUnchanged() throws Exception {
         mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson("anthropic", "https://api.minimaxi.com/anthropic",
                                 "MiniMax-M3", "sk-minimax-secret")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.api_type").value("anthropic"))
-                .andExpect(jsonPath("$.url").value("https://api.minimaxi.com/anthropic/v1/messages"))
+                .andExpect(jsonPath("$.url").value("https://api.minimaxi.com/anthropic"))
                 .andExpect(jsonPath("$.model").value("MiniMax-M3"))
                 .andExpect(jsonPath("$.credential_configured").value(true));
     }

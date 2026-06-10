@@ -41,13 +41,6 @@ onMounted(llmConfig.loadConfig)
 
     <NAlert v-if="llmConfig.errorMessage.value" class="llm-config-panel__alert" type="error" :title="llmConfig.errorMessage.value" />
     <NAlert
-      class="llm-config-panel__alert"
-      type="info"
-      :title="llmConfig.capabilityHints.value.protocolHint"
-    >
-      推荐 endpoint：{{ llmConfig.capabilityHints.value.endpointExample }}
-    </NAlert>
-    <NAlert
       v-if="llmConfig.isConfigured.value && !llmConfig.form.healthy"
       class="llm-config-panel__alert"
       type="error"
@@ -61,7 +54,7 @@ onMounted(llmConfig.loadConfig)
         <NSelect v-model:value="llmConfig.form.apiType" :options="apiTypeOptions" />
       </NFormItem>
       <NFormItem label="URL">
-        <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.endpointExample" />
+        <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.urlPlaceholder" />
       </NFormItem>
       <NFormItem label="模型名称">
         <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />

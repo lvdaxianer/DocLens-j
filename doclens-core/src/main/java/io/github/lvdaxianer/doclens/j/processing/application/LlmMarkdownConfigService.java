@@ -17,13 +17,6 @@ public class LlmMarkdownConfigService {
 
     private static final String SCHEME_HTTP = "http";
     private static final String SCHEME_HTTPS = "https";
-    private static final String DASHSCOPE_HOST = "dashscope.aliyuncs.com";
-    private static final String DASHSCOPE_COMPATIBLE_BASE_PATH = "/compatible-mode/v1";
-    private static final String DASHSCOPE_CHAT_COMPLETIONS_PATH = "/compatible-mode/v1/chat/completions";
-    private static final String OPENAI_V1_BASE_PATH = "/v1";
-    private static final String OPENAI_CHAT_COMPLETIONS_PATH = "/v1/chat/completions";
-    private static final String ANTHROPIC_BASE_PATH = "/anthropic";
-    private static final String ANTHROPIC_MESSAGES_PATH = "/anthropic/v1/messages";
 
     private final LlmMarkdownConfigRepository repository;
 
@@ -89,7 +82,7 @@ public class LlmMarkdownConfigService {
      */
     public LlmMarkdownConfigSettings normalizeSettings(LlmMarkdownConfigSettings settings) {
         LlmMarkdownApiType apiType = LlmMarkdownApiType.from(settings.apiType());
-        return new LlmMarkdownConfigSettings(apiType.value(), validUrl(settings.url(), apiType),
+        return new LlmMarkdownConfigSettings(apiType.value(), validUrl(settings.url()),
                 required(settings.model(), "llm markdown model is required"), normalize(settings.apiKey()));
     }
 
@@ -116,168 +109,17 @@ public class LlmMarkdownConfigService {
      * 校验 LLM Markdown URL。
      *
      * @param value 原始 URL
-     * @return 标准化 URL
+     * @return 规整后的完整 URL
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private String validUrl(String value, LlmMarkdownApiType apiType) {
+    private String validUrl(String value) {
         String url = required(value, "llm markdown url is required");
         URI uri = parseUrl(url);
         if (hasHttpScheme(uri) && hasHost(uri)) {
-            return normalizeEndpoint(uri, apiType).toString();
+            return uri.toString();
         } else {
             throw new IllegalArgumentException("llm markdown url must be http or https URL");
-        }
-    }
-
-    /**
-     * 根据协议类型规整 endpoint。
-     *
-     * @param uri 原始 URI
-     * @param apiType API 协议类型
-     * @return 规整后的 URI
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    public static URI normalizeEndpoint(URI uri, LlmMarkdownApiType apiType) {
-        if (apiType == LlmMarkdownApiType.ANTHROPIC) {
-            return normalizeAnthropicEndpoint(uri);
-        } else {
-            return normalizeOpenAiEndpoint(uri);
-        }
-    }
-
-    /**
-     * 规整兼容模式 endpoint，避免仅填写 DashScope 基础路径时运行时请求失败。
-     *
-     * @param uri 原始 URI
-     * @return 规整后的 URI
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    public static URI normalizeCompatibleEndpoint(URI uri) {
-        return normalizeOpenAiEndpoint(uri);
-    }
-
-    /**
-     * 规整 OpenAI compatible endpoint。
-     *
-     * @param uri 原始 URI
-     * @return 规整后的 URI
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    public static URI normalizeOpenAiEndpoint(URI uri) {
-        if (isDashScopeCompatibleBaseUri(uri)) {
-            return URI.create(buildDashScopeChatCompletionsUrl(uri));
-        } else if (OPENAI_V1_BASE_PATH.equals(trimTrailingSlash(uri.getPath()))) {
-            return URI.create(buildUrl(uri, OPENAI_CHAT_COMPLETIONS_PATH));
-        } else {
-            return uri;
-        }
-    }
-
-    /**
-     * 规整 Anthropic messages endpoint。
-     *
-     * @param uri 原始 URI
-     * @return 规整后的 URI
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    public static URI normalizeAnthropicEndpoint(URI uri) {
-        if (ANTHROPIC_BASE_PATH.equals(trimTrailingSlash(uri.getPath()))) {
-            return URI.create(buildUrl(uri, ANTHROPIC_MESSAGES_PATH));
-        } else {
-            return uri;
-        }
-    }
-
-    /**
-     * 判断是否为 DashScope 兼容模式基础地址。
-     *
-     * @param uri 原始 URI
-     * @return 是否需要补全 chat completions 路径
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static boolean isDashScopeCompatibleBaseUri(URI uri) {
-        String host = uri.getHost();
-        String path = uri.getPath();
-        return host != null
-                && DASHSCOPE_HOST.equalsIgnoreCase(host)
-                && DASHSCOPE_COMPATIBLE_BASE_PATH.equals(trimTrailingSlash(path));
-    }
-
-    /**
-     * 组装 DashScope chat completions endpoint。
-     *
-     * @param uri 原始 URI
-     * @return 完整 endpoint 字符串
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static String buildDashScopeChatCompletionsUrl(URI uri) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(uri.getScheme()).append("://").append(uri.getAuthority()).append(DASHSCOPE_CHAT_COMPLETIONS_PATH);
-        appendQueryAndFragment(uri, builder);
-        return builder.toString();
-    }
-
-    /**
-     * 组装替换路径后的 URL。
-     *
-     * @param uri 原始 URI
-     * @param path 目标路径
-     * @return 完整 URL
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private static String buildUrl(URI uri, String path) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(uri.getScheme()).append("://").append(uri.getAuthority()).append(path);
-        appendQueryAndFragment(uri, builder);
-        return builder.toString();
-    }
-
-    /**
-     * 追加查询参数和片段。
-     *
-     * @param uri 原始 URI
-     * @param builder URL 构造器
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private static void appendQueryAndFragment(URI uri, StringBuilder builder) {
-        if (uri.getQuery() != null && !uri.getQuery().isBlank()) {
-            // 保留调用方显式传入的查询参数。
-            builder.append("?").append(uri.getQuery());
-        } else {
-            // 无查询参数时保持最小 endpoint。
-        }
-        if (uri.getFragment() != null && !uri.getFragment().isBlank()) {
-            // 保留片段信息，避免意外丢失。
-            builder.append("#").append(uri.getFragment());
-        } else {
-            // 无片段时无需追加。
-        }
-    }
-
-    /**
-     * 去除路径末尾斜杠，避免基础路径匹配误差。
-     *
-     * @param path 原始路径
-     * @return 去除末尾斜杠后的路径
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static String trimTrailingSlash(String path) {
-        if (path == null || path.isBlank()) {
-            return "";
-        } else if (path.endsWith("/") && path.length() > 1) {
-            return path.substring(0, path.length() - 1);
-        } else {
-            return path;
         }
     }
 

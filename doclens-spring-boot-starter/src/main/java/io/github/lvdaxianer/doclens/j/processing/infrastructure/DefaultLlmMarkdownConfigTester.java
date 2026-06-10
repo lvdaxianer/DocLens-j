@@ -52,7 +52,7 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
     public LlmMarkdownConfigTestResponse test(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfigSettings normalized = configService.normalizeSettings(settings);
         LlmMarkdownApiType apiType = LlmMarkdownApiType.from(normalized.apiType());
-        URI endpoint = LlmMarkdownConfigService.normalizeEndpoint(URI.create(normalized.url()), apiType);
+        URI endpoint = URI.create(normalized.url());
         MarkdownPostProcessorFactory factory = new MarkdownPostProcessorFactory(objectMapper,
                 Duration.ofSeconds(TEST_TIMEOUT_SECONDS));
         try {

@@ -58,13 +58,13 @@ class DocLensProcessingAutoConfigurationTest {
     }
 
     /**
-     * Spring 配置中的 DashScope 基础兼容地址也应被规整。
+     * Spring 配置中的 LLM URL 应按用户配置原样使用。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
     @Test
-    void createsHttpMarkdownPostProcessorWithNormalizedDashScopeBaseUrl() {
+    void createsHttpMarkdownPostProcessorWithConfiguredUrlUnchanged() {
         DocLensSpringProperties.LlmMarkdownProperties llmMarkdown =
                 new DocLensSpringProperties.LlmMarkdownProperties(
                         "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -77,7 +77,7 @@ class DocLensProcessingAutoConfigurationTest {
 
         assertThat(processor).isInstanceOf(HttpMarkdownPostProcessor.class);
         assertThat(readEndpoint((HttpMarkdownPostProcessor) processor).toString())
-                .isEqualTo("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
+                .isEqualTo("https://dashscope.aliyuncs.com/compatible-mode/v1");
     }
 
     /**

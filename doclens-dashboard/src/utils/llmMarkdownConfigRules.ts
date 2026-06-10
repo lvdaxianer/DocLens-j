@@ -12,17 +12,15 @@ export interface LlmMarkdownConfigFormState {
 }
 
 export interface LlmConfigCapabilityHints {
-  protocolHint: string
-  endpointExample: string
+  urlPlaceholder: string
   canTest: boolean
 }
 
 const HTTP_PROTOCOL = 'http:'
 const HTTPS_PROTOCOL = 'https:'
 const MASKED_SECRET = '***'
-const PROTOCOL_HINT = 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic'
-const OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-const ANTHROPIC_ENDPOINT_EXAMPLE = 'https://api.minimaxi.com/anthropic'
+const OPENAI_COMPATIBLE_URL_PLACEHOLDER = '请输入完整接口地址，例如 https://api.example.com/v1/chat/completions'
+const ANTHROPIC_URL_PLACEHOLDER = '请输入完整接口地址，例如 https://api.example.com/anthropic/v1/messages'
 const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
 
@@ -136,8 +134,7 @@ export function llmConfigCapabilityHints(form: LlmMarkdownConfigFormState): LlmC
   const hasUrl = form.url.trim() !== ''
   const hasModel = form.model.trim() !== ''
   return {
-    protocolHint: PROTOCOL_HINT,
-    endpointExample: form.apiType === 'anthropic' ? ANTHROPIC_ENDPOINT_EXAMPLE : OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE,
+    urlPlaceholder: form.apiType === 'anthropic' ? ANTHROPIC_URL_PLACEHOLDER : OPENAI_COMPATIBLE_URL_PLACEHOLDER,
     canTest: hasUrl && hasModel && isHttpUrl(form.url)
   }
 }

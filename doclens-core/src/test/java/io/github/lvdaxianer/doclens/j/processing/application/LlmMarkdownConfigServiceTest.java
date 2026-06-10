@@ -2,7 +2,6 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.URI;
 import java.util.Optional;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
@@ -41,71 +40,32 @@ class LlmMarkdownConfigServiceTest {
     }
 
     /**
-     * DashScope 兼容模式基础地址应补全到 chat completions。
+     * OpenAI compatible 地址应按用户输入原样保存。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
     @Test
-    void normalizeCompatibleEndpointCompletesDashScopeBasePath() {
-        URI normalized = LlmMarkdownConfigService.normalizeCompatibleEndpoint(
-                URI.create("https://dashscope.aliyuncs.com/compatible-mode/v1"));
+    void saveConfigKeepsOpenAiCompatibleUrlUnchanged() {
+        InMemoryConfigRepository repository = new InMemoryConfigRepository(null);
+        LlmMarkdownConfigService service = new LlmMarkdownConfigService(repository);
 
-        assertThat(normalized).hasToString(
-                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
+        LlmMarkdownConfig saved = service.saveConfig(new LlmMarkdownConfigSettings("openai",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-vl-ocr-2025-11-20",
+                "sk-dashscope"));
+
+        assertThat(saved.apiType()).isEqualTo(LlmMarkdownApiType.OPENAI);
+        assertThat(saved.url()).isEqualTo("https://dashscope.aliyuncs.com/compatible-mode/v1");
     }
 
     /**
-     * 非 DashScope 地址不应被错误补全。
+     * 保存 Anthropic 配置时应保留协议类型和用户输入 URL。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
     @Test
-    void normalizeCompatibleEndpointLeavesOtherHostsUnchanged() {
-        URI original = URI.create("http://127.0.0.1:18080/compatible-mode/v1");
-
-        URI normalized = LlmMarkdownConfigService.normalizeOpenAiEndpoint(original);
-
-        assertThat(normalized).isEqualTo(original);
-    }
-
-    /**
-     * OpenAI URL 截止到 /v1 时应补全 chat completions。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void normalizeOpenAiEndpointCompletesGenericV1BasePath() {
-        URI normalized = LlmMarkdownConfigService.normalizeOpenAiEndpoint(
-                URI.create("https://api.openai-compatible.example/v1"));
-
-        assertThat(normalized).hasToString("https://api.openai-compatible.example/v1/chat/completions");
-    }
-
-    /**
-     * Anthropic URL 截止到 /anthropic 时应补全 messages。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void normalizeAnthropicEndpointCompletesBasePath() {
-        URI normalized = LlmMarkdownConfigService.normalizeAnthropicEndpoint(
-                URI.create("https://api.minimaxi.com/anthropic"));
-
-        assertThat(normalized).hasToString("https://api.minimaxi.com/anthropic/v1/messages");
-    }
-
-    /**
-     * 保存 Anthropic 配置时应保留协议类型并归一化 endpoint。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void saveConfigPersistsAnthropicApiType() {
+    void saveConfigKeepsAnthropicUrlUnchanged() {
         InMemoryConfigRepository repository = new InMemoryConfigRepository(null);
         LlmMarkdownConfigService service = new LlmMarkdownConfigService(repository);
 
@@ -113,7 +73,7 @@ class LlmMarkdownConfigServiceTest {
                 "https://api.minimaxi.com/anthropic", "MiniMax-M3", "sk-minimax"));
 
         assertThat(saved.apiType()).isEqualTo(LlmMarkdownApiType.ANTHROPIC);
-        assertThat(saved.url()).isEqualTo("https://api.minimaxi.com/anthropic/v1/messages");
+        assertThat(saved.url()).isEqualTo("https://api.minimaxi.com/anthropic");
         assertThat(saved.model()).isEqualTo("MiniMax-M3");
         assertThat(saved.credentialConfigured()).isTrue();
     }

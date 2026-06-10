@@ -86,6 +86,18 @@ test('llm markdown config requires url and model together with http url', () => 
   assert.equal(isLlmMarkdownConfigFormSubmittable(form), false)
 })
 
+test('llm markdown config accepts any full http endpoint without path restriction', () => {
+  const form = createDefaultLlmMarkdownConfigForm()
+
+  form.url = 'https://api.minimaxi.com/v1/chat/completions'
+  form.model = 'MiniMax-M3'
+  assert.equal(isLlmMarkdownConfigFormSubmittable(form), true)
+
+  form.apiType = 'anthropic'
+  form.url = 'https://api.minimaxi.com/anthropic'
+  assert.equal(isLlmMarkdownConfigFormSubmittable(form), true)
+})
+
 test('llm markdown config error message masks accidental api key content', () => {
   const message = '调用失败 api_key="sk-new-secret" Authorization: Bearer sk-other-secret'
 
@@ -95,12 +107,11 @@ test('llm markdown config error message masks accidental api key content', () =>
   )
 })
 
-test('llm markdown config hints declare openai compatible requirement and test button availability', () => {
+test('llm markdown config hints keep only full url placeholder and test button availability', () => {
   const emptyForm = createDefaultLlmMarkdownConfigForm()
 
   assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
-    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
-    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    urlPlaceholder: '请输入完整接口地址，例如 https://api.example.com/v1/chat/completions',
     canTest: false
   })
 
@@ -108,8 +119,7 @@ test('llm markdown config hints declare openai compatible requirement and test b
   emptyForm.model = 'qwen-vl-ocr-2025-11-20'
 
   assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
-    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
-    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    urlPlaceholder: '请输入完整接口地址，例如 https://api.example.com/v1/chat/completions',
     canTest: true
   })
 })
@@ -122,8 +132,7 @@ test('llm markdown config supports anthropic endpoint hints and payload', () => 
   form.model = 'MiniMax-M3'
 
   assert.deepEqual(llmConfigCapabilityHints(form), {
-    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
-    endpointExample: 'https://api.minimaxi.com/anthropic',
+    urlPlaceholder: '请输入完整接口地址，例如 https://api.example.com/anthropic/v1/messages',
     canTest: true
   })
 
