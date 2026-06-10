@@ -74,6 +74,7 @@ class ProcessingTrackAssembler {
     static boolean isImageProgressStage(ProcessingStage stage) {
         ProcessingStage normalizedStage = normalizeStage(stage);
         return normalizedStage == ProcessingStage.PDF_TO_IMAGES_COMPLETED
+                || normalizedStage == ProcessingStage.OCR_QUEUED
                 || normalizedStage == ProcessingStage.OCR_IMAGES
                 || normalizedStage == ProcessingStage.MERGE_TEXT
                 || normalizedStage == ProcessingStage.SAVE_TEXT
@@ -315,6 +316,7 @@ class ProcessingTrackAssembler {
         ranks.put(ProcessingStage.WORD_TO_PDF_COMPLETED, STEP_RENDERING);
         ranks.put(ProcessingStage.PDF_TO_IMAGES, STEP_RENDERING);
         ranks.put(ProcessingStage.PDF_TO_IMAGES_COMPLETED, STEP_OCR);
+        ranks.put(ProcessingStage.OCR_QUEUED, STEP_OCR);
         ranks.put(ProcessingStage.OCR_IMAGES, STEP_OCR);
         ranks.put(ProcessingStage.MERGE_TEXT, STEP_MERGE);
         ranks.put(ProcessingStage.DIRECT_TEXT_SAVED, STEP_SAVE);

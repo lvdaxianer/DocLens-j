@@ -754,7 +754,7 @@ Evidence:
 - Modify: `doclens-dashboard/src/utils/formatters.ts`
 - Test: `doclens-dashboard/src/utils/__tests__/formatters.test.ts`
 
-- [ ] **Step 1: Write the failing formatter/query test**
+- [x] **Step 1: Write the failing formatter/query test**
 
 ```ts
 test('stage label distinguishes preparing pages and queued OCR work', () => {
@@ -771,7 +771,7 @@ void dashboardCountsOcrQueuedSeparatelyFromGeneralQueued() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DashboardStageMetricsAssemblerTest test`
 
@@ -779,7 +779,13 @@ Run: `npm --prefix doclens-dashboard test -- formatters`
 
 Expected: FAIL because the new stage labels do not exist yet.
 
-- [ ] **Step 3: Update backend query labels and frontend labels**
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DashboardQueryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `npm --prefix doclens-dashboard run test:utils -- formatters`
+- RED observed: backend had no `ocr_queued` row; frontend still showed `queued` as `待解析`
+  and excluded `ocr_queued` from image progress stages.
+
+- [x] **Step 3: Update backend query labels and frontend labels**
 
 ```ts
 const labels: Record<string, string> = {
@@ -793,7 +799,7 @@ const labels: Record<string, string> = {
 }
 ```
 
-- [ ] **Step 4: Update progress track semantics**
+- [x] **Step 4: Update progress track semantics**
 
 ```java
 return normalizedStage == ProcessingStage.OCR_QUEUED
@@ -803,7 +809,7 @@ return normalizedStage == ProcessingStage.OCR_QUEUED
         || normalizedStage == ProcessingStage.COMPLETED;
 ```
 
-- [ ] **Step 5: Run focused UI/query tests**
+- [x] **Step 5: Run focused UI/query tests**
 
 Run: `mvn -pl doclens-core -Dtest=DashboardStageMetricsAssemblerTest test`
 
@@ -811,7 +817,14 @@ Run: `npm --prefix doclens-dashboard test -- formatters`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DashboardQueryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `npm --prefix doclens-dashboard run test:utils -- formatters`
+- `npm --prefix doclens-dashboard test`
+- `mvn -pl doclens-core -am -Dtest=DashboardQueryServiceTest,OcrQueryServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `npm --prefix doclens-dashboard run build`
+
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/query/application/ProcessingTrackAssembler.java \
@@ -820,6 +833,10 @@ git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/query/applicat
   doclens-dashboard/src/utils/__tests__/formatters.test.ts
 git commit -m "feat(dashboard): 细化OCR图片级调度状态"
 ```
+
+Evidence:
+- `git diff --check`
+- `git commit -F /tmp/doclens-task6-commit.txt`
 
 ### Task 7: Broader Verification and Throughput Regression Checks
 

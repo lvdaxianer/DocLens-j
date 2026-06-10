@@ -74,8 +74,9 @@ class DashboardQueryServiceTest {
         InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(batch()));
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of(
                 stagedDocument("doc-word", DocumentType.WORD, ProcessingStage.WORD_TO_PDF_COMPLETED, 0, 1, 0),
-                stagedDocument("doc-pdf", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 3, 8, 1),
-                stagedDocument("doc-save", DocumentType.IMAGE, ProcessingStage.SAVE_TEXT, 1, 1, 2),
+                stagedDocument("doc-ocr-queued", DocumentType.PDF, ProcessingStage.OCR_QUEUED, 0, 8, 1),
+                stagedDocument("doc-pdf", DocumentType.PDF, ProcessingStage.OCR_IMAGES, 3, 8, 2),
+                stagedDocument("doc-save", DocumentType.IMAGE, ProcessingStage.SAVE_TEXT, 1, 1, 3),
                 stagedDocument("doc-failed", DocumentType.WORD, ProcessingStage.WORD_TO_PDF, 0, 1, 3)
                         .fail("WORD_TO_PDF_FAILED", "convert failed", BASE_TIME.plusSeconds(8))
         ));
@@ -94,11 +95,15 @@ class DashboardQueryServiceTest {
                         .containsEntry("completed_images", 3L)
                         .containsEntry("total_images", 8L))
                 .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("stage", "ocr_queued")
+                        .containsEntry("document_count", 1L)
+                        .containsEntry("total_images", 8L))
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                         .containsEntry("stage", "failed")
                         .containsEntry("document_count", 1L));
         assertThat(summary.get("image_progress")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("completed_images", 4L)
-                .containsEntry("total_images", 9L);
+                .containsEntry("total_images", 17L);
     }
 
     /**
