@@ -48,7 +48,7 @@ Implementation requirements:
 
 Inject `@Qualifier("doclensDocumentProcessingExecutor") ExecutorService` into `batchProcessingDependencies`.
 
-Update default document-processing pool from `1/1` to `4/4`, so default runtime can actually run multiple documents in one batch. Users can still override `doclens.thread-pools.document-processing-thread-pool.*`.
+Update default document-processing pool from `1/1` to `6/6`, so default runtime can actually run multiple documents in one batch. Users can still override `doclens.thread-pools.document-processing-thread-pool.*`.
 
 - [x] **Step 5: Run focused and broader verification**
 

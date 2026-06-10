@@ -44,7 +44,7 @@ public record DocLensSpringProperties(
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
     private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
     private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
-    private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 4;
+    private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 6;
     private static final int DEFAULT_NODE_WEIGHT = 50;
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
