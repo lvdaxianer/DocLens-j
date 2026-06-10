@@ -50,8 +50,11 @@ public class BatchProcessingUseCase {
     private static final String CALLBACK_BODY_FIELD = "callback_body";
     private static final String OCR_TEXT_FIELD = "ocr_text";
     private static final String LLM_MARKDOWN_APPLIED_FIELD = "llm_markdown_applied";
+    private static final String LLM_ERROR_MESSAGE_FIELD = "llm_error_message";
     private static final String LLM_MARKDOWN_WARNING = "llm_markdown_post_processing_failed";
-    private static final int RAW_OUTPUT_TRACE_CAPACITY = 2;
+    private static final String UNKNOWN_ERROR_TYPE = "unknown";
+    private static final int LLM_MARKDOWN_MAX_ATTEMPTS = 3;
+    private static final int RAW_OUTPUT_TRACE_CAPACITY = 3;
 
     private final DocumentJobRepository documentRepository;
     private final OcrResultRepository resultRepository;
@@ -171,7 +174,7 @@ public class BatchProcessingUseCase {
         String markdownStorageUri = writeMarkdownResult(document, postProcessed.finalText());
         String resultId = idGenerator.newResultId();
         return new OcrResult(resultId, document.documentId(), postProcessed.finalText(), markdownStorageUri,
-                rawOutputWithOcrText(extracted, postProcessed.llmMarkdownApplied()), extracted.structuredDocument(), extracted.pageText(),
+                rawOutputWithOcrText(extracted, postProcessed), extracted.structuredDocument(), extracted.pageText(),
                 extracted.layoutBlocks(), extracted.tables(), extracted.images(), extracted.confidence(),
                 postProcessed.warnings(), OffsetDateTime.now());
     }
@@ -186,15 +189,75 @@ public class BatchProcessingUseCase {
      * @date 2026-06-09
      */
     private PostProcessedText postProcessMarkdown(DocumentJob document, DocumentTextExtractionResult extracted) {
-        try {
-            MarkdownPostProcessingResult result = markdownPostProcessor.process(markdownRequest(document, extracted));
-            return new PostProcessedText(result.markdown(), mergeWarnings(extracted.warnings(), result.warnings()),
-                    result.markdownApplied());
-        } catch (RuntimeException ex) {
-            LOGGER.warn("[LLM后处理] Markdown 后处理失败并回退 OCR 原文 documentId={}, errorType={}",
-                    document.documentId(), ex.getClass().getSimpleName());
-            return new PostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()), false);
+        RuntimeException lastFailure = null;
+        MarkdownPostProcessingRequest request = markdownRequest(document, extracted);
+        for (int attempt = 1; attempt <= LLM_MARKDOWN_MAX_ATTEMPTS; attempt++) {
+            try {
+                MarkdownPostProcessingResult result = markdownPostProcessor.process(request);
+                return successPostProcessedText(extracted, result);
+            } catch (RuntimeException ex) {
+                lastFailure = ex;
+                // 还没到重试上限时继续重试，避免一次瞬时失败直接回退 OCR。
+                if (attempt < LLM_MARKDOWN_MAX_ATTEMPTS) {
+                    logMarkdownRetry(document, attempt, ex);
+                }
+            }
         }
+        // 所有尝试都失败后回退 OCR 原文，并保留最后一次失败原因供查询展示。
+        return fallbackPostProcessedText(extracted, document, lastFailure);
+    }
+
+    /**
+     * 构建 Markdown 后处理成功结果。
+     *
+     * @param extracted 文本提取结果
+     * @param result Markdown 后处理结果
+     * @return 后处理成功后的文本
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private PostProcessedText successPostProcessedText(
+            DocumentTextExtractionResult extracted,
+            MarkdownPostProcessingResult result
+    ) {
+        return new PostProcessedText(result.markdown(), mergeWarnings(extracted.warnings(), result.warnings()),
+                result.markdownApplied(), Optional.empty());
+    }
+
+    /**
+     * 记录 Markdown 后处理失败后的重试日志。
+     *
+     * @param document 文档任务
+     * @param attempt 当前尝试次数
+     * @param ex 失败异常
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void logMarkdownRetry(DocumentJob document, int attempt, RuntimeException ex) {
+        LOGGER.warn("[LLM后处理] Markdown 后处理失败，准备重试 documentId={}, attempt={}, errorType={}",
+                document.documentId(), attempt, ex.getClass().getSimpleName());
+    }
+
+    /**
+     * 构建 Markdown 后处理耗尽重试后的回退结果。
+     *
+     * @param extracted 文本提取结果
+     * @param document 文档任务
+     * @param lastFailure 最后一次失败异常
+     * @return 回退到 OCR 原文后的文本
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private PostProcessedText fallbackPostProcessedText(
+            DocumentTextExtractionResult extracted,
+            DocumentJob document,
+            RuntimeException lastFailure
+    ) {
+        LOGGER.warn("[LLM后处理] Markdown 后处理重试耗尽并回退 OCR 原文 documentId={}, attempts={}, errorType={}",
+                document.documentId(), LLM_MARKDOWN_MAX_ATTEMPTS,
+                lastFailure == null ? UNKNOWN_ERROR_TYPE : lastFailure.getClass().getSimpleName());
+        return new PostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()), false,
+                Optional.ofNullable(lastFailure).map(RuntimeException::getMessage).filter(message -> !message.isBlank()));
     }
 
     /**
@@ -219,14 +282,12 @@ public class BatchProcessingUseCase {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> rawOutputWithOcrText(
-            DocumentTextExtractionResult extracted,
-            boolean llmMarkdownApplied
-    ) {
+    private Map<String, Object> rawOutputWithOcrText(DocumentTextExtractionResult extracted, PostProcessedText postProcessed) {
         Map<String, Object> rawOutput = new LinkedHashMap<>(extracted.rawOutput().size() + RAW_OUTPUT_TRACE_CAPACITY);
         rawOutput.putAll(extracted.rawOutput());
         rawOutput.put(OCR_TEXT_FIELD, extracted.finalText());
-        rawOutput.put(LLM_MARKDOWN_APPLIED_FIELD, llmMarkdownApplied);
+        rawOutput.put(LLM_MARKDOWN_APPLIED_FIELD, postProcessed.llmMarkdownApplied());
+        postProcessed.llmErrorMessage().ifPresent(message -> rawOutput.put(LLM_ERROR_MESSAGE_FIELD, message));
         return rawOutput;
     }
 
@@ -394,7 +455,12 @@ public class BatchProcessingUseCase {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private record PostProcessedText(String finalText, List<String> warnings, boolean llmMarkdownApplied) {
+    private record PostProcessedText(
+            String finalText,
+            List<String> warnings,
+            boolean llmMarkdownApplied,
+            Optional<String> llmErrorMessage
+    ) {
     }
 
     void persistDocumentProcessing(DocumentProcessingResult result) {
