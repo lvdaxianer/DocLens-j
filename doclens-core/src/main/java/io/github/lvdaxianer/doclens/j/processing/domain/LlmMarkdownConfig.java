@@ -7,7 +7,8 @@ import java.util.Optional;
  * LLM Markdown 后处理配置。
  *
  * @param id 配置 ID
- * @param url OpenAI compatible 接口地址
+ * @param apiType API 协议类型
+ * @param url LLM 接口地址
  * @param model 模型名称
  * @param credentialRef API Key 凭证引用
  * @param credentialConfigured 是否已配置凭证
@@ -18,10 +19,14 @@ import java.util.Optional;
  */
 public record LlmMarkdownConfig(
         String id,
+        LlmMarkdownApiType apiType,
         String url,
         String model,
         Optional<String> credentialRef,
         boolean credentialConfigured,
+        boolean healthy,
+        String healthMessage,
+        Optional<OffsetDateTime> lastHealthAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -40,11 +45,34 @@ public record LlmMarkdownConfig(
      * @date 2026-06-09
      */
     public static LlmMarkdownConfig configured(String id, String url, String model, String credentialRef) {
+        return configured(id, LlmMarkdownApiType.OPENAI, url, model, credentialRef);
+    }
+
+    /**
+     * 创建已配置的 LLM Markdown 配置。
+     *
+     * @param id 配置 ID
+     * @param apiType API 协议类型
+     * @param url LLM 接口地址
+     * @param model 模型名称
+     * @param credentialRef API Key 凭证引用
+     * @return LLM Markdown 配置
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public static LlmMarkdownConfig configured(
+            String id,
+            LlmMarkdownApiType apiType,
+            String url,
+            String model,
+            String credentialRef
+    ) {
         OffsetDateTime now = OffsetDateTime.now();
         String normalizedCredentialRef = normalize(credentialRef);
-        return new LlmMarkdownConfig(id, required(url, "llm markdown url is required"),
+        return new LlmMarkdownConfig(id, apiType == null ? LlmMarkdownApiType.OPENAI : apiType,
+                required(url, "llm markdown url is required"),
                 required(model, "llm markdown model is required"), Optional.ofNullable(blankToNull(normalizedCredentialRef)),
-                !normalizedCredentialRef.isBlank(), now, now);
+                !normalizedCredentialRef.isBlank(), false, "", Optional.empty(), now, now);
     }
 
     /**
@@ -56,7 +84,8 @@ public record LlmMarkdownConfig(
      */
     public static LlmMarkdownConfig unconfigured() {
         OffsetDateTime now = OffsetDateTime.now();
-        return new LlmMarkdownConfig(SINGLETON_ID, "", "", Optional.empty(), false, now, now);
+        return new LlmMarkdownConfig(SINGLETON_ID, LlmMarkdownApiType.OPENAI, "", "", Optional.empty(), false,
+                false, "", Optional.empty(), now, now);
     }
 
     /**
@@ -79,6 +108,21 @@ public record LlmMarkdownConfig(
      */
     public String credentialValue() {
         return credentialRef.orElse("");
+    }
+
+    /**
+     * 更新 LLM 健康状态。
+     *
+     * @param healthy 是否健康
+     * @param healthMessage 健康检查消息
+     * @param lastHealthAt 最近健康检查时间
+     * @return 更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public LlmMarkdownConfig updateHealth(boolean healthy, String healthMessage, OffsetDateTime lastHealthAt) {
+        return new LlmMarkdownConfig(id, apiType, url, model, credentialRef, credentialConfigured, healthy,
+                normalize(healthMessage), Optional.ofNullable(lastHealthAt), createdAt, OffsetDateTime.now());
     }
 
     /**

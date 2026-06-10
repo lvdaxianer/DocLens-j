@@ -6,10 +6,10 @@ import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigSe
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
-import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 
 /**
  * 基于 OpenAI compatible HTTP 后处理器的 LLM 配置测试实现。
@@ -51,12 +51,13 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
     @Override
     public LlmMarkdownConfigTestResponse test(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfigSettings normalized = configService.normalizeSettings(settings);
-        URI endpoint = LlmMarkdownConfigService.normalizeCompatibleEndpoint(URI.create(normalized.url()));
-        HttpMarkdownPostProcessor processor = new HttpMarkdownPostProcessor(objectMapper,
-                new HttpMarkdownPostProcessorOptions(endpoint, normalized.model(), normalized.apiKey(),
-                        Duration.ofSeconds(TEST_TIMEOUT_SECONDS)));
+        LlmMarkdownApiType apiType = LlmMarkdownApiType.from(normalized.apiType());
+        URI endpoint = LlmMarkdownConfigService.normalizeEndpoint(URI.create(normalized.url()), apiType);
+        MarkdownPostProcessorFactory factory = new MarkdownPostProcessorFactory(objectMapper,
+                Duration.ofSeconds(TEST_TIMEOUT_SECONDS));
         try {
-            processor.process(new MarkdownPostProcessingRequest(TEST_DOCUMENT_ID, TEST_FILE_NAME, Map.of(), TEST_OCR_TEXT));
+            factory.create(apiType, endpoint, normalized.model(), normalized.apiKey())
+                    .process(new MarkdownPostProcessingRequest(TEST_DOCUMENT_ID, TEST_FILE_NAME, Map.of(), TEST_OCR_TEXT));
             return LlmMarkdownConfigTestResponse.reachable();
         } catch (IllegalStateException ex) {
             return LlmMarkdownConfigTestResponse.unreachable(ex.getMessage());

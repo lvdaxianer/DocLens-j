@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { FlaskConical, RefreshCcw, Save } from '@lucide/vue'
-import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NTag, useMessage } from 'naive-ui'
+import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NSelect, NTag, useMessage } from 'naive-ui'
 
 import { useLlmMarkdownConfig } from '@/composables/useLlmMarkdownConfig'
 import { formatDateTime } from '@/utils/formatters'
 
 const message = useMessage()
 const llmConfig = useLlmMarkdownConfig(message)
+const apiTypeOptions = [
+  { label: 'OpenAI compatible', value: 'openai' },
+  { label: 'Anthropic', value: 'anthropic' }
+]
 
 onMounted(llmConfig.loadConfig)
 </script>
@@ -23,6 +27,9 @@ onMounted(llmConfig.loadConfig)
         <NTag size="small" :type="llmConfig.isConfigured.value ? 'success' : 'default'">
           {{ llmConfig.isConfigured.value ? '已配置' : '未配置' }}
         </NTag>
+        <NTag v-if="llmConfig.isConfigured.value" size="small" :type="llmConfig.form.healthy ? 'success' : 'error'">
+          {{ llmConfig.form.healthy ? '心跳正常' : '心跳不可用' }}
+        </NTag>
         <NButton size="small" :loading="llmConfig.isLoading.value" @click="llmConfig.loadConfig">
           <template #icon>
             <NIcon :component="RefreshCcw" />
@@ -36,14 +43,25 @@ onMounted(llmConfig.loadConfig)
     <NAlert
       class="llm-config-panel__alert"
       type="info"
-      title="仅支持 OpenAI compatible Chat Completions 格式"
+      :title="llmConfig.capabilityHints.value.protocolHint"
     >
       推荐 endpoint：{{ llmConfig.capabilityHints.value.endpointExample }}
     </NAlert>
+    <NAlert
+      v-if="llmConfig.isConfigured.value && !llmConfig.form.healthy"
+      class="llm-config-panel__alert"
+      type="error"
+      :title="llmConfig.form.healthMessage || 'LLM Markdown 心跳不可用'"
+    >
+      最近心跳：{{ formatDateTime(llmConfig.form.lastHealthAt) }}
+    </NAlert>
 
     <NForm class="llm-config-panel__form" label-placement="top">
+      <NFormItem label="协议">
+        <NSelect v-model:value="llmConfig.form.apiType" :options="apiTypeOptions" />
+      </NFormItem>
       <NFormItem label="URL">
-        <NInput v-model:value="llmConfig.form.url" placeholder="https://llm.example.com/v1/chat/completions" />
+        <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.endpointExample" />
       </NFormItem>
       <NFormItem label="模型名称">
         <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />
@@ -58,7 +76,12 @@ onMounted(llmConfig.loadConfig)
     </NForm>
 
     <div class="llm-config-panel__footer">
-      <span>API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}</span>
+      <span>
+        API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}
+        <template v-if="llmConfig.form.lastHealthAt">
+          · 最近心跳：{{ formatDateTime(llmConfig.form.lastHealthAt) }}
+        </template>
+      </span>
       <NButton
         secondary
         :loading="llmConfig.isTesting.value"
@@ -104,7 +127,7 @@ onMounted(llmConfig.loadConfig)
 .llm-config-panel__form {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(280px, 1.5fr) minmax(200px, 1fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 1.5fr) minmax(180px, 1fr) minmax(220px, 1fr);
   gap: 12px;
 }
 

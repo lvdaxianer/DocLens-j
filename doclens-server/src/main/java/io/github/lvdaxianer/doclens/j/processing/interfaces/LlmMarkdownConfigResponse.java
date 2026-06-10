@@ -13,9 +13,13 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
  * @date 2026-06-09
  */
 public record LlmMarkdownConfigResponse(
+        @JsonProperty("api_type") String apiType,
         String url,
         String model,
-        @JsonProperty("credential_configured") boolean credentialConfigured
+        @JsonProperty("credential_configured") boolean credentialConfigured,
+        boolean healthy,
+        @JsonProperty("health_message") String healthMessage,
+        @JsonProperty("last_health_at") String lastHealthAt
 ) {
 
     /**
@@ -27,6 +31,8 @@ public record LlmMarkdownConfigResponse(
      * @date 2026-06-09
      */
     public static LlmMarkdownConfigResponse from(LlmMarkdownConfig config) {
-        return new LlmMarkdownConfigResponse(config.url(), config.model(), config.credentialConfigured());
+        return new LlmMarkdownConfigResponse(config.apiType().value(), config.url(), config.model(),
+                config.credentialConfigured(), config.healthy(), config.healthMessage(),
+                config.lastHealthAt().map(java.time.OffsetDateTime::toString).orElse(""));
     }
 }

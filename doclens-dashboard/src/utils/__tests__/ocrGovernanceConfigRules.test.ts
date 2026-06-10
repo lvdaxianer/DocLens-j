@@ -11,7 +11,7 @@ import {
 test('ocr governance config form exposes current values and payload fields', () => {
   const form = fillOcrGovernanceConfigFormFromResponse({
     failure_threshold: 3,
-    probe_interval_seconds: 60,
+    probe_interval_seconds: 5,
     circuit_open_seconds: 86400,
     recovery_success_threshold: 3,
     manual_recovery_attempts: 3
@@ -19,7 +19,7 @@ test('ocr governance config form exposes current values and payload fields', () 
 
   assert.deepEqual(form, {
     failureThreshold: 3,
-    probeIntervalSeconds: 60,
+    probeIntervalSeconds: 5,
     circuitOpenSeconds: 86400,
     recoverySuccessThreshold: 3,
     manualRecoveryAttempts: 3
@@ -27,7 +27,7 @@ test('ocr governance config form exposes current values and payload fields', () 
   assert.equal(isOcrGovernanceConfigFormSubmittable(form), true)
   assert.deepEqual(createOcrGovernanceConfigPayload(form), {
     failure_threshold: 3,
-    probe_interval_seconds: 60,
+    probe_interval_seconds: 5,
     circuit_open_seconds: 86400,
     recovery_success_threshold: 3,
     manual_recovery_attempts: 3

@@ -27,4 +27,15 @@ public interface LlmMarkdownConfigRepository {
      * @date 2026-06-09
      */
     void save(LlmMarkdownConfig config);
+
+    /**
+     * 更新 LLM Markdown 健康状态。
+     *
+     * @param config 含最新健康状态的 LLM Markdown 配置
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void updateHealth(LlmMarkdownConfig config) {
+        save(config);
+    }
 }

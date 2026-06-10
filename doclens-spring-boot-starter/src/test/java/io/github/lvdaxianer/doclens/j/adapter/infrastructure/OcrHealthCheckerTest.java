@@ -113,20 +113,21 @@ class OcrHealthCheckerTest {
     }
 
     /**
-     * 在线节点健康检查只校验配置，不调用离线健康客户端。
+     * 在线节点健康检查需要校验执行权限，不能只依赖配置完整性。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     @Test
-    void onlineNodeHealthCheckUsesConfigurationOnly() {
+    void onlineNodeHealthCheckRequiresExecutionPermission() {
         TestContext context = context(onlineNode("node-online"));
+        context.healthClient.fail("node-online");
 
         context.checker.checkOnce();
 
-        assertThat(context.healthClient.checkedNodeIds).isEmpty();
+        assertThat(context.healthClient.checkedNodeIds).containsExactly("node-online");
         assertThat(context.repository.findById("node-online")).get().extracting(OcrNode::status)
-                .isEqualTo(OcrNodeStatus.UP);
+                .isEqualTo(OcrNodeStatus.DOWN);
     }
 
     /**

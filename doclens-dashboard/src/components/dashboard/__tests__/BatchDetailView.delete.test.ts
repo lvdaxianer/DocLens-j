@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, ref, type VNodeChild } from 'vue'
 import { mount } from '@vue/test-utils'
 import { NConfigProvider } from 'naive-ui'
 
@@ -154,7 +154,7 @@ const DataTableStub = defineComponent({
       (props.columns as Array<Record<string, unknown>>)
         .filter((column) => typeof column.render === 'function')
         .map((column, index) => h('div', { key: `${String(row.document_id)}-${index}` }, [
-          (column.render as (item: Record<string, unknown>) => unknown)(row)
+          (column.render as (item: Record<string, unknown>) => VNodeChild)(row)
         ]))
     ))
   }

@@ -18,36 +18,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * OpenAI compatible HTTP LLM Markdown 后处理器。
+ * Anthropic messages HTTP LLM Markdown 后处理器。
  *
  * @author lvdaxianerplus
- * @date 2026-06-09
+ * @date 2026-06-10
  */
-public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
+public class AnthropicMarkdownPostProcessor implements MarkdownPostProcessor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(HttpMarkdownPostProcessor.class);
-    private static final String ROLE_SYSTEM = "system";
-    private static final String ROLE_USER = "user";
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnthropicMarkdownPostProcessor.class);
     private static final String HEADER_CONTENT_TYPE = "Content-Type";
-    private static final String HEADER_AUTHORIZATION = "Authorization";
+    private static final String HEADER_API_KEY = "x-api-key";
+    private static final String HEADER_ANTHROPIC_VERSION = "anthropic-version";
     private static final String APPLICATION_JSON = "application/json";
+    private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final String API_KEY_MASK = "***";
     private static final int ERROR_BODY_MAX_LENGTH = 500;
+    private static final int MAX_TOKENS = 4096;
+    private static final String ROLE_USER = "user";
+    private static final String CONTENT_TYPE_TEXT = "text";
+
     private final ObjectMapper objectMapper;
-    private final HttpMarkdownPostProcessorOptions options;
+    private final AnthropicMarkdownPostProcessorOptions options;
     private final HttpClient httpClient;
 
     /**
-     * 创建 HTTP LLM Markdown 后处理器。
+     * 创建 Anthropic Markdown 后处理器。
      *
      * @param objectMapper JSON 映射器
-     * @param options HTTP Markdown 后处理配置
+     * @param options Anthropic 后处理配置
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
-    public HttpMarkdownPostProcessor(
+    public AnthropicMarkdownPostProcessor(
             ObjectMapper objectMapper,
-            HttpMarkdownPostProcessorOptions options
+            AnthropicMarkdownPostProcessorOptions options
     ) {
         this.objectMapper = objectMapper;
         this.options = options;
@@ -57,14 +61,6 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
                 .build();
     }
 
-    /**
-     * 执行 LLM Markdown 后处理。
-     *
-     * @param request Markdown 后处理请求
-     * @return Markdown 后处理结果
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
     @Override
     public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
         try {
@@ -84,64 +80,39 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
     }
 
     /**
-     * 构建 OpenAI compatible 请求体。
+     * 构建 Anthropic messages 请求体。
      *
      * @param request Markdown 后处理请求
      * @return JSON 请求体
      * @throws IOException JSON 序列化失败
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private String buildRequestBody(MarkdownPostProcessingRequest request) throws IOException {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("model", options.model());
+        body.put("max_tokens", MAX_TOKENS);
+        body.put("system", MarkdownPrompt.systemPrompt());
         body.set("messages", messages(request));
         return objectMapper.writeValueAsString(body);
     }
 
     /**
-     * 构建 system 与 user 消息。
+     * 构建 Anthropic user message。
      *
      * @param request Markdown 后处理请求
      * @return messages 节点
      * @throws IOException 元数据序列化失败
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private ArrayNode messages(MarkdownPostProcessingRequest request) throws IOException {
         ArrayNode messages = objectMapper.createArrayNode();
-        messages.add(message(ROLE_SYSTEM, MarkdownPrompt.systemPrompt()));
-        messages.add(message(ROLE_USER, userPrompt(request)));
-        return messages;
-    }
-
-    /**
-     * 构建单条 chat message。
-     *
-     * @param role 消息角色
-     * @param content 消息内容
-     * @return chat message
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private ObjectNode message(String role, String content) {
         ObjectNode message = objectMapper.createObjectNode();
-        message.put("role", role);
-        message.put("content", content);
-        return message;
-    }
-
-    /**
-     * 构建用户提示词。
-     *
-     * @param request Markdown 后处理请求
-     * @return 用户提示词
-     * @throws IOException 元数据序列化失败
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private String userPrompt(MarkdownPostProcessingRequest request) throws IOException {
-        return MarkdownPrompt.userPrompt(objectMapper, request);
+        message.put("role", ROLE_USER);
+        message.put("content", MarkdownPrompt.userPrompt(objectMapper, request));
+        messages.add(message);
+        return messages;
     }
 
     /**
@@ -150,17 +121,17 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      * @param requestBody JSON 请求体
      * @return HTTP 请求
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private HttpRequest buildRequest(String requestBody) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(options.endpoint())
                 .version(HttpClient.Version.HTTP_1_1)
                 .timeout(options.timeout())
                 .header(HEADER_CONTENT_TYPE, APPLICATION_JSON)
+                .header(HEADER_ANTHROPIC_VERSION, ANTHROPIC_VERSION)
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody));
         if (!options.apiKey().isBlank()) {
-            // API Key 只进入请求头，不进入响应、异常或持久化记录。
-            builder.header(HEADER_AUTHORIZATION, "Bearer " + options.apiKey());
+            builder.header(HEADER_API_KEY, options.apiKey());
         } else {
             // 离线或内网模型允许无 API Key 调用。
         }
@@ -168,24 +139,41 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
     }
 
     /**
-     * 解析 OpenAI compatible 响应。
+     * 解析 Anthropic 响应。
      *
      * @param response HTTP 响应
      * @return Markdown 后处理结果
      * @throws IOException JSON 解析失败
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private MarkdownPostProcessingResult parseResponse(HttpResponse<String> response) throws IOException {
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            // HTTP 成功时只读取 choices[0].message.content 作为 Markdown。
             JsonNode responseJson = objectMapper.readTree(response.body());
-            String markdown = responseJson.path("choices").path(0).path("message").path("content").asText("");
+            String markdown = firstText(responseJson);
             return MarkdownPostProcessingResult.markdown(markdown);
         } else {
-            // HTTP 失败时抛出已脱敏的供应商错误摘要，由核心层负责回退。
             throw new IllegalStateException(buildErrorMessage(response));
         }
+    }
+
+    /**
+     * 读取第一段 text 内容。
+     *
+     * @param responseJson Anthropic 响应 JSON
+     * @return Markdown 文本
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private String firstText(JsonNode responseJson) {
+        for (JsonNode content : responseJson.path("content")) {
+            if (CONTENT_TYPE_TEXT.equals(content.path("type").asText())) {
+                return content.path("text").asText("");
+            } else {
+                // 非文本块不参与 Markdown 输出。
+            }
+        }
+        return "";
     }
 
     /**
@@ -194,10 +182,10 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      * @param request Markdown 后处理请求
      * @param requestBody 请求体
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private void logRequest(MarkdownPostProcessingRequest request, String requestBody) {
-        LOGGER.debug("[第三方接口调用] 发起请求|LLMMarkdown|{}|POST|-|-|documentId={}, model={}, body={}",
+        LOGGER.debug("[第三方接口调用] 发起请求|LLMMarkdownAnthropic|{}|POST|-|-|documentId={}, model={}, body={}",
                 options.endpoint(), request.documentId(), options.model(), requestBody);
     }
 
@@ -207,12 +195,12 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      * @param response HTTP 响应
      * @param startedAt 请求开始时间
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private void logResponse(HttpResponse<String> response, Instant startedAt) {
         long elapsedMillis = Duration.between(startedAt, Instant.now()).toMillis();
-        LOGGER.debug("[第三方接口调用] 收到响应|LLMMarkdown|{}|{}|{}ms|body={}", options.endpoint(),
-                response.statusCode(), elapsedMillis, summarizeBody(response.body()));
+        LOGGER.debug("[第三方接口调用] 收到响应|LLMMarkdownAnthropic|{}|{}|{}ms|body={}",
+                options.endpoint(), response.statusCode(), elapsedMillis, summarizeBody(response.body()));
     }
 
     /**
@@ -221,7 +209,7 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      * @param response HTTP 响应
      * @return 错误消息
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private String buildErrorMessage(HttpResponse<String> response) {
         return "LLM Markdown returned HTTP " + response.statusCode() + ": " + summarizeBody(response.body());
@@ -233,48 +221,44 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      * @param responseBody 响应体
      * @return 响应体摘要
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private String summarizeBody(String responseBody) {
         String sanitizedBody = sanitizeBody(responseBody);
         if (sanitizedBody.length() <= ERROR_BODY_MAX_LENGTH) {
-            // 响应体未超限时返回完整脱敏摘要。
             return sanitizedBody;
         } else {
-            // 响应体超限时截断，避免日志和异常提示过长。
             return sanitizedBody.substring(0, ERROR_BODY_MAX_LENGTH);
         }
     }
 
     /**
-     * 对供应商响应体中可能回显的 API Key 做脱敏。
+     * 对响应体中可能回显的 API Key 做脱敏。
      *
      * @param responseBody 响应体
      * @return 脱敏后的响应体
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private String sanitizeBody(String responseBody) {
         if (!options.apiKey().isBlank()) {
-            // 存在 API Key 时替换供应商可能回显的原值。
             return responseBody.replace(options.apiKey(), API_KEY_MASK);
         } else {
-            // 未配置 API Key 时保持响应摘要原样。
             return responseBody;
         }
     }
 
     /**
-     * HTTP LLM Markdown 后处理配置。
+     * Anthropic LLM Markdown 后处理配置。
      *
-     * @param endpoint OpenAI compatible endpoint
+     * @param endpoint Anthropic messages endpoint
      * @param model 模型名称
      * @param apiKey API Key，可为空
      * @param timeout HTTP 请求超时时间
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
-    public record HttpMarkdownPostProcessorOptions(
+    public record AnthropicMarkdownPostProcessorOptions(
             URI endpoint,
             String model,
             String apiKey,
@@ -285,9 +269,9 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
          * 规整可选 API Key。
          *
          * @author lvdaxianerplus
-         * @date 2026-06-09
+         * @date 2026-06-10
          */
-        public HttpMarkdownPostProcessorOptions {
+        public AnthropicMarkdownPostProcessorOptions {
             apiKey = apiKey == null ? "" : apiKey;
         }
     }

@@ -19,7 +19,7 @@ public record OcrHealthGovernance(
         int manualRecoveryAttempts
 ) {
     public static final int DEFAULT_FAILURE_THRESHOLD = 3;
-    public static final int DEFAULT_PROBE_INTERVAL_SECONDS = 60;
+    public static final int DEFAULT_PROBE_INTERVAL_SECONDS = 5;
     public static final int DEFAULT_CIRCUIT_OPEN_SECONDS = 86400;
     public static final int DEFAULT_RECOVERY_SUCCESS_THRESHOLD = 3;
     public static final int DEFAULT_MANUAL_RECOVERY_ATTEMPTS = 3;

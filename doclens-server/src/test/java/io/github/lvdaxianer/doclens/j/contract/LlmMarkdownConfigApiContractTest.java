@@ -74,6 +74,7 @@ class LlmMarkdownConfigApiContractTest {
         String response = mockMvc.perform(get("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value(""))
+                .andExpect(jsonPath("$.api_type").value("openai"))
                 .andExpect(jsonPath("$.model").value(""))
                 .andExpect(jsonPath("$.credential_configured").value(false))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
@@ -102,6 +103,7 @@ class LlmMarkdownConfigApiContractTest {
                                 "sk-llm-secret")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value("https://llm.example.com/v1/chat/completions"))
+                .andExpect(jsonPath("$.api_type").value("openai"))
                 .andExpect(jsonPath("$.model").value("markdown-model"))
                 .andExpect(jsonPath("$.credential_configured").value(true))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
@@ -268,6 +270,26 @@ class LlmMarkdownConfigApiContractTest {
     }
 
     /**
+     * Anthropic 基础地址应自动补全 messages 路径并返回协议类型。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void updateConfigCompletesAnthropicBaseUrl() throws Exception {
+        mockMvc.perform(put("/api/v1/llm-markdown-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson("anthropic", "https://api.minimaxi.com/anthropic",
+                                "MiniMax-M3", "sk-minimax-secret")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.api_type").value("anthropic"))
+                .andExpect(jsonPath("$.url").value("https://api.minimaxi.com/anthropic/v1/messages"))
+                .andExpect(jsonPath("$.model").value("MiniMax-M3"))
+                .andExpect(jsonPath("$.credential_configured").value(true));
+    }
+
+    /**
      * 测试接口应按 OpenAI compatible 配置执行探测且不回显 API Key。
      *
      * @throws Exception 请求执行失败时抛出
@@ -368,12 +390,29 @@ class LlmMarkdownConfigApiContractTest {
      */
     private String configJson(String url, String model, String apiKey) {
         // 保持 JSON 字段名与公开 API 契约一致，特别是 snake_case 的 api_key。
+        return configJson("openai", url, model, apiKey);
+    }
+
+    /**
+     * 创建带协议类型的配置请求 JSON。
+     *
+     * @param apiType LLM API 协议类型
+     * @param url 接口地址
+     * @param model 模型名称
+     * @param apiKey API Key
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private String configJson(String apiType, String url, String model, String apiKey) {
+        // 保持 JSON 字段名与公开 API 契约一致，特别是 snake_case 的 api_type 和 api_key。
         return """
                 {
+                  "api_type": "%s",
                   "url": "%s",
                   "model": "%s",
                   "api_key": "%s"
                 }
-                """.formatted(url, model, apiKey);
+                """.formatted(apiType, url, model, apiKey);
     }
 }

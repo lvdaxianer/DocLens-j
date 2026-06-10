@@ -25,6 +25,7 @@ public class EmptyDashboardOcrMetricsProvider implements DashboardOcrMetricsProv
                 Map.entry("down_node_count", 0L),
                 Map.entry("recovering_node_count", 0L),
                 Map.entry("global_inflight_images", 0L),
+                Map.entry("nodes", List.of()),
                 Map.entry("busiest_node", Map.of()),
                 Map.entry("thread_pools", Map.of())
         );

@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import java.net.URI;
 import java.time.OffsetDateTime;
@@ -19,6 +20,10 @@ public class LlmMarkdownConfigService {
     private static final String DASHSCOPE_HOST = "dashscope.aliyuncs.com";
     private static final String DASHSCOPE_COMPATIBLE_BASE_PATH = "/compatible-mode/v1";
     private static final String DASHSCOPE_CHAT_COMPLETIONS_PATH = "/compatible-mode/v1/chat/completions";
+    private static final String OPENAI_V1_BASE_PATH = "/v1";
+    private static final String OPENAI_CHAT_COMPLETIONS_PATH = "/v1/chat/completions";
+    private static final String ANTHROPIC_BASE_PATH = "/anthropic";
+    private static final String ANTHROPIC_MESSAGES_PATH = "/anthropic/v1/messages";
 
     private final LlmMarkdownConfigRepository repository;
 
@@ -70,7 +75,7 @@ public class LlmMarkdownConfigService {
     public LlmMarkdownConfigSettings settingsForTest(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfig current = getConfig();
         LlmMarkdownConfigSettings normalized = normalizeSettings(settings);
-        return new LlmMarkdownConfigSettings(normalized.url(), normalized.model(),
+        return new LlmMarkdownConfigSettings(normalized.apiType(), normalized.url(), normalized.model(),
                 credentialForUpdate(current, normalized.apiKey()));
     }
 
@@ -83,7 +88,8 @@ public class LlmMarkdownConfigService {
      * @date 2026-06-09
      */
     public LlmMarkdownConfigSettings normalizeSettings(LlmMarkdownConfigSettings settings) {
-        return new LlmMarkdownConfigSettings(validUrl(settings.url()),
+        LlmMarkdownApiType apiType = LlmMarkdownApiType.from(settings.apiType());
+        return new LlmMarkdownConfigSettings(apiType.value(), validUrl(settings.url(), apiType),
                 required(settings.model(), "llm markdown model is required"), normalize(settings.apiKey()));
     }
 
@@ -101,8 +107,9 @@ public class LlmMarkdownConfigService {
         String model = settings.model();
         String credential = credentialForUpdate(current, settings.apiKey());
         OffsetDateTime now = OffsetDateTime.now();
-        return new LlmMarkdownConfig(LlmMarkdownConfig.SINGLETON_ID, url, model,
-                Optional.ofNullable(blankToNull(credential)), !credential.isBlank(), createdAt(current, now), now);
+        return new LlmMarkdownConfig(LlmMarkdownConfig.SINGLETON_ID, LlmMarkdownApiType.from(settings.apiType()),
+                url, model, Optional.ofNullable(blankToNull(credential)), !credential.isBlank(), current.healthy(),
+                current.healthMessage(), current.lastHealthAt(), createdAt(current, now), now);
     }
 
     /**
@@ -113,13 +120,30 @@ public class LlmMarkdownConfigService {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private String validUrl(String value) {
+    private String validUrl(String value, LlmMarkdownApiType apiType) {
         String url = required(value, "llm markdown url is required");
         URI uri = parseUrl(url);
         if (hasHttpScheme(uri) && hasHost(uri)) {
-            return normalizeCompatibleEndpoint(uri).toString();
+            return normalizeEndpoint(uri, apiType).toString();
         } else {
             throw new IllegalArgumentException("llm markdown url must be http or https URL");
+        }
+    }
+
+    /**
+     * 根据协议类型规整 endpoint。
+     *
+     * @param uri 原始 URI
+     * @param apiType API 协议类型
+     * @return 规整后的 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public static URI normalizeEndpoint(URI uri, LlmMarkdownApiType apiType) {
+        if (apiType == LlmMarkdownApiType.ANTHROPIC) {
+            return normalizeAnthropicEndpoint(uri);
+        } else {
+            return normalizeOpenAiEndpoint(uri);
         }
     }
 
@@ -132,8 +156,38 @@ public class LlmMarkdownConfigService {
      * @date 2026-06-09
      */
     public static URI normalizeCompatibleEndpoint(URI uri) {
+        return normalizeOpenAiEndpoint(uri);
+    }
+
+    /**
+     * 规整 OpenAI compatible endpoint。
+     *
+     * @param uri 原始 URI
+     * @return 规整后的 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public static URI normalizeOpenAiEndpoint(URI uri) {
         if (isDashScopeCompatibleBaseUri(uri)) {
             return URI.create(buildDashScopeChatCompletionsUrl(uri));
+        } else if (OPENAI_V1_BASE_PATH.equals(trimTrailingSlash(uri.getPath()))) {
+            return URI.create(buildUrl(uri, OPENAI_CHAT_COMPLETIONS_PATH));
+        } else {
+            return uri;
+        }
+    }
+
+    /**
+     * 规整 Anthropic messages endpoint。
+     *
+     * @param uri 原始 URI
+     * @return 规整后的 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public static URI normalizeAnthropicEndpoint(URI uri) {
+        if (ANTHROPIC_BASE_PATH.equals(trimTrailingSlash(uri.getPath()))) {
+            return URI.create(buildUrl(uri, ANTHROPIC_MESSAGES_PATH));
         } else {
             return uri;
         }
@@ -165,8 +219,36 @@ public class LlmMarkdownConfigService {
      */
     private static String buildDashScopeChatCompletionsUrl(URI uri) {
         StringBuilder builder = new StringBuilder();
-        builder.append(uri.getScheme()).append("://").append(uri.getAuthority())
-                .append(DASHSCOPE_CHAT_COMPLETIONS_PATH);
+        builder.append(uri.getScheme()).append("://").append(uri.getAuthority()).append(DASHSCOPE_CHAT_COMPLETIONS_PATH);
+        appendQueryAndFragment(uri, builder);
+        return builder.toString();
+    }
+
+    /**
+     * 组装替换路径后的 URL。
+     *
+     * @param uri 原始 URI
+     * @param path 目标路径
+     * @return 完整 URL
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static String buildUrl(URI uri, String path) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(uri.getScheme()).append("://").append(uri.getAuthority()).append(path);
+        appendQueryAndFragment(uri, builder);
+        return builder.toString();
+    }
+
+    /**
+     * 追加查询参数和片段。
+     *
+     * @param uri 原始 URI
+     * @param builder URL 构造器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private static void appendQueryAndFragment(URI uri, StringBuilder builder) {
         if (uri.getQuery() != null && !uri.getQuery().isBlank()) {
             // 保留调用方显式传入的查询参数。
             builder.append("?").append(uri.getQuery());
@@ -179,7 +261,6 @@ public class LlmMarkdownConfigService {
         } else {
             // 无片段时无需追加。
         }
-        return builder.toString();
     }
 
     /**

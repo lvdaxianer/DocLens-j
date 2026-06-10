@@ -40,6 +40,7 @@ export interface DashboardOcrResources {
   down_node_count: number
   recovering_node_count: number
   global_inflight_images: number
+  nodes: DashboardOcrResourceNode[]
   busiest_node: {
     model_key?: string
     model_name?: string
@@ -53,6 +54,19 @@ export interface DashboardOcrResources {
     ocr_health?: DashboardThreadPoolMetrics
     callback?: DashboardThreadPoolMetrics
   }
+}
+
+export interface DashboardOcrResourceNode {
+  node_id: string
+  node_name: string
+  status?: 'UP' | 'DOWN' | 'RECOVERING' | 'DISABLED' | string
+  last_health_at?: string
+  last_error?: string
+  processed_images_today: number
+  success_images: number
+  failed_images: number
+  avg_latency_ms: number
+  p95_latency_ms: number
 }
 
 export interface BatchRow {
@@ -185,5 +199,6 @@ export interface OcrHealthResponse {
   success_rate: number
   failure_rate: number
   average_duration_ms: number
+  ocr_resources: DashboardOcrResources
   recent_failures: DocumentRow[]
 }

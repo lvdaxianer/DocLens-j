@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
+import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -42,6 +43,17 @@ public class DashScopeOnlineOcrClient {
     private static final String MIME_IMAGE_WEBP = "image/webp";
     private static final int ERROR_BODY_MAX_LENGTH = 500;
     private static final double ONLINE_CONFIDENCE = 1D;
+    private static final byte[] PERMISSION_PROBE_IMAGE = new byte[] {
+            (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x04, 0x00, 0x00, 0x00, (byte) 0xB5, 0x1C, 0x0C,
+            0x02, 0x00, 0x00, 0x00, 0x0B, 0x49, 0x44, 0x41,
+            0x54, 0x78, (byte) 0xDA, 0x63, (byte) 0xFC, (byte) 0xFF, 0x1F, 0x00,
+            0x03, 0x03, 0x02, 0x00, (byte) 0xEF, (byte) 0xBF, 0x55, (byte) 0x9D,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            (byte) 0xAE, 0x42, 0x60, (byte) 0x82
+    };
     private static final TypeReference<Map<String, Object>> OBJECT_MAP = new TypeReference<>() {
     };
 
@@ -96,6 +108,43 @@ public class DashScopeOnlineOcrClient {
     }
 
     /**
+     * 探测在线 OCR 节点是否具备真实执行权限。
+     *
+     * @param node OCR 运行时节点
+     * @return 是否具备执行权限
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    boolean hasExecutionPermission(OcrRuntimeNode node) {
+        try {
+            String requestBody = buildRequestBody(node, permissionProbeRequest());
+            HttpRequest httpRequest = buildRequest(node, requestBody);
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return true;
+            } else {
+                LOGGER.warn("[第三方接口调用] 在线 OCR 权限探测失败|DashScopeOCR|{}|{}|nodeId={}, model={}, body={}",
+                        endpoint, response.statusCode(), node.node().id(), providerModel(node),
+                        summarizeBody(node, response.body()));
+                return false;
+            }
+        } catch (IllegalStateException ex) {
+            LOGGER.warn("[第三方接口调用] 在线 OCR 权限探测失败|DashScopeOCR|{}|-|nodeId={}, error={}",
+                    endpoint, node.node().id(), ex.getMessage());
+            return false;
+        } catch (IOException ex) {
+            LOGGER.warn("[第三方接口调用] 在线 OCR 权限探测失败|DashScopeOCR|{}|-|nodeId={}, error={}",
+                    endpoint, node.node().id(), ex.getMessage(), ex);
+            return false;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("[第三方接口调用] 在线 OCR 权限探测失败|DashScopeOCR|{}|-|nodeId={}, error={}",
+                    endpoint, node.node().id(), ex.getMessage(), ex);
+            return false;
+        }
+    }
+
+    /**
      * 构建在线 OCR HTTP 请求。
      *
      * @param node OCR 运行时节点
@@ -131,6 +180,18 @@ public class DashScopeOnlineOcrClient {
         body.put("model", providerModel(node));
         body.set("messages", messages(request));
         return objectMapper.writeValueAsString(body);
+    }
+
+    /**
+     * 创建在线权限探测使用的最小 OCR 请求。
+     *
+     * @return 探测请求
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private ImageOcrRequest permissionProbeRequest() {
+        return new ImageOcrRequest("health-check", "health-check", "probe.png", 1, PERMISSION_PROBE_IMAGE,
+                JsonPayload.empty());
     }
 
     /**

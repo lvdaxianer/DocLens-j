@@ -1,10 +1,14 @@
-import type { LlmMarkdownConfigPayload, LlmMarkdownConfigResponse } from '@/types/llmMarkdownConfig'
+import type { LlmMarkdownApiType, LlmMarkdownConfigPayload, LlmMarkdownConfigResponse } from '@/types/llmMarkdownConfig'
 
 export interface LlmMarkdownConfigFormState {
+  apiType: LlmMarkdownApiType
   url: string
   model: string
   apiKey: string
   credentialConfigured: boolean
+  healthy: boolean
+  healthMessage: string
+  lastHealthAt: string
 }
 
 export interface LlmConfigCapabilityHints {
@@ -16,8 +20,9 @@ export interface LlmConfigCapabilityHints {
 const HTTP_PROTOCOL = 'http:'
 const HTTPS_PROTOCOL = 'https:'
 const MASKED_SECRET = '***'
-const OPENAI_COMPATIBLE_PROTOCOL_HINT = '仅支持 OpenAI compatible Chat Completions 格式'
-const OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+const PROTOCOL_HINT = 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic'
+const OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+const ANTHROPIC_ENDPOINT_EXAMPLE = 'https://api.minimaxi.com/anthropic'
 const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
 
@@ -30,10 +35,14 @@ const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
  */
 export function createDefaultLlmMarkdownConfigForm(): LlmMarkdownConfigFormState {
   return {
+    apiType: 'openai',
     url: '',
     model: '',
     apiKey: '',
-    credentialConfigured: false
+    credentialConfigured: false,
+    healthy: false,
+    healthMessage: '',
+    lastHealthAt: ''
   }
 }
 
@@ -47,10 +56,14 @@ export function createDefaultLlmMarkdownConfigForm(): LlmMarkdownConfigFormState
  */
 export function fillLlmMarkdownConfigFormFromResponse(response: LlmMarkdownConfigResponse): LlmMarkdownConfigFormState {
   return {
+    apiType: response.api_type ?? 'openai',
     url: response.url,
     model: response.model,
     apiKey: '',
-    credentialConfigured: response.credential_configured
+    credentialConfigured: response.credential_configured,
+    healthy: response.healthy,
+    healthMessage: response.health_message ?? '',
+    lastHealthAt: response.last_health_at ?? ''
   }
 }
 
@@ -84,6 +97,7 @@ export function isLlmMarkdownConfigFormSubmittable(form: LlmMarkdownConfigFormSt
  */
 export function createLlmMarkdownConfigPayload(form: LlmMarkdownConfigFormState): LlmMarkdownConfigPayload {
   const payload: LlmMarkdownConfigPayload = {
+    api_type: form.apiType,
     url: form.url.trim(),
     model: form.model.trim()
   }
@@ -122,8 +136,8 @@ export function llmConfigCapabilityHints(form: LlmMarkdownConfigFormState): LlmC
   const hasUrl = form.url.trim() !== ''
   const hasModel = form.model.trim() !== ''
   return {
-    protocolHint: OPENAI_COMPATIBLE_PROTOCOL_HINT,
-    endpointExample: OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE,
+    protocolHint: PROTOCOL_HINT,
+    endpointExample: form.apiType === 'anthropic' ? ANTHROPIC_ENDPOINT_EXAMPLE : OPENAI_COMPATIBLE_ENDPOINT_EXAMPLE,
     canTest: hasUrl && hasModel && isHttpUrl(form.url)
   }
 }

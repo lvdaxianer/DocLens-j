@@ -16,14 +16,16 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.DashScopeOnlineOcrClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckProperties;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
-import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrManualRecoveryService;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrHealthClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.RoutingOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.util.concurrent.ExecutorService;
@@ -118,9 +120,14 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
+    @ConditionalOnBean(DashScopeOnlineOcrClient.class)
     @ConditionalOnMissingBean
-    OcrHealthClient ocrHealthClient(DocLensSpringProperties properties) {
-        return new PaddleOcrHealthClient(properties.ocr().healthCheckTimeoutSeconds());
+    OcrHealthClient ocrHealthClient(
+            DocLensSpringProperties properties,
+            DashScopeOnlineOcrClient onlineOcrClient
+    ) {
+        return new RoutingOcrHealthClient(new PaddleOcrHealthClient(properties.ocr().healthCheckTimeoutSeconds()),
+                onlineOcrClient);
     }
 
     /**

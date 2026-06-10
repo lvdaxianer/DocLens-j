@@ -42,7 +42,7 @@ class DefaultLlmMarkdownConfigTesterTest {
 
         try {
             LlmMarkdownConfigTestResponse response = tester.test(new LlmMarkdownConfigSettings(
-                    endpointFor(server), "markdown-model", API_KEY));
+                    "openai", endpointFor(server), "markdown-model", API_KEY));
 
             assertThat(response.healthy()).isFalse();
             assertThat(response.message())

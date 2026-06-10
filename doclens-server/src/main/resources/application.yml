@@ -39,7 +39,7 @@ doclens:
     weight-factor: 0.3
     top-bucket-threshold: 0.15
     request-retry-times: 3
-    probe-interval-seconds: 60
+    probe-interval-seconds: 5
     health-check-timeout-seconds: 5
     failure-threshold: 3
     circuit-open-seconds: 86400

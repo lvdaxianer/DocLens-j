@@ -149,6 +149,7 @@ public class DashboardQueryService {
                 Map.entry("success_rate", ratio(completedCount(documents), documents.size())),
                 Map.entry("failure_rate", ratio(failedCount(documents), documents.size())),
                 Map.entry("average_duration_ms", averageDurationMillis(documents)),
+                Map.entry("ocr_resources", ocrMetricsProvider.ocrResources()),
                 Map.entry("recent_failures", rowAssembler.failureRows(documents))
         );
     }

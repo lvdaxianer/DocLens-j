@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Cpu, Gauge, Timer, TriangleAlert } from '@lucide/vue'
 import { NAlert, NButton, NIcon } from 'naive-ui'
@@ -10,6 +11,8 @@ import { formatDateTime, formatDuration, formatPercent } from '@/utils/formatter
 
 const store = useDashboardStore()
 const { ocrHealth, ocrHealthState } = storeToRefs(store)
+const unavailableNodes = computed(() => (ocrHealth.value?.ocr_resources.nodes ?? [])
+  .filter((node) => node.status === 'DOWN' || node.status === 'RECOVERING'))
 
 const cards = [
   { key: 'adapter', label: '适配器', icon: Cpu },
@@ -55,6 +58,16 @@ useAutoRefresh(refresh)
 <template>
   <div class="view-stack">
     <NAlert v-if="ocrHealthState.error" type="error" :title="ocrHealthState.error" />
+    <NAlert
+      v-if="unavailableNodes.length > 0"
+      type="warning"
+      title="存在不可用或恢复中的 OCR 节点"
+    >
+      <span v-for="node in unavailableNodes" :key="node.node_id" class="ocr-health-node">
+        {{ node.node_name || node.node_id }}：{{ node.status }}
+        <template v-if="node.last_error">（{{ node.last_error }}）</template>
+      </span>
+    </NAlert>
 
     <section class="health-toolbar">
       <span>最后刷新：{{ formatDateTime(ocrHealthState.lastUpdated) }}</span>
@@ -90,6 +103,10 @@ useAutoRefresh(refresh)
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.ocr-health-node {
+  display: block;
 }
 
 .health-card {

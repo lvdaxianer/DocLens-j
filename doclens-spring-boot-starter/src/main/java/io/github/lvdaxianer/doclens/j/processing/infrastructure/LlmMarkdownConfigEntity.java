@@ -19,10 +19,14 @@ public class LlmMarkdownConfigEntity {
 
     @TableId("id")
     private String id;
+    private String apiType;
     private String url;
     private String model;
     private String credentialRef;
     private boolean credentialConfigured;
+    private boolean healthy;
+    private String healthMessage;
+    private OffsetDateTime lastHealthAt;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

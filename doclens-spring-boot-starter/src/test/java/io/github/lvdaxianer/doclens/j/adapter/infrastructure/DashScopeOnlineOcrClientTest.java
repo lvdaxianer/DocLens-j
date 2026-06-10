@@ -93,6 +93,28 @@ class DashScopeOnlineOcrClientTest {
     }
 
     /**
+     * 在线 OCR 权限探测遇到模型无权限时应返回 false。
+     *
+     * @throws IOException 本地测试服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void permissionProbeReturnsFalseWhenModelAccessDenied() throws IOException {
+        HttpServer server = startServer(exchange -> writeResponse(exchange, 403,
+                "{\"error\":{\"message\":\"Model access denied.\",\"code\":\"Model.AccessDenied\"}}"));
+
+        try {
+            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(objectMapper, endpointFor(server),
+                    Duration.ofSeconds(5));
+
+            assertThat(client.hasExecutionPermission(new OcrRuntimeNode(onlineNode()))).isFalse();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
      * 创建在线 OCR 节点。
      *
      * @return 在线 OCR 节点

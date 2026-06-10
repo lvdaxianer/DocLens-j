@@ -108,7 +108,7 @@ export function useLlmMarkdownConfig(message: MessageApi) {
    */
   async function testConfig(): Promise<void> {
     if (!capabilityHints.value.canTest) {
-      message.warning('请先填写有效的 OpenAI compatible URL 和模型名称')
+      message.warning('请先填写有效的 LLM URL 和模型名称')
       return
     }
     isTesting.value = true

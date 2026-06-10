@@ -24,6 +24,8 @@ import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMark
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DefaultLlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownHealthChecker;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.StaleDocumentRecoveryScheduler;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
@@ -63,6 +65,7 @@ public class DocLensProcessingAutoConfiguration {
     private static final int BATCH_WORKER_QUEUE_CAPACITY = 1000;
     private static final int THREAD_KEEP_ALIVE_SECONDS = 60;
     private static final int LLM_MARKDOWN_TIMEOUT_SECONDS = 60;
+    private static final int LLM_MARKDOWN_HEALTH_INTERVAL_SECONDS = 5;
     private static final int STALE_DOCUMENT_SCAN_INTERVAL_SECONDS = 60;
     private static final Duration STALE_DOCUMENT_THRESHOLD = Duration.ofMinutes(5);
 
@@ -280,6 +283,85 @@ public class DocLensProcessingAutoConfiguration {
             LlmMarkdownConfigService llmMarkdownConfigService
     ) {
         return new DefaultLlmMarkdownConfigTester(objectMapper, llmMarkdownConfigService);
+    }
+
+    /**
+     * 创建 LLM Markdown 健康检查器。
+     *
+     * @param configRepository LLM Markdown 配置仓储
+     * @param configTester LLM Markdown 配置测试器
+     * @return LLM Markdown 健康检查器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    LlmMarkdownHealthChecker llmMarkdownHealthChecker(
+            LlmMarkdownConfigRepository configRepository,
+            LlmMarkdownConfigTester configTester
+    ) {
+        return new LlmMarkdownHealthChecker(configRepository, configTester);
+    }
+
+    /**
+     * 创建 LLM Markdown 健康检查调度线程池。
+     *
+     * @return LLM Markdown 健康检查调度线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "doclensLlmHealthSchedulerExecutor")
+    ScheduledExecutorService doclensLlmHealthSchedulerExecutor() {
+        return Executors.newSingleThreadScheduledExecutor(new NamedThreadPoolFactory("doclens-llm-health-scheduler-"));
+    }
+
+    /**
+     * 创建 LLM Markdown 健康检查工作线程池。
+     *
+     * @return LLM Markdown 健康检查工作线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "doclensLlmHealthExecutor")
+    ExecutorService doclensLlmHealthExecutor() {
+        return Executors.newSingleThreadExecutor(new NamedThreadPoolFactory("doclens-llm-health-"));
+    }
+
+    /**
+     * 创建 LLM Markdown 健康检查周期调度器。
+     *
+     * @param healthChecker LLM Markdown 健康检查器
+     * @param schedulerExecutor LLM Markdown 健康检查调度线程池
+     * @param healthExecutor LLM Markdown 健康检查工作线程池
+     * @return LLM Markdown 健康检查调度器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    LlmMarkdownHealthCheckScheduler llmMarkdownHealthCheckScheduler(
+            LlmMarkdownHealthChecker healthChecker,
+            @Qualifier("doclensLlmHealthSchedulerExecutor") ScheduledExecutorService schedulerExecutor,
+            @Qualifier("doclensLlmHealthExecutor") ExecutorService healthExecutor
+    ) {
+        return new LlmMarkdownHealthCheckScheduler(healthChecker, schedulerExecutor, healthExecutor,
+                LLM_MARKDOWN_HEALTH_INTERVAL_SECONDS);
+    }
+
+    /**
+     * 应用启动完成后启动 LLM Markdown 健康检查调度。
+     *
+     * @param scheduler LLM Markdown 健康检查调度器
+     * @return 启动任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "llmMarkdownHealthCheckSchedulerRunner")
+    ApplicationRunner llmMarkdownHealthCheckSchedulerRunner(LlmMarkdownHealthCheckScheduler scheduler) {
+        return args -> scheduler.start();
     }
 
     /**

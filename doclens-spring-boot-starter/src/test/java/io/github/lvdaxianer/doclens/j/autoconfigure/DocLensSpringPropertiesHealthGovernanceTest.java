@@ -40,7 +40,7 @@ class DocLensSpringPropertiesHealthGovernanceTest {
         assertThat(properties.ocr().weightFactor()).isEqualTo(0.3D);
         assertThat(properties.ocr().topBucketThreshold()).isEqualTo(0.15D);
         assertThat(properties.ocr().failureThreshold()).isEqualTo(3);
-        assertThat(properties.ocr().probeIntervalSeconds()).isEqualTo(60);
+        assertThat(properties.ocr().probeIntervalSeconds()).isEqualTo(5);
         assertThat(properties.ocr().circuitOpenSeconds()).isEqualTo(86400);
         assertThat(properties.ocr().recoverySuccessThreshold()).isEqualTo(3);
         assertThat(properties.ocr().manualRecoveryAttempts()).isEqualTo(3);

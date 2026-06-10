@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
@@ -166,26 +165,7 @@ public class OcrHealthChecker {
      * @date 2026-06-09
      */
     private boolean isHealthy(OcrNode node) {
-        if (node.deploymentType() == OcrNodeDeploymentType.ONLINE) {
-            return onlineConfigurationReady(node);
-        } else {
-            return healthClient.isHealthy(node);
-        }
-    }
-
-    /**
-     * 校验在线节点配置是否足以参与调度。
-     *
-     * @param node OCR 节点
-     * @return 配置是否完整
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private boolean onlineConfigurationReady(OcrNode node) {
-        return node.channelKey().isPresent()
-                && node.providerModel().isPresent()
-                && node.credentialConfigured()
-                && node.credentialRef().isPresent();
+        return healthClient.isHealthy(node);
     }
 
     /**

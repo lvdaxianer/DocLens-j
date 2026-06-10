@@ -250,6 +250,9 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         return Map.ofEntries(
                 Map.entry("node_id", node.id()),
                 Map.entry("node_name", node.name()),
+                Map.entry("status", node.status().name()),
+                Map.entry("last_health_at", node.lastHealthAt().map(OffsetDateTime::toString).orElse("")),
+                Map.entry("last_error", node.lastError().orElse("")),
                 Map.entry("processed_images_today", metrics.processedImagesToday()),
                 Map.entry("success_images", metrics.successImages()),
                 Map.entry("failed_images", metrics.failedImages()),

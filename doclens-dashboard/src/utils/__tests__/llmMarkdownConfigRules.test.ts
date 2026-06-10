@@ -14,13 +14,18 @@ test('default llm markdown config form starts disabled and without credential', 
   const form = createDefaultLlmMarkdownConfigForm()
 
   assert.deepEqual(form, {
+    apiType: 'openai',
     url: '',
     model: '',
     apiKey: '',
-    credentialConfigured: false
+    credentialConfigured: false,
+    healthy: false,
+    healthMessage: '',
+    lastHealthAt: ''
   })
   assert.equal(isLlmMarkdownConfigFormSubmittable(form), true)
   assert.deepEqual(createLlmMarkdownConfigPayload(form), {
+    api_type: 'openai',
     url: '',
     model: ''
   })
@@ -28,9 +33,12 @@ test('default llm markdown config form starts disabled and without credential', 
 
 test('llm markdown config response never hydrates api key into edit form', () => {
   const form = fillLlmMarkdownConfigFormFromResponse({
+    api_type: 'openai',
     url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-vl-ocr-2025-11-20',
-    credential_configured: true
+    credential_configured: true,
+    healthy: true,
+    health_message: ''
   })
 
   assert.equal(form.apiKey, '')
@@ -41,12 +49,16 @@ test('llm markdown config response never hydrates api key into edit form', () =>
 
 test('llm markdown config payload includes api key only when nonblank', () => {
   const form = fillLlmMarkdownConfigFormFromResponse({
+    api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model',
-    credential_configured: true
+    credential_configured: true,
+    healthy: true,
+    health_message: ''
   })
 
   assert.deepEqual(createLlmMarkdownConfigPayload(form), {
+    api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model'
   })
@@ -54,6 +66,7 @@ test('llm markdown config payload includes api key only when nonblank', () => {
   form.apiKey = '  sk-new-secret  '
 
   assert.deepEqual(createLlmMarkdownConfigPayload(form), {
+    api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model',
     api_key: 'sk-new-secret'
@@ -86,8 +99,8 @@ test('llm markdown config hints declare openai compatible requirement and test b
   const emptyForm = createDefaultLlmMarkdownConfigForm()
 
   assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
-    protocolHint: '仅支持 OpenAI compatible Chat Completions 格式',
-    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
+    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     canTest: false
   })
 
@@ -95,8 +108,28 @@ test('llm markdown config hints declare openai compatible requirement and test b
   emptyForm.model = 'qwen-vl-ocr-2025-11-20'
 
   assert.deepEqual(llmConfigCapabilityHints(emptyForm), {
-    protocolHint: '仅支持 OpenAI compatible Chat Completions 格式',
-    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
+    endpointExample: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     canTest: true
+  })
+})
+
+test('llm markdown config supports anthropic endpoint hints and payload', () => {
+  const form = createDefaultLlmMarkdownConfigForm()
+
+  form.apiType = 'anthropic'
+  form.url = 'https://api.minimaxi.com/anthropic'
+  form.model = 'MiniMax-M3'
+
+  assert.deepEqual(llmConfigCapabilityHints(form), {
+    protocolHint: 'OpenAI compatible 填到 /v1，Anthropic 填到 /anthropic',
+    endpointExample: 'https://api.minimaxi.com/anthropic',
+    canTest: true
+  })
+
+  assert.deepEqual(createLlmMarkdownConfigPayload(form), {
+    api_type: 'anthropic',
+    url: 'https://api.minimaxi.com/anthropic',
+    model: 'MiniMax-M3'
   })
 })

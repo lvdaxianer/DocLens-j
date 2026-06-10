@@ -1,13 +1,11 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingResult;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
-import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import java.time.Duration;
 
 /**
@@ -23,6 +21,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private final ObjectMapper objectMapper;
     private final LlmMarkdownConfigRepository configRepository;
     private final MarkdownPostProcessor fallbackProcessor;
+    private final MarkdownPostProcessorFactory processorFactory;
 
     /**
      * 创建可配置 Markdown 后处理器。
@@ -41,6 +40,8 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
         this.objectMapper = objectMapper;
         this.configRepository = configRepository;
         this.fallbackProcessor = fallbackProcessor;
+        this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
+                Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
     }
 
     /**
@@ -68,9 +69,6 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @date 2026-06-09
      */
     private MarkdownPostProcessor runtimeProcessor(LlmMarkdownConfig config) {
-        HttpMarkdownPostProcessorOptions options = new HttpMarkdownPostProcessorOptions(
-                LlmMarkdownConfigService.normalizeCompatibleEndpoint(java.net.URI.create(config.url())),
-                config.model(), config.credentialValue(), Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
-        return new HttpMarkdownPostProcessor(objectMapper, options);
+        return processorFactory.create(config);
     }
 }
