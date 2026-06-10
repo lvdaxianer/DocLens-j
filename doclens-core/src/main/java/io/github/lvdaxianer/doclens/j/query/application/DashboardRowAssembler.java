@@ -68,7 +68,24 @@ class DashboardRowAssembler {
      * @date 2026-06-09
      */
     List<Map<String, Object>> documentRows(List<DocumentJob> documents) {
-        return documents.stream().map(this::documentRow).toList();
+        return documents.stream().map(document -> documentRow(document, List.of())).toList();
+    }
+
+    /**
+     * 创建带 OCR 最终分配信息的文档行集合。
+     *
+     * @param documents 文档集合
+     * @param finalHitNodesByDocument 文档级最终分配映射
+     * @return 文档行集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    List<Map<String, Object>> documentRows(
+            List<DocumentJob> documents,
+            Map<String, List<Map<String, Object>>> finalHitNodesByDocument
+    ) {
+        return documents.stream().map(document -> documentRow(document,
+                finalHitNodesByDocument.getOrDefault(document.documentId(), List.of()))).toList();
     }
 
     /**
@@ -93,7 +110,7 @@ class DashboardRowAssembler {
      */
     List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
-                .map(this::documentRow).toList();
+                .map(document -> documentRow(document, List.of())).toList();
     }
 
     /**
@@ -134,7 +151,7 @@ class DashboardRowAssembler {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> documentRow(DocumentJob document) {
+    private Map<String, Object> documentRow(DocumentJob document, List<Map<String, Object>> finalHitNodes) {
         return Map.ofEntries(
                 Map.entry("document_id", document.documentId()),
                 Map.entry("batch_id", document.batchId()),
@@ -147,6 +164,7 @@ class DashboardRowAssembler {
                 Map.entry("total_pages", document.totalPages()),
                 Map.entry("duration_ms", durationMillis(document)),
                 Map.entry("track", processingTrackAssembler.assemble(document)),
+                Map.entry("ocr_final_hit_nodes", finalHitNodes),
                 Map.entry("error_code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE)),
                 Map.entry("error_message", document.errorMessage().orElse(DocLensConstants.EMPTY_VALUE)),
                 Map.entry("updated_at", document.updatedAt().toString())

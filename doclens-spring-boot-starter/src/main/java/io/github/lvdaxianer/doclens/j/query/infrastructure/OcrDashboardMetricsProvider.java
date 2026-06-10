@@ -5,12 +5,15 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -84,15 +87,15 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     }
 
     /**
-     * 获取批次实际命中节点。
+     * 获取批次级 OCR 调度命中节点。
      *
      * @param batchId 批次 ID
      * @return 命中节点列表
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     @Override
-    public List<Map<String, Object>> hitNodesByBatch(String batchId) {
+    public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
         Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
                 .collect(Collectors.toMap(OcrNode::id, node -> node));
         Map<HitNodeKey, Long> hitCounts = callRepository.listByBatchId(batchId).stream()
@@ -106,6 +109,25 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     }
 
     /**
+     * 获取批次内各文档最终成功分配到的 OCR 节点。
+     *
+     * @param batchId 批次 ID
+     * @return 文档最终分配节点映射
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId) {
+        Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
+                .collect(Collectors.toMap(OcrNode::id, node -> node));
+        Map<String, List<OcrNodeCall>> callsByDocumentId = callRepository.listByBatchId(batchId).stream()
+                .filter(call -> call.status() == OcrNodeCallStatus.SUCCESS)
+                .collect(Collectors.groupingBy(OcrNodeCall::documentId));
+        return callsByDocumentId.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> finalHitNodes(entry.getValue(), nodesById)));
+    }
+
+    /**
      * 合并运行时命中快照，补齐尚未落库的处理中图片分布。
      *
      * @param hitCounts 已落库命中统计
@@ -116,6 +138,47 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private void mergeRuntimeHits(Map<HitNodeKey, Long> hitCounts, List<OcrBatchNodeHit> runtimeHits) {
         runtimeHits.forEach(hit -> hitCounts.merge(new HitNodeKey(hit.modelKey(), hit.nodeId()), hit.imageCount(),
                 Long::sum));
+    }
+
+    /**
+     * 同一页存在多次成功调用时，保留最终完成的那次成功归属。
+     *
+     * @param current 已保留的成功调用
+     * @param candidate 候选成功调用
+     * @return 最终成功调用
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrNodeCall latestSuccessfulCallByPage(OcrNodeCall current, OcrNodeCall candidate) {
+        OffsetDateTime currentFinishedAt = current.finishedAt().orElse(current.startedAt());
+        OffsetDateTime candidateFinishedAt = candidate.finishedAt().orElse(candidate.startedAt());
+        if (candidateFinishedAt.isAfter(currentFinishedAt)) {
+            return candidate;
+        } else {
+            return current;
+        }
+    }
+
+    /**
+     * 从同一文档的成功调用中组装最终命中节点。
+     *
+     * @param successfulCalls 文档成功调用集合
+     * @param nodesById 节点索引
+     * @return 文档最终命中节点
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private List<Map<String, Object>> finalHitNodes(List<OcrNodeCall> successfulCalls, Map<String, OcrNode> nodesById) {
+        Map<Integer, OcrNodeCall> finalSuccessfulCallsByPage = successfulCalls.stream()
+                .collect(Collectors.toMap(OcrNodeCall::pageNo, call -> call, this::latestSuccessfulCallByPage,
+                        LinkedHashMap::new));
+        Map<HitNodeKey, Long> hitCounts = finalSuccessfulCallsByPage.values().stream()
+                .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
+        return hitCounts.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(HitNodeKey::modelKey)
+                        .thenComparing(HitNodeKey::nodeId)))
+                .map(entry -> hitNodeRow(nodesById, entry.getKey(), entry.getValue()))
+                .toList();
     }
 
     /**

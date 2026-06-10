@@ -34,6 +34,7 @@ class OcrDashboardMetricsProviderTest {
             .withMinute(0)
             .withSecond(0)
             .withNano(0);
+    private static final String DEFAULT_MODEL_KEY = "paddle_ocr";
 
     /**
      * 批次命中节点应返回节点别名，避免前端退回显示内部 ID。
@@ -47,12 +48,12 @@ class OcrDashboardMetricsProviderTest {
                 offlineNode("ocr_node_1", "财务 OCR 节点")
         ));
         InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall("call-1", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 320),
-                successfulCall("call-2", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 480)
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 320),
+                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_1", 480)
         ));
         OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
 
-        List<Map<String, Object>> hitNodes = provider.hitNodesByBatch("batch-1");
+        List<Map<String, Object>> hitNodes = provider.dispatchHitNodesByBatch("batch-1");
 
         assertThat(hitNodes).singleElement().satisfies(row -> assertThat(row)
                 .containsEntry("node_id", "ocr_node_1")
@@ -73,15 +74,15 @@ class OcrDashboardMetricsProviderTest {
                 offlineNode("ocr_node_2", "票据 OCR 节点")
         ));
         InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall("call-1", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 320)
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 320)
         ));
         InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker(List.of(
-                new OcrBatchNodeHit("batch-1", "paddle_ocr", "ocr_node_1", 1L),
-                new OcrBatchNodeHit("batch-1", "paddle_ocr", "ocr_node_2", 2L)
+                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, "ocr_node_1", 1L),
+                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, "ocr_node_2", 2L)
         ));
         OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository, batchHitTracker);
 
-        List<Map<String, Object>> hitNodes = provider.hitNodesByBatch("batch-1");
+        List<Map<String, Object>> hitNodes = provider.dispatchHitNodesByBatch("batch-1");
 
         assertThat(hitNodes)
                 .anySatisfy(row -> assertThat(row)
@@ -92,6 +93,60 @@ class OcrDashboardMetricsProviderTest {
                         .containsEntry("node_id", "ocr_node_2")
                         .containsEntry("node_name", "票据 OCR 节点")
                         .containsEntry("image_count", 2L));
+    }
+
+    /**
+     * 文档最终分配节点应只统计成功节点，失败重试节点不能重复计入。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void finalHitNodesByDocumentCountsOnlySuccessfulNodePerPage() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode("ocr_node_1", "财务 OCR 节点"),
+                offlineNode("ocr_node_2", "票据 OCR 节点")
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
+                failedCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 100),
+                successfulCall(callSeed("call-2", "batch-1", "doc-1", 1), "ocr_node_2", 280),
+                successfulCall(callSeed("call-3", "batch-1", "doc-1", 2), "ocr_node_2", 320)
+        ));
+        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
+
+        List<Map<String, Object>> finalHitNodes = provider.finalHitNodesByBatch("batch-1").get("doc-1");
+
+        assertThat(finalHitNodes).singleElement().satisfies(row -> assertThat(row)
+                .containsEntry("node_id", "ocr_node_2")
+                .containsEntry("node_name", "票据 OCR 节点")
+                .containsEntry("image_count", 2L));
+    }
+
+    /**
+     * 文档最终分配节点应只返回当前文档自身的成功分配，不混入同批次其他文档。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void finalHitNodesByDocumentKeepsOtherDocumentsOutOfScope() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode("ocr_node_1", "财务 OCR 节点"),
+                offlineNode("ocr_node_2", "票据 OCR 节点"),
+                offlineNode("ocr_node_3", "合同 OCR 节点")
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 180),
+                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_2", 220),
+                successfulCall(callSeed("call-3", "batch-1", "doc-2", 1), "ocr_node_3", 260)
+        ));
+        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
+
+        List<Map<String, Object>> finalHitNodes = provider.finalHitNodesByBatch("batch-1").get("doc-1");
+
+        assertThat(finalHitNodes)
+                .hasSize(2)
+                .allSatisfy(row -> assertThat(row).doesNotContainEntry("node_id", "ocr_node_3"));
     }
 
     /**
@@ -107,9 +162,9 @@ class OcrDashboardMetricsProviderTest {
                 offlineNode("ocr_node_2", "票据 OCR 节点")
         ));
         InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall("call-1", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 100),
-                successfulCall("call-2", "batch-1", "doc-1", "paddle_ocr", "ocr_node_1", 200),
-                successfulCall("call-3", "batch-2", "doc-2", "paddle_ocr", "ocr_node_2", 600)
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 100),
+                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_1", 200),
+                successfulCall(callSeed("call-3", "batch-2", "doc-2", 1), "ocr_node_2", 600)
         ));
         OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
 
@@ -189,24 +244,78 @@ class OcrDashboardMetricsProviderTest {
      * @param callId 调用记录 ID
      * @param batchId 批次 ID
      * @param documentId 文档 ID
-     * @param modelKey 模型标识
+     * @param callSeed 调用基础信息
      * @param nodeId 节点 ID
      * @param elapsedMs 耗时
      * @return 调用记录
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-10
      */
     private OcrNodeCall successfulCall(
-            String callId,
-            String batchId,
-            String documentId,
-            String modelKey,
+            CallSeed callSeed,
             String nodeId,
             long elapsedMs
     ) {
-        return new OcrNodeCall(callId, batchId, documentId, 1, modelKey, nodeId, OcrRoutingMode.GLOBAL_LOAD_BALANCE,
+        return new OcrNodeCall(callSeed.callId(), callSeed.batchId(), callSeed.documentId(), callSeed.pageNo(),
+                DEFAULT_MODEL_KEY, nodeId,
+                OcrRoutingMode.GLOBAL_LOAD_BALANCE,
                 OcrNodeCallStatus.SUCCESS, 0, elapsedMs, Optional.empty(), Optional.empty(), BASE_TIME,
                 Optional.of(BASE_TIME.plusSeconds(1)));
+    }
+
+    /**
+     * 创建失败调用记录。
+     *
+     * @param callSeed 调用基础信息
+     * @param nodeId 节点 ID
+     * @param elapsedMs 耗时
+     * @return 失败调用记录
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private OcrNodeCall failedCall(
+            CallSeed callSeed,
+            String nodeId,
+            long elapsedMs
+    ) {
+        return new OcrNodeCall(callSeed.callId(), callSeed.batchId(), callSeed.documentId(), callSeed.pageNo(),
+                DEFAULT_MODEL_KEY, nodeId,
+                OcrRoutingMode.GLOBAL_LOAD_BALANCE,
+                OcrNodeCallStatus.FAILED, 1, elapsedMs, Optional.of("OCR_FAILED"),
+                Optional.of("recognize failed"), BASE_TIME, Optional.of(BASE_TIME.plusSeconds(1)));
+    }
+
+    /**
+     * 创建测试调用基础信息。
+     *
+     * @param callId 调用记录 ID
+     * @param batchId 批次 ID
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @return 调用基础信息
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private CallSeed callSeed(String callId, String batchId, String documentId, int pageNo) {
+        return new CallSeed(callId, batchId, documentId, pageNo);
+    }
+
+    /**
+     * 测试调用基础信息。
+     *
+     * @param callId 调用记录 ID
+     * @param batchId 批次 ID
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private record CallSeed(
+            String callId,
+            String batchId,
+            String documentId,
+            int pageNo
+    ) {
     }
 
     /**

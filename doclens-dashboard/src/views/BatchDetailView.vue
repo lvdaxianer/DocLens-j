@@ -38,6 +38,13 @@ const PROGRESS_BAR_HEIGHT = 12
 const DOCUMENT_TABLE_SCROLL_X = 1120
 
 const batchId = computed(() => String(route.params.batchId ?? ''))
+const currentRouteDocument = computed(() => {
+  const documents = selectedBatch.value?.documents ?? []
+  return documents.find((document) => document.status === 'processing')
+    ?? documents.find((document) => document.ocr_final_hit_nodes.length > 0)
+    ?? documents[0]
+    ?? null
+})
 const {
   resultDrawerOpen,
   selectedResultDocument,
@@ -178,7 +185,9 @@ useAutoRefresh(refresh)
     <BatchOcrRoutePanel
       v-if="selectedBatch"
       :route-policy="selectedBatch.ocr_route_policy"
-      :hit-nodes="selectedBatch.ocr_hit_nodes"
+      :current-document-name="currentRouteDocument?.file_name"
+      :current-document-final-hit-nodes="currentRouteDocument?.ocr_final_hit_nodes ?? []"
+      :hit-nodes="selectedBatch.batch_dispatch_hit_nodes"
     />
 
     <section class="panel">

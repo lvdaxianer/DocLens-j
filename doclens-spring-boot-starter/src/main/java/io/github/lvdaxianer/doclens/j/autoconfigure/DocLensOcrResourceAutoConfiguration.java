@@ -158,7 +158,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-08
      */
     @Bean
-    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthClient.class})
+    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthClient.class, OcrGovernanceConfigService.class})
     @ConditionalOnMissingBean
     OcrHealthChecker ocrHealthChecker(
             OcrNodeRepository nodeRepository,
@@ -195,7 +195,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-09
      */
     @Bean
-    @ConditionalOnBean({OcrHealthChecker.class, OcrRuntimeNodePool.class})
+    @ConditionalOnBean({OcrHealthChecker.class, OcrRuntimeNodePool.class, OcrGovernanceConfigService.class})
     @ConditionalOnMissingBean
     OcrHealthCheckScheduler ocrHealthCheckScheduler(
             OcrHealthChecker healthChecker,
@@ -233,7 +233,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @date 2026-06-10
      */
     @Bean
-    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthChecker.class})
+    @ConditionalOnBean({OcrNodeRepository.class, OcrHealthChecker.class, OcrGovernanceConfigService.class})
     @ConditionalOnMissingBean
     OcrManualRecoveryService ocrManualRecoveryService(
             OcrNodeRepository nodeRepository,

@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "test": "npm run test:utils && npm run test:ui",
+    "test:utils": "node --test --experimental-strip-types src/utils/__tests__/*.test.ts",
+    "test:ui": "vitest run src/components/dashboard/__tests__",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
@@ -17,10 +20,13 @@
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
     "@tsconfig/node22": "^22.0.2",
     "@vitejs/plugin-vue": "^6.0.1",
+    "jsdom": "^26.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.1.1"
   }
 }

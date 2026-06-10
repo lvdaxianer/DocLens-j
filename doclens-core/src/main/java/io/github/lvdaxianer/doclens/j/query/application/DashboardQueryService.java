@@ -126,10 +126,11 @@ public class DashboardQueryService {
         List<OcrEvent> events = eventRepository.listByBatchId(batchId);
         return Map.ofEntries(
                 Map.entry("batch", rowAssembler.batchRow(batch, documents)),
-                Map.entry("documents", rowAssembler.documentRows(documents)),
+                Map.entry("documents", rowAssembler.documentRows(documents,
+                        ocrMetricsProvider.finalHitNodesByBatch(batchId))),
                 Map.entry("events", rowAssembler.eventRows(events)),
                 Map.entry("ocr_route_policy", rowAssembler.batchRoutePolicy(documents)),
-                Map.entry("ocr_hit_nodes", ocrMetricsProvider.hitNodesByBatch(batchId)),
+                Map.entry("batch_dispatch_hit_nodes", ocrMetricsProvider.dispatchHitNodesByBatch(batchId)),
                 Map.entry("failure_summary", rowAssembler.failureSummary(documents))
         );
     }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { BatchOcrHitNode, BatchOcrRoutePolicy } from '@/types/dashboard'
-import { formatNumber } from '@/utils/formatters'
 import {
   displayLoadBalanceStrategy,
   displayModelName,
@@ -11,6 +10,8 @@ import {
 
 defineProps<{
   routePolicy?: BatchOcrRoutePolicy | null
+  currentDocumentName?: string
+  currentDocumentFinalHitNodes: BatchOcrHitNode[]
   hitNodes: BatchOcrHitNode[]
 }>()
 </script>
@@ -20,7 +21,7 @@ defineProps<{
     <div class="panel__header">
       <div>
         <h2 class="panel__title">OCR 路由</h2>
-        <span class="panel__hint">上传时路由策略与实际命中节点</span>
+        <span class="panel__hint">上传时路由策略、当前文件最终分配与批次级调度命中</span>
       </div>
     </div>
     <dl class="batch-ocr-route__policy">
@@ -41,19 +42,50 @@ defineProps<{
         <dd>{{ displayLoadBalanceStrategy(routePolicy?.load_balance_strategy) }}</dd>
       </div>
     </dl>
-    <div v-if="hitNodes.length > 0" class="batch-ocr-route__hits">
-      <article v-for="node in hitNodes" :key="`${node.model_key}-${node.node_id}`" class="batch-ocr-route__hit">
-        <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
-        <span>
-          {{ displayNodeSubtitle({
-            nodeId: node.node_id,
-            modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
-            imageCount: node.image_count
-          }) }}
-        </span>
-      </article>
-    </div>
-    <p v-else class="batch-ocr-route__empty">暂无 OCR 命中节点记录</p>
+
+    <section class="batch-ocr-route__section">
+      <div class="batch-ocr-route__section-header">
+        <h3>当前文件实际分配</h3>
+        <span>{{ currentDocumentName || '当前文件未确定' }}</span>
+      </div>
+      <div v-if="currentDocumentFinalHitNodes.length > 0" class="batch-ocr-route__hits">
+        <article
+          v-for="node in currentDocumentFinalHitNodes"
+          :key="`final-${node.model_key}-${node.node_id}`"
+          class="batch-ocr-route__hit"
+        >
+          <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
+          <span>
+            {{ displayNodeSubtitle({
+              nodeId: node.node_id,
+              modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
+              imageCount: node.image_count
+            }) }}
+          </span>
+        </article>
+      </div>
+      <p v-else class="batch-ocr-route__empty">当前文件尚未完成 OCR，暂无最终分配结果</p>
+    </section>
+
+    <section class="batch-ocr-route__section">
+      <div class="batch-ocr-route__section-header">
+        <h3>批次 OCR 调度命中</h3>
+        <span>包含重试、故障转移和运行中请求，仅反映批次调度情况</span>
+      </div>
+      <div v-if="hitNodes.length > 0" class="batch-ocr-route__hits">
+        <article v-for="node in hitNodes" :key="`${node.model_key}-${node.node_id}`" class="batch-ocr-route__hit">
+          <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
+          <span>
+            {{ displayNodeSubtitle({
+              nodeId: node.node_id,
+              modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
+              imageCount: node.image_count
+            }) }}
+          </span>
+        </article>
+      </div>
+      <p v-else class="batch-ocr-route__empty">暂无批次 OCR 调度命中记录</p>
+    </section>
   </section>
 </template>
 
@@ -62,6 +94,29 @@ defineProps<{
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.batch-ocr-route__section {
+  display: grid;
+  gap: 8px;
+}
+
+.batch-ocr-route__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.batch-ocr-route__section-header h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.batch-ocr-route__section-header span {
+  color: var(--ink-muted);
+  font-size: 12px;
 }
 
 .batch-ocr-route__policy {
@@ -115,6 +170,11 @@ defineProps<{
 @media (max-width: 900px) {
   .batch-ocr-route__policy {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .batch-ocr-route__section-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
