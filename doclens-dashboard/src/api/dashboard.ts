@@ -11,6 +11,7 @@ const DASHBOARD_API_BUSINESS = '[Dashboard API]'
 const JSON_ACCEPT_HEADER = 'application/json'
 const HTTP_GET_METHOD = 'GET'
 const HTTP_POST_METHOD = 'POST'
+const HTTP_DELETE_METHOD = 'DELETE'
 const NETWORK_ERROR_STATUS = 'NETWORK_ERROR'
 
 interface DashboardRequestContext {
@@ -230,5 +231,20 @@ export function retryDocument(documentId: string): Promise<{ document_id: string
   return requestJson<{ document_id: string; status: string }>(
     `/api/v1/documents/${encodeURIComponent(documentId)}/retry`,
     HTTP_POST_METHOD
+  )
+}
+
+/**
+ * 删除单个已完成、失败或卡死文档。
+ *
+ * @param documentId - 文档 ID
+ * @returns 删除结果
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function deleteDocument(documentId: string): Promise<{ document_id: string; status: string }> {
+  return requestJson<{ document_id: string; status: string }>(
+    `/api/v1/documents/${encodeURIComponent(documentId)}`,
+    HTTP_DELETE_METHOD
   )
 }

@@ -28,4 +28,15 @@ public interface ObjectStorage {
      * @date 2026-06-07
      */
     byte[] readBytes(String storageUri);
+
+    /**
+     * 删除存储 URI 对应对象。
+     *
+     * @param storageUri 存储 URI
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void delete(String storageUri) {
+        throw new UnsupportedOperationException("object delete is not supported");
+    }
 }

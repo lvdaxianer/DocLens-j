@@ -165,6 +165,18 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
+     * 根据文档 ID 删除文档任务。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void deleteById(String documentId) {
+        removeById(documentId);
+    }
+
+    /**
      * 将领域文档任务转换为持久化实体。
      *
      * @param document 文档任务

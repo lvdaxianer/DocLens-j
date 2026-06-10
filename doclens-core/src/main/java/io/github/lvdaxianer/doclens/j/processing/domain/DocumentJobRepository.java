@@ -86,4 +86,15 @@ public interface DocumentJobRepository {
      * @date 2026-06-08
      */
     List<DocumentJob> listRecent(int limit);
+
+    /**
+     * 根据 ID 删除文档任务。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void deleteById(String documentId) {
+        throw new UnsupportedOperationException("document delete is not supported");
+    }
 }

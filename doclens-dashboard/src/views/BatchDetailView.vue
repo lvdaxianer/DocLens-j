@@ -7,10 +7,11 @@ import {
   NAlert,
   NButton,
   NDataTable,
+  NPopconfirm,
   NProgress
 } from 'naive-ui'
 
-import { retryDocument } from '@/api/dashboard'
+import { deleteDocument, retryDocument } from '@/api/dashboard'
 import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
 import DocumentResultDrawer from '@/components/dashboard/DocumentResultDrawer.vue'
 import DocumentTrackCards from '@/components/dashboard/DocumentTrackCards.vue'
@@ -41,6 +42,7 @@ const DOCUMENT_TABLE_SCROLL_X = 1120
 
 const batchId = computed(() => String(route.params.batchId ?? ''))
 const retryingDocumentId = ref('')
+const deletingDocumentId = ref('')
 const currentRouteDocument = computed(() => {
   const documents = selectedBatch.value?.documents ?? []
   return documents.find((document) => document.status === 'processing')
@@ -70,6 +72,18 @@ function canRetryDocument(status: string): boolean {
 }
 
 /**
+ * 判断文档当前状态是否允许显示删除操作。
+ *
+ * @param status 文档状态
+ * @returns 是否可删除
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function canDeleteDocument(status: string): boolean {
+  return status === COMPLETED_STATUS || status === FAILED_STATUS || status === STALLED_STATUS
+}
+
+/**
  * 执行文档重试并刷新当前批次详情。
  *
  * @param documentId 文档 ID
@@ -84,6 +98,24 @@ async function handleRetryDocument(documentId: string): Promise<void> {
     await refresh()
   } finally {
     retryingDocumentId.value = ''
+  }
+}
+
+/**
+ * 执行文档删除并刷新当前批次详情。
+ *
+ * @param documentId 文档 ID
+ * @returns 删除完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+async function handleDeleteDocument(documentId: string): Promise<void> {
+  deletingDocumentId.value = documentId
+  try {
+    await deleteDocument(documentId)
+    await refresh()
+  } finally {
+    deletingDocumentId.value = ''
   }
 }
 
@@ -164,6 +196,7 @@ const columns: DataTableColumns<DocumentRow> = [
   {
     title: '重试',
     key: 'retry_action',
+    width: 90,
     fixed: 'right',
     render: (row) =>
       h(NButton, {
@@ -176,6 +209,34 @@ const columns: DataTableColumns<DocumentRow> = [
         }
       }, {
         default: () => '重试'
+      })
+  },
+  {
+    title: '删除',
+    key: 'delete_action',
+    width: 100,
+    fixed: 'right',
+    render: (row) =>
+      h(NPopconfirm, {
+        positiveText: '确认删除',
+        negativeText: '取消',
+        onPositiveClick: () => {
+          if (canDeleteDocument(row.status)) {
+            void handleDeleteDocument(row.document_id)
+          } else {
+            // 不支持删除的状态忽略确认动作。
+          }
+        }
+      }, {
+        trigger: () => h(NButton, {
+          size: 'small',
+          secondary: true,
+          disabled: !canDeleteDocument(row.status),
+          loading: deletingDocumentId.value === row.document_id
+        }, {
+          default: () => '删除'
+        }),
+        default: () => '删除后将同步清理文档结果与关联存储，是否继续？'
       })
   }
 ]

@@ -32,6 +32,7 @@ public final class DocLensConstants {
     public static final String EVENT_DOCUMENT_COMPLETED = "document.completed";
     public static final String EVENT_DOCUMENT_FAILED = "document.failed";
     public static final String EVENT_DOCUMENT_RETRIED = "document.retried";
+    public static final String EVENT_DOCUMENT_DELETED = "document.deleted";
     public static final String ERROR_CODE_OCR_FAILED = "OCR_FAILED";
 
     private DocLensConstants() {

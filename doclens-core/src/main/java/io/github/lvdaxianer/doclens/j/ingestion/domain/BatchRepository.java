@@ -61,4 +61,25 @@ public interface BatchRepository {
      * @date 2026-06-07
      */
     void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status);
+
+    /**
+     * 更新批次处理摘要，并显式同步总文件数。
+     *
+     * @param batchId 批次 ID
+     * @param totalFiles 总文件数
+     * @param completedFiles 已完成文件数
+     * @param failedFiles 失败文件数
+     * @param status 最终状态
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void updateSummary(
+            String batchId,
+            int totalFiles,
+            int completedFiles,
+            int failedFiles,
+            BatchStatus status
+    ) {
+        updateSummary(batchId, completedFiles, failedFiles, status);
+    }
 }

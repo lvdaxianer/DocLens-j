@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import java.util.Map;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -81,6 +82,19 @@ public class OcrQueryController {
     @PostMapping("/documents/{documentId}/retry")
     public Map<String, Object> retryDocument(@PathVariable String documentId) {
         return docLensEngine.retryDocument(documentId);
+    }
+
+    /**
+     * 删除已完成、失败或卡死文档。
+     *
+     * @param documentId 文档 ID
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @DeleteMapping("/documents/{documentId}")
+    public Map<String, Object> deleteDocument(@PathVariable String documentId) {
+        return docLensEngine.deleteDocument(documentId);
     }
 
     /**

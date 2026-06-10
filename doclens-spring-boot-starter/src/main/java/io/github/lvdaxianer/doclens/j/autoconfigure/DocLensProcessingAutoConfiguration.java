@@ -10,6 +10,8 @@ import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.AsyncBatchProcess
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
@@ -122,6 +124,41 @@ public class DocLensProcessingAutoConfiguration {
         return new DocumentRetryDependencies(context.getBean(DocumentJobRepository.class),
                 context.getBean(BatchRepository.class), context.getBean(OcrEventRepository.class),
                 context.getBean(BatchProcessingScheduler.class), context.getBean(OcrEventFactory.class));
+    }
+
+    /**
+     * 创建文档级删除用例。
+     *
+     * @param dependencies 删除依赖
+     * @param transactionRunner 事务执行器
+     * @return 文档级删除用例
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DocumentDeleteUseCase documentDeleteUseCase(
+            DocumentDeleteDependencies dependencies,
+            TransactionRunner transactionRunner
+    ) {
+        return new DocumentDeleteUseCase(dependencies, transactionRunner);
+    }
+
+    /**
+     * 创建文档删除用例依赖持有对象。
+     *
+     * @param context Spring 上下文
+     * @return 文档删除依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DocumentDeleteDependencies documentDeleteDependencies(ApplicationContext context) {
+        return new DocumentDeleteDependencies(context.getBean(DocumentJobRepository.class),
+                context.getBean(BatchRepository.class), context.getBean(OcrResultRepository.class),
+                context.getBean(OcrEventRepository.class), context.getBean(ObjectStorage.class),
+                context.getBean(OcrEventFactory.class));
     }
 
     /**

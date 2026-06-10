@@ -47,4 +47,15 @@ public interface OcrEventRepository {
      * @date 2026-06-08
      */
     List<OcrEvent> listRecent(int limit);
+
+    /**
+     * 根据文档 ID 删除关联事件。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void deleteByDocumentId(String documentId) {
+        throw new UnsupportedOperationException("ocr event delete is not supported");
+    }
 }

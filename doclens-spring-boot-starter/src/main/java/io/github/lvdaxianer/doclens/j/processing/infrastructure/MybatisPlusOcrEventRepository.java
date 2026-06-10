@@ -94,6 +94,20 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
+     * 根据文档 ID 删除 OCR 事件。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        LambdaQueryWrapper<OcrEventEntity> wrapper = new LambdaQueryWrapper<OcrEventEntity>()
+                .eq(OcrEventEntity::getDocumentId, documentId);
+        remove(wrapper);
+    }
+
+    /**
      * 将领域 OCR 事件转换为持久化实体。
      *
      * @param event OCR 事件

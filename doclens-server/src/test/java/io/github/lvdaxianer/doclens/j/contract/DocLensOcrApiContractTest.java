@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -112,6 +115,95 @@ class DocLensOcrApiContractTest {
     }
 
     /**
+     * 验证已完成文档可以删除，并同步清理结果、存储与批次统计。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void completedDocumentCanBeDeletedAndBatchSummaryStaysConsistent() throws Exception {
+        MvcResult created = uploadBatch();
+        JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
+        String batchId = body.get("batch_id").asText();
+        String documentId = body.get("documents").get(0).get("document_id").asText();
+
+        waitForBatchCompleted(batchId);
+
+        Map<String, Object> storageColumns = loadDocumentStorageColumns(documentId);
+        Path sourcePath = storagePath(String.valueOf(storageColumns.get("STORAGE_URI")));
+        Path markdownPath = storagePath(String.valueOf(storageColumns.get("MARKDOWN_STORAGE_URI")));
+
+        mockMvc.perform(delete("/api/v1/documents/{documentId}", documentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.document_id").value(documentId))
+                .andExpect(jsonPath("$.status").value("deleted"));
+
+        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total_files").value(1))
+                .andExpect(jsonPath("$.completed_files").value(1))
+                .andExpect(jsonPath("$.failed_files").value(0))
+                .andExpect(jsonPath("$.status").value("completed"));
+
+        mockMvc.perform(get("/api/v1/documents/{documentId}", documentId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
+
+        mockMvc.perform(get("/api/v1/documents/{documentId}/result", documentId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM ocr_documents WHERE document_id = ?", Integer.class, documentId))
+                .isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM ocr_results WHERE document_id = ?", Integer.class, documentId))
+                .isZero();
+        assertThat(Files.exists(sourcePath)).isFalse();
+        assertThat(Files.exists(markdownPath)).isFalse();
+    }
+
+    /**
+     * 验证 processing 文档删除会被明确拒绝。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void processingDocumentDeleteIsRejected() throws Exception {
+        String batchId = "batch-processing-delete";
+        String documentId = "doc-processing-delete";
+        String now = "2026-06-10T11:00:00+08:00";
+        jdbcTemplate.update("""
+                INSERT INTO ocr_batches (
+                    batch_id, status, total_files, completed_files, failed_files, current_document_id,
+                    current_document_name, current_stage, metadata, callback_url, idempotency_key, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, batchId, "processing", 1, 0, 0, documentId, "processing.pdf", "ocr_images", "{}",
+                null, null, now, now);
+        jdbcTemplate.update("""
+                INSERT INTO ocr_documents (
+                    document_id, batch_id, file_name, file_type, file_size, page_count, storage_uri, status, stage,
+                    progress_percent, current_page, total_pages, adapter_name, pdf_mode, metadata, result_id,
+                    error_code, error_message, sort_order, locked_by, locked_until, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, documentId, batchId, "processing.pdf", "pdf", 12L, 1, "local://uploads/processing.pdf",
+                "processing", "ocr_images", 50, 1, 2, "stub_ocr", null, "{}", null, null, null, 0, null, null,
+                now, now);
+
+        mockMvc.perform(delete("/api/v1/documents/{documentId}", documentId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not deletable")))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("processing")));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM ocr_documents WHERE document_id = ?", Integer.class, documentId))
+                .isEqualTo(1);
+    }
+
+    /**
      * 等待后台批次处理完成。
      *
      * @param batchId 批次 ID
@@ -205,6 +297,37 @@ class DocLensOcrApiContractTest {
                 WHERE document_id = ?
                 LIMIT 1
                 """, documentId);
+    }
+
+    /**
+     * 查询文档和结果存储字段。
+     *
+     * @param documentId 文档 ID
+     * @return 存储字段
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private Map<String, Object> loadDocumentStorageColumns(String documentId) {
+        return jdbcTemplate.queryForMap("""
+                SELECT d.storage_uri, r.markdown_storage_uri
+                FROM ocr_documents d
+                JOIN ocr_results r ON r.document_id = d.document_id
+                WHERE d.document_id = ?
+                LIMIT 1
+                """, documentId);
+    }
+
+    /**
+     * 将 local:// 存储 URI 转换为测试文件路径。
+     *
+     * @param storageUri 存储 URI
+     * @return 存储文件路径
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private Path storagePath(String storageUri) {
+        String objectKey = storageUri.replace("local://", "");
+        return tempDir.resolve("storage").resolve(objectKey);
     }
 
     private MvcResult uploadBatch() throws Exception {
