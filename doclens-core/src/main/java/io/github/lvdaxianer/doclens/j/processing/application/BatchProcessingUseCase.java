@@ -542,12 +542,28 @@ public class BatchProcessingUseCase {
                 Map.of(), Map.of()));
     }
 
+    /**
+     * 根据批次内文档终态数量解析批次状态。
+     *
+     * @param total 文档总数
+     * @param completed 完成数量
+     * @param failed 失败数量
+     * @return 批次状态
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
     private BatchStatus resolveBatchStatus(int total, long completed, long failed) {
-        if (failed == 0 && completed == total) {
+        if (completed + failed < total) {
+            // 存在未完成的异步页任务时，批次仍处于处理中。
+            return BatchStatus.PROCESSING;
+        } else if (failed == 0 && completed == total) {
+            // 全部文档成功完成时，批次完成。
             return BatchStatus.COMPLETED;
         } else if (completed == 0 && failed == total) {
+            // 全部文档失败时，批次失败。
             return BatchStatus.FAILED;
         } else {
+            // 成功和失败文档同时存在时，批次部分失败。
             return BatchStatus.PARTIAL_FAILED;
         }
     }

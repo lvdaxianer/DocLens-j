@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
@@ -12,7 +13,9 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -44,6 +47,9 @@ class OcrNodeManualReconnectApiContractTest {
     @Autowired
     private OcrNodeRepository nodeRepository;
 
+    @MockBean
+    private OcrHealthClient healthClient;
+
     /**
      * 配置隔离的测试数据库与文件存储。
      *
@@ -68,6 +74,7 @@ class OcrNodeManualReconnectApiContractTest {
      */
     @Test
     void manualReconnectRunsBoundedRecoveryAttemptsAndReturnsUpdatedState() throws Exception {
+        Mockito.when(healthClient.isHealthy(Mockito.any())).thenReturn(true);
         String nodeId = createOnlineNode("dashscope-reconnect", "qwen-vl-ocr-2025-11-20", "sk-secret-reconnect");
         markNodeDownWithOpenCircuit(nodeId);
 

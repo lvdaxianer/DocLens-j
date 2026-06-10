@@ -75,7 +75,7 @@ class OcrGovernanceConfigApiContractTest {
         mockMvc.perform(get("/api/v1/ocr-governance-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.failure_threshold").value(3))
-                .andExpect(jsonPath("$.probe_interval_seconds").value(60))
+                .andExpect(jsonPath("$.probe_interval_seconds").value(5))
                 .andExpect(jsonPath("$.circuit_open_seconds").value(86400))
                 .andExpect(jsonPath("$.recovery_success_threshold").value(3))
                 .andExpect(jsonPath("$.manual_recovery_attempts").value(3));

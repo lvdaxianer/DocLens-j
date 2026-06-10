@@ -1,6 +1,9 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -9,15 +12,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRouteExecutionResult;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
+import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -408,6 +419,45 @@ class DocLensOcrApiContractTest {
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("queued"))
                 .andReturn();
+    }
+
+    /**
+     * 契约测试 OCR 路由配置，避免访问真实 OCR 节点。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @TestConfiguration
+    static class ContractOcrRoutingConfiguration {
+
+        /**
+         * 创建固定返回的 OCR 路由服务，并触发页任务 worker 自动装配。
+         *
+         * @return OCR 路由服务
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Bean
+        OcrRoutingService contractOcrRoutingService() {
+            OcrRoutingService routingService = mock(OcrRoutingService.class);
+            when(routingService.recognize(any(), any())).thenAnswer(invocation -> routeResult(invocation.getArgument(0)));
+            return routingService;
+        }
+    }
+
+    /**
+     * 构建固定 OCR 路由结果。
+     *
+     * @param request 图片 OCR 请求
+     * @return OCR 路由结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private static OcrRouteExecutionResult routeResult(ImageOcrRequest request) {
+        ImageOcrResult result = ImageOcrResult.fromBlocks(request.pageNo(), Map.of("contract", true),
+                List.of(new OcrBlock(request.pageNo(), "PaddleOCR API Test " + request.pageNo(), 0.99D,
+                        List.of(), List.of(), "contract-test")), List.of());
+        return new OcrRouteExecutionResult(result, "stub_ocr", "node-contract", 1L, 0);
     }
 
     /**

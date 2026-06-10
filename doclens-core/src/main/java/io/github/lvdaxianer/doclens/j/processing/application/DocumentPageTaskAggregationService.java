@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
@@ -40,6 +42,7 @@ public class DocumentPageTaskAggregationService {
     private static final int RAW_OUTPUT_CAPACITY = 2;
 
     private final DocumentJobRepository documentRepository;
+    private final BatchRepository batchRepository;
     private final DocumentPageTaskRepository pageTaskRepository;
     private final DocumentPageResultRepository pageResultRepository;
     private final OcrResultRepository resultRepository;
@@ -60,6 +63,7 @@ public class DocumentPageTaskAggregationService {
             TransactionRunner transactionRunner
     ) {
         this.documentRepository = dependencies.documentRepository();
+        this.batchRepository = dependencies.batchRepository();
         this.pageTaskRepository = dependencies.pageTaskRepository();
         this.pageResultRepository = dependencies.pageResultRepository();
         this.resultRepository = dependencies.resultRepository();
@@ -155,8 +159,66 @@ public class DocumentPageTaskAggregationService {
         List<DocumentPageResult> pages = sortedPages(document.documentId());
         OcrResult result = ocrResult(document, pages);
         resultRepository.save(result);
-        documentRepository.update(document.advanceStage(ProcessingStage.SAVE_TEXT, pages.size(),
-                document.totalPages(), OffsetDateTime.now()).complete(result.resultId(), OffsetDateTime.now()));
+        DocumentJob completed = document.advanceStage(ProcessingStage.SAVE_TEXT, pages.size(),
+                document.totalPages(), OffsetDateTime.now()).complete(result.resultId(), OffsetDateTime.now());
+        documentRepository.update(completed);
+        refreshBatchSummary(completed.batchId());
+    }
+
+    /**
+     * 刷新批次摘要，保持公开批次 API 与页任务异步聚合后的文档状态一致。
+     *
+     * @param batchId 批次 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void refreshBatchSummary(String batchId) {
+        if (batchRepository.findById(batchId).isPresent()) {
+            updateExistingBatchSummary(batchId);
+        } else {
+            LOGGER.warn("[页任务聚合] 批次不存在，跳过摘要刷新 batchId={}", batchId);
+        }
+    }
+
+    /**
+     * 更新已存在批次的完成摘要。
+     *
+     * @param batchId 批次 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void updateExistingBatchSummary(String batchId) {
+        List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
+        long completed = documents.stream().filter(document -> document.status() == DocumentStatus.COMPLETED).count();
+        long failed = documents.stream().filter(document -> document.status().isFailureLike()).count();
+        batchRepository.updateSummary(batchId, Math.toIntExact(completed), Math.toIntExact(failed),
+                resolveBatchStatus(documents.size(), completed, failed));
+    }
+
+    /**
+     * 根据文档终态数量解析批次状态。
+     *
+     * @param total 文档总数
+     * @param completed 完成数量
+     * @param failed 失败数量
+     * @return 批次状态
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchStatus resolveBatchStatus(int total, long completed, long failed) {
+        if (completed + failed < total) {
+            // 存在未完成的异步页任务时，批次仍处于处理中。
+            return BatchStatus.PROCESSING;
+        } else if (failed == 0 && completed == total) {
+            // 全部文档成功完成时，批次完成。
+            return BatchStatus.COMPLETED;
+        } else if (completed == 0 && failed == total) {
+            // 全部文档失败时，批次失败。
+            return BatchStatus.FAILED;
+        } else {
+            // 成功和失败文档同时存在时，批次部分失败。
+            return BatchStatus.PARTIAL_FAILED;
+        }
     }
 
     /**

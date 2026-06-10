@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationService;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionDependencies;
@@ -117,7 +118,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     @ConditionalOnMissingBean
     DocumentPageTaskAggregationDependencies documentPageTaskAggregationDependencies(ApplicationContext context) {
         return new DocumentPageTaskAggregationDependencies(context.getBean(DocumentJobRepository.class),
-                context.getBean(DocumentPageTaskRepository.class),
+                context.getBean(BatchRepository.class), context.getBean(DocumentPageTaskRepository.class),
                 context.getBean(DocumentPageResultRepository.class), context.getBean(OcrResultRepository.class),
                 context.getBean(ObjectStorage.class), context.getBean(IdGenerator.class));
     }

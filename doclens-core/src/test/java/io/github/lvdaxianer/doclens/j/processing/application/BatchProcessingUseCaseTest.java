@@ -119,9 +119,11 @@ class BatchProcessingUseCaseTest {
     void processBatchQueuesImageDocumentPagesWithoutSynchronousOcr() {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
         InMemoryDocumentPageTaskRepository pageTaskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
         FailingDocumentTextExtractor extractor = new FailingDocumentTextExtractor();
+        batchRepository.save(batch("batch-test", 1));
         documentRepository.save(document("doc-image", 0, DocumentType.IMAGE));
-        BatchProcessingUseCase useCase = useCase(documentRepository, pageTaskRepository, extractor);
+        BatchProcessingUseCase useCase = useCase(documentRepository, batchRepository, pageTaskRepository, extractor);
 
         useCase.processBatch("batch-test");
 
@@ -132,6 +134,8 @@ class BatchProcessingUseCaseTest {
             assertThat(document.status()).isEqualTo(DocumentStatus.PROCESSING);
             assertThat(document.stage()).isEqualTo(ProcessingStage.OCR_QUEUED);
         });
+        assertThat(batchRepository.findById("batch-test")).get().extracting(Batch::status)
+                .isEqualTo(BatchStatus.PROCESSING);
     }
 
     /**
@@ -348,9 +352,29 @@ class BatchProcessingUseCaseTest {
             InMemoryDocumentPageTaskRepository pageTaskRepository,
             DocumentTextExtractor extractor
     ) {
+        return useCase(documentRepository, new InMemoryBatchRepository(), pageTaskRepository, extractor);
+    }
+
+    /**
+     * 创建带页任务仓储和批次仓储的批次处理用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param batchRepository 批次仓储
+     * @param pageTaskRepository 页任务仓储
+     * @param extractor 文本提取器
+     * @return 批次处理用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchProcessingUseCase useCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryBatchRepository batchRepository,
+            InMemoryDocumentPageTaskRepository pageTaskRepository,
+            DocumentTextExtractor extractor
+    ) {
         BatchProcessingDependencies dependencies = dependencies(new TestBatchProcessingDependencies(documentRepository,
-                new InMemoryOcrResultRepository(), new InMemoryOcrEventRepository(), new InMemoryBatchRepository(),
-                extractor, MarkdownPostProcessor.noop(), pageTaskRepository));
+                new InMemoryOcrResultRepository(), new InMemoryOcrEventRepository(), batchRepository, extractor,
+                MarkdownPostProcessor.noop(), pageTaskRepository));
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
     }
 
@@ -480,6 +504,21 @@ class BatchProcessingUseCaseTest {
                 documentId + ".txt", fileType, 5, 1, "local://" + documentId, "stub_ocr",
                 Optional.empty(), metadata, sortOrder, OffsetDateTime.now());
         return DocumentJob.create(request);
+    }
+
+    /**
+     * 创建测试批次。
+     *
+     * @param batchId 批次 ID
+     * @param totalFiles 总文件数
+     * @return 测试批次
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private Batch batch(String batchId, int totalFiles) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new Batch(batchId, BatchStatus.QUEUED, totalFiles, 0, 0, Optional.empty(), Optional.empty(),
+                "queued", JsonPayload.empty(), Optional.empty(), Optional.empty(), now, now);
     }
 
     /**
@@ -899,7 +938,10 @@ class BatchProcessingUseCaseTest {
 
         @Override
         public void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status) {
-            // 当前测试只验证文档级持久化。
+            findById(batchId).ifPresent(batch -> batches.put(batchId, new Batch(batch.batchId(), status,
+                    batch.totalFiles(), completedFiles, failedFiles, batch.currentDocumentId(),
+                    batch.currentDocumentName(), status.name().toLowerCase(), batch.metadata(), batch.callbackUrl(),
+                    batch.idempotencyKey(), batch.createdAt(), OffsetDateTime.now())));
         }
     }
 

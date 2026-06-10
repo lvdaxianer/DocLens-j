@@ -2,6 +2,9 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.Test;
 class DocumentPageTaskAggregationServiceTest {
 
     private static final int TWO_PAGES = 2;
+    private static final int TWO_DOCUMENTS = 2;
 
     /**
      * 聚合服务应在全部页完成后按页码顺序生成最终 OCR 结果。
@@ -83,6 +87,30 @@ class DocumentPageTaskAggregationServiceTest {
     }
 
     /**
+     * 聚合服务完成图片文档后应同步刷新批次摘要，避免公开批次 API 仍停留在旧进度。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void recordSuccessRefreshesBatchSummaryAfterDocumentCompletion() {
+        TestContext context = testContext();
+        context.batchRepository.save(batchWithOneCompletedDocument());
+        context.documentRepository.save(completedMarkdownDocument());
+        context.documentRepository.save(document());
+        context.taskRepository.saveAll(List.of(completedTask("task-1", 1), completedTask("task-2", 2)));
+        context.pageResultRepository.upsert(pageResult(1, "first"));
+        context.pageResultRepository.upsert(pageResult(2, "second"));
+
+        context.service.recordSuccess(completedTask("task-2", 2));
+
+        Batch batch = context.batchRepository.findById("batch-1").orElseThrow();
+        assertThat(batch.completedFiles()).isEqualTo(TWO_DOCUMENTS);
+        assertThat(batch.failedFiles()).isZero();
+        assertThat(batch.status()).isEqualTo(BatchStatus.COMPLETED);
+    }
+
+    /**
      * 创建测试上下文。
      *
      * @return 测试上下文
@@ -92,16 +120,18 @@ class DocumentPageTaskAggregationServiceTest {
     private TestContext testContext() {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
         InMemoryDocumentPageTaskRepository taskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
         DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository pageResultRepository =
                 new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository();
         InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
         InMemoryObjectStorage objectStorage = new InMemoryObjectStorage();
         DocumentPageTaskAggregationDependencies dependencies = new DocumentPageTaskAggregationDependencies(
-                documentRepository, taskRepository, pageResultRepository, resultRepository, objectStorage,
-                new IdGenerator());
+                documentRepository, batchRepository, taskRepository, pageResultRepository, resultRepository,
+                objectStorage, new IdGenerator());
         DocumentPageTaskAggregationService service = new DocumentPageTaskAggregationService(dependencies,
                 new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner());
-        return new TestContext(documentRepository, taskRepository, pageResultRepository, resultRepository, service);
+        return new TestContext(documentRepository, batchRepository, taskRepository, pageResultRepository,
+                resultRepository, service);
     }
 
     /**
@@ -116,6 +146,34 @@ class DocumentPageTaskAggregationServiceTest {
                 DocumentType.IMAGE, 5, TWO_PAGES, "local://doc-1", "stub_ocr", Optional.empty(),
                 JsonPayload.empty(), 0, OffsetDateTime.now());
         return DocumentJob.create(request).markOcrQueued(TWO_PAGES, OffsetDateTime.now());
+    }
+
+    /**
+     * 创建已完成的 Markdown 文档，用于模拟同批次内已有同步文档完成。
+     *
+     * @return 已完成 Markdown 文档
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private DocumentJob completedMarkdownDocument() {
+        DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-2", "batch-1", "demo.md",
+                DocumentType.MARKDOWN, 5, 1, "local://doc-2", "stub_ocr", Optional.empty(),
+                JsonPayload.empty(), 1, OffsetDateTime.now());
+        return DocumentJob.create(request).startProcessing(OffsetDateTime.now())
+                .complete("result-doc-2", OffsetDateTime.now());
+    }
+
+    /**
+     * 创建摘要里已有一个完成文档的批次。
+     *
+     * @return 测试批次
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private Batch batchWithOneCompletedDocument() {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new Batch("batch-1", BatchStatus.PROCESSING, TWO_DOCUMENTS, 1, 0, Optional.empty(),
+                Optional.empty(), "ocr_queued", JsonPayload.empty(), Optional.empty(), Optional.empty(), now, now);
     }
 
     /**
@@ -271,10 +329,92 @@ class DocumentPageTaskAggregationServiceTest {
      */
     private record TestContext(
             InMemoryDocumentJobRepository documentRepository,
+            InMemoryBatchRepository batchRepository,
             InMemoryDocumentPageTaskRepository taskRepository,
             DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository pageResultRepository,
             InMemoryOcrResultRepository resultRepository,
             DocumentPageTaskAggregationService service
     ) {
+    }
+
+    /**
+     * 内存批次仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private static class InMemoryBatchRepository implements BatchRepository {
+
+        private final Map<String, Batch> batches = new HashMap<>(1);
+
+        /**
+         * 保存批次。
+         *
+         * @param batch 批次
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public void save(Batch batch) {
+            batches.put(batch.batchId(), batch);
+        }
+
+        /**
+         * 按 ID 查询批次。
+         *
+         * @param batchId 批次 ID
+         * @return 可选批次
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public Optional<Batch> findById(String batchId) {
+            return Optional.ofNullable(batches.get(batchId));
+        }
+
+        /**
+         * 按幂等键查询批次。
+         *
+         * @param idempotencyKey 幂等键
+         * @return 空批次
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
+            return Optional.empty();
+        }
+
+        /**
+         * 查询最近批次。
+         *
+         * @param limit 最大数量
+         * @return 批次集合
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public List<Batch> listRecent(int limit) {
+            return batches.values().stream().limit(limit).toList();
+        }
+
+        /**
+         * 更新批次摘要。
+         *
+         * @param batchId 批次 ID
+         * @param completedFiles 已完成文件数
+         * @param failedFiles 失败文件数
+         * @param status 批次状态
+         * @author lvdaxianerplus
+         * @date 2026-06-11
+         */
+        @Override
+        public void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status) {
+            Batch batch = batches.get(batchId);
+            batches.put(batchId, new Batch(batch.batchId(), status, batch.totalFiles(), completedFiles,
+                    failedFiles, batch.currentDocumentId(), batch.currentDocumentName(), status.name().toLowerCase(),
+                    batch.metadata(), batch.callbackUrl(), batch.idempotencyKey(), batch.createdAt(),
+                    OffsetDateTime.now()));
+        }
     }
 }
