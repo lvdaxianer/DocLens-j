@@ -51,6 +51,17 @@ public interface BatchRepository {
     List<Batch> listRecent(int limit);
 
     /**
+     * 根据 ID 删除批次。
+     *
+     * @param batchId 批次 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default void deleteById(String batchId) {
+        throw new UnsupportedOperationException("batch delete is not supported");
+    }
+
+    /**
      * 更新批次处理摘要。
      *
      * @param batchId 批次 ID

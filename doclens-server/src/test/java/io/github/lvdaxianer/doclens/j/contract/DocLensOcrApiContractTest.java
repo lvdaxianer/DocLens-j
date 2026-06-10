@@ -165,6 +165,39 @@ class DocLensOcrApiContractTest {
     }
 
     /**
+     * 验证删除批次内最后一个文档后，空批次不会继续出现在详情或总览接口中。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void deletingLastCompletedDocumentRemovesBatchFromDashboardApis() throws Exception {
+        MvcResult created = uploadSingleFileBatch();
+        JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
+        String batchId = body.get("batch_id").asText();
+        String documentId = body.get("documents").get(0).get("document_id").asText();
+
+        waitForBatchCompleted(batchId, "A-EMPTY-1");
+
+        mockMvc.perform(delete("/api/v1/documents/{documentId}", documentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.document_id").value(documentId))
+                .andExpect(jsonPath("$.status").value("deleted"));
+
+        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
+
+        MvcResult summaryResult = mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode summary = objectMapper.readTree(summaryResult.getResponse().getContentAsString());
+        assertThat(summary.path("recent_batches"))
+                .allSatisfy(batchNode -> assertThat(batchNode.path("batch_id").asText()).isNotEqualTo(batchId));
+    }
+
+    /**
      * 验证 processing 文档删除会被明确拒绝。
      *
      * @throws Exception 请求执行失败时抛出
@@ -212,10 +245,23 @@ class DocLensOcrApiContractTest {
      * @date 2026-06-08
      */
     private void waitForBatchCompleted(String batchId) throws Exception {
+        waitForBatchCompleted(batchId, "A-1001");
+    }
+
+    /**
+     * 等待后台批次处理完成。
+     *
+     * @param batchId 批次 ID
+     * @param expectedBizId 预期业务 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void waitForBatchCompleted(String batchId, String expectedBizId) throws Exception {
         for (int attempt = 0; attempt < PROCESSING_WAIT_ATTEMPTS; attempt++) {
             MvcResult result = mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.metadata.bizId").value("A-1001"))
+                    .andExpect(jsonPath("$.metadata.bizId").value(expectedBizId))
                     .andReturn();
             JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
             if (body.get("progress_percent").asInt() == 100) {
@@ -340,6 +386,25 @@ class DocLensOcrApiContractTest {
                         .param("callback_url", "https://frontend.example.com/ocr-callback")
                         .param("idempotency_key", "idem-doclens-contract-" + UUID.randomUUID())
                         .param("pdf_mode", "page_image_fallback"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("queued"))
+                .andReturn();
+    }
+
+    /**
+     * 上传仅包含一个文档的测试批次。
+     *
+     * @return 创建批次响应
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private MvcResult uploadSingleFileBatch() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("files", "single.md", "text/markdown", "# Single\n正文".getBytes());
+        return mockMvc.perform(multipart("/api/v1/batches")
+                        .file(file)
+                        .param("metadata", "{\"bizId\":\"A-EMPTY-1\",\"source\":\"frontend-upload\"}")
+                        .param("idempotency_key", "idem-doclens-single-" + UUID.randomUUID()))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("queued"))
                 .andReturn();

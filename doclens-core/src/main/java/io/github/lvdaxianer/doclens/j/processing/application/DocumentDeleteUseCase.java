@@ -178,6 +178,22 @@ public class DocumentDeleteUseCase {
      */
     private void refreshBatchSummary(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
+        if (documents.isEmpty()) {
+            batchRepository.deleteById(batchId);
+        } else {
+            updateNonEmptyBatchSummary(batchId, documents);
+        }
+    }
+
+    /**
+     * 刷新非空批次摘要。
+     *
+     * @param batchId 批次 ID
+     * @param documents 批次剩余文档
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void updateNonEmptyBatchSummary(String batchId, List<DocumentJob> documents) {
         int completedCount = Math.toIntExact(documents.stream()
                 .filter(document -> document.status() == DocumentStatus.COMPLETED)
                 .count());
@@ -194,9 +210,6 @@ public class DocumentDeleteUseCase {
      * @date 2026-06-10
      */
     private BatchStatus batchStatus(List<DocumentJob> documents) {
-        if (documents.isEmpty()) {
-            return BatchStatus.COMPLETED;
-        }
         long queuedCount = documents.stream().filter(document -> document.status() == DocumentStatus.QUEUED).count();
         long processingCount = documents.stream()
                 .filter(document -> document.status() == DocumentStatus.PROCESSING)

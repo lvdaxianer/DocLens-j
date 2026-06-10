@@ -123,6 +123,35 @@ class DocumentDeleteUseCaseTest {
     }
 
     /**
+     * 删除批次内最后一个文档后，不应保留空批次残留。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void deleteLastDocumentRemovesEmptyBatch() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        RecordingObjectStorage objectStorage = new RecordingObjectStorage();
+        OffsetDateTime now = OffsetDateTime.now();
+        DocumentJob completedDocument = document("doc-last", 0)
+                .startProcessing(now)
+                .complete("result-doc-last", now.plusSeconds(1));
+        documentRepository.save(completedDocument);
+        batchRepository.save(batch(1, 1, 0, BatchStatus.COMPLETED));
+        resultRepository.save(result("doc-last", "local://results/doc-last.md"));
+        DocumentDeleteUseCase useCase = useCase(documentRepository, batchRepository, resultRepository,
+                eventRepository, objectStorage);
+
+        useCase.delete("doc-last");
+
+        assertThat(documentRepository.findById("doc-last")).isEmpty();
+        assertThat(batchRepository.findById("batch-test")).isEmpty();
+    }
+
+    /**
      * 处理中删除在第一版应明确拒绝，避免破坏运行中的处理链路。
      *
      * @author lvdaxianerplus
@@ -335,6 +364,11 @@ class DocumentDeleteUseCaseTest {
                         batch.currentDocumentName(), batch.currentStage(), batch.metadata(), batch.callbackUrl(),
                         batch.idempotencyKey(), batch.createdAt(), OffsetDateTime.now()));
             }
+        }
+
+        @Override
+        public void deleteById(String batchId) {
+            batches.remove(batchId);
         }
     }
 

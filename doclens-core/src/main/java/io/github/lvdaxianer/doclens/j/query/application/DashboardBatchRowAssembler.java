@@ -31,8 +31,23 @@ class DashboardBatchRowAssembler {
     List<Map<String, Object>> batchRows(List<Batch> batches, List<DocumentJob> documents) {
         Map<String, List<DocumentJob>> documentsByBatch = documents.stream()
                 .collect(Collectors.groupingBy(DocumentJob::batchId));
-        return batches.stream().map(batch -> batchRow(batch,
-                documentsByBatch.getOrDefault(batch.batchId(), List.of()))).toList();
+        return batches.stream()
+                .filter(batch -> hasDisplayableDocuments(batch, documentsByBatch))
+                .map(batch -> batchRow(batch, documentsByBatch.getOrDefault(batch.batchId(), List.of())))
+                .toList();
+    }
+
+    /**
+     * 判断批次是否具备 Dashboard 展示价值。
+     *
+     * @param batch 批次聚合
+     * @param documentsByBatch 批次文档映射
+     * @return 是否可展示
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean hasDisplayableDocuments(Batch batch, Map<String, List<DocumentJob>> documentsByBatch) {
+        return batch.totalFiles() > 0 || !documentsByBatch.getOrDefault(batch.batchId(), List.of()).isEmpty();
     }
 
     /**

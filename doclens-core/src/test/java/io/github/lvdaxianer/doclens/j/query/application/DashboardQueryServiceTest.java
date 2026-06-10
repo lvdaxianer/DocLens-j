@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.BASE_TIME;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.emptyBatch;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.dashboardServiceWithOcrMetrics;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.failedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.processingDocument;
@@ -143,6 +144,25 @@ class DashboardQueryServiceTest {
                 .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("status", "processing")
                 .containsEntry("progress_percent", 77);
+    }
+
+    /**
+     * 总览不应继续展示已无文档的空批次。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Test
+    void summaryDoesNotExposeBatchWithoutDocuments() {
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(emptyBatch()));
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of());
+        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
+                new InMemoryOcrEventRepository());
+
+        Map<String, Object> summary = service.summary();
+
+        assertThat(summary.get("recent_batches")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .isEmpty();
     }
 
     /**

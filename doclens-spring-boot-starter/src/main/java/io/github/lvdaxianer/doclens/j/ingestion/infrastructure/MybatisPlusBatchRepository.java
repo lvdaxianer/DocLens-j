@@ -94,6 +94,18 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
+     * 根据 ID 删除批次。
+     *
+     * @param batchId 批次 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public void deleteById(String batchId) {
+        removeById(batchId);
+    }
+
+    /**
      * 更新批次完成摘要。
      *
      * @param batchId 批次 ID

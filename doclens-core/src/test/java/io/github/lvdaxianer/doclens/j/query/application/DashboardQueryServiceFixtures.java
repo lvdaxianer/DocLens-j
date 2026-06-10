@@ -62,6 +62,19 @@ final class DashboardQueryServiceFixtures {
     }
 
     /**
+     * 创建无文档残留的空批次。
+     *
+     * @return 空批次
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    static Batch emptyBatch() {
+        return new Batch("batch-empty", BatchStatus.COMPLETED, 0, 0, 0, Optional.empty(), Optional.empty(),
+                "completed", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME,
+                BASE_TIME.plusMinutes(30));
+    }
+
+    /**
      * 创建已完成测试文档。
      *
      * @param documentId 文档 ID
