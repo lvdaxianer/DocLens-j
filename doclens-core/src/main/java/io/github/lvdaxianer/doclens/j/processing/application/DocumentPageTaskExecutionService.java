@@ -17,6 +17,7 @@ import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.time.OffsetDateTime;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class DocumentPageTaskExecutionService {
     private final int workerBatchSize;
     private final int lockSeconds;
     private final Executor pageTaskExecutor;
+    private final Consumer<DocumentPageTask> pageSuccessListener;
 
     /**
      * 创建文档页任务执行服务。
@@ -67,6 +69,7 @@ public class DocumentPageTaskExecutionService {
         this.workerBatchSize = options.workerBatchSize();
         this.lockSeconds = options.lockSeconds();
         this.pageTaskExecutor = options.pageTaskExecutor();
+        this.pageSuccessListener = options.pageSuccessListener();
     }
 
     /**
@@ -142,6 +145,7 @@ public class DocumentPageTaskExecutionService {
         ImageOcrRequest request = imageRequest(document, task);
         OcrRouteExecutionResult routeResult = routingService.recognize(request, document.ocrRoutePolicy());
         transactionRunner.requiredVoid(() -> completeTask(task, routeResult));
+        notifyPageSuccess(task);
     }
 
     /**
@@ -218,6 +222,22 @@ public class DocumentPageTaskExecutionService {
         return result.pageText().stream()
                 .map(block -> String.valueOf(block.getOrDefault("text", "")))
                 .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * 通知页任务成功监听器。
+     *
+     * @param task 页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private void notifyPageSuccess(DocumentPageTask task) {
+        try {
+            pageSuccessListener.accept(task);
+        } catch (RuntimeException ex) {
+            LOGGER.warn("[页任务OCR] 页任务成功后聚合回调失败 taskId={}, documentId={}, pageNo={}, error={}",
+                    task.taskId(), task.documentId(), task.pageNo(), ex.getMessage(), ex);
+        }
     }
 
     /**

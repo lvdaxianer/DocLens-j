@@ -435,7 +435,7 @@ Broader verification:
 `mvn -pl doclens-core,doclens-spring-boot-starter -am test`
 passed with core 81 tests and starter 78 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/PreparedDocumentPages.java \
@@ -544,7 +544,7 @@ git commit -m "feat(ocr): 增加图片级全局调度执行器"
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/ProcessingStage.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskAggregationServiceTest.java`
 
-- [ ] **Step 1: Write the failing aggregation test**
+- [x] **Step 1: Write the failing aggregation test**
 
 ```java
 @Test
@@ -563,13 +563,18 @@ void aggregationFinalizesDocumentOnlyAfterAllPagesArriveAndSortsByPageNo() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskAggregationServiceTest test`
 
 Expected: FAIL because aggregation service and new stage transitions do not exist.
 
-- [ ] **Step 3: Add document stages for image-level flow**
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskAggregationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- RED observed for duplicate completion idempotency: `expected: 1 but was: 2`
+- RED observed for listener isolation: completed page was incorrectly changed to `FAILED`
+
+- [x] **Step 3: Add document stages for image-level flow**
 
 ```java
 public enum ProcessingStage {
@@ -591,7 +596,7 @@ public DocumentJob markOcrQueued(int totalPages, OffsetDateTime now) {
 }
 ```
 
-- [ ] **Step 4: Finalize only when all page tasks are completed**
+- [x] **Step 4: Finalize only when all page tasks are completed**
 
 ```java
 public void recordSuccess(DocumentPageTask task, ImageOcrResult result) {
@@ -615,11 +620,16 @@ private void completeDocument(String documentId) {
 }
 ```
 
-- [ ] **Step 5: Run focused aggregation tests**
+- [x] **Step 5: Run focused aggregation tests**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentPageTaskAggregationServiceTest test`
 
 Expected: PASS.
+
+Evidence:
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskAggregationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-core -am -Dtest=DocumentPageTaskExecutionServiceTest,DocumentPageTaskAggregationServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentPageTaskAggregationServiceTest,DocumentPageTaskExecutionServiceTest,DocLensProcessingAutoConfigurationTest,DocLensStarterEmbeddedTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 - [ ] **Step 6: Commit**
 

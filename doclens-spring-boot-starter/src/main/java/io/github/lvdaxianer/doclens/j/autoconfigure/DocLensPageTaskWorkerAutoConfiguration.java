@@ -1,14 +1,18 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationService;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionOptions;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionService;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.PageTaskWorkerScheduler;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.util.concurrent.ExecutorService;
@@ -66,9 +70,51 @@ public class DocLensPageTaskWorkerAutoConfiguration {
         TransactionRunner transactionRunner = context.getBean(TransactionRunner.class);
         DocLensSpringProperties properties = context.getBean(DocLensSpringProperties.class);
         ExecutorService pageTaskExecutor = context.getBean("doclensPageTaskExecutor", ExecutorService.class);
+        // 页任务执行器只负责单页 OCR，成功后的文档收口交给聚合服务统一判断。
+        // 这里通过监听器注入聚合入口，避免执行服务直接依赖结果落库细节。
+        DocumentPageTaskAggregationService aggregationService =
+                context.getBean(DocumentPageTaskAggregationService.class);
         DocumentPageTaskExecutionOptions options = new DocumentPageTaskExecutionOptions(properties.workerId(),
-                PAGE_TASK_WORKER_BATCH_SIZE, PAGE_TASK_LOCK_SECONDS, pageTaskExecutor);
+                PAGE_TASK_WORKER_BATCH_SIZE, PAGE_TASK_LOCK_SECONDS, pageTaskExecutor,
+                aggregationService::recordSuccess);
         return new DocumentPageTaskExecutionService(dependencies, transactionRunner, options);
+    }
+
+    /**
+     * 创建文档页任务聚合服务。
+     *
+     * @param dependencies 聚合依赖
+     * @param transactionRunner 事务执行器
+     * @return 文档页任务聚合服务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Bean
+    @ConditionalOnBean(OcrRoutingService.class)
+    @ConditionalOnMissingBean
+    DocumentPageTaskAggregationService documentPageTaskAggregationService(
+            DocumentPageTaskAggregationDependencies dependencies,
+            TransactionRunner transactionRunner
+    ) {
+        return new DocumentPageTaskAggregationService(dependencies, transactionRunner);
+    }
+
+    /**
+     * 创建文档页任务聚合依赖集合。
+     *
+     * @param context Spring 上下文
+     * @return 文档页任务聚合依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Bean
+    @ConditionalOnBean(OcrRoutingService.class)
+    @ConditionalOnMissingBean
+    DocumentPageTaskAggregationDependencies documentPageTaskAggregationDependencies(ApplicationContext context) {
+        return new DocumentPageTaskAggregationDependencies(context.getBean(DocumentJobRepository.class),
+                context.getBean(DocumentPageTaskRepository.class),
+                context.getBean(DocumentPageResultRepository.class), context.getBean(OcrResultRepository.class),
+                context.getBean(ObjectStorage.class), context.getBean(IdGenerator.class));
     }
 
     /**

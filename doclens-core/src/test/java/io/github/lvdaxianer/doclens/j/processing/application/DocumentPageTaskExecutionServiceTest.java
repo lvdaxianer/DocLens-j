@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -78,8 +79,8 @@ class DocumentPageTaskExecutionServiceTest {
         ManualExecutor executor = new ManualExecutor();
         seedDocuments(documentRepository);
         taskRepository.saveAll(List.of(task("task-1", "doc-1", 1)));
-        DocumentPageTaskExecutionService service = service(testContext(taskRepository, documentRepository,
-                new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository(),
+        DocumentPageTaskExecutionService service = service(new DocumentPageTaskExecutionDependencies(taskRepository,
+                documentRepository, new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository(),
                 new DocumentPageTaskExecutionTestDoubles.RecordingObjectStorage(), new RecordingOcrRoutingService()),
                 executor);
 
@@ -90,6 +91,35 @@ class DocumentPageTaskExecutionServiceTest {
         assertThat(taskRepository.listByDocumentId("doc-1"))
                 .extracting(DocumentPageTask::status)
                 .containsExactly(DocumentPageTaskStatus.PROCESSING);
+    }
+
+    /**
+     * 聚合监听失败不应把已成功 OCR 的页任务回写为失败。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void runOnceKeepsPageCompletedWhenSuccessListenerFails() {
+        InMemoryDocumentPageTaskRepository taskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository resultRepository =
+                new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository();
+        seedDocuments(documentRepository);
+        taskRepository.saveAll(List.of(task("task-1", "doc-1", 1)));
+        DocumentPageTaskExecutionService service = service(new DocumentPageTaskExecutionDependencies(taskRepository,
+                documentRepository, resultRepository, new DocumentPageTaskExecutionTestDoubles.RecordingObjectStorage(),
+                new RecordingOcrRoutingService()), new DirectExecutor(), task -> {
+                    throw new IllegalStateException("aggregation failed");
+                });
+
+        int submittedCount = service.runOnce();
+
+        assertThat(submittedCount).isEqualTo(1);
+        assertThat(resultRepository.findByDocumentIdAndPageNo("doc-1", 1)).isPresent();
+        assertThat(taskRepository.listByDocumentId("doc-1"))
+                .extracting(DocumentPageTask::status)
+                .containsExactly(DocumentPageTaskStatus.COMPLETED);
     }
 
     /**
@@ -127,7 +157,9 @@ class DocumentPageTaskExecutionServiceTest {
      * @date 2026-06-11
      */
     private DocumentPageTaskExecutionOptions options(Executor executor, int batchSize) {
-        return new DocumentPageTaskExecutionOptions("worker-test", batchSize, 30, executor);
+        return new DocumentPageTaskExecutionOptions("worker-test", batchSize, 30, executor, task -> {
+            // 当前执行器单元测试只验证页任务执行，聚合监听由独立测试覆盖。
+        });
     }
 
     /**
@@ -139,32 +171,31 @@ class DocumentPageTaskExecutionServiceTest {
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private DocumentPageTaskExecutionService service(TestServiceContext context, Executor executor) {
-        return new DocumentPageTaskExecutionService(context.dependencies(),
-                new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner(), options(executor, 1));
+    private DocumentPageTaskExecutionService service(DocumentPageTaskExecutionDependencies dependencies,
+                                                     Executor executor) {
+        return service(dependencies, executor, task -> {
+            // 当前执行器单元测试只验证页任务执行，聚合监听由独立测试覆盖。
+        });
     }
 
     /**
-     * 创建测试服务上下文。
+     * 创建可指定监听器的页任务执行服务。
      *
-     * @param taskRepository 页任务仓储
-     * @param documentRepository 文档仓储
-     * @param resultRepository 页结果仓储
-     * @param objectStorage 对象存储
-     * @param routingService OCR 路由服务
-     * @return 测试服务上下文
+     * @param dependencies 页任务执行依赖
+     * @param executor 页任务执行器
+     * @param pageSuccessListener 页成功监听器
+     * @return 页任务执行服务
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private TestServiceContext testContext(
-            InMemoryDocumentPageTaskRepository taskRepository,
-            InMemoryDocumentJobRepository documentRepository,
-            DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository resultRepository,
-            ObjectStorage objectStorage,
-            OcrRoutingService routingService
+    private DocumentPageTaskExecutionService service(
+            DocumentPageTaskExecutionDependencies dependencies,
+            Executor executor,
+            Consumer<DocumentPageTask> pageSuccessListener
     ) {
-        return new TestServiceContext(new DocumentPageTaskExecutionDependencies(taskRepository, documentRepository,
-                resultRepository, objectStorage, routingService));
+        return new DocumentPageTaskExecutionService(dependencies,
+                new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner(),
+                new DocumentPageTaskExecutionOptions("worker-test", 1, 30, executor, pageSuccessListener));
     }
 
     /**
@@ -291,16 +322,6 @@ class DocumentPageTaskExecutionServiceTest {
         public void execute(Runnable command) {
             pendingTasks.add(command);
         }
-    }
-
-    /**
-     * 页任务执行服务测试上下文。
-     *
-     * @param dependencies 页任务执行依赖
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private record TestServiceContext(DocumentPageTaskExecutionDependencies dependencies) {
     }
 
 }
