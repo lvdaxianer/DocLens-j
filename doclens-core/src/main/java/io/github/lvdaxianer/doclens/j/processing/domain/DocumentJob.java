@@ -181,6 +181,21 @@ public record DocumentJob(
     }
 
     /**
+     * 将长时间无进展的处理中任务标记为卡住。
+     *
+     * @param code 错误码
+     * @param message 错误消息
+     * @param now 当前时间
+     * @return 标记为卡住后的文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public DocumentJob stall(String code, String message, OffsetDateTime now) {
+        return withState(DocumentStatus.STALLED, stage, progressPercent, currentPage, totalPages, resultId,
+                Optional.of(code), Optional.ofNullable(message), now);
+    }
+
+    /**
      * 将失败或卡死文档重置为待重新调度状态。
      *
      * @param now 当前时间

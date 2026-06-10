@@ -140,9 +140,7 @@ public class DocumentRetryUseCase {
         int completedCount = Math.toIntExact(documents.stream()
                 .filter(document -> document.status() == DocumentStatus.COMPLETED)
                 .count());
-        int failedCount = Math.toIntExact(documents.stream()
-                .filter(document -> document.status() == DocumentStatus.FAILED)
-                .count());
+        int failedCount = Math.toIntExact(documents.stream().filter(document -> document.status().isFailureLike()).count());
         batchRepository.updateSummary(batchId, completedCount, failedCount, batchStatus(documents));
     }
 
@@ -162,7 +160,7 @@ public class DocumentRetryUseCase {
         long completedCount = documents.stream()
                 .filter(document -> document.status() == DocumentStatus.COMPLETED)
                 .count();
-        long failedCount = documents.stream().filter(document -> document.status() == DocumentStatus.FAILED).count();
+        long failedCount = documents.stream().filter(document -> document.status().isFailureLike()).count();
         if (queuedCount > 0 || processingCount > 0) {
             return BatchStatus.PROCESSING;
         }

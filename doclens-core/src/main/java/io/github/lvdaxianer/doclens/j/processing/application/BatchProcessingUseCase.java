@@ -486,7 +486,7 @@ public class BatchProcessingUseCase {
     private void finishBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         long completed = documents.stream().filter(document -> document.status() == DocumentStatus.COMPLETED).count();
-        long failed = documents.stream().filter(document -> document.status() == DocumentStatus.FAILED).count();
+        long failed = documents.stream().filter(document -> document.status().isFailureLike()).count();
         BatchStatus status = resolveBatchStatus(documents.size(), completed, failed);
         batchRepository.updateSummary(batchId, Math.toIntExact(completed), Math.toIntExact(failed), status);
         if (!documents.isEmpty()) {

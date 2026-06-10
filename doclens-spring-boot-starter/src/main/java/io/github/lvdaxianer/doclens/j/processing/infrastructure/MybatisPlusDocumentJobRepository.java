@@ -165,6 +165,24 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
+     * 按状态列出文档任务。
+     *
+     * @param status 文档状态
+     * @param limit 最大返回数量
+     * @return 目标状态文档集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Override
+    public List<DocumentJob> listByStatus(DocumentStatus status, int limit) {
+        LambdaQueryWrapper<DocumentJobEntity> wrapper = new LambdaQueryWrapper<DocumentJobEntity>()
+                .eq(DocumentJobEntity::getStatus, status.name().toLowerCase())
+                .orderByAsc(DocumentJobEntity::getUpdatedAt)
+                .orderByAsc(DocumentJobEntity::getDocumentId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
      * 根据文档 ID 删除文档任务。
      *
      * @param documentId 文档 ID

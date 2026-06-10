@@ -179,7 +179,7 @@ public class DashboardQueryService {
     }
 
     private long failedCount(List<DocumentJob> documents) {
-        return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED).count();
+        return documents.stream().filter(document -> document.status().isFailureLike()).count();
     }
 
     private long processingCount(List<DocumentJob> documents) {

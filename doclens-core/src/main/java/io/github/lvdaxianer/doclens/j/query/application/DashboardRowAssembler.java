@@ -109,7 +109,7 @@ class DashboardRowAssembler {
      * @date 2026-06-09
      */
     List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
-        return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
+        return documents.stream().filter(document -> document.status().isFailureLike())
                 .map(document -> documentRow(document, List.of())).toList();
     }
 
@@ -122,7 +122,7 @@ class DashboardRowAssembler {
      * @date 2026-06-09
      */
     Map<String, Long> failureSummary(List<DocumentJob> documents) {
-        return documents.stream().filter(document -> document.status() == DocumentStatus.FAILED)
+        return documents.stream().filter(document -> document.status().isFailureLike())
                 .collect(Collectors.groupingBy(document -> document.errorCode().orElse("UNKNOWN"),
                         Collectors.counting()));
     }

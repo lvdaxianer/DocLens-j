@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
+import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.util.List;
 import java.util.Optional;
 
@@ -86,6 +87,21 @@ public interface DocumentJobRepository {
      * @date 2026-06-08
      */
     List<DocumentJob> listRecent(int limit);
+
+    /**
+     * 按状态列出文档任务。
+     *
+     * @param status 目标状态
+     * @param limit 最大返回数量
+     * @return 目标状态文档集合
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    default List<DocumentJob> listByStatus(DocumentStatus status, int limit) {
+        return listRecent(Math.max(limit, DocLensConstants.DEFAULT_QUERY_LIMIT)).stream()
+                .filter(document -> document.status() == status)
+                .toList();
+    }
 
     /**
      * 根据 ID 删除文档任务。
