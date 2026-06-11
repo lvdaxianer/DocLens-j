@@ -653,3 +653,55 @@ Expected: PASS.
 - [x] **Step 9: Commit**
 
 Create an atomic Chinese Conventional Commit for the LLM Markdown config API contract test split.
+
+### Task 14: 拆分 BatchDetailView 前端详情页职责
+
+**Files:**
+- Modify: `doclens-dashboard/src/views/BatchDetailView.vue`
+- Create: `doclens-dashboard/src/components/dashboard/__tests__/DashboardStructure.test.ts`
+- Create: `doclens-dashboard/src/components/dashboard/BatchSummaryStrip.vue`
+- Create: `doclens-dashboard/src/components/dashboard/BatchDocumentTable.vue`
+- Create: `doclens-dashboard/src/components/dashboard/batchDocumentTableColumns.ts`
+- Create: `doclens-dashboard/src/components/dashboard/batchDocumentTableActions.ts`
+
+- [x] **Step 1: Write failing structure test**
+
+Run:
+
+```bash
+cd doclens-dashboard
+npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts
+```
+
+Expected: FAIL because `BatchDetailView.vue` currently has 417 lines.
+
+- [x] **Step 2: Split summary strip**
+
+Move batch progress, success/failure rate, average duration, refresh cadence and refresh button into
+`BatchSummaryStrip`.
+
+- [x] **Step 3: Split document table**
+
+Move Naive UI data table columns, status/action rendering and table-specific styles into
+`BatchDocumentTable`, `batchDocumentTableColumns` and `batchDocumentTableActions`.
+
+- [x] **Step 4: Keep route view focused**
+
+Keep route parameter lookup, selected batch orchestration, refresh, retry/delete actions and result drawer state in
+`BatchDetailView`.
+
+- [x] **Step 5: Run focused verification**
+
+Run: `npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts src/components/dashboard/__tests__/BatchDetailView.delete.test.ts src/components/dashboard/__tests__/BatchDetailView.retry.test.ts` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 6: Run broader verification**
+
+Run: `npm run build` and `npm test` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 7: Commit**
+
+Create an atomic Chinese Conventional Commit for the BatchDetailView split.
