@@ -1,35 +1,24 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
-import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentOcrResultBuilder.DocumentOcrResultBuilderDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentProcessingEventBuilder.CompletionEventContext;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
-import io.github.lvdaxianer.doclens.j.processing.domain.EventCreateRequest;
-import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
-import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
-import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentProgressReporter;
-import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
-import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
-import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
-import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
-import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -47,32 +36,13 @@ import org.slf4j.LoggerFactory;
 public class BatchProcessingUseCase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BatchProcessingUseCase.class);
-    private static final int RESULT_SUMMARY_CAPACITY = 5;
-    private static final String PAGE_COUNT_FIELD = "pageCount";
-    private static final String BLOCK_COUNT_FIELD = "blockCount";
-    private static final String TABLE_COUNT_FIELD = "tableCount";
-    private static final String CONFIDENCE_FIELD = "confidence";
-    private static final String CALLBACK_BODY_FIELD = "callback_body";
-    private static final String OCR_TEXT_FIELD = "ocr_text";
-    private static final String LLM_MARKDOWN_APPLIED_FIELD = "llm_markdown_applied";
-    private static final String LLM_ERROR_MESSAGE_FIELD = "llm_error_message";
-    private static final String LLM_MARKDOWN_WARNING = "llm_markdown_post_processing_failed";
-    private static final String LLM_THINKING_WARNING = "llm_markdown_thinking_removed";
-    private static final String LLM_THINKING_FALLBACK_WARNING = "llm_markdown_thinking_only_fallback";
-    private static final String UNKNOWN_ERROR_TYPE = "unknown";
-    private static final int LLM_MARKDOWN_MAX_ATTEMPTS = 3;
-    private static final int RAW_OUTPUT_TRACE_CAPACITY = 3;
 
     private final DocumentJobRepository documentRepository;
     private final OcrResultRepository resultRepository;
     private final OcrEventRepository eventRepository;
     private final BatchRepository batchRepository;
-    private final DefaultAdapterRegistry adapterRegistry;
-    private final ObjectStorage objectStorage;
-    private final DocumentTextExtractor documentTextExtractor;
-    private final IdGenerator idGenerator;
-    private final OcrEventFactory eventFactory;
-    private final MarkdownPostProcessor markdownPostProcessor;
+    private final DocumentOcrResultBuilder resultBuilder;
+    private final DocumentProcessingEventBuilder eventBuilder;
     private final TransactionRunner transactionRunner;
     private final ExecutorService documentProcessingExecutor;
 
@@ -89,12 +59,11 @@ public class BatchProcessingUseCase {
         this.resultRepository = dependencies.resultRepository();
         this.eventRepository = dependencies.eventRepository();
         this.batchRepository = dependencies.batchRepository();
-        this.adapterRegistry = dependencies.adapterRegistry();
-        this.objectStorage = dependencies.objectStorage();
-        this.documentTextExtractor = dependencies.documentTextExtractor();
-        this.idGenerator = dependencies.idGenerator();
-        this.eventFactory = dependencies.eventFactory();
-        this.markdownPostProcessor = dependencies.markdownPostProcessor();
+        this.resultBuilder = new DocumentOcrResultBuilder(new DocumentOcrResultBuilderDependencies(
+                dependencies.adapterRegistry(), dependencies.objectStorage(), dependencies.documentTextExtractor(),
+                dependencies.idGenerator(), dependencies.markdownPostProcessor(), transactionRunner,
+                dependencies.documentRepository()));
+        this.eventBuilder = new DocumentProcessingEventBuilder(dependencies.eventFactory());
         this.documentProcessingExecutor = dependencies.documentProcessingExecutor();
         this.transactionRunner = transactionRunner;
     }
@@ -223,371 +192,43 @@ public class BatchProcessingUseCase {
      * @date 2026-06-09
      */
     private DocumentProcessingResult completeDocument(DocumentJob started, Optional<Batch> batch) {
-        OcrResult result = buildResult(started);
+        OcrResult result = resultBuilder.build(started);
         int pageCount = Math.max(DocLensConstants.DEFAULT_PAGE_COUNT, result.pageText().size());
         DocumentJob progressed = started.markPageCompleted(pageCount, pageCount, OffsetDateTime.now());
         DocumentJob saving = progressed.advanceStage(ProcessingStage.SAVE_TEXT, pageCount, pageCount,
                 OffsetDateTime.now());
         DocumentJob completed = saving.complete(result.resultId(), OffsetDateTime.now());
-        CompletedDocumentEventContext eventContext = new CompletedDocumentEventContext(started, progressed, saving,
+        CompletionEventContext eventContext = new CompletionEventContext(started, progressed, saving,
                 completed, result, batch);
         return new DocumentProcessingResult(completed, Optional.of(result),
-                completionEvents(eventContext));
-    }
-
-    private OcrResult buildResult(DocumentJob document) {
-        adapterRegistry.find(document.adapterName())
-                .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + document.adapterName()));
-        byte[] content = objectStorage.readBytes(document.storageUri());
-        DocumentTextExtractionResult extracted = documentTextExtractor.extract(
-                new DocumentTextExtractionRequest(document, content, document.adapterName(),
-                        stageReporter(document)));
-        stageReporter(document).report(ProcessingStage.MERGE_TEXT, extracted.pageText().size(),
-                extracted.pageText().size());
-        stageReporter(document).report(ProcessingStage.SAVE_TEXT, extracted.pageText().size(),
-                extracted.pageText().size());
-        PostProcessedText postProcessed = postProcessMarkdown(document, extracted);
-        String markdownStorageUri = writeMarkdownResult(document, postProcessed.finalText());
-        String resultId = idGenerator.newResultId();
-        return new OcrResult(resultId, document.documentId(), postProcessed.finalText(), markdownStorageUri,
-                rawOutputWithOcrText(extracted, postProcessed), extracted.structuredDocument(), extracted.pageText(),
-                extracted.layoutBlocks(), extracted.tables(), extracted.images(), extracted.confidence(),
-                postProcessed.warnings(), OffsetDateTime.now());
+                eventBuilder.completionEvents(eventContext));
     }
 
     /**
-     * 执行可选 Markdown 后处理。
+     * 构建文档失败后的持久化计划。
      *
      * @param document 文档任务
-     * @param extracted 文本提取结果
-     * @return 后处理后的文本
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private PostProcessedText postProcessMarkdown(DocumentJob document, DocumentTextExtractionResult extracted) {
-        RuntimeException lastFailure = null;
-        MarkdownPostProcessingRequest request = markdownRequest(document, extracted);
-        for (int attempt = 1; attempt <= LLM_MARKDOWN_MAX_ATTEMPTS; attempt++) {
-            try {
-                MarkdownPostProcessingResult result = markdownPostProcessor.process(request);
-                return successPostProcessedText(extracted, result);
-            } catch (RuntimeException ex) {
-                lastFailure = ex;
-                // 还没到重试上限时继续重试，避免一次瞬时失败直接回退 OCR。
-                if (attempt < LLM_MARKDOWN_MAX_ATTEMPTS) {
-                    logMarkdownRetry(document, attempt, ex);
-                }
-            }
-        }
-        // 所有尝试都失败后回退 OCR 原文，并保留最后一次失败原因供查询展示。
-        return fallbackPostProcessedText(extracted, document, lastFailure);
-    }
-
-    /**
-     * 构建 Markdown 后处理成功结果。
-     *
-     * @param extracted 文本提取结果
-     * @param result Markdown 后处理结果
-     * @return 后处理成功后的文本
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private PostProcessedText successPostProcessedText(
-            DocumentTextExtractionResult extracted,
-            MarkdownPostProcessingResult result
-    ) {
-        MarkdownThinkingSanitizationResult sanitizationResult = MarkdownThinkingSanitizer.sanitize(result.markdown());
-        if (sanitizationResult.fallbackToOcrText()) {
-            // LLM 只返回思考内容时不能保存为解析结果，回退 OCR 原文保证用户看到的是文档正文。
-            return new PostProcessedText(extracted.finalText(), thinkingFallbackWarnings(extracted.warnings()),
-                    false, Optional.empty());
-        } else {
-            // 正常 Markdown 仅移除思考块，保留 LLM 排版结果。
-            return new PostProcessedText(sanitizationResult.markdown(),
-                    mergeWarnings(extracted.warnings(), thinkingWarnings(result.warnings(), result.markdown(),
-                            sanitizationResult.markdown())), result.markdownApplied(), Optional.empty());
-        }
-    }
-
-    /**
-     * 记录 Markdown 后处理失败后的重试日志。
-     *
-     * @param document 文档任务
-     * @param attempt 当前尝试次数
      * @param ex 失败异常
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private void logMarkdownRetry(DocumentJob document, int attempt, RuntimeException ex) {
-        LOGGER.warn("[LLM后处理] Markdown 后处理失败，准备重试 documentId={}, attempt={}, errorType={}",
-                document.documentId(), attempt, ex.getClass().getSimpleName());
-    }
-
-    /**
-     * 构建 Markdown 后处理耗尽重试后的回退结果。
-     *
-     * @param extracted 文本提取结果
-     * @param document 文档任务
-     * @param lastFailure 最后一次失败异常
-     * @return 回退到 OCR 原文后的文本
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private PostProcessedText fallbackPostProcessedText(
-            DocumentTextExtractionResult extracted,
-            DocumentJob document,
-            RuntimeException lastFailure
-    ) {
-        LOGGER.warn("[LLM后处理] Markdown 后处理重试耗尽并回退 OCR 原文 documentId={}, attempts={}, errorType={}",
-                document.documentId(), LLM_MARKDOWN_MAX_ATTEMPTS,
-                lastFailure == null ? UNKNOWN_ERROR_TYPE : lastFailure.getClass().getSimpleName());
-        return new PostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()), false,
-                Optional.ofNullable(lastFailure).map(RuntimeException::getMessage).filter(message -> !message.isBlank()));
-    }
-
-    /**
-     * 构建 Markdown 后处理请求。
-     *
-     * @param document 文档任务
-     * @param extracted 文本提取结果
-     * @return Markdown 后处理请求
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private MarkdownPostProcessingRequest markdownRequest(DocumentJob document, DocumentTextExtractionResult extracted) {
-        return new MarkdownPostProcessingRequest(document.documentId(), document.fileName(),
-                document.metadata().values(), extracted.finalText());
-    }
-
-    /**
-     * 在原始输出中保留 OCR 合并文本。
-     *
-     * @param extracted 文本提取结果
-     * @return 带 OCR 原文追溯字段的原始输出
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private Map<String, Object> rawOutputWithOcrText(DocumentTextExtractionResult extracted, PostProcessedText postProcessed) {
-        Map<String, Object> rawOutput = new LinkedHashMap<>(extracted.rawOutput().size() + RAW_OUTPUT_TRACE_CAPACITY);
-        rawOutput.putAll(extracted.rawOutput());
-        rawOutput.put(OCR_TEXT_FIELD, extracted.finalText());
-        rawOutput.put(LLM_MARKDOWN_APPLIED_FIELD, postProcessed.llmMarkdownApplied());
-        postProcessed.llmErrorMessage().ifPresent(message -> rawOutput.put(LLM_ERROR_MESSAGE_FIELD, message));
-        return rawOutput;
-    }
-
-    /**
-     * 合并 OCR 与 Markdown 后处理警告。
-     *
-     * @param ocrWarnings OCR 警告
-     * @param markdownWarnings Markdown 后处理警告
-     * @return 合并后的警告
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private List<String> mergeWarnings(List<String> ocrWarnings, List<String> markdownWarnings) {
-        List<String> warnings = new ArrayList<>(ocrWarnings.size() + markdownWarnings.size());
-        warnings.addAll(ocrWarnings);
-        warnings.addAll(markdownWarnings);
-        return warnings;
-    }
-
-    /**
-     * 构建 LLM 失败后的警告集合。
-     *
-     * @param ocrWarnings OCR 警告
-     * @return 带失败警告的集合
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private List<String> failedWarnings(List<String> ocrWarnings) {
-        List<String> warnings = new ArrayList<>(ocrWarnings.size() + 1);
-        warnings.addAll(ocrWarnings);
-        warnings.add(LLM_MARKDOWN_WARNING);
-        return warnings;
-    }
-
-    /**
-     * 构建移除思考过程后的警告集合。
-     *
-     * @param markdownWarnings Markdown 后处理警告
-     * @param originalMarkdown 原始 Markdown
-     * @param sanitizedMarkdown 清洗后 Markdown
-     * @return 警告集合
+     * @return 文档失败处理结果
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private List<String> thinkingWarnings(
-            List<String> markdownWarnings,
-            String originalMarkdown,
-            String sanitizedMarkdown
-    ) {
-        if (originalMarkdown.equals(sanitizedMarkdown)) {
-            // 未发生思考内容清洗时保持原警告集合。
-            return markdownWarnings;
-        } else {
-            // 发生清洗时补充可观测警告，方便排查模型输出不稳定。
-            List<String> warnings = new ArrayList<>(markdownWarnings.size() + 1);
-            warnings.addAll(markdownWarnings);
-            warnings.add(LLM_THINKING_WARNING);
-            return warnings;
-        }
-    }
-
-    /**
-     * 构建思考内容兜底回退警告集合。
-     *
-     * @param ocrWarnings OCR 警告
-     * @return 警告集合
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private List<String> thinkingFallbackWarnings(List<String> ocrWarnings) {
-        List<String> warnings = new ArrayList<>(ocrWarnings.size() + 1);
-        warnings.addAll(ocrWarnings);
-        warnings.add(LLM_THINKING_FALLBACK_WARNING);
-        return warnings;
-    }
-
-    private String writeMarkdownResult(DocumentJob document, String finalText) {
-        String objectKey = "results/%s/%s/%s".formatted(document.batchId(), document.documentId(),
-                MarkdownResultNamer.markdownFileName(document.fileName(), UUID.randomUUID()));
-        return objectStorage.writeBytes(objectKey, finalText.getBytes(StandardCharsets.UTF_8));
-    }
-
     private DocumentProcessingResult failDocument(DocumentJob document, RuntimeException ex) {
         DocumentJob failed = latestDocument(document).fail(DocLensConstants.ERROR_CODE_OCR_FAILED, ex.getMessage(),
                 OffsetDateTime.now());
-        OcrEvent event = event(new DocumentEventPlan(failed, DocLensConstants.EVENT_DOCUMENT_FAILED,
-                Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT),
-                Map.of("code", DocLensConstants.ERROR_CODE_OCR_FAILED, "message", ex.getMessage())));
-        return new DocumentProcessingResult(failed, Optional.empty(), List.of(event));
+        return new DocumentProcessingResult(failed, Optional.empty(), List.of(eventBuilder.failedEvent(failed, ex)));
     }
 
+    /**
+     * 查询文档最新状态。
+     *
+     * @param document 原文档任务
+     * @return 最新文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
     private DocumentJob latestDocument(DocumentJob document) {
         return documentRepository.findById(document.documentId()).orElse(document);
-    }
-
-    /**
-     * 构建文档完成链路事件集合。
-     *
-     * @param context 文档完成事件上下文
-     * @return 文档完成链路事件集合
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private List<OcrEvent> completionEvents(CompletedDocumentEventContext context) {
-        return List.of(
-                event(new DocumentEventPlan(context.started(), DocLensConstants.EVENT_DOCUMENT_STARTED,
-                        Map.of("percent", DocLensConstants.START_PROGRESS_PERCENT), Map.of())),
-                event(new DocumentEventPlan(context.progressed(), DocLensConstants.EVENT_DOCUMENT_PAGE_COMPLETED,
-                        pageProgress(context.progressed()), Map.of())),
-                event(new DocumentEventPlan(context.saving(), DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
-                        pageProgress(context.saving()), Map.of("stage", context.saving().stage().name().toLowerCase()))),
-                event(new DocumentEventPlan(context.completed(), DocLensConstants.EVENT_DOCUMENT_COMPLETED,
-                        Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT),
-                        resultSummary(context.completed(), context.result(), context.batch())))
-        );
-    }
-
-    private DocumentProgressReporter stageReporter(DocumentJob document) {
-        return (stage, completedImages, totalImages) -> transactionRunner.requiredVoid(() ->
-                documentRepository.update(progressDocument(document.documentId(), stage, completedImages, totalImages)));
-    }
-
-    private DocumentJob progressDocument(
-            String documentId,
-            ProcessingStage stage,
-            int completedImages,
-            int totalImages
-    ) {
-        DocumentJob current = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalStateException("document not found: " + documentId));
-        return current.advanceStage(stage, completedImages, totalImages, OffsetDateTime.now());
-    }
-
-    private Map<String, Object> pageProgress(DocumentJob document) {
-        return Map.of("percent", document.progressPercent(), "current_page", document.currentPage(),
-                "total_pages", document.totalPages());
-    }
-
-    /**
-     * 构建文档完成事件的结果摘要。
-     *
-     * @param document 文档任务
-     * @param result OCR 结果
-     * @param batch 可选批次
-     * @return 结果摘要
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private Map<String, Object> resultSummary(DocumentJob document, OcrResult result, Optional<Batch> batch) {
-        Map<String, Object> summary = new LinkedHashMap<>(RESULT_SUMMARY_CAPACITY);
-        summary.put(PAGE_COUNT_FIELD, result.pageText().size());
-        summary.put(BLOCK_COUNT_FIELD, result.layoutBlocks().size());
-        summary.put(TABLE_COUNT_FIELD, result.tables().size());
-        summary.put(CONFIDENCE_FIELD, result.confidence());
-        summary.put(CALLBACK_BODY_FIELD, callbackBody(document, result, batch));
-        return summary;
-    }
-
-    /**
-     * 构建解析完成后的回调 body。
-     *
-     * @param document 文档任务
-     * @param result OCR 结果
-     * @param batch 可选批次
-     * @return 回调 body
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private Map<String, Object> callbackBody(DocumentJob document, OcrResult result, Optional<Batch> batch) {
-        if (batch.isPresent()) {
-            // 批次存在时使用上传时保存的幂等键构造回调契约。
-            return DocumentCompletedCallbackBody.from(batch.get(), document, result).toMap();
-        } else {
-            // 批次缺失时仍返回稳定契约，避免回调消费方收到不完整结构。
-            return new DocumentCompletedCallbackBody(document.metadata().values(), result.finalText(), "").toMap();
-        }
-    }
-
-    /**
-     * 文档完成事件构建上下文。
-     *
-     * @param started 开始处理阶段文档
-     * @param progressed 图片页完成阶段文档
-     * @param saving 保存文本阶段文档
-     * @param completed 完成阶段文档
-     * @param result OCR 结果
-     * @param batch 可选批次
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private record CompletedDocumentEventContext(
-            DocumentJob started,
-            DocumentJob progressed,
-            DocumentJob saving,
-            DocumentJob completed,
-            OcrResult result,
-            Optional<Batch> batch
-    ) {
-    }
-
-    /**
-     * Markdown 后处理后的文本和警告。
-     *
-     * @param finalText 最终文本
-     * @param warnings 警告集合
-     * @param llmMarkdownApplied 是否应用了 LLM Markdown
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private record PostProcessedText(
-            String finalText,
-            List<String> warnings,
-            boolean llmMarkdownApplied,
-            Optional<String> llmErrorMessage
-    ) {
     }
 
     /**
@@ -642,12 +283,26 @@ public class BatchProcessingUseCase {
                 .toList();
     }
 
+    /**
+     * 持久化单个文档处理结果。
+     *
+     * @param result 文档处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
     void persistDocumentProcessing(DocumentProcessingResult result) {
         documentRepository.updateAll(List.of(result.document()));
         resultRepository.saveAll(result.result().stream().toList());
         eventRepository.saveAll(result.events());
     }
 
+    /**
+     * 汇总并完成批次状态。
+     *
+     * @param batchId 批次 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
     private void finishBatch(String batchId) {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         long completed = documents.stream().filter(document -> document.status() == DocumentStatus.COMPLETED).count();
@@ -656,49 +311,33 @@ public class BatchProcessingUseCase {
         batchRepository.updateSummary(batchId, Math.toIntExact(completed), Math.toIntExact(failed), status);
         if (!documents.isEmpty()) {
             DocumentJob first = documents.getFirst();
-            eventRepository.save(batchFinishedEvent(batchId, status, first));
+            eventRepository.save(eventBuilder.batchFinishedEvent(batchId, status, first));
         } else {
             // 接收入库用例不会创建空批次。
+            LOGGER.warn("[OCR处理] 完成批次时未找到文档 batchId={}", batchId);
         }
     }
 
-    private OcrEvent batchFinishedEvent(String batchId, BatchStatus status, DocumentJob first) {
-        return eventFactory.create(new EventCreateRequest(batchId, Optional.empty(),
-                "batch." + status.name().toLowerCase(), status.name().toLowerCase(), status.name().toLowerCase(),
-                Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT), first.metadata(), Optional.empty(),
-                Map.of(), Map.of()));
-    }
-
+    /**
+     * 根据文档完成与失败数量解析批次终态。
+     *
+     * @param total 文档总数
+     * @param completed 完成数量
+     * @param failed 失败数量
+     * @return 批次终态
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
     private BatchStatus resolveBatchStatus(int total, long completed, long failed) {
         if (failed == 0 && completed == total) {
+            // 全部文档成功时批次整体成功。
             return BatchStatus.COMPLETED;
         } else if (completed == 0 && failed == total) {
+            // 全部文档失败时批次整体失败。
             return BatchStatus.FAILED;
         } else {
+            // 成功和失败混合时保留部分失败状态。
             return BatchStatus.PARTIAL_FAILED;
-        }
-    }
-
-    private OcrEvent event(DocumentEventPlan plan) {
-        DocumentJob document = plan.document();
-        return eventFactory.create(new EventCreateRequest(document.batchId(), Optional.of(document.documentId()),
-                plan.eventType(), document.status().name().toLowerCase(), document.stage().name().toLowerCase(),
-                plan.progress(), document.metadata(), document.resultId(), summaryDetail(plan), errorDetail(plan)));
-    }
-
-    private Map<String, Object> summaryDetail(DocumentEventPlan plan) {
-        if (!DocLensConstants.EVENT_DOCUMENT_FAILED.equals(plan.eventType())) {
-            return plan.detail();
-        } else {
-            return Map.of();
-        }
-    }
-
-    private Map<String, Object> errorDetail(DocumentEventPlan plan) {
-        if (DocLensConstants.EVENT_DOCUMENT_FAILED.equals(plan.eventType())) {
-            return plan.detail();
-        } else {
-            return Map.of();
         }
     }
 }
