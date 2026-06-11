@@ -554,3 +554,50 @@ Expected: PASS.
 - [x] **Step 8: Commit**
 
 Create an atomic Chinese Conventional Commit for the DocLens OCR API contract test split.
+
+### Task 12: 拆分 OcrDashboardMetricsProviderTest 测试职责
+
+**Files:**
+- Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardMetricsProviderTest.java`
+- Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/autoconfigure/StarterCodeReviewSpecStructureTest.java`
+- Create: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardHitNodesMetricsProviderTest.java`
+- Create: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardMetricsProviderTestSupport.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrDashboardMetricsProviderTest.java` to the starter structure test touched test-source list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrDashboardMetricsProviderTest.java` currently has more than 350 lines.
+
+- [x] **Step 3: Split hit-node scenarios**
+
+Move batch hit node and final document hit node scenarios into `OcrDashboardHitNodesMetricsProviderTest`.
+
+- [x] **Step 4: Extract shared test support**
+
+Move provider factory, node/call builders, in-memory repositories and runtime hit tracker into
+`OcrDashboardMetricsProviderTestSupport`.
+
+- [x] **Step 5: Keep resource metrics test focused**
+
+Keep OCR resource latency and processed image metrics assertions in `OcrDashboardMetricsProviderTest`.
+
+- [x] **Step 6: Run focused verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest,OcrDashboardMetricsProviderTest,OcrDashboardHitNodesMetricsProviderTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Run broader verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 8: Commit**
+
+Create an atomic Chinese Conventional Commit for the dashboard metrics provider test split.

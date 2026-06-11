@@ -2,153 +2,24 @@ package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
-import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
-import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 /**
- * OCR Dashboard 指标提供器测试。
+ * OCR Dashboard 资源指标提供器测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-class OcrDashboardMetricsProviderTest {
+class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSupport {
 
-    private static final OffsetDateTime BASE_TIME = OffsetDateTime.now()
-            .withHour(10)
-            .withMinute(0)
-            .withSecond(0)
-            .withNano(0);
-    private static final String DEFAULT_MODEL_KEY = "paddle_ocr";
-    private static final int TEST_NODE_CAPACITY = 8;
-
-    /**
-     * 批次命中节点应返回节点别名，避免前端退回显示内部 ID。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
+    /*
+     * 该类只保留 OCR 资源面板指标。
+     * 批次命中和最终命中节点分配场景，
+     * 已拆到 OcrDashboardHitNodesMetricsProviderTest。
      */
-    @Test
-    void hitNodesByBatchIncludesNodeName() {
-        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
-                offlineNode("ocr_node_1", "财务 OCR 节点")
-        ));
-        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 320),
-                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_1", 480)
-        ));
-        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
-
-        List<Map<String, Object>> hitNodes = provider.dispatchHitNodesByBatch("batch-1");
-
-        assertThat(hitNodes).singleElement().satisfies(row -> assertThat(row)
-                .containsEntry("node_id", "ocr_node_1")
-                .containsEntry("node_name", "财务 OCR 节点")
-                .containsEntry("image_count", 2L));
-    }
-
-    /**
-     * 批次命中节点应合并进行中的运行时命中，避免处理中遗漏尚未落库的节点。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void hitNodesByBatchMergesCompletedCallsAndRuntimeHits() {
-        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
-                offlineNode("ocr_node_1", "财务 OCR 节点"),
-                offlineNode("ocr_node_2", "票据 OCR 节点")
-        ));
-        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 320)
-        ));
-        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker(List.of(
-                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, "ocr_node_1", 1L),
-                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, "ocr_node_2", 2L)
-        ));
-        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository, batchHitTracker);
-
-        List<Map<String, Object>> hitNodes = provider.dispatchHitNodesByBatch("batch-1");
-
-        assertThat(hitNodes)
-                .anySatisfy(row -> assertThat(row)
-                        .containsEntry("node_id", "ocr_node_1")
-                        .containsEntry("node_name", "财务 OCR 节点")
-                        .containsEntry("image_count", 2L))
-                .anySatisfy(row -> assertThat(row)
-                        .containsEntry("node_id", "ocr_node_2")
-                        .containsEntry("node_name", "票据 OCR 节点")
-                        .containsEntry("image_count", 2L));
-    }
-
-    /**
-     * 文档最终分配节点应只统计成功节点，失败重试节点不能重复计入。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void finalHitNodesByDocumentCountsOnlySuccessfulNodePerPage() {
-        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
-                offlineNode("ocr_node_1", "财务 OCR 节点"),
-                offlineNode("ocr_node_2", "票据 OCR 节点")
-        ));
-        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                failedCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 100),
-                successfulCall(callSeed("call-2", "batch-1", "doc-1", 1), "ocr_node_2", 280),
-                successfulCall(callSeed("call-3", "batch-1", "doc-1", 2), "ocr_node_2", 320)
-        ));
-        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
-
-        List<Map<String, Object>> finalHitNodes = provider.finalHitNodesByBatch("batch-1").get("doc-1");
-
-        assertThat(finalHitNodes).singleElement().satisfies(row -> assertThat(row)
-                .containsEntry("node_id", "ocr_node_2")
-                .containsEntry("node_name", "票据 OCR 节点")
-                .containsEntry("image_count", 2L));
-    }
-
-    /**
-     * 文档最终分配节点应只返回当前文档自身的成功分配，不混入同批次其他文档。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void finalHitNodesByDocumentKeepsOtherDocumentsOutOfScope() {
-        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
-                offlineNode("ocr_node_1", "财务 OCR 节点"),
-                offlineNode("ocr_node_2", "票据 OCR 节点"),
-                offlineNode("ocr_node_3", "合同 OCR 节点")
-        ));
-        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 180),
-                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_2", 220),
-                successfulCall(callSeed("call-3", "batch-1", "doc-2", 1), "ocr_node_3", 260)
-        ));
-        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
-
-        List<Map<String, Object>> finalHitNodes = provider.finalHitNodesByBatch("batch-1").get("doc-1");
-
-        assertThat(finalHitNodes)
-                .hasSize(2)
-                .allSatisfy(row -> assertThat(row).doesNotContainEntry("node_id", "ocr_node_3"));
-    }
 
     /**
      * OCR 资源指标应基于调用记录计算今日处理、平均耗时和 P95。
@@ -159,291 +30,64 @@ class OcrDashboardMetricsProviderTest {
     @Test
     void ocrResourcesIncludesLatencyMetricsFromCalls() {
         InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
-                offlineNode("ocr_node_1", "财务 OCR 节点"),
-                offlineNode("ocr_node_2", "票据 OCR 节点")
+                offlineNode(FINANCE_NODE_ID, FINANCE_NODE_NAME),
+                offlineNode(INVOICE_NODE_ID, INVOICE_NODE_NAME)
         ));
         InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
-                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), "ocr_node_1", 100),
-                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), "ocr_node_1", 200),
-                successfulCall(callSeed("call-3", "batch-2", "doc-2", 1), "ocr_node_2", 600)
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), FINANCE_NODE_ID, 100),
+                successfulCall(callSeed("call-2", "batch-1", "doc-1", 2), FINANCE_NODE_ID, 200),
+                successfulCall(callSeed("call-3", "batch-2", "doc-2", 1), INVOICE_NODE_ID, 600)
         ));
         OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
 
         Map<String, Object> resources = provider.ocrResources();
 
         assertThat(resources).containsEntry("healthy_node_count", 2L);
-        assertThat(resources.get("nodes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
-                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
-                        .containsEntry("node_id", "ocr_node_1")
-                        .containsEntry("node_name", "财务 OCR 节点")
-                        .containsEntry("processed_images_today", 2L)
-                        .containsEntry("avg_latency_ms", 150L)
-                        .containsEntry("p95_latency_ms", 200L))
-                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
-                        .containsEntry("node_id", "ocr_node_2")
-                        .containsEntry("node_name", "票据 OCR 节点")
-                        .containsEntry("processed_images_today", 1L)
-                        .containsEntry("avg_latency_ms", 600L)
-                        .containsEntry("p95_latency_ms", 600L));
+        assertResourceNodes(resources);
     }
 
     /**
-     * 创建待测指标提供器。
+     * 断言资源节点指标。
      *
-     * @param nodeRepository 节点仓储
-     * @param callRepository 调用记录仓储
-     * @return 指标提供器
+     * @param resources 资源指标响应
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
-    private OcrDashboardMetricsProvider provider(
-            InMemoryOcrNodeRepository nodeRepository,
-            InMemoryOcrNodeCallRepository callRepository
-    ) {
-        return provider(nodeRepository, callRepository, new InMemoryBatchHitTracker(List.of()));
+    private void assertResourceNodes(Map<String, Object> resources) {
+        assertThat(resources.get("nodes")).asInstanceOf(InstanceOfAssertFactories.LIST)
+                .anySatisfy(row -> assertFinanceNodeMetrics(row))
+                .anySatisfy(row -> assertInvoiceNodeMetrics(row));
     }
 
     /**
-     * 创建带运行时命中跟踪的待测指标提供器。
+     * 断言财务节点指标。
      *
-     * @param nodeRepository 节点仓储
-     * @param callRepository 调用记录仓储
-     * @param batchHitTracker 批次运行时命中跟踪器
-     * @return 指标提供器
+     * @param row 节点指标行
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-11
      */
-    private OcrDashboardMetricsProvider provider(
-            InMemoryOcrNodeRepository nodeRepository,
-            InMemoryOcrNodeCallRepository callRepository,
-            OcrBatchHitTracker batchHitTracker
-    ) {
-        OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
-        nodePool.initialize();
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
-                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null), batchHitTracker);
+    private void assertFinanceNodeMetrics(Object row) {
+        assertThat(row).asInstanceOf(InstanceOfAssertFactories.MAP)
+                .containsEntry("node_id", FINANCE_NODE_ID)
+                .containsEntry("node_name", FINANCE_NODE_NAME)
+                .containsEntry("processed_images_today", 2L)
+                .containsEntry("avg_latency_ms", 150L)
+                .containsEntry("p95_latency_ms", 200L);
     }
 
     /**
-     * 创建离线测试节点。
+     * 断言票据节点指标。
      *
-     * @param nodeId 节点 ID
-     * @param name 节点名称
-     * @return OCR 节点
+     * @param row 节点指标行
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-11
      */
-    private OcrNode offlineNode(String nodeId, String name) {
-        return new OcrNode(nodeId, "paddle_ocr", name, "10.0.0.1", 8080, true, true, 100, 4, OcrNodeStatus.UP,
-                0L, 0L, 0L, 0L, Optional.of(BASE_TIME), Optional.empty(), Optional.empty(), Optional.empty(),
-                BASE_TIME, BASE_TIME);
-    }
-
-    /**
-     * 创建成功调用记录。
-     *
-     * @param callId 调用记录 ID
-     * @param batchId 批次 ID
-     * @param documentId 文档 ID
-     * @param callSeed 调用基础信息
-     * @param nodeId 节点 ID
-     * @param elapsedMs 耗时
-     * @return 调用记录
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private OcrNodeCall successfulCall(
-            CallSeed callSeed,
-            String nodeId,
-            long elapsedMs
-    ) {
-        return new OcrNodeCall(callSeed.callId(), callSeed.batchId(), callSeed.documentId(), callSeed.pageNo(),
-                DEFAULT_MODEL_KEY, nodeId,
-                OcrRoutingMode.GLOBAL_LOAD_BALANCE,
-                OcrNodeCallStatus.SUCCESS, 0, elapsedMs, Optional.empty(), Optional.empty(), BASE_TIME,
-                Optional.of(BASE_TIME.plusSeconds(1)));
-    }
-
-    /**
-     * 创建失败调用记录。
-     *
-     * @param callSeed 调用基础信息
-     * @param nodeId 节点 ID
-     * @param elapsedMs 耗时
-     * @return 失败调用记录
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private OcrNodeCall failedCall(
-            CallSeed callSeed,
-            String nodeId,
-            long elapsedMs
-    ) {
-        return new OcrNodeCall(callSeed.callId(), callSeed.batchId(), callSeed.documentId(), callSeed.pageNo(),
-                DEFAULT_MODEL_KEY, nodeId,
-                OcrRoutingMode.GLOBAL_LOAD_BALANCE,
-                OcrNodeCallStatus.FAILED, 1, elapsedMs, Optional.of("OCR_FAILED"),
-                Optional.of("recognize failed"), BASE_TIME, Optional.of(BASE_TIME.plusSeconds(1)));
-    }
-
-    /**
-     * 创建测试调用基础信息。
-     *
-     * @param callId 调用记录 ID
-     * @param batchId 批次 ID
-     * @param documentId 文档 ID
-     * @param pageNo 页码
-     * @return 调用基础信息
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private CallSeed callSeed(String callId, String batchId, String documentId, int pageNo) {
-        return new CallSeed(callId, batchId, documentId, pageNo);
-    }
-
-    /**
-     * 测试调用基础信息。
-     *
-     * @param callId 调用记录 ID
-     * @param batchId 批次 ID
-     * @param documentId 文档 ID
-     * @param pageNo 页码
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private record CallSeed(
-            String callId,
-            String batchId,
-            String documentId,
-            int pageNo
-    ) {
-    }
-
-    /**
-     * 内存节点仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static final class InMemoryOcrNodeRepository implements OcrNodeRepository {
-
-        private final Map<String, OcrNode> nodes = new HashMap<>(TEST_NODE_CAPACITY);
-
-        private InMemoryOcrNodeRepository(List<OcrNode> seedNodes) {
-            seedNodes.forEach(node -> nodes.put(node.id(), node));
-        }
-
-        @Override
-        public void save(OcrNode node) {
-            nodes.put(node.id(), node);
-        }
-
-        @Override
-        public void saveAll(List<OcrNode> seedNodes) {
-            seedNodes.forEach(this::save);
-        }
-
-        @Override
-        public void update(OcrNode node) {
-            nodes.put(node.id(), node);
-        }
-
-        @Override
-        public Optional<OcrNode> findById(String nodeId) {
-            return Optional.ofNullable(nodes.get(nodeId));
-        }
-
-        @Override
-        public Optional<OcrNode> findByModelHostPort(String modelKey, String host, int port) {
-            return nodes.values().stream()
-                    .filter(node -> node.modelKey().equals(modelKey) && node.host().equals(host) && node.port() == port)
-                    .findFirst();
-        }
-
-        @Override
-        public List<OcrNode> listByModelKey(String modelKey) {
-            return nodes.values().stream().filter(node -> node.modelKey().equals(modelKey)).toList();
-        }
-
-        @Override
-        public List<OcrNode> listEnabled() {
-            return nodes.values().stream().filter(OcrNode::enabled).toList();
-        }
-
-        @Override
-        public List<OcrNode> listAll() {
-            return List.copyOf(nodes.values());
-        }
-
-        @Override
-        public void deleteById(String nodeId) {
-            nodes.remove(nodeId);
-        }
-    }
-
-    /**
-     * 内存调用记录仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static final class InMemoryOcrNodeCallRepository implements OcrNodeCallRepository {
-
-        private final List<OcrNodeCall> calls;
-
-        private InMemoryOcrNodeCallRepository(List<OcrNodeCall> calls) {
-            this.calls = List.copyOf(calls);
-        }
-
-        @Override
-        public void save(OcrNodeCall call) {
-            throw new UnsupportedOperationException("test repository is read only");
-        }
-
-        @Override
-        public List<OcrNodeCall> listByDocumentId(String documentId) {
-            return calls.stream().filter(call -> call.documentId().equals(documentId)).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listByBatchId(String batchId) {
-            return calls.stream().filter(call -> call.batchId().equals(batchId)).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
-            return calls.stream().filter(call -> call.nodeId().equals(nodeId)).limit(limit).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
-            return calls.stream()
-                    .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
-                    .toList();
-        }
-    }
-
-    /**
-     * 内存批次运行时命中跟踪器。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private record InMemoryBatchHitTracker(List<OcrBatchNodeHit> hits) implements OcrBatchHitTracker {
-
-        @Override
-        public void recordDispatch(String batchId, String modelKey, String nodeId) {
-            throw new UnsupportedOperationException("test tracker is read only");
-        }
-
-        @Override
-        public void recordCompletion(String batchId, String modelKey, String nodeId) {
-            throw new UnsupportedOperationException("test tracker is read only");
-        }
-
-        @Override
-        public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
-            return hits.stream().filter(hit -> hit.batchId().equals(batchId)).toList();
-        }
+    private void assertInvoiceNodeMetrics(Object row) {
+        assertThat(row).asInstanceOf(InstanceOfAssertFactories.MAP)
+                .containsEntry("node_id", INVOICE_NODE_ID)
+                .containsEntry("node_name", INVOICE_NODE_NAME)
+                .containsEntry("processed_images_today", 1L)
+                .containsEntry("avg_latency_ms", 600L)
+                .containsEntry("p95_latency_ms", 600L);
     }
 }
