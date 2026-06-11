@@ -182,3 +182,52 @@ Expected: PASS.
 - [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the OcrNode domain object split.
+
+### Task 4: 拆分 DashScopeOnlineOcrClient
+
+**Files:**
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java`
+- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOcrPayloadFactory.java`
+- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOcrResponseMapper.java`
+- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOcrResponseSanitizer.java`
+- Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/autoconfigure/StarterCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `DashScopeOnlineOcrClient.java` to the starter structure test line-limit list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `DashScopeOnlineOcrClient.java` currently has 434 lines.
+
+- [x] **Step 3: Extract payload factory**
+
+Move request body, multimodal message content, MIME inference, data URL and permission probe request into
+`DashScopeOcrPayloadFactory`.
+
+- [x] **Step 4: Extract response mapper and sanitizer**
+
+Move compatible response mapping and raw output conversion into `DashScopeOcrResponseMapper`; move response
+body sanitizing and truncation into `DashScopeOcrResponseSanitizer`.
+
+- [x] **Step 5: Keep client focused on HTTP orchestration**
+
+Keep request sending, permission probing, logging and exception handling in `DashScopeOnlineOcrClient`.
+
+- [x] **Step 6: Run focused verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest,DashScopeOnlineOcrClientTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Run broader verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 8: Commit**
+
+Create an atomic Chinese Conventional Commit for the DashScope online OCR client split.
