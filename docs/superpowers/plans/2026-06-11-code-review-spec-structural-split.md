@@ -601,3 +601,55 @@ Expected: PASS.
 - [x] **Step 8: Commit**
 
 Create an atomic Chinese Conventional Commit for the dashboard metrics provider test split.
+
+### Task 13: 拆分 LlmMarkdownConfigApiContractTest 契约测试职责
+
+**Files:**
+- Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigApiContractTest.java`
+- Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/architecture/ServerCodeReviewSpecStructureTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigValidationApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigTestApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigApiContractSupport.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `LlmMarkdownConfigApiContractTest.java` to `ServerCodeReviewSpecStructureTest.TOUCHED_SERVER_TESTS`.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `LlmMarkdownConfigApiContractTest.java` currently has more than 350 lines.
+
+- [x] **Step 3: Split validation scenarios**
+
+Move URL/model pairing and malformed URL rejection scenarios into `LlmMarkdownConfigValidationApiContractTest`.
+
+- [x] **Step 4: Split connectivity test scenarios**
+
+Move `/test` endpoint healthy, failure and saved credential scenarios into `LlmMarkdownConfigTestApiContractTest`.
+
+- [x] **Step 5: Extract shared contract support**
+
+Move Spring test configuration, mocked tester, save helper and JSON builders into
+`LlmMarkdownConfigApiContractSupport`.
+
+- [x] **Step 6: Keep config read/write test focused**
+
+Keep get/update, credential masking and full URL persistence scenarios in `LlmMarkdownConfigApiContractTest`.
+
+- [x] **Step 7: Run focused verification**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest,LlmMarkdownConfigApiContractTest,LlmMarkdownConfigValidationApiContractTest,LlmMarkdownConfigTestApiContractTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 8: Run broader verification**
+
+Run: `mvn -pl doclens-server -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 9: Commit**
+
+Create an atomic Chinese Conventional Commit for the LLM Markdown config API contract test split.

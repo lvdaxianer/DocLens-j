@@ -40,7 +40,11 @@ class ServerCodeReviewSpecStructureTest {
             SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/DocLensOcrApiContractTest.java"),
             SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/DocLensOcrDeleteApiContractTest.java"),
             SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/DocLensOcrUploadApiContractTest.java"),
-            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/DocLensOcrApiContractSupport.java")
+            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/DocLensOcrApiContractSupport.java"),
+            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigApiContractTest.java"),
+            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigValidationApiContractTest.java"),
+            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigTestApiContractTest.java"),
+            SERVER_TEST_ROOT.resolve("io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigApiContractSupport.java")
     );
 
     /**
