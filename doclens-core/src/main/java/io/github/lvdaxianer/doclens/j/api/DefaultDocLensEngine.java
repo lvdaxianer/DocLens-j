@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchCommand;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.application.UploadFileCommand;
+import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
@@ -30,6 +31,7 @@ public class DefaultDocLensEngine implements DocLensEngine {
     private final AdapterRegistry adapterRegistry;
     private final DocumentRetryUseCase documentRetryUseCase;
     private final DocumentDeleteUseCase documentDeleteUseCase;
+    private final BatchDeleteUseCase batchDeleteUseCase;
 
     /**
      * 创建 DocLens 引擎。
@@ -39,6 +41,7 @@ public class DefaultDocLensEngine implements DocLensEngine {
      * @param adapterRegistry 适配器注册表
      * @param documentRetryUseCase 文档重试用例
      * @param documentDeleteUseCase 文档删除用例
+     * @param batchDeleteUseCase 批次删除用例
      * @author lvdaxianerplus
      * @date 2026-06-07
      */
@@ -47,13 +50,15 @@ public class DefaultDocLensEngine implements DocLensEngine {
             OcrQueryService queryService,
             AdapterRegistry adapterRegistry,
             DocumentRetryUseCase documentRetryUseCase,
-            DocumentDeleteUseCase documentDeleteUseCase
+            DocumentDeleteUseCase documentDeleteUseCase,
+            BatchDeleteUseCase batchDeleteUseCase
     ) {
         this.createBatchUseCase = createBatchUseCase;
         this.queryService = queryService;
         this.adapterRegistry = adapterRegistry;
         this.documentRetryUseCase = documentRetryUseCase;
         this.documentDeleteUseCase = documentDeleteUseCase;
+        this.batchDeleteUseCase = batchDeleteUseCase;
     }
 
     @Override
@@ -86,6 +91,12 @@ public class DefaultDocLensEngine implements DocLensEngine {
     public Map<String, Object> deleteDocument(String documentId) {
         documentDeleteUseCase.delete(documentId);
         return Map.of("document_id", documentId, "status", "deleted");
+    }
+
+    @Override
+    public Map<String, Object> deleteBatch(String batchId) {
+        int deletedCount = batchDeleteUseCase.delete(batchId);
+        return Map.of("batch_id", batchId, "status", "deleted", "deleted_documents", deletedCount);
     }
 
     @Override

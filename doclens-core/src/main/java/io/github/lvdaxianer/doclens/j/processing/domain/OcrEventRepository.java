@@ -58,4 +58,15 @@ public interface OcrEventRepository {
     default void deleteByDocumentId(String documentId) {
         throw new UnsupportedOperationException("ocr event delete is not supported");
     }
+
+    /**
+     * 根据文档 ID 集合批量删除关联事件。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    default void deleteByDocumentIds(List<String> documentIds) {
+        throw new UnsupportedOperationException("ocr event batch delete is not supported");
+    }
 }

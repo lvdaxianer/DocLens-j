@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependenc
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.AsyncBatchProcessingScheduler;
+import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteDependencies;
@@ -158,6 +159,24 @@ public class DocLensProcessingAutoConfiguration {
             TransactionRunner transactionRunner
     ) {
         return new DocumentDeleteUseCase(dependencies, transactionRunner);
+    }
+
+    /**
+     * 创建批次级删除用例。
+     *
+     * @param dependencies 删除依赖
+     * @param transactionRunner 事务执行器
+     * @return 批次级删除用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    BatchDeleteUseCase batchDeleteUseCase(
+            DocumentDeleteDependencies dependencies,
+            TransactionRunner transactionRunner
+    ) {
+        return new BatchDeleteUseCase(dependencies, transactionRunner);
     }
 
     /**

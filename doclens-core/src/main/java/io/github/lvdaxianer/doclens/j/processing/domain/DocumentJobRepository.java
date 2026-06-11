@@ -113,4 +113,15 @@ public interface DocumentJobRepository {
     default void deleteById(String documentId) {
         throw new UnsupportedOperationException("document delete is not supported");
     }
+
+    /**
+     * 根据 ID 集合批量删除文档任务。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    default void deleteByIds(List<String> documentIds) {
+        throw new UnsupportedOperationException("document batch delete is not supported");
+    }
 }

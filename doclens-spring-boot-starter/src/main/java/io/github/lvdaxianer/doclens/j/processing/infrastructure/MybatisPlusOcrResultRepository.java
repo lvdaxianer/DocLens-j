@@ -86,6 +86,25 @@ public class MybatisPlusOcrResultRepository
     }
 
     /**
+     * 根据文档 ID 集合批量查找 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @return OCR 结果集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public List<OcrResult> findByDocumentIds(List<String> documentIds) {
+        if (documentIds.isEmpty()) {
+            return List.of();
+        } else {
+            LambdaQueryWrapper<OcrResultEntity> wrapper = new LambdaQueryWrapper<OcrResultEntity>()
+                    .in(OcrResultEntity::getDocumentId, documentIds);
+            return list(wrapper).stream().map(this::toDomain).toList();
+        }
+    }
+
+    /**
      * 根据文档 ID 删除 OCR 结果。
      *
      * @param documentId 文档 ID
@@ -97,6 +116,24 @@ public class MybatisPlusOcrResultRepository
         LambdaQueryWrapper<OcrResultEntity> wrapper = new LambdaQueryWrapper<OcrResultEntity>()
                 .eq(OcrResultEntity::getDocumentId, documentId);
         remove(wrapper);
+    }
+
+    /**
+     * 根据文档 ID 集合批量删除 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public void deleteByDocumentIds(List<String> documentIds) {
+        if (documentIds.isEmpty()) {
+            // 空集合无需发起删除语句。
+        } else {
+            LambdaQueryWrapper<OcrResultEntity> wrapper = new LambdaQueryWrapper<OcrResultEntity>()
+                    .in(OcrResultEntity::getDocumentId, documentIds);
+            remove(wrapper);
+        }
     }
 
     /**

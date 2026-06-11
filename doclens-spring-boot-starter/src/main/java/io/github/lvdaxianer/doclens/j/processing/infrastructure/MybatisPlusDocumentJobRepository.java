@@ -195,6 +195,22 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
+     * 根据文档 ID 集合批量删除文档任务。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public void deleteByIds(List<String> documentIds) {
+        if (documentIds.isEmpty()) {
+            // 空集合无需发起删除语句。
+        } else {
+            removeByIds(documentIds);
+        }
+    }
+
+    /**
      * 将领域文档任务转换为持久化实体。
      *
      * @param document 文档任务

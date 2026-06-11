@@ -198,6 +198,38 @@ class DocLensOcrApiContractTest {
     }
 
     /**
+     * 验证可删除状态的整个批次可以通过批次接口一键删除。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void completedBatchCanBeDeletedByBatchEndpoint() throws Exception {
+        MvcResult created = uploadBatch();
+        JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
+        String batchId = body.get("batch_id").asText();
+        String firstDocumentId = body.get("documents").get(0).get("document_id").asText();
+        String secondDocumentId = body.get("documents").get(1).get("document_id").asText();
+
+        waitForBatchCompleted(batchId);
+
+        mockMvc.perform(delete("/api/v1/batches/{batchId}", batchId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.batch_id").value(batchId))
+                .andExpect(jsonPath("$.status").value("deleted"))
+                .andExpect(jsonPath("$.deleted_documents").value(2));
+
+        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
+        mockMvc.perform(get("/api/v1/documents/{documentId}", firstDocumentId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/documents/{documentId}", secondDocumentId))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
      * 验证 processing 文档删除会被明确拒绝。
      *
      * @throws Exception 请求执行失败时抛出

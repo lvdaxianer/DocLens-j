@@ -108,6 +108,24 @@ public class MybatisPlusOcrEventRepository
     }
 
     /**
+     * 根据文档 ID 集合批量删除 OCR 事件。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Override
+    public void deleteByDocumentIds(List<String> documentIds) {
+        if (documentIds.isEmpty()) {
+            // 空集合无需发起删除语句。
+        } else {
+            LambdaQueryWrapper<OcrEventEntity> wrapper = new LambdaQueryWrapper<OcrEventEntity>()
+                    .in(OcrEventEntity::getDocumentId, documentIds);
+            remove(wrapper);
+        }
+    }
+
+    /**
      * 将领域 OCR 事件转换为持久化实体。
      *
      * @param event OCR 事件

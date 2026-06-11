@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 import java.util.Optional;
+import java.util.List;
 
 /**
  * OCR 结果仓储接口。
@@ -39,6 +40,18 @@ public interface OcrResultRepository {
     Optional<OcrResult> findByDocumentId(String documentId);
 
     /**
+     * 根据文档 ID 集合批量查找 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @return OCR 结果集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    default List<OcrResult> findByDocumentIds(List<String> documentIds) {
+        throw new UnsupportedOperationException("ocr result batch query is not supported");
+    }
+
+    /**
      * 根据文档 ID 删除 OCR 结果。
      *
      * @param documentId 文档 ID
@@ -47,5 +60,16 @@ public interface OcrResultRepository {
      */
     default void deleteByDocumentId(String documentId) {
         throw new UnsupportedOperationException("ocr result delete is not supported");
+    }
+
+    /**
+     * 根据文档 ID 集合批量删除 OCR 结果。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    default void deleteByDocumentIds(List<String> documentIds) {
+        throw new UnsupportedOperationException("ocr result batch delete is not supported");
     }
 }

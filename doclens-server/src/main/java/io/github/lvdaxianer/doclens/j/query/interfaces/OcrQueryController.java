@@ -98,6 +98,19 @@ public class OcrQueryController {
     }
 
     /**
+     * 删除批次下所有可删除文档。
+     *
+     * @param batchId 批次 ID
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @DeleteMapping("/batches/{batchId}")
+    public Map<String, Object> deleteBatch(@PathVariable String batchId) {
+        return docLensEngine.deleteBatch(batchId);
+    }
+
+    /**
      * 获取批次事件。
      *
      * @param batchId 批次 ID

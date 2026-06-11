@@ -152,6 +152,79 @@ class DocumentDeleteUseCaseTest {
     }
 
     /**
+     * 删除批次时应清理批次内所有可删除文档，并最终移除空批次。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void deleteBatchRemovesAllDeletableDocumentsAndEmptyBatch() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        RecordingObjectStorage objectStorage = new RecordingObjectStorage();
+        OffsetDateTime now = OffsetDateTime.now();
+        DocumentJob completedDocument = document("doc-completed", 0)
+                .startProcessing(now)
+                .complete("result-doc-completed", now.plusSeconds(1));
+        DocumentJob stalledDocument = new DocumentJob("doc-stalled", "batch-test", "doc-stalled.txt",
+                DocumentType.TEXT, 5, 1, "local://doc-stalled", DocumentStatus.STALLED, ProcessingStage.OCR_IMAGES,
+                50, 1, 1, "stub_ocr", Optional.<PdfMode>empty(),
+                io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy.defaultPolicy(), JsonPayload.empty(),
+                Optional.empty(), Optional.of("STALE_DOCUMENT"), Optional.of("stalled"), 1, now, now.plusSeconds(10));
+        documentRepository.saveAll(List.of(completedDocument, stalledDocument));
+        batchRepository.save(batch(2, 1, 0, BatchStatus.PARTIAL_FAILED));
+        resultRepository.save(result("doc-completed", "local://results/doc-completed.md"));
+        BatchDeleteUseCase useCase = batchUseCase(documentRepository, batchRepository, resultRepository,
+                eventRepository, objectStorage);
+
+        int deletedCount = useCase.delete("batch-test");
+
+        assertThat(deletedCount).isEqualTo(2);
+        assertThat(documentRepository.listByBatchId("batch-test")).isEmpty();
+        assertThat(resultRepository.findByDocumentId("doc-completed")).isEmpty();
+        assertThat(eventRepository.listByBatchId("batch-test")).hasSize(2);
+        assertThat(objectStorage.deletedUris)
+                .contains("local://doc-completed", "local://results/doc-completed.md", "local://doc-stalled");
+        assertThat(batchRepository.findById("batch-test")).isEmpty();
+    }
+
+    /**
+     * 批次包含处理中或排队中文档时应整批拒绝，避免出现半删除状态。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void deleteBatchRejectsNonDeletableDocumentsWithoutPartialDelete() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        RecordingObjectStorage objectStorage = new RecordingObjectStorage();
+        OffsetDateTime now = OffsetDateTime.now();
+        DocumentJob completedDocument = document("doc-completed", 0)
+                .startProcessing(now)
+                .complete("result-doc-completed", now.plusSeconds(1));
+        DocumentJob processingDocument = document("doc-processing", 1).startProcessing(now);
+        documentRepository.saveAll(List.of(completedDocument, processingDocument));
+        batchRepository.save(batch(2, 1, 0, BatchStatus.PROCESSING));
+        resultRepository.save(result("doc-completed", "local://results/doc-completed.md"));
+        BatchDeleteUseCase useCase = batchUseCase(documentRepository, batchRepository, resultRepository,
+                eventRepository, objectStorage);
+
+        assertThatThrownBy(() -> useCase.delete("batch-test"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("non-deletable")
+                .hasMessageContaining("processing");
+        assertThat(documentRepository.findById("doc-completed")).isPresent();
+        assertThat(documentRepository.findById("doc-processing")).isPresent();
+        assertThat(resultRepository.findByDocumentId("doc-completed")).isPresent();
+        assertThat(objectStorage.deletedUris).isEmpty();
+    }
+
+    /**
      * 处理中删除在第一版应明确拒绝，避免破坏运行中的处理链路。
      *
      * @author lvdaxianerplus
@@ -198,6 +271,30 @@ class DocumentDeleteUseCaseTest {
             RecordingObjectStorage objectStorage
     ) {
         return new DocumentDeleteUseCase(new DocumentDeleteDependencies(documentRepository, batchRepository,
+                resultRepository, eventRepository, objectStorage, new OcrEventFactory(new IdGenerator())),
+                new InlineTransactionRunner());
+    }
+
+    /**
+     * 创建待测批次删除用例。
+     *
+     * @param documentRepository 文档仓储
+     * @param batchRepository 批次仓储
+     * @param resultRepository 结果仓储
+     * @param eventRepository 事件仓储
+     * @param objectStorage 对象存储
+     * @return 批次删除用例
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    private BatchDeleteUseCase batchUseCase(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryBatchRepository batchRepository,
+            InMemoryOcrResultRepository resultRepository,
+            InMemoryOcrEventRepository eventRepository,
+            RecordingObjectStorage objectStorage
+    ) {
+        return new BatchDeleteUseCase(new DocumentDeleteDependencies(documentRepository, batchRepository,
                 resultRepository, eventRepository, objectStorage, new OcrEventFactory(new IdGenerator())),
                 new InlineTransactionRunner());
     }
@@ -321,6 +418,11 @@ class DocumentDeleteUseCaseTest {
         public void deleteById(String documentId) {
             documents.remove(documentId);
         }
+
+        @Override
+        public void deleteByIds(List<String> documentIds) {
+            documentIds.forEach(documents::remove);
+        }
     }
 
     /**
@@ -398,8 +500,18 @@ class DocumentDeleteUseCaseTest {
         }
 
         @Override
+        public List<OcrResult> findByDocumentIds(List<String> documentIds) {
+            return documentIds.stream().map(results::get).filter(java.util.Objects::nonNull).toList();
+        }
+
+        @Override
         public void deleteByDocumentId(String documentId) {
             results.remove(documentId);
+        }
+
+        @Override
+        public void deleteByDocumentIds(List<String> documentIds) {
+            documentIds.forEach(results::remove);
         }
     }
 
@@ -437,6 +549,11 @@ class DocumentDeleteUseCaseTest {
         public void deleteByDocumentId(String documentId) {
             events.removeIf(event -> event.documentId().filter(documentId::equals).isPresent());
         }
+
+        @Override
+        public void deleteByDocumentIds(List<String> documentIds) {
+            events.removeIf(event -> event.documentId().filter(documentIds::contains).isPresent());
+        }
     }
 
     /**
@@ -462,6 +579,11 @@ class DocumentDeleteUseCaseTest {
         @Override
         public void delete(String storageUri) {
             deletedUris.add(storageUri);
+        }
+
+        @Override
+        public void deleteAll(List<String> storageUris) {
+            deletedUris.addAll(storageUris);
         }
     }
 

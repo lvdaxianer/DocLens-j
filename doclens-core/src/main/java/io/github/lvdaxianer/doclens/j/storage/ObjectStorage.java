@@ -1,5 +1,7 @@
 package io.github.lvdaxianer.doclens.j.storage;
 
+import java.util.List;
+
 /**
  * 上传文件和生成产物的对象存储抽象。
  *
@@ -38,5 +40,16 @@ public interface ObjectStorage {
      */
     default void delete(String storageUri) {
         throw new UnsupportedOperationException("object delete is not supported");
+    }
+
+    /**
+     * 批量删除存储 URI 对应对象。
+     *
+     * @param storageUris 存储 URI 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    default void deleteAll(List<String> storageUris) {
+        storageUris.forEach(this::delete);
     }
 }

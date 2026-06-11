@@ -72,6 +72,16 @@ public interface DocLensEngine {
     Map<String, Object> deleteDocument(String documentId);
 
     /**
+     * 删除批次下所有可删除文档。
+     *
+     * @param batchId 批次标识
+     * @return 操作结果
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    Map<String, Object> deleteBatch(String batchId);
+
+    /**
      * 获取单个批次的事件时间线。
      *
      * @param batchId 批次标识
