@@ -35,6 +35,7 @@ class OcrDashboardMetricsProviderTest {
             .withSecond(0)
             .withNano(0);
     private static final String DEFAULT_MODEL_KEY = "paddle_ocr";
+    private static final int TEST_NODE_CAPACITY = 8;
 
     /**
      * 批次命中节点应返回节点别名，避免前端退回显示内部 ID。
@@ -326,7 +327,7 @@ class OcrDashboardMetricsProviderTest {
      */
     private static final class InMemoryOcrNodeRepository implements OcrNodeRepository {
 
-        private final Map<String, OcrNode> nodes = new HashMap<>();
+        private final Map<String, OcrNode> nodes = new HashMap<>(TEST_NODE_CAPACITY);
 
         private InMemoryOcrNodeRepository(List<OcrNode> seedNodes) {
             seedNodes.forEach(node -> nodes.put(node.id(), node));

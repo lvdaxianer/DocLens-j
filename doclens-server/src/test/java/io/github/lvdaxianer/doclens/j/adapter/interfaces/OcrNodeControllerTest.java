@@ -108,17 +108,9 @@ class OcrNodeControllerTest {
     private static final class PassThroughModelRegistry extends OcrModelRegistry {
 
         private PassThroughModelRegistry() {
-            super(List.of());
-        }
-
-        @Override
-        public List<OcrModelDefinition> list() {
-            return List.of();
-        }
-
-        @Override
-        public OcrModelDefinition requireSupported(String modelKey) {
-            return null;
+            super(List.of(OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
+                    "paddle_ocr", "PaddleOCR", "PaddleOCR native-compatible HTTP API", List.of("image"),
+                    "/ocr", "/ocr", true))));
         }
     }
 

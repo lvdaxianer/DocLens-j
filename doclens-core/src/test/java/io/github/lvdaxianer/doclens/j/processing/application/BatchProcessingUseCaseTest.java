@@ -55,6 +55,7 @@ class BatchProcessingUseCaseTest {
     private static final int TEST_EVENT_CAPACITY = 8;
     private static final int CONCURRENT_TEST_DOCUMENTS = 2;
     private static final int CONCURRENT_TEST_TIMEOUT_SECONDS = 2;
+    private static final int PROCESSED_DOCUMENT_ID_CAPACITY = 4;
 
     /**
      * 每个文档完成后应持久化，避免长批次结束后才统一可见。
@@ -839,7 +840,7 @@ class BatchProcessingUseCaseTest {
      */
     private static class CountingDocumentTextExtractor implements DocumentTextExtractor {
 
-        private final List<String> processedDocumentIds = new ArrayList<>();
+        private final List<String> processedDocumentIds = new ArrayList<>(PROCESSED_DOCUMENT_ID_CAPACITY);
 
         @Override
         public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {

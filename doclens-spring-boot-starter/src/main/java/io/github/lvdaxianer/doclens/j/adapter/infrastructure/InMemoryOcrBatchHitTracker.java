@@ -47,14 +47,17 @@ public class InMemoryOcrBatchHitTracker implements OcrBatchHitTracker {
      */
     @Override
     public void recordCompletion(String batchId, String modelKey, String nodeId) {
-        hitCounts.computeIfPresent(hitKey(batchId, modelKey, nodeId), (ignored, counter) -> {
-            long currentValue = counter.decrementAndGet();
-            if (currentValue <= 0L) {
-                return null;
-            } else {
-                return counter;
-            }
-        });
+        String key = hitKey(batchId, modelKey, nodeId);
+        AtomicLong counter = hitCounts.get(key);
+        if (counter == null) {
+            // 未记录派发时收到完成回调，直接忽略避免产生负计数。
+            return;
+        }
+        long currentValue = counter.decrementAndGet();
+        if (currentValue <= 0L) {
+            // 当前节点已无进行中图片，归零但保留计数器以避免并发删除丢失新派发。
+            counter.set(0L);
+        }
     }
 
     /**

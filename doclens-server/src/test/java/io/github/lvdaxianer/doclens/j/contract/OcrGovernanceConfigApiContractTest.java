@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,11 +75,14 @@ class OcrGovernanceConfigApiContractTest {
     void getConfigReturnsCurrentDefaultGovernanceValues() throws Exception {
         mockMvc.perform(get("/api/v1/ocr-governance-config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.failure_threshold").value(3))
-                .andExpect(jsonPath("$.probe_interval_seconds").value(60))
-                .andExpect(jsonPath("$.circuit_open_seconds").value(86400))
-                .andExpect(jsonPath("$.recovery_success_threshold").value(3))
-                .andExpect(jsonPath("$.manual_recovery_attempts").value(3));
+                .andExpect(jsonPath("$.failure_threshold").value(OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD))
+                .andExpect(jsonPath("$.probe_interval_seconds")
+                        .value(OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS))
+                .andExpect(jsonPath("$.circuit_open_seconds").value(OcrHealthGovernance.DEFAULT_CIRCUIT_OPEN_SECONDS))
+                .andExpect(jsonPath("$.recovery_success_threshold")
+                        .value(OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD))
+                .andExpect(jsonPath("$.manual_recovery_attempts")
+                        .value(OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS));
     }
 
     /**

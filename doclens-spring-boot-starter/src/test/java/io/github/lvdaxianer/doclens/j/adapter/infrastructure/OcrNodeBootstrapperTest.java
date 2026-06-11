@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 class OcrNodeBootstrapperTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T07:40:00+08:00");
+    private static final int TEST_NODE_CAPACITY = 4;
 
     /**
      * PaddleOCR 未配置节点时应插入启动节点。
@@ -101,7 +102,7 @@ class OcrNodeBootstrapperTest {
      */
     private static class InMemoryOcrNodeRepository implements OcrNodeRepository {
 
-        private final List<OcrNode> nodes = new ArrayList<>();
+        private final List<OcrNode> nodes = new ArrayList<>(TEST_NODE_CAPACITY);
 
         @Override
         public void save(OcrNode node) {

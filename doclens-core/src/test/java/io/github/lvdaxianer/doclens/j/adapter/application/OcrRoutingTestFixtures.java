@@ -299,14 +299,17 @@ final class OcrRoutingTestFixtures {
 
         @Override
         public void recordCompletion(String batchId, String modelKey, String nodeId) {
-            hitCounts.computeIfPresent(hitKey(batchId, modelKey, nodeId), (ignored, counter) -> {
-                long currentValue = counter.decrementAndGet();
-                if (currentValue <= 0L) {
-                    return null;
-                } else {
-                    return counter;
-                }
-            });
+            String key = hitKey(batchId, modelKey, nodeId);
+            AtomicLong counter = hitCounts.get(key);
+            if (counter == null) {
+                // 测试中未记录派发时收到完成回调，直接忽略避免负计数。
+                return;
+            }
+            long currentValue = counter.decrementAndGet();
+            if (currentValue <= 0L) {
+                // 保持与生产实现一致：归零但不删除计数器。
+                counter.set(0L);
+            }
         }
 
         @Override

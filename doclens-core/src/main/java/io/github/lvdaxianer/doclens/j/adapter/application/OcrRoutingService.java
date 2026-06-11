@@ -22,6 +22,7 @@ public class OcrRoutingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcrRoutingService.class);
     private static final String OCR_FAILED_CODE = "OCR_ROUTE_FAILED";
+    private static final int MIN_EXCLUDED_NODE_CAPACITY = 1;
 
     private final OcrDispatchCoordinator dispatchCoordinator;
     private final OcrNodeImageExecutor nodeExecutor;
@@ -56,7 +57,8 @@ public class OcrRoutingService {
     public OcrRouteExecutionResult recognize(ImageOcrRequest request, OcrRoutePolicy requestedPolicy) {
         OffsetDateTime startedAt = OffsetDateTime.now();
         OcrRoutePolicy policy = effectivePolicy(requestedPolicy);
-        Set<String> excludedNodeIds = new HashSet<>();
+        Set<String> excludedNodeIds = new HashSet<>(Math.max(MIN_EXCLUDED_NODE_CAPACITY,
+                properties.requestRetryTimes()));
         OcrRouteAccumulator accumulator = new OcrRouteAccumulator(startedAt);
         return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
     }
