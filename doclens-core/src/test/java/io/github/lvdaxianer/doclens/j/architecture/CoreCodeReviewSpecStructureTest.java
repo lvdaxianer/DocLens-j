@@ -16,9 +16,36 @@ import org.junit.jupiter.api.Test;
  */
 class CoreCodeReviewSpecStructureTest {
 
+    /*
+     * 这个结构测试是 code-review-spec 的自动化护栏。
+     * 它不试图扫描整个仓库，否则会把历史遗留大测试一次性全部拦住。
+     * 当前策略是：凡是本轮已经拆分或触碰的源码，
+     * 都加入清单并持续约束在 350 行以内。
+     *
+     * 生产源码和测试源码分开维护，
+     * 方便后续逐步扩大覆盖范围时判断失败来源。
+     * 如果某个文件再次膨胀，失败信息会带上具体 path，
+     * 便于继续按原子任务拆分。
+     *
+     * 这个测试只负责结构门禁，不负责业务正确性。
+     * 业务正确性仍由各自用例覆盖。
+     * 这样失败原因更清楚：
+     * 行数失败看这里，行为失败看业务测试。
+     * 新任务完成后只把本轮触碰文件加入清单，
+     * 不把历史遗留文件一次性塞入同一个提交。
+     * 这样每个结构失败都能对应一个可提交的拆分任务。
+     * 后续扩大门禁范围时，也应按模块分批推进。
+     * 该测试本身也被视为本轮触碰文件，需要遵守同样的注释和行数要求。
+     */
+
+    /** Core 生产源码根目录，用于定位被拆分的应用与领域源码。 */
     private static final Path CORE_SOURCE_ROOT = Path.of("src/main/java");
+    /** Core 测试源码根目录，用于定位被拆分的测试源码。 */
+    private static final Path CORE_TEST_ROOT = Path.of("src/test/java");
+    /** code-review-spec 对单个源码文件的行数上限。 */
     private static final int MAX_SOURCE_FILE_LINES = 350;
 
+    /** 本轮已经拆分并纳入持续约束的生产源码清单。 */
     private static final List<Path> TOUCHED_PROCESSING_SOURCES = List.of(
             CORE_SOURCE_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCase.java"),
@@ -34,6 +61,25 @@ class CoreCodeReviewSpecStructureTest {
             CORE_SOURCE_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeManagementService.java")
     );
+    /** 本轮已经拆分并纳入持续约束的测试源码清单。 */
+    private static final List<Path> TOUCHED_PROCESSING_TESTS = List.of(
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseLlmMarkdownTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseTestSupport.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseRepositories.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseEventRepositories.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseExtractors.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseMarkdownProcessors.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseInfrastructure.java")
+    );
 
     /**
      * 本次拆分涉及的生产源码必须保持在规范允许的文件行数内。
@@ -45,6 +91,24 @@ class CoreCodeReviewSpecStructureTest {
     @Test
     void touchedProcessingSourcesStayWithinCodeReviewSpecLineLimit() throws IOException {
         for (Path source : TOUCHED_PROCESSING_SOURCES) {
+            // 每个已拆分生产源码都保持在 code-review-spec 单文件行数限制内。
+            assertThat(Files.readAllLines(source))
+                    .as(source.toString())
+                    .hasSizeLessThanOrEqualTo(MAX_SOURCE_FILE_LINES);
+        }
+    }
+
+    /**
+     * 本次拆分涉及的测试源码必须保持在规范允许的文件行数内。
+     *
+     * @throws IOException 读取测试源文件失败
+     * @author lvdaxianerplus
+     * @date 2026-06-11
+     */
+    @Test
+    void touchedProcessingTestsStayWithinCodeReviewSpecLineLimit() throws IOException {
+        for (Path source : TOUCHED_PROCESSING_TESTS) {
+            // 每个已拆分测试源码都保持在 code-review-spec 单文件行数限制内。
             assertThat(Files.readAllLines(source))
                     .as(source.toString())
                     .hasSizeLessThanOrEqualTo(MAX_SOURCE_FILE_LINES);
