@@ -12,8 +12,8 @@ const props = defineProps<{
 
 const nodes = computed(() => props.track ?? [])
 const STEP_NUMBER_OFFSET = 1
-const MIN_RAIL_TRACK_WIDTH = 720
-const MIN_NODE_WIDTH = 86
+const MIN_RAIL_TRACK_WIDTH = 620
+const MIN_NODE_WIDTH = 72
 const railStyle = computed(() => {
   const safeNodeCount = Math.max(nodes.value.length, 1)
   const minWidth = Math.max(MIN_RAIL_TRACK_WIDTH, safeNodeCount * MIN_NODE_WIDTH)
@@ -125,18 +125,18 @@ function nodeNumber(index: number): number {
   min-width: 0;
   grid-template-rows: auto minmax(48px, auto);
   justify-items: center;
-  gap: 7px;
+  gap: 4px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
 }
 
 .processing-rail__node::before {
   position: absolute;
-  top: 13px;
-  left: calc(-50% + 14px);
-  width: calc(100% - 28px);
-  height: 3px;
+  top: 10px;
+  left: calc(-50% + 11px);
+  width: calc(100% - 22px);
+  height: 2px;
   background: var(--rail-border);
   content: "";
 }
@@ -148,13 +148,13 @@ function nodeNumber(index: number): number {
 .processing-rail__dot {
   z-index: 1;
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border: 2px solid var(--rail-border);
   border-radius: 50%;
   background: var(--surface-raised);
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   line-height: 1;
   place-items: center;
@@ -164,7 +164,7 @@ function nodeNumber(index: number): number {
   display: grid;
   min-width: 0;
   justify-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .processing-rail__node--done,
@@ -188,7 +188,7 @@ function nodeNumber(index: number): number {
   border-color: var(--active);
   background: var(--surface-raised);
   color: var(--active-strong);
-  box-shadow: 0 0 0 4px rgba(37, 109, 133, 0.14);
+  box-shadow: 0 0 0 3px rgba(37, 109, 133, 0.14);
 }
 
 .processing-rail__node--skipped {
@@ -209,7 +209,7 @@ function nodeNumber(index: number): number {
 }
 
 .processing-rail__label {
-  max-width: 88px;
+  max-width: 74px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -218,13 +218,13 @@ function nodeNumber(index: number): number {
 }
 
 .processing-rail__state {
-  max-width: 76px;
-  padding: 2px 7px;
+  max-width: 68px;
+  padding: 1px 6px;
   border: 1px solid currentColor;
   border-radius: 999px;
   overflow: hidden;
   color: currentColor;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -232,10 +232,10 @@ function nodeNumber(index: number): number {
 }
 
 .processing-rail__description {
-  max-width: 96px;
+  max-width: 78px;
   overflow: hidden;
   color: var(--ink-muted);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -248,3 +248,18 @@ export function deleteDocument(documentId: string): Promise<{ document_id: strin
     HTTP_DELETE_METHOD
   )
 }
+
+/**
+ * 删除单个可删除批次。
+ *
+ * @param batchId - 批次 ID
+ * @returns 批次删除结果
+ * @author lvdaxianerplus
+ * @date 2026-06-11
+ */
+export function deleteBatch(batchId: string): Promise<{ batch_id: string; status: string; deleted_documents: number }> {
+  return requestJson<{ batch_id: string; status: string; deleted_documents: number }>(
+    `/api/v1/batches/${encodeURIComponent(batchId)}`,
+    HTTP_DELETE_METHOD
+  )
+}

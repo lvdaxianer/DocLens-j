@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { NAlert, NButton, NSpin } from 'naive-ui'
 
+import { deleteBatch } from '@/api/dashboard'
 import BatchTable from '@/components/dashboard/BatchTable.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
@@ -14,6 +16,7 @@ import { formatDateTime } from '@/utils/formatters'
 
 const store = useDashboardStore()
 const { summary, summaryState } = storeToRefs(store)
+const deletingBatchId = ref('')
 
 /**
  * 刷新运行总览数据。
@@ -24,6 +27,24 @@ const { summary, summaryState } = storeToRefs(store)
  */
 function refresh(): Promise<void> {
   return store.loadSummary()
+}
+
+/**
+ * 删除总览中的批次并刷新运行总览。
+ *
+ * @param batchId 批次 ID
+ * @returns 删除完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-11
+ */
+async function handleDeleteBatch(batchId: string): Promise<void> {
+  deletingBatchId.value = batchId
+  try {
+    await deleteBatch(batchId)
+    await refresh()
+  } finally {
+    deletingBatchId.value = ''
+  }
 }
 
 useAutoRefresh(refresh)
@@ -64,7 +85,12 @@ useAutoRefresh(refresh)
         <h2 class="panel__title">最近批次</h2>
         <span class="panel__hint">按更新时间倒序</span>
       </div>
-      <BatchTable :batches="summary?.recent_batches ?? []" :loading="summaryState.loading" />
+      <BatchTable
+        :batches="summary?.recent_batches ?? []"
+        :loading="summaryState.loading"
+        :deleting-batch-id="deletingBatchId"
+        @delete-batch="handleDeleteBatch"
+      />
     </section>
   </div>
 </template>

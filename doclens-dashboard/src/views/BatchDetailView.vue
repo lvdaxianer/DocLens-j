@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import type { DataTableColumns } from 'naive-ui'
 import {
@@ -31,13 +31,14 @@ import {
 } from '@/utils/formatters'
 
 const route = useRoute()
+const router = useRouter()
 const store = useDashboardStore()
 const { selectedBatch, detailState } = storeToRefs(store)
 
 const COMPLETED_STATUS = 'completed'
 const FAILED_STATUS = 'failed'
 const STALLED_STATUS = 'stalled'
-const PROGRESS_BAR_HEIGHT = 12
+const PROGRESS_BAR_HEIGHT = 8
 const DOCUMENT_TABLE_SCROLL_X = 1120
 
 const batchId = computed(() => String(route.params.batchId ?? ''))
@@ -111,9 +112,16 @@ async function handleRetryDocument(documentId: string): Promise<void> {
  */
 async function handleDeleteDocument(documentId: string): Promise<void> {
   deletingDocumentId.value = documentId
+  const isDeletingLastDocument = (selectedBatch.value?.documents.length ?? 0) <= 1
   try {
     await deleteDocument(documentId)
-    await refresh()
+    if (isDeletingLastDocument) {
+      // 删除最后一个文档后批次会被清理，避免刷新已不存在的详情。
+      router.back()
+    } else {
+      // 批次仍有文档时刷新当前详情，保持列表状态同步。
+      await refresh()
+    }
   } finally {
     deletingDocumentId.value = ''
   }
@@ -313,7 +321,7 @@ useAutoRefresh(refresh)
         :columns="columns"
         :data="selectedBatch?.documents ?? []"
         :loading="detailState.loading"
-        :pagination="{ pageSize: 8 }"
+        :pagination="{ pageSize: 12 }"
         :row-key="(row) => row.document_id"
         :scroll-x="DOCUMENT_TABLE_SCROLL_X"
         size="small"
@@ -334,7 +342,7 @@ useAutoRefresh(refresh)
 .batch-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
-  gap: 12px;
+  gap: 8px;
   align-items: stretch;
 }
 
@@ -342,8 +350,8 @@ useAutoRefresh(refresh)
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: 2px;
+  padding: 8px 10px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -351,13 +359,14 @@ useAutoRefresh(refresh)
 
 .batch-summary__item span {
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .batch-summary__item strong {
   overflow-wrap: anywhere;
   color: var(--ink-strong);
-  font-size: 20px;
+  font-size: 16px;
+  line-height: 1.25;
 }
 
 .batch-summary__item--refresh strong {
@@ -366,9 +375,10 @@ useAutoRefresh(refresh)
 
 :deep(.document-name) {
   display: inline-block;
-  max-width: 260px;
+  max-width: 240px;
   overflow: hidden;
   color: var(--ink-strong);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -378,17 +388,24 @@ useAutoRefresh(refresh)
   max-width: 132px;
   overflow: hidden;
   color: var(--ink-soft);
+  font-size: 12px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 :deep(.n-progress-custom-content) {
-  min-width: 48px;
+  min-width: 42px;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   text-align: right;
+}
+
+:deep(.n-data-table-th),
+:deep(.n-data-table-td) {
+  padding: 7px 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {

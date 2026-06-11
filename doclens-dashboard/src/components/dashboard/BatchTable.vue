@@ -2,15 +2,20 @@
 import { h } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { DataTableColumns } from 'naive-ui'
-import { NButton, NDataTable, NProgress } from 'naive-ui'
+import { NButton, NDataTable, NPopconfirm, NProgress, NSpace } from 'naive-ui'
 
 import StatusTag from '@/components/dashboard/StatusTag.vue'
 import type { BatchRow } from '@/types/dashboard'
 import { formatDateTime, formatDuration, formatPercent } from '@/utils/formatters'
 
-defineProps<{
+const props = defineProps<{
   batches: BatchRow[]
   loading?: boolean
+  deletingBatchId?: string
+}>()
+
+const emit = defineEmits<{
+  'delete-batch': [batchId: string]
 }>()
 
 const columns: DataTableColumns<BatchRow> = [
@@ -81,15 +86,32 @@ const columns: DataTableColumns<BatchRow> = [
   {
     title: '',
     key: 'actions',
-    width: 90,
+    width: 150,
     render: (row) =>
-      h(
-        RouterLink,
-        {
-          to: { name: 'batch-detail', params: { batchId: row.batch_id } }
-        },
-        () => h(NButton, { size: 'small', quaternary: true }, () => '查看')
-      )
+      h(NSpace, { size: 6, wrapItem: false }, {
+        default: () => [
+          h(
+            RouterLink,
+            {
+              to: { name: 'batch-detail', params: { batchId: row.batch_id } }
+            },
+            () => h(NButton, { size: 'small', quaternary: true }, () => '查看')
+          ),
+          h(NPopconfirm, {
+            positiveText: '确认删除',
+            negativeText: '取消',
+            onPositiveClick: () => emit('delete-batch', row.batch_id)
+          }, {
+            trigger: () => h(NButton, {
+              size: 'small',
+              quaternary: true,
+              type: 'error',
+              loading: row.batch_id === props.deletingBatchId
+            }, () => '删除'),
+            default: () => '删除后将同步清理批次内文档、结果与关联存储，是否继续？'
+          })
+        ]
+      })
   }
 ]
 </script>

@@ -46,7 +46,7 @@ defineProps<{
           <span>整体进度</span>
           <NProgress
             :percentage="document.progress_percent"
-            :height="12"
+            :height="8"
             :indicator-placement="'outside'"
             :status="document.status === 'failed' || document.status === 'stalled' ? 'error' : 'success'"
           >
@@ -67,14 +67,14 @@ defineProps<{
 <style scoped>
 .document-track-list {
   display: grid;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .document-track {
   display: grid;
-  gap: 14px;
-  padding: 16px 18px;
+  gap: 8px;
+  padding: 10px 12px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -85,7 +85,7 @@ defineProps<{
   min-width: 0;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
 }
 
 .document-track__identity {
@@ -97,8 +97,8 @@ defineProps<{
 .document-track__name {
   overflow: hidden;
   color: var(--ink-strong);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -106,26 +106,26 @@ defineProps<{
 .document-track__meta,
 .document-track__footer {
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .document-track__rail {
   overflow-x: auto;
-  padding: 6px 2px 10px;
+  padding: 2px 2px 6px;
 }
 
 .document-track__footer {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto auto;
-  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 10px;
   align-items: center;
 }
 
 .document-track__progress {
   display: grid;
   min-width: 0;
-  grid-template-columns: auto minmax(160px, 1fr);
-  gap: 10px;
+  grid-template-columns: auto minmax(140px, 1fr);
+  gap: 8px;
   align-items: center;
 }
 
@@ -135,9 +135,9 @@ defineProps<{
 }
 
 :deep(.n-progress-custom-content) {
-  min-width: 48px;
+  min-width: 42px;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   text-align: right;
 }
