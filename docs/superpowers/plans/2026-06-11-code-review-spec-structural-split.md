@@ -705,3 +705,53 @@ Expected: PASS.
 - [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the BatchDetailView split.
+
+### Task 15: 拆分 UploadDropzone 上传组件职责
+
+**Files:**
+- Modify: `doclens-dashboard/src/components/dashboard/UploadDropzone.vue`
+- Modify: `doclens-dashboard/src/components/dashboard/__tests__/DashboardStructure.test.ts`
+- Create: `doclens-dashboard/src/components/dashboard/UploadFilePicker.vue`
+- Create: `doclens-dashboard/src/components/dashboard/UploadFileList.vue`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `components/dashboard/UploadDropzone.vue` to `DashboardStructure.test.ts`.
+
+Run:
+
+```bash
+cd doclens-dashboard
+npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts
+```
+
+Expected: FAIL because `UploadDropzone.vue` currently has more than 350 lines.
+
+- [x] **Step 2: Split file picker**
+
+Move native file input, drag/drop handling, accepted file types and picker reset into `UploadFilePicker`.
+
+- [x] **Step 3: Split selected file list**
+
+Move selected file count, total size, per-file row and remove button into `UploadFileList`.
+
+- [x] **Step 4: Keep UploadDropzone focused**
+
+Keep selected file state, advanced options, OCR routing, submit validation and reset orchestration in
+`UploadDropzone`.
+
+- [x] **Step 5: Run focused verification**
+
+Run: `npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 6: Run broader verification**
+
+Run: `npm run build` and `npm test` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 7: Commit**
+
+Create an atomic Chinese Conventional Commit for the UploadDropzone split.

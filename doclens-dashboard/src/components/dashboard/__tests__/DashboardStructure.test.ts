@@ -10,7 +10,8 @@ const STRUCTURE_CHECKED_FILES = [
   'components/dashboard/BatchSummaryStrip.vue',
   'components/dashboard/BatchDocumentTable.vue',
   'components/dashboard/batchDocumentTableColumns.ts',
-  'components/dashboard/batchDocumentTableActions.ts'
+  'components/dashboard/batchDocumentTableActions.ts',
+  'components/dashboard/UploadDropzone.vue'
 ]
 
 /**
