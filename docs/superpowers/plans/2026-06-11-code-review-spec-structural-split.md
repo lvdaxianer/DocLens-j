@@ -933,3 +933,48 @@ Expected: PASS.
 - [x] **Step 6: Commit**
 
 Create an atomic Chinese Conventional Commit for the OCR routing fixtures split.
+
+### Task 20: 拆分 DashboardQueryServiceFixtures OCR 指标夹具职责
+
+**Files:**
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceFixtures.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardOcrMetricsTestFixtures.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `DashboardQueryServiceFixtures.java` to `CoreCodeReviewSpecStructureTest.TOUCHED_PROCESSING_TESTS`.
+
+Run:
+
+```bash
+mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Expected: FAIL because `DashboardQueryServiceFixtures.java` currently has more than 350 lines.
+
+- [x] **Step 2: Split OCR metrics fixture**
+
+Move `TestDashboardOcrMetricsProvider` and OCR metrics service factory into `DashboardOcrMetricsTestFixtures`.
+
+- [x] **Step 3: Update Dashboard tests**
+
+Update Dashboard summary and OCR route detail tests to import the new OCR metrics fixture.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,DashboardQueryServiceTest,DashboardQueryServiceOcrRouteDetailTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the Dashboard query fixtures split.

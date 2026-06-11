@@ -5,11 +5,11 @@ import static io.github.lvdaxianer.doclens.j.query.application.DashboardQuerySer
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.emptyBatch;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.dashboardServiceWithOcrMetrics;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.failedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.processingDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.queuedBatch;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.stagedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsTestFixtures.dashboardServiceWithOcrMetrics;
 
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;

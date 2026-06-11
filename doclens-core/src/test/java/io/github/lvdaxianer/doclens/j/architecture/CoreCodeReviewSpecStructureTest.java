@@ -118,6 +118,13 @@ class CoreCodeReviewSpecStructureTest {
                     "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceBatchDetailTest.java"),
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java"),
+            // Dashboard 基础夹具和 OCR 指标夹具分开纳入门禁。
+            // 基础夹具只放领域对象与内存仓储。
+            // 指标夹具只放 OCR 资源和命中节点 provider。
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceFixtures.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardOcrMetricsTestFixtures.java"),
             // OCR 路由测试按同步路由和运行态命中跟踪拆分。
             // OcrRoutingServiceTest 只保留重试、故障转移和槽位释放。
             // OcrRoutingRuntimeHitTest 只覆盖请求执行中的命中节点快照。

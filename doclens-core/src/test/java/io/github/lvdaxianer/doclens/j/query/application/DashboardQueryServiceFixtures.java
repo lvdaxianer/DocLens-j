@@ -28,6 +28,15 @@ import java.util.Optional;
  */
 final class DashboardQueryServiceFixtures {
 
+    /*
+     * 本夹具只保留 Dashboard 查询测试的领域对象和内存仓储。
+     * OCR 指标 provider 已拆到 DashboardOcrMetricsTestFixtures。
+     * 这样总览、批次详情、OCR 路由测试可以共享基础数据，
+     * 但不会把指标展示细节继续塞回通用夹具。
+     * routedDocument 只描述文档上的路由策略元数据。
+     * 真实命中节点由指标专用夹具负责提供。
+     */
+
     static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T12:00:00+08:00");
     private static final int TEST_BATCH_CAPACITY = 4;
     private static final int TEST_DOCUMENT_CAPACITY = 8;
@@ -179,25 +188,20 @@ final class DashboardQueryServiceFixtures {
     }
 
     /**
-     * 创建带测试 OCR 指标的 Dashboard 服务。
-     *
-     * @return Dashboard 查询服务
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    static DashboardQueryService dashboardServiceWithOcrMetrics() {
-        return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
-                new InMemoryDocumentJobRepository(List.of()), new InMemoryOcrEventRepository(),
-                new TestDashboardOcrMetricsProvider());
-    }
-
-    /**
      * 内存批次仓储。
      *
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     static class InMemoryBatchRepository implements BatchRepository {
+
+        /*
+         * 内存批次仓储只服务读模型测试。
+         * 这里保留 save / updateSummary 是为了满足接口契约，
+         * 实际测试只关注 findById 与 listRecent 的可预测返回。
+         * listRecent 按更新时间倒序，贴近 Dashboard 最近批次展示。
+         * updateSummary 为空实现，避免测试意外修改读模型输入。
+         */
 
         private final Map<String, Batch> batches = new HashMap<>(TEST_BATCH_CAPACITY);
 
@@ -239,6 +243,15 @@ final class DashboardQueryServiceFixtures {
      * @date 2026-06-09
      */
     static class InMemoryDocumentJobRepository implements DocumentJobRepository {
+
+        /*
+         * 文档仓储按 batchId 和 sortOrder 提供稳定结果。
+         * Dashboard 详情页强依赖上传顺序，
+         * 所以这里显式排序，避免 HashMap 迭代顺序影响断言。
+         * saveAll / updateAll 仍委托单条方法，
+         * 因为测试仓储没有外部 IO 或数据库往返成本。
+         * 生产批量处理约束不在这个纯内存桩上触发。
+         */
 
         private final Map<String, DocumentJob> documents = new HashMap<>(TEST_DOCUMENT_CAPACITY);
 
@@ -297,6 +310,12 @@ final class DashboardQueryServiceFixtures {
      */
     static class InMemoryOcrEventRepository implements OcrEventRepository {
 
+        /*
+         * Dashboard 查询测试当前只读取 recent_events 的空集合。
+         * 事件写入方法保留为空实现，
+         * 是为了让服务构造保持真实接口形态。
+         */
+
         @Override
         public void save(OcrEvent event) {
             // 当前测试不写入 OCR 事件。
@@ -318,45 +337,4 @@ final class DashboardQueryServiceFixtures {
         }
     }
 
-    /**
-     * 测试 OCR 指标提供器。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    static class TestDashboardOcrMetricsProvider implements DashboardOcrMetricsProvider {
-
-        @Override
-        public Map<String, Object> ocrResources() {
-            return Map.ofEntries(
-                    Map.entry("healthy_node_count", 2L),
-                    Map.entry("down_node_count", 1L),
-                    Map.entry("recovering_node_count", 1L),
-                    Map.entry("global_inflight_images", 7L),
-                    Map.entry("busiest_node", Map.of("node_id", "node-1", "inflight_images", 5L)),
-                    Map.entry("thread_pools", Map.of(
-                            "ocr_request", Map.of("active_count", 2, "queue_size", 3),
-                            "ocr_health", Map.of("active_count", 1, "queue_size", 0)))
-            );
-        }
-
-        @Override
-        public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
-            return List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L));
-        }
-
-        /**
-         * 返回测试文档的最终分配节点。
-         *
-         * @param documentId 文档 ID
-         * @return 最终分配节点列表
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        @Override
-        public Map<String, List<Map<String, Object>>> finalHitNodesByBatch(String batchId) {
-            return Map.of("doc-routed",
-                    List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L)));
-        }
-    }
 }

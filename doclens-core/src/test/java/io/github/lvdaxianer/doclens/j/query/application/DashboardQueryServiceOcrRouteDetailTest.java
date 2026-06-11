@@ -5,10 +5,10 @@ import static io.github.lvdaxianer.doclens.j.query.application.DashboardQuerySer
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.routedDocument;
 
+import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsTestFixtures.TestDashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
-import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TestDashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import java.util.List;
 import java.util.Map;
