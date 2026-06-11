@@ -2,8 +2,8 @@ package io.github.lvdaxianer.doclens.j.adapter.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingHitTestFixtures.InMemoryBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.FixedCallIdGenerator;
-import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryRuntimeNodeProvider;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;

@@ -6,13 +6,10 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * OCR 路由测试夹具。
@@ -21,6 +18,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2026-06-08
  */
 final class OcrRoutingTestFixtures {
+
+    /*
+     * 本夹具只保留 OCR 路由测试的基础依赖：
+     * 运行时节点提供器、节点执行器、调用记录仓储和固定 ID 生成器。
+     * 批次命中跟踪器已经拆到 OcrRoutingHitTestFixtures，
+     * 避免一个 fixture 同时承载路由基础设施和运行态统计职责。
+     */
 
     static final int TEST_CALL_CAPACITY = 8;
 
@@ -34,6 +38,12 @@ final class OcrRoutingTestFixtures {
      * @date 2026-06-08
      */
     static class InMemoryRuntimeNodeProvider implements OcrRuntimeNodeProvider {
+
+        /*
+         * 这个内存实现模拟生产节点运行态：
+         * nodes 保存静态节点配置，inflightImages 和 queuedImages 保存动态计数。
+         * 测试通过 tryAcquireCount / releaseCount 验证调度器是否走了协调器路径。
+         */
 
         private final Map<String, OcrRuntimeNodeView> nodes = new HashMap<>(TEST_CALL_CAPACITY);
         private final Map<String, Integer> inflightImages = new HashMap<>(TEST_CALL_CAPACITY);
@@ -249,6 +259,13 @@ final class OcrRoutingTestFixtures {
      */
     static class InMemoryCallRepository implements OcrNodeCallRepository {
 
+        /*
+         * 调用记录仓储只做内存列表过滤。
+         * 这里不模拟数据库分页或索引，
+         * 目的是让路由测试聚焦“是否记录调用”和“记录归属是否正确”。
+         * 所有查询都保持无副作用，方便断言路由行为。
+         */
+
         final List<OcrNodeCall> calls = new ArrayList<>(TEST_CALL_CAPACITY);
 
         @Override
@@ -276,78 +293,6 @@ final class OcrRoutingTestFixtures {
             return calls.stream()
                     .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
                     .toList();
-        }
-    }
-
-    /**
-     * 内存批次运行时命中跟踪器。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    static class InMemoryBatchHitTracker implements OcrBatchHitTracker {
-
-        private static final int KEY_SEGMENT_COUNT = 3;
-        private static final String KEY_SEPARATOR = "|";
-        private final Map<String, AtomicLong> hitCounts = new ConcurrentHashMap<>(TEST_CALL_CAPACITY);
-
-        @Override
-        public void recordDispatch(String batchId, String modelKey, String nodeId) {
-            hitCounts.computeIfAbsent(hitKey(batchId, modelKey, nodeId), ignored -> new AtomicLong(0L))
-                    .incrementAndGet();
-        }
-
-        @Override
-        public void recordCompletion(String batchId, String modelKey, String nodeId) {
-            String key = hitKey(batchId, modelKey, nodeId);
-            AtomicLong counter = hitCounts.get(key);
-            if (counter == null) {
-                // 测试中未记录派发时收到完成回调，直接忽略避免负计数。
-                return;
-            }
-            long currentValue = counter.decrementAndGet();
-            if (currentValue <= 0L) {
-                // 保持与生产实现一致：归零但不删除计数器。
-                counter.set(0L);
-            }
-        }
-
-        @Override
-        public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
-            return hitCounts.entrySet().stream()
-                    .filter(entry -> entry.getValue().get() > 0L)
-                    .map(entry -> toHit(entry.getKey(), entry.getValue().get()))
-                    .filter(hit -> batchId.equals(hit.batchId()))
-                    .sorted(Comparator.comparing(OcrBatchNodeHit::nodeId))
-                    .toList();
-        }
-
-        /**
-         * 组装批次命中键，避免维护多层并发结构。
-         *
-         * @param batchId 批次 ID
-         * @param modelKey 模型标识
-         * @param nodeId 节点 ID
-         * @return 命中键
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        private String hitKey(String batchId, String modelKey, String nodeId) {
-            return batchId + KEY_SEPARATOR + modelKey + KEY_SEPARATOR + nodeId;
-        }
-
-        /**
-         * 将命中键转换为快照对象。
-         *
-         * @param key 命中键
-         * @param imageCount 图片数
-         * @return 命中快照
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        private OcrBatchNodeHit toHit(String key, long imageCount) {
-            String[] segments = key.split("\\|", KEY_SEGMENT_COUNT);
-            return new OcrBatchNodeHit(segments[0], segments[1], segments[2], imageCount);
         }
     }
 

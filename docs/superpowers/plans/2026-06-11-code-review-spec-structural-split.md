@@ -888,3 +888,48 @@ Expected: PASS.
 - [x] **Step 6: Commit**
 
 Create an atomic Chinese Conventional Commit for the OcrRoutingService test split.
+
+### Task 19: 拆分 OcrRoutingTestFixtures 批次命中夹具职责
+
+**Files:**
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingTestFixtures.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingServiceTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingRuntimeHitTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingHitTestFixtures.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrRoutingTestFixtures.java` to `CoreCodeReviewSpecStructureTest.TOUCHED_PROCESSING_TESTS`.
+
+Run:
+
+```bash
+mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Expected: FAIL because `OcrRoutingTestFixtures.java` currently has more than 350 lines.
+
+- [x] **Step 2: Split batch hit tracker fixture**
+
+Move `InMemoryBatchHitTracker` into `OcrRoutingHitTestFixtures`.
+
+- [x] **Step 3: Update routing tests**
+
+Update routing tests to import `OcrRoutingHitTestFixtures.InMemoryBatchHitTracker`.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,OcrRoutingServiceTest,OcrRoutingRuntimeHitTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the OCR routing fixtures split.

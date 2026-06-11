@@ -124,7 +124,14 @@ class CoreCodeReviewSpecStructureTest {
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingServiceTest.java"),
             CORE_TEST_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingRuntimeHitTest.java")
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingRuntimeHitTest.java"),
+            // 路由基础夹具和批次命中夹具分开纳入门禁。
+            // 这样测试桩也要持续保持单一职责，
+            // 不会因为不是 Test 类就绕过 code-review-spec。
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingTestFixtures.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingHitTestFixtures.java")
     );
 
     /**
