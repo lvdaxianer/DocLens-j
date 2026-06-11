@@ -28,7 +28,9 @@ class StarterCodeReviewSpecStructureTest {
             STARTER_SOURCE_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/autoconfigure/DocLensStaleDocumentRecoveryAutoConfiguration.java"),
             STARTER_SOURCE_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java")
+                    "io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java"),
+            STARTER_SOURCE_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/infrastructure/OcrHealthChecker.java")
     );
 
     /**

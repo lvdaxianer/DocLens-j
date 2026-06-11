@@ -7,7 +7,6 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import java.time.OffsetDateTime;
 import java.util.function.Supplier;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -29,6 +28,7 @@ public class OcrHealthChecker {
     private final ExecutorService healthExecutor;
     private final Supplier<OcrHealthGovernance> governanceSupplier;
     private final Supplier<OffsetDateTime> nowSupplier;
+    private final OcrHealthNodeStateUpdater stateUpdater;
 
     /**
      * 创建 OCR 节点健康检查器。
@@ -93,6 +93,7 @@ public class OcrHealthChecker {
         this.healthExecutor = healthExecutor;
         this.governanceSupplier = governanceSupplier;
         this.nowSupplier = nowSupplier;
+        this.stateUpdater = new OcrHealthNodeStateUpdater(governanceSupplier);
     }
 
     /**
@@ -145,12 +146,15 @@ public class OcrHealthChecker {
     private boolean checkNode(OcrNode node, boolean ignoreCircuitWindow) {
         OffsetDateTime now = nowSupplier.get();
         if (!shouldProbe(node, now, ignoreCircuitWindow)) {
+            // 熔断窗口内跳过自动探测，避免反复打到异常节点。
             return false;
         }
         boolean healthy = isHealthy(node);
         if (healthy) {
+            // 健康成功后按治理阈值推进恢复状态。
             nodeRepository.update(successNode(node, now));
         } else {
+            // 健康失败后记录失败计数并可能打开熔断窗口。
             nodeRepository.update(failedNode(node, "health check failed", now));
         }
         return healthy;
@@ -230,14 +234,7 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     private OcrNode successNode(OcrNode node, OffsetDateTime now) {
-        if (node.status() == OcrNodeStatus.DOWN) {
-            return replaceHealth(node, OcrNodeStatus.RECOVERING, 0L, 1L, Optional.empty(), Optional.empty(), now);
-        } else if (node.status() == OcrNodeStatus.RECOVERING && reachedRecoveryThreshold(node)) {
-            return replaceHealth(node, OcrNodeStatus.UP, 0L, 0L, Optional.empty(), Optional.empty(), now);
-        } else {
-            return replaceHealth(node, node.status(), 0L, node.successCount() + 1, Optional.empty(),
-                    node.circuitOpenUntil(), now);
-        }
+        return stateUpdater.successNode(node, now);
     }
 
     /**
@@ -250,72 +247,9 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     private OcrNode failedNode(OcrNode node, String errorMessage, OffsetDateTime now) {
-        OcrHealthGovernance governance = governance();
-        long failureCount = node.failureCount() + 1;
-        OcrNodeStatus status = failureStatus(failureCount, node, governance);
         LOGGER.warn("[OCR健康检查] 节点健康检查失败, nodeId={}, modelKey={}, error={}",
                 node.id(), node.modelKey(), errorMessage);
-        Optional<OffsetDateTime> circuitOpenUntil = failureCount >= Math.max(1, governance.failureThreshold())
-                ? Optional.of(now.plusSeconds(governance.circuitOpenSeconds()))
-                : node.circuitOpenUntil();
-        return replaceHealth(node, status, failureCount, 0L, Optional.of(errorMessage), circuitOpenUntil, now);
-    }
-
-    /**
-     * 计算健康成功后的节点状态。
-     *
-     * @param node OCR 节点
-     * @return 节点状态
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private OcrNodeStatus failureStatus(long failureCount, OcrNode node, OcrHealthGovernance governance) {
-        if (failureCount >= Math.max(1, governance.failureThreshold())) {
-            return OcrNodeStatus.DOWN;
-        } else {
-            return node.status();
-        }
-    }
-
-    /**
-     * 判断是否达到恢复成功阈值。
-     *
-     * @param node OCR 节点
-     * @return 是否达到恢复成功阈值
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private boolean reachedRecoveryThreshold(OcrNode node) {
-        return node.successCount() + 1 >= Math.max(1, governance().recoverySuccessThreshold());
-    }
-
-    /**
-     * 替换节点健康状态字段。
-     *
-     * @param node OCR 节点
-     * @param status 节点状态
-     * @param failureCount 失败次数
-     * @param successCount 成功次数
-     * @param errorMessage 错误消息
-     * @return 更新后的 OCR 节点
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private OcrNode replaceHealth(
-            OcrNode node,
-            OcrNodeStatus status,
-            long failureCount,
-            long successCount,
-            Optional<String> errorMessage,
-            Optional<OffsetDateTime> circuitOpenUntil,
-            OffsetDateTime now
-    ) {
-        return new OcrNode(node.id(), node.modelKey(), node.deploymentType(), node.name(), node.host(), node.port(),
-                node.channelKey(), node.providerModel(), node.credentialRef(), node.credentialConfigured(),
-                node.enabled(), node.participateGlobal(), node.weight(), node.maxConcurrency(), status, failureCount,
-                successCount, node.avgLatencyMs(), node.p95LatencyMs(), Optional.of(now), successAt(successCount, now),
-                failureAt(failureCount, now), errorMessage, circuitOpenUntil, node.lastManualRecoveryAt(),
-                node.createdAt(), now);
+        return stateUpdater.failedNode(node, errorMessage, now);
     }
 
     /**
@@ -341,17 +275,6 @@ public class OcrHealthChecker {
     }
 
     /**
-     * 读取当前生效的 OCR 治理配置。
-     *
-     * @return 当前治理配置
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private OcrHealthGovernance governance() {
-        return governanceSupplier.get();
-    }
-
-    /**
      * 将旧版健康检查属性适配为治理配置。
      *
      * @param properties 健康检查属性
@@ -365,37 +288,4 @@ public class OcrHealthChecker {
                 properties.recoverySuccessThreshold(), OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS);
     }
 
-    /**
-     * 生成最近成功时间。
-     *
-     * @param successCount 成功次数
-     * @param now 当前时间
-     * @return 最近成功时间
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private Optional<OffsetDateTime> successAt(long successCount, OffsetDateTime now) {
-        if (successCount > 0) {
-            return Optional.of(now);
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * 生成最近失败时间。
-     *
-     * @param failureCount 失败次数
-     * @param now 当前时间
-     * @return 最近失败时间
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private Optional<OffsetDateTime> failureAt(long failureCount, OffsetDateTime now) {
-        if (failureCount > 0) {
-            return Optional.of(now);
-        } else {
-            return Optional.empty();
-        }
-    }
 }

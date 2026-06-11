@@ -274,3 +274,45 @@ Expected: PASS.
 - [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the OCR node management service split.
+
+### Task 6: 拆分 OcrHealthChecker
+
+**Files:**
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/OcrHealthChecker.java`
+- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/OcrHealthNodeStateUpdater.java`
+- Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/autoconfigure/StarterCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrHealthChecker.java` to the starter structure test line-limit list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrHealthChecker.java` currently has 401 lines.
+
+- [x] **Step 3: Extract node state updater**
+
+Move health success/failure state calculation, recovery threshold checks, circuit window updates and health timestamp
+replacement into `OcrHealthNodeStateUpdater`.
+
+- [x] **Step 4: Keep checker focused on probing and persistence**
+
+Keep task submission, health client calls, probe window checks, logging and repository updates in `OcrHealthChecker`.
+
+- [x] **Step 5: Run focused verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest,OcrHealthCheckerTest,OcrHealthCheckerLifecycleTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Run broader verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Commit**
+
+Create an atomic Chinese Conventional Commit for the OCR health checker split.
