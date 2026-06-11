@@ -140,3 +140,45 @@ Expected: PASS.
 - [x] **Step 10: Commit**
 
 Create an atomic Chinese Conventional Commit for the starter auto-configuration split.
+
+### Task 3: 拆分 OcrNode 领域对象
+
+**Files:**
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/domain/OcrNode.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/domain/OcrNodeNormalization.java`
+- Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrNode.java` to the core structure test line-limit list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrNode.java` currently has 471 lines.
+
+- [x] **Step 3: Extract node normalization**
+
+Move host, port, online channel, provider model, optional text and positive number normalization into
+`OcrNodeNormalization`.
+
+- [x] **Step 4: Keep OcrNode focused on domain state**
+
+Keep factory methods, status transitions, and immutable node reconstruction in `OcrNode`.
+
+- [x] **Step 5: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,OcrNodeTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Commit**
+
+Create an atomic Chinese Conventional Commit for the OcrNode domain object split.

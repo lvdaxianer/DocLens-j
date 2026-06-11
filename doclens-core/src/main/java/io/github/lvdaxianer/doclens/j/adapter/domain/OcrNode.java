@@ -65,10 +65,6 @@ public record OcrNode(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
-    private static final int MIN_PORT = 1;
-    private static final int MAX_PORT = 65535;
-    private static final String ALIYUN_BAILIAN_DASHSCOPE = "aliyun_bailian_dashscope";
-
     /**
      * 创建带安全默认值的 OCR 节点。
      *
@@ -101,28 +97,25 @@ public record OcrNode(
      * @date 2026-06-08
      */
     public OcrNode {
-        id = requiredText(id, "ocr node id is required");
-        modelKey = requiredText(modelKey, "ocr model key is required");
+        id = OcrNodeNormalization.requiredText(id, "ocr node id is required");
+        modelKey = OcrNodeNormalization.requiredText(modelKey, "ocr model key is required");
         deploymentType = deploymentType == null ? OcrNodeDeploymentType.OFFLINE : deploymentType;
-        name = requiredText(name, "ocr node name is required");
-        host = normalizeHost(deploymentType, host);
-        port = normalizePort(deploymentType, port);
-        channelKey = channelKey == null ? Optional.empty() : channelKey;
-        providerModel = providerModel == null ? Optional.empty() : providerModel;
-        credentialRef = credentialRef == null ? Optional.empty() : credentialRef;
-        channelKey = normalizeChannel(deploymentType, channelKey);
-        providerModel = normalizeProviderModel(deploymentType, providerModel);
-        credentialRef = normalize(credentialRef);
+        name = OcrNodeNormalization.requiredText(name, "ocr node name is required");
+        host = OcrNodeNormalization.normalizeHost(deploymentType, host);
+        port = OcrNodeNormalization.normalizePort(deploymentType, port);
+        channelKey = OcrNodeNormalization.normalizeChannel(deploymentType, channelKey);
+        providerModel = OcrNodeNormalization.normalizeProviderModel(deploymentType, providerModel);
+        credentialRef = OcrNodeNormalization.normalize(credentialRef);
         credentialConfigured = credentialConfigured || credentialRef.isPresent();
-        validatePositive(weight, "ocr node weight must be greater than 0");
-        validatePositive(maxConcurrency, "ocr node max concurrency must be greater than 0");
+        OcrNodeNormalization.validatePositive(weight, "ocr node weight must be greater than 0");
+        OcrNodeNormalization.validatePositive(maxConcurrency, "ocr node max concurrency must be greater than 0");
         status = status == null ? statusFor(enabled) : status;
-        lastHealthAt = lastHealthAt == null ? Optional.empty() : lastHealthAt;
-        lastSuccessAt = lastSuccessAt == null ? Optional.empty() : lastSuccessAt;
-        lastFailureAt = lastFailureAt == null ? Optional.empty() : lastFailureAt;
-        lastError = lastError == null ? Optional.empty() : normalize(lastError);
-        circuitOpenUntil = circuitOpenUntil == null ? Optional.empty() : circuitOpenUntil;
-        lastManualRecoveryAt = lastManualRecoveryAt == null ? Optional.empty() : lastManualRecoveryAt;
+        lastHealthAt = OcrNodeNormalization.normalizeOptional(lastHealthAt);
+        lastSuccessAt = OcrNodeNormalization.normalizeOptional(lastSuccessAt);
+        lastFailureAt = OcrNodeNormalization.normalizeOptional(lastFailureAt);
+        lastError = OcrNodeNormalization.normalize(lastError);
+        circuitOpenUntil = OcrNodeNormalization.normalizeOptional(circuitOpenUntil);
+        lastManualRecoveryAt = OcrNodeNormalization.normalizeOptional(lastManualRecoveryAt);
     }
 
     /**
@@ -270,8 +263,10 @@ public record OcrNode(
      */
     private OcrNodeStatus updateStatus(boolean nextEnabled) {
         if (nextEnabled) {
+            // 启用节点时保留健康态，仅将禁用态重新拉回恢复中。
             return status == OcrNodeStatus.DISABLED ? OcrNodeStatus.RECOVERING : status;
         } else {
+            // 禁用节点必须显式进入 DISABLED，避免继续参与调度。
             return OcrNodeStatus.DISABLED;
         }
     }
@@ -286,186 +281,11 @@ public record OcrNode(
      */
     private static OcrNodeStatus statusFor(boolean enabled) {
         if (enabled) {
+            // 新启用节点需要先走恢复探测再进入可用调度。
             return OcrNodeStatus.RECOVERING;
         } else {
+            // 新禁用节点直接固化为 DISABLED。
             return OcrNodeStatus.DISABLED;
         }
-    }
-
-    /**
-     * 校验必填文本。
-     *
-     * @param value 文本值
-     * @param message 校验失败消息
-     * @return 标准化后的文本
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static String requiredText(String value, String message) {
-        return normalize(Optional.ofNullable(value)).orElseThrow(() -> new IllegalArgumentException(message));
-    }
-
-    /**
-     * 校验主机只包含 host，不包含 URL 结构。
-     *
-     * @param host 主机文本
-     * @return 标准化后的主机文本
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static String validHost(String host) {
-        String normalizedHost = requiredText(host, "ocr node host is required");
-        if (containsUrlPart(normalizedHost)) {
-            throw new IllegalArgumentException("ocr node host must not include scheme, path, query or fragment");
-        } else {
-            return normalizedHost;
-        }
-    }
-
-    /**
-     * 按部署类型标准化主机。
-     *
-     * @param deploymentType 节点部署类型
-     * @param host 主机文本
-     * @return 标准化后的主机文本
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static String normalizeHost(OcrNodeDeploymentType deploymentType, String host) {
-        if (deploymentType == OcrNodeDeploymentType.OFFLINE) {
-            return validHost(host);
-        } else {
-            return "";
-        }
-    }
-
-    /**
-     * 按部署类型标准化端口。
-     *
-     * @param deploymentType 节点部署类型
-     * @param port 节点端口
-     * @return 标准化后的端口
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static int normalizePort(OcrNodeDeploymentType deploymentType, int port) {
-        if (deploymentType == OcrNodeDeploymentType.OFFLINE) {
-            validatePort(port);
-            return port;
-        } else {
-            return 0;
-        }
-    }
-
-    /**
-     * 按部署类型标准化在线渠道。
-     *
-     * @param deploymentType 节点部署类型
-     * @param channelKey 在线渠道标识
-     * @return 标准化后的在线渠道
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static Optional<String> normalizeChannel(
-            OcrNodeDeploymentType deploymentType,
-            Optional<String> channelKey
-    ) {
-        if (deploymentType == OcrNodeDeploymentType.ONLINE) {
-            String normalizedChannel = requiredText(channelKey.orElse(""), "ocr online channel key is required");
-            validateSupportedChannel(normalizedChannel);
-            return Optional.of(normalizedChannel);
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * 按部署类型标准化在线模型名称。
-     *
-     * @param deploymentType 节点部署类型
-     * @param providerModel 在线模型名称
-     * @return 标准化后的在线模型名称
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static Optional<String> normalizeProviderModel(
-            OcrNodeDeploymentType deploymentType,
-            Optional<String> providerModel
-    ) {
-        if (deploymentType == OcrNodeDeploymentType.ONLINE) {
-            return Optional.of(requiredText(providerModel.orElse(""), "ocr online provider model is required"));
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * 校验在线渠道是否已支持。
-     *
-     * @param channelKey 在线渠道标识
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static void validateSupportedChannel(String channelKey) {
-        if (ALIYUN_BAILIAN_DASHSCOPE.equals(channelKey)) {
-            return;
-        } else {
-            throw new IllegalArgumentException("unsupported ocr online channel key");
-        }
-    }
-
-    /**
-     * 判断主机是否包含 URL 结构。
-     *
-     * @param host 主机文本
-     * @return 是否包含 URL 结构
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static boolean containsUrlPart(String host) {
-        return host.contains("://") || host.contains("/") || host.contains("?") || host.contains("#");
-    }
-
-    /**
-     * 校验端口范围。
-     *
-     * @param port 节点端口
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static void validatePort(int port) {
-        if (port >= MIN_PORT && port <= MAX_PORT) {
-            return;
-        } else {
-            throw new IllegalArgumentException("ocr node port must be between 1 and 65535");
-        }
-    }
-
-    /**
-     * 校验正整数。
-     *
-     * @param value 待校验值
-     * @param message 校验失败消息
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static void validatePositive(int value, String message) {
-        if (value > 0) {
-            return;
-        } else {
-            throw new IllegalArgumentException(message);
-        }
-    }
-
-    /**
-     * 标准化可选文本。
-     *
-     * @param value 可选文本
-     * @return 标准化后的可选文本
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private static Optional<String> normalize(Optional<String> value) {
-        return value.map(String::trim).filter(text -> !text.isBlank());
     }
 }
