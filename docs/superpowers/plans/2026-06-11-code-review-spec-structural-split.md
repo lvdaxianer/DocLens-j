@@ -231,3 +231,46 @@ Expected: PASS.
 - [x] **Step 8: Commit**
 
 Create an atomic Chinese Conventional Commit for the DashScope online OCR client split.
+
+### Task 5: 拆分 OcrNodeManagementService
+
+**Files:**
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeManagementService.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettingsRequestFactory.java`
+- Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrNodeManagementService.java` to the core structure test line-limit list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrNodeManagementService.java` currently has 408 lines.
+
+- [x] **Step 3: Extract settings request factory**
+
+Move deployment type defaults, endpoint/online/scheduling defaults, API key validation and
+`OcrNodeCreateRequest` construction into `OcrNodeSettingsRequestFactory`.
+
+- [x] **Step 4: Keep service focused on application orchestration**
+
+Keep model support checks, uniqueness checks, repository writes and node pool refresh in
+`OcrNodeManagementService`.
+
+- [x] **Step 5: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Commit**
+
+Create an atomic Chinese Conventional Commit for the OCR node management service split.

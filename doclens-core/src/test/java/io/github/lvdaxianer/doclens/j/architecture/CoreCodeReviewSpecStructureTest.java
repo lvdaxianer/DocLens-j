@@ -30,7 +30,9 @@ class CoreCodeReviewSpecStructureTest {
                     "io/github/lvdaxianer/doclens/j/processing/application/DocumentMarkdownPostProcessingService.java"),
             CORE_SOURCE_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/processing/application/DocumentPostProcessedText.java"),
-            CORE_SOURCE_ROOT.resolve("io/github/lvdaxianer/doclens/j/adapter/domain/OcrNode.java")
+            CORE_SOURCE_ROOT.resolve("io/github/lvdaxianer/doclens/j/adapter/domain/OcrNode.java"),
+            CORE_SOURCE_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeManagementService.java")
     );
 
     /**
