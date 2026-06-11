@@ -117,7 +117,14 @@ class CoreCodeReviewSpecStructureTest {
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceBatchDetailTest.java"),
             CORE_TEST_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java")
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java"),
+            // OCR 路由测试按同步路由和运行态命中跟踪拆分。
+            // OcrRoutingServiceTest 只保留重试、故障转移和槽位释放。
+            // OcrRoutingRuntimeHitTest 只覆盖请求执行中的命中节点快照。
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingServiceTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingRuntimeHitTest.java")
     );
 
     /**

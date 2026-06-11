@@ -9,15 +9,10 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.InMemoryRuntimeNodeProvider;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingTestFixtures.RecordingNodeExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
-import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
-import java.util.Map;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -143,44 +138,6 @@ class OcrRoutingServiceTest {
         assertThat(result.nodeId()).isEqualTo("paddle-1");
         assertThat(context.nodeProvider.tryAcquireCount()).isEqualTo(1);
         assertThat(context.nodeProvider.releaseCount()).isEqualTo(1);
-    }
-
-    /**
-     * 路由执行期间应暴露运行时命中节点，便于 Dashboard 在处理中展示真实分布。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    @Test
-    void routingServiceTracksBatchHitNodeWhileRequestIsStillRunning() throws Exception {
-        BlockingNodeExecutor executor = new BlockingNodeExecutor();
-        InMemoryRuntimeNodeProvider nodeProvider = new InMemoryRuntimeNodeProvider(List.of(node("paddle-1", "paddle_ocr")));
-        InMemoryCallRepository callRepository = new InMemoryCallRepository();
-        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker();
-        OcrRoutingService service = service(nodeProvider, executor, callRepository, batchHitTracker);
-        AtomicReference<OcrRouteExecutionResult> resultRef = new AtomicReference<>();
-        Thread worker = new Thread(() -> resultRef.set(service.recognize(request(),
-                OcrRoutePolicy.globalLoadBalance("least-inflight"))));
-
-        worker.start();
-        assertThat(executor.awaitStarted()).isTrue();
-
-        assertThat(batchHitTracker.snapshotByBatch("batch-test")).singleElement().satisfies(hit ->
-                assertThat(Map.of(
-                        "modelKey", hit.modelKey(),
-                        "nodeId", hit.nodeId(),
-                        "imageCount", hit.imageCount()))
-                        .containsEntry("modelKey", "paddle_ocr")
-                        .containsEntry("nodeId", "paddle-1")
-                        .containsEntry("imageCount", 1L));
-        assertThat(callRepository.calls).isEmpty();
-
-        executor.release();
-        worker.join(TimeUnit.SECONDS.toMillis(2));
-
-        assertThat(resultRef.get()).isNotNull();
-        assertThat(batchHitTracker.snapshotByBatch("batch-test")).isEmpty();
-        assertThat(callRepository.calls).hasSize(1);
     }
 
     /**
@@ -312,62 +269,6 @@ class OcrRoutingServiceTest {
             InMemoryCallRepository callRepository,
             InMemoryBatchHitTracker batchHitTracker
     ) {
-    }
-
-    /**
-     * 阻塞型执行器，用于观察 OCR 调用进行中的运行时状态。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    private static final class BlockingNodeExecutor implements OcrNodeImageExecutor {
-
-        private final CountDownLatch started = new CountDownLatch(1);
-        private final CountDownLatch release = new CountDownLatch(1);
-
-        @Override
-        public ImageOcrResult recognize(OcrRuntimeNodeView node, ImageOcrRequest request) {
-            started.countDown();
-            awaitRelease();
-            return ImageOcrResult.fromBlocks(request.pageNo(), Map.of(), List.of(), List.of());
-        }
-
-        /**
-         * 等待执行器开始处理。
-         *
-         * @return 是否在超时前开始处理
-         * @throws InterruptedException 线程中断
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        boolean awaitStarted() throws InterruptedException {
-            return started.await(2, TimeUnit.SECONDS);
-        }
-
-        /**
-         * 释放被阻塞的执行器。
-         *
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        void release() {
-            release.countDown();
-        }
-
-        /**
-         * 等待外部放行，避免测试线程忙等。
-         *
-         * @author lvdaxianerplus
-         * @date 2026-06-10
-         */
-        private void awaitRelease() {
-            try {
-                release.await(2, TimeUnit.SECONDS);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException("blocking executor interrupted", ex);
-            }
-        }
     }
 
     /**

@@ -845,3 +845,46 @@ Expected: PASS.
 - [x] **Step 6: Commit**
 
 Create an atomic Chinese Conventional Commit for the DashboardQueryService test split.
+
+### Task 18: 拆分 OcrRoutingServiceTest 路由运行态测试职责
+
+**Files:**
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingServiceTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingRuntimeHitTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrRoutingServiceTest.java` to `CoreCodeReviewSpecStructureTest.TOUCHED_PROCESSING_TESTS`.
+
+Run:
+
+```bash
+mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Expected: FAIL because `OcrRoutingServiceTest.java` currently has more than 350 lines.
+
+- [x] **Step 2: Split runtime hit tracking scenario**
+
+Move the blocking executor based batch hit tracking test into `OcrRoutingRuntimeHitTest`.
+
+- [x] **Step 3: Keep routing service test focused**
+
+Keep retry, failover, no candidate and slot acquire/release scenarios in `OcrRoutingServiceTest`.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,OcrRoutingServiceTest,OcrRoutingRuntimeHitTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the OcrRoutingService test split.
