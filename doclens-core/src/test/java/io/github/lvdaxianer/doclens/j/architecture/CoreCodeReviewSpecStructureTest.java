@@ -63,6 +63,7 @@ class CoreCodeReviewSpecStructureTest {
     );
     /** 本轮已经拆分并纳入持续约束的测试源码清单。 */
     private static final List<Path> TOUCHED_PROCESSING_TESTS = List.of(
+            // 批处理主流程测试已完成职责拆分，并持续受行数门禁保护。
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseTest.java"),
             CORE_TEST_ROOT.resolve(
@@ -78,7 +79,34 @@ class CoreCodeReviewSpecStructureTest {
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseMarkdownProcessors.java"),
             CORE_TEST_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseInfrastructure.java")
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseInfrastructure.java"),
+            // 删除用例测试拆分为文档级、批次级和共享测试桩。
+            // 文档级测试只覆盖单个 DocumentDeleteUseCase 入口。
+            // 批次级测试只覆盖 BatchDeleteUseCase 的原子删除规则。
+            // 共享 support 负责构造领域对象，避免测试类重复铺陈。
+            // 仓储桩按接口拆开，避免单个测试辅助类重新膨胀。
+            // 基础设施桩只保留对象存储记录器和内联事务器。
+            // 每个新增测试桩都纳入清单，避免拆分后又悄悄膨胀。
+            // 这里不使用目录扫描，是为了让每次扩围都能对应清晰提交。
+            // 后续新拆出的测试文件，也应该在同一任务提交里追加到这里。
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/BatchDeleteUseCaseTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseTestSupport.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseRepositories.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseInfrastructure.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseDocumentJobRepository.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseBatchRepository.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrResultRepository.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrEventRepository.java")
     );
 
     /**

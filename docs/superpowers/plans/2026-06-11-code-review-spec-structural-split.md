@@ -398,6 +398,61 @@ Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the batch processing use case test split.
+
+### Task 9: 拆分 DocumentDeleteUseCaseTest 测试职责
+
+**Files:**
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/BatchDeleteUseCaseTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseTestSupport.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseRepositories.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentDeleteUseCaseInfrastructure.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseDocumentJobRepository.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseBatchRepository.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrResultRepository.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrEventRepository.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `DocumentDeleteUseCaseTest.java` to `CoreCodeReviewSpecStructureTest.TOUCHED_PROCESSING_TESTS`.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `DocumentDeleteUseCaseTest.java` currently has more than 350 lines.
+
+- [x] **Step 3: Split batch deletion scenarios**
+
+Move `deleteBatchRemovesAllDeletableDocumentsAndEmptyBatch` and
+`deleteBatchRejectsNonDeletableDocumentsWithoutPartialDelete` into `BatchDeleteUseCaseTest`.
+
+- [x] **Step 4: Extract shared support builders**
+
+Move shared document, stalled document, batch, result, event and use case factories into
+`DocumentDeleteUseCaseTestSupport`.
+
+- [x] **Step 5: Extract in-memory test doubles**
+
+Move repositories into `DocumentDeleteUseCaseRepositories`, and object storage plus transaction runner into
+`DocumentDeleteUseCaseInfrastructure`.
+
+- [x] **Step 6: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,DocumentDeleteUseCaseTest,BatchDeleteUseCaseTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [ ] **Step 8: Commit**
+
+Create an atomic Chinese Conventional Commit for the document deletion use case test split.
