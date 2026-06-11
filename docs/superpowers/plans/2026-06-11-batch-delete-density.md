@@ -78,13 +78,13 @@ Verification note:
 - Test: `doclens-dashboard/src/components/dashboard/__tests__/BatchDetailView.delete.test.ts`
 - Test: `doclens-dashboard/src/components/dashboard/__tests__/BatchTable.delete.test.ts`
 
-- [ ] **Step 1: Write failing UI tests**
+- [x] **Step 1: Write failing UI tests**
 
 Add tests proving:
 - `BatchTable` emits `delete-batch` after confirmation.
 - `BatchDetailView` calls router back when deleting leaves no documents in the selected batch.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -94,15 +94,15 @@ cd doclens-dashboard && npm run test:ui -- BatchTable.delete.test.ts BatchDetail
 
 Expected: FAIL because the batch delete button/event and no-document navigation do not exist.
 
-- [ ] **Step 3: Implement front-end delete flow**
+- [x] **Step 3: Implement front-end delete flow**
 
 Add `deleteBatch(batchId)` API, wire OverviewView loading state and refresh behavior, add delete confirmation button to `BatchTable`, and update `BatchDetailView` to navigate back after deleting the last document.
 
-- [ ] **Step 4: Compact detail display**
+- [x] **Step 4: Compact detail display**
 
 Reduce detail card padding, rail dot size, rail node min height, table cell padding, progress height and font sizes so content remains unchanged but more rows and stages fit on screen.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -113,6 +113,11 @@ git diff --check
 ```
 
 Apply `code-review-spec`, fix issues, then commit with Chinese Conventional Commit.
+
+Verification note:
+- `cd doclens-dashboard && npm run test:ui -- BatchTable.delete.test.ts BatchDetailView.delete.test.ts` first fails as expected because batch delete and empty-detail navigation are missing.
+- `cd doclens-dashboard && npm run test:ui`, `cd doclens-dashboard && npm run build`, and `git diff --check` pass.
+- Frontend changes were committed in `beb33858 feat(dashboard): 支持批次删除并压缩详情展示`.
 
 ---
 
