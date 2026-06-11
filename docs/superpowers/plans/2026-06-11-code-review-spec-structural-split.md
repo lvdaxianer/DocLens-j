@@ -502,6 +502,55 @@ Run: `mvn -pl doclens-server -am -Dsurefire.failIfNoSpecifiedTests=false test`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Create an atomic Chinese Conventional Commit for the OCR node API contract test split.
+
+### Task 11: 拆分 DocLensOcrApiContractTest 契约测试职责
+
+**Files:**
+- Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/DocLensOcrApiContractTest.java`
+- Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/architecture/ServerCodeReviewSpecStructureTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/DocLensOcrDeleteApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/DocLensOcrUploadApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/DocLensOcrApiContractSupport.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `DocLensOcrApiContractTest.java` to `ServerCodeReviewSpecStructureTest.TOUCHED_SERVER_TESTS`.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `DocLensOcrApiContractTest.java` currently has more than 350 lines.
+
+- [x] **Step 3: Split delete scenarios**
+
+Move document deletion, last-document deletion, batch deletion and processing deletion rejection scenarios into
+`DocLensOcrDeleteApiContractTest`.
+
+- [x] **Step 4: Split upload validation and routing scenarios**
+
+Move invalid metadata and OCR route policy persistence scenarios into `DocLensOcrUploadApiContractTest`.
+
+- [x] **Step 5: Extract shared contract support**
+
+Move Spring test configuration, wait helpers, upload helpers, storage and route query helpers into
+`DocLensOcrApiContractSupport`.
+
+- [x] **Step 6: Run focused verification**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest,DocLensOcrApiContractTest,DocLensOcrDeleteApiContractTest,DocLensOcrUploadApiContractTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Run broader verification**
+
+Run: `mvn -pl doclens-server -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 8: Commit**
+
+Create an atomic Chinese Conventional Commit for the DocLens OCR API contract test split.
