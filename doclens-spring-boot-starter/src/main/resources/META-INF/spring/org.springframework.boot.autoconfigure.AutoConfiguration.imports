@@ -5,4 +5,7 @@ io.github.lvdaxianer.doclens.j.autoconfigure.DocLensDashboardMetricsAutoConfigur
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensPaddleOcrAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensOcrResourceAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensExtractionAutoConfiguration
+io.github.lvdaxianer.doclens.j.autoconfigure.DocLensLlmMarkdownAutoConfiguration
 io.github.lvdaxianer.doclens.j.autoconfigure.DocLensProcessingAutoConfiguration
+io.github.lvdaxianer.doclens.j.autoconfigure.DocLensDocumentLifecycleAutoConfiguration
+io.github.lvdaxianer.doclens.j.autoconfigure.DocLensStaleDocumentRecoveryAutoConfiguration

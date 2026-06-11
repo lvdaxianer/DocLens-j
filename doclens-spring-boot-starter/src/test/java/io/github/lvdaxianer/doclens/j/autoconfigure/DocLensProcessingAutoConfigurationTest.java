@@ -30,7 +30,7 @@ class DocLensProcessingAutoConfigurationTest {
      */
     @Test
     void createsNoopMarkdownPostProcessorWhenLlmMarkdownIsNotConfigured() {
-        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+        MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
                         null, null, null, null, null, null, null, null));
 
@@ -51,7 +51,7 @@ class DocLensProcessingAutoConfigurationTest {
         DocLensSpringProperties properties = new DocLensSpringProperties(null, false, null, null, null, null, null,
                 null, null, null, null, llmMarkdown, null);
 
-        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+        MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
 
         assertThat(processor).isInstanceOf(HttpMarkdownPostProcessor.class);
@@ -72,7 +72,7 @@ class DocLensProcessingAutoConfigurationTest {
         DocLensSpringProperties properties = new DocLensSpringProperties(null, false, null, null, null, null, null,
                 null, null, null, null, llmMarkdown, null);
 
-        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+        MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
 
         assertThat(processor).isInstanceOf(HttpMarkdownPostProcessor.class);
@@ -90,7 +90,7 @@ class DocLensProcessingAutoConfigurationTest {
     void createsConfigurableMarkdownPostProcessor() {
         LlmMarkdownConfigRepository repository = new EmptyConfigRepository();
 
-        MarkdownPostProcessor processor = new DocLensProcessingAutoConfiguration()
+        MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
                         null, null, null, null, null, null, null, null), repository);
 

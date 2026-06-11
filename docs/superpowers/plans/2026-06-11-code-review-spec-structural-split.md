@@ -59,7 +59,7 @@ Run: `mvn -pl doclens-core test`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-06-11-code-review-spec-structural-split.md \
@@ -78,7 +78,7 @@ git commit -F /tmp/doclens-batch-processing-split-commit.txt
 - `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java`
 - `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeManagementService.java`
 
-- [ ] **Step 1: Pick highest-risk next source file**
+- [x] **Step 1: Pick highest-risk next source file**
 
 Run:
 
@@ -94,3 +94,49 @@ find . \
 ```
 
 Expected: The next task starts from the highest-risk remaining production file, not tests.
+
+Selected: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/autoconfigure/DocLensProcessingAutoConfiguration.java`
+
+- [x] **Step 2: Write failing starter structure test**
+
+Add a starter architecture test that asserts `DocLensProcessingAutoConfiguration.java` stays within 350 lines.
+
+- [x] **Step 3: Run RED**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `DocLensProcessingAutoConfiguration.java` currently has 650 lines.
+
+- [x] **Step 4: Extract LLM Markdown auto-configuration**
+
+Move LLM Markdown service, tester, health checker, scheduler and Markdown post processor beans into
+`DocLensLlmMarkdownAutoConfiguration`.
+
+- [x] **Step 5: Extract stale document recovery auto-configuration**
+
+Move stale document recovery service, dependencies, scheduler executor, scheduler and runner into
+`DocLensStaleDocumentRecoveryAutoConfiguration`.
+
+- [x] **Step 6: Keep DocLensProcessingAutoConfiguration focused**
+
+Keep batch processing, create batch, retry/delete and processing executor beans in the original class.
+
+- [x] **Step 7: Register extracted auto-configurations**
+
+Add extracted auto-configuration classes to `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+
+- [x] **Step 8: Run focused verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest,DocLensProcessingAutoConfigurationTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 9: Run broader verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 10: Commit**
+
+Create an atomic Chinese Conventional Commit for the starter auto-configuration split.
