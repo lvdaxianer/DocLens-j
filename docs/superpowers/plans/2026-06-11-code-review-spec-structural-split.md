@@ -453,6 +453,55 @@ Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Create an atomic Chinese Conventional Commit for the document deletion use case test split.
+
+### Task 10: 拆分 OcrNodeApiContractTest 契约测试职责
+
+**Files:**
+- Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeCredentialApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeGovernanceApiContractTest.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeApiContractSupport.java`
+- Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/architecture/ServerCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Create `ServerCodeReviewSpecStructureTest` and add `OcrNodeApiContractTest.java` to the touched server test list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrNodeApiContractTest.java` currently has more than 350 lines.
+
+- [x] **Step 3: Split credential scenarios**
+
+Move online DashScope create/update credential tests into `OcrNodeCredentialApiContractTest`.
+
+- [x] **Step 4: Split governance scenarios**
+
+Move queued metrics, health governance and recent call records scenarios into
+`OcrNodeGovernanceApiContractTest`.
+
+- [x] **Step 5: Extract shared contract support**
+
+Move shared Spring test configuration, request JSON builders, node creation and node lookup helpers into
+`OcrNodeApiContractSupport`.
+
+- [x] **Step 6: Run focused verification**
+
+Run: `mvn -pl doclens-server -am -Dtest=ServerCodeReviewSpecStructureTest,OcrNodeApiContractTest,OcrNodeCredentialApiContractTest,OcrNodeGovernanceApiContractTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 7: Run broader verification**
+
+Run: `mvn -pl doclens-server -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [ ] **Step 8: Commit**
+
+Create an atomic Chinese Conventional Commit for the OCR node API contract test split.
