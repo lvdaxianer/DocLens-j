@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { NAlert, NButton, NSpin } from 'naive-ui'
+import { NAlert, NButton, NSpin, useMessage } from 'naive-ui'
 
 import { deleteBatch } from '@/api/dashboard'
 import BatchTable from '@/components/dashboard/BatchTable.vue'
@@ -17,6 +17,9 @@ import { formatDateTime } from '@/utils/formatters'
 const store = useDashboardStore()
 const { summary, summaryState } = storeToRefs(store)
 const deletingBatchId = ref('')
+const message = useMessage()
+
+const NON_DELETABLE_BATCH_MESSAGE = '批次中还有等待或处理中的任务，暂时不能删除'
 
 /**
  * 刷新运行总览数据。
@@ -42,9 +45,40 @@ async function handleDeleteBatch(batchId: string): Promise<void> {
   try {
     await deleteBatch(batchId)
     await refresh()
+  } catch (error) {
+    showDeleteBatchError(error)
   } finally {
     deletingBatchId.value = ''
   }
+}
+
+/**
+ * 展示批次删除失败提示，避免把后端英文错误直接暴露给用户。
+ *
+ * @param error 删除失败异常
+ * @returns 提示展示完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-11
+ */
+function showDeleteBatchError(error: unknown): void {
+  if (isNonDeletableBatchError(error)) {
+    message.warning(NON_DELETABLE_BATCH_MESSAGE)
+  } else {
+    message.error(error instanceof Error ? error.message : '批次删除失败')
+  }
+}
+
+/**
+ * 判断错误是否来自批次内仍有等待或处理中任务。
+ *
+ * @param error 删除失败异常
+ * @returns 是否为不可删除批次错误
+ * @author lvdaxianerplus
+ * @date 2026-06-11
+ */
+function isNonDeletableBatchError(error: unknown): boolean {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  return errorMessage.includes('non-deletable') || errorMessage.includes('status queued')
 }
 
 useAutoRefresh(refresh)

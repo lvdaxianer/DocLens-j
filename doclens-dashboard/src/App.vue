@@ -28,7 +28,14 @@ const themeOverrides: GlobalThemeOverrides = {
     primaryColorPressed: '#1f5b70',
     primaryColorSuppl: '#dceff5',
     borderRadius: '8px',
-    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSize: '13px',
+    fontSizeSmall: '12px',
+    fontSizeMedium: '13px',
+    fontSizeLarge: '14px',
+    heightSmall: '26px',
+    heightMedium: '30px',
+    heightLarge: '34px'
   }
 }
 </script>
@@ -83,7 +90,7 @@ const themeOverrides: GlobalThemeOverrides = {
 .app-shell {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   background: var(--surface-canvas);
   color: var(--ink-strong);
 }
@@ -94,8 +101,8 @@ const themeOverrides: GlobalThemeOverrides = {
   display: flex;
   height: 100vh;
   flex-direction: column;
-  gap: 22px;
-  padding: 22px 14px;
+  gap: 16px;
+  padding: 18px 12px;
   border-right: 1px solid var(--rail-border);
   background:
     linear-gradient(180deg, rgba(220, 239, 245, 0.52), rgba(255, 255, 255, 0) 180px),
@@ -119,13 +126,13 @@ const themeOverrides: GlobalThemeOverrides = {
 
 .app-shell__brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   border-radius: 8px;
   background: linear-gradient(135deg, var(--active), var(--active-strong));
   color: #ffffff;
-  font-size: 22px;
+  font-size: 19px;
   box-shadow: 0 10px 22px rgba(37, 109, 133, 0.22);
 }
 
@@ -136,13 +143,13 @@ const themeOverrides: GlobalThemeOverrides = {
 }
 
 .app-shell__brand-copy strong {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.1;
 }
 
 .app-shell__brand-copy small {
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .app-shell__nav {
@@ -155,11 +162,11 @@ const themeOverrides: GlobalThemeOverrides = {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 10px;
   border-radius: 7px;
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 12px;
   text-decoration: none;
   transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
@@ -177,28 +184,28 @@ const themeOverrides: GlobalThemeOverrides = {
 
 .app-shell__main {
   min-width: 0;
-  padding: 26px 28px;
+  padding: 20px 22px;
 }
 
 .app-shell__topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 20px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .app-shell__eyebrow {
   margin: 0 0 4px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 650;
   text-transform: uppercase;
 }
 
 .app-shell__title {
   margin: 0;
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 750;
   letter-spacing: 0;
 }
@@ -207,11 +214,11 @@ const themeOverrides: GlobalThemeOverrides = {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 9px;
+  padding: 3px 8px;
   border: 1px solid rgba(35, 132, 90, 0.32);
   border-radius: 999px;
   color: var(--success);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
   background: var(--success-muted);
 }

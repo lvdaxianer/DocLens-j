@@ -46,7 +46,7 @@ const columns: DataTableColumns<BatchRow> = [
     render: (row) =>
       h(NProgress, {
         percentage: row.progress_percent,
-        height: 12,
+        height: 8,
         indicatorPlacement: 'outside',
         status: row.failed_files > 0 ? 'error' : 'success'
       }, {
@@ -133,7 +133,7 @@ const columns: DataTableColumns<BatchRow> = [
 <style scoped>
 .batch-table-shell {
   overflow-x: auto;
-  padding: 14px 16px 10px;
+  padding: 10px 12px 8px;
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -146,19 +146,20 @@ const columns: DataTableColumns<BatchRow> = [
 
 :deep(.n-data-table-th),
 :deep(.n-data-table-td) {
-  padding: 12px 16px;
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 :deep(.n-data-table-th) {
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 :deep(.n-progress-custom-content) {
-  min-width: 48px;
+  min-width: 42px;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   text-align: right;
 }
