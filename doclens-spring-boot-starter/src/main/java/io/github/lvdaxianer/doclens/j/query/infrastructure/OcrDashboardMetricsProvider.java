@@ -98,13 +98,13 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     public List<Map<String, Object>> dispatchHitNodesByBatch(String batchId) {
         Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
                 .collect(Collectors.toMap(OcrNode::id, node -> node));
-        Map<HitNodeKey, Long> hitCounts = callRepository.listByBatchId(batchId).stream()
+        Map<OcrDashboardHitNodeKey, Long> hitCounts = callRepository.listByBatchId(batchId).stream()
                 .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
         mergeRuntimeHits(hitCounts, batchHitTracker.snapshotByBatch(batchId));
         return hitCounts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(HitNodeKey::modelKey)
-                        .thenComparing(HitNodeKey::nodeId)))
-                .map(entry -> hitNodeRow(nodesById, entry.getKey(), entry.getValue()))
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(OcrDashboardHitNodeKey::modelKey)
+                        .thenComparing(OcrDashboardHitNodeKey::nodeId)))
+                .map(entry -> hitNodeRow(nodesById, entry))
                 .toList();
     }
 
@@ -135,9 +135,9 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private void mergeRuntimeHits(Map<HitNodeKey, Long> hitCounts, List<OcrBatchNodeHit> runtimeHits) {
-        runtimeHits.forEach(hit -> hitCounts.merge(new HitNodeKey(hit.modelKey(), hit.nodeId()), hit.imageCount(),
-                Long::sum));
+    private void mergeRuntimeHits(Map<OcrDashboardHitNodeKey, Long> hitCounts, List<OcrBatchNodeHit> runtimeHits) {
+        runtimeHits.forEach(hit -> hitCounts.merge(new OcrDashboardHitNodeKey(hit.modelKey(), hit.nodeId()),
+                hit.imageCount(), Long::sum));
     }
 
     /**
@@ -153,8 +153,10 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         OffsetDateTime currentFinishedAt = current.finishedAt().orElse(current.startedAt());
         OffsetDateTime candidateFinishedAt = candidate.finishedAt().orElse(candidate.startedAt());
         if (candidateFinishedAt.isAfter(currentFinishedAt)) {
+            // 候选调用完成时间更新时，将最终归属更新为候选调用。
             return candidate;
         } else {
+            // 已保留调用仍是最新完成结果时，继续保持当前归属。
             return current;
         }
     }
@@ -172,12 +174,12 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         Map<Integer, OcrNodeCall> finalSuccessfulCallsByPage = successfulCalls.stream()
                 .collect(Collectors.toMap(OcrNodeCall::pageNo, call -> call, this::latestSuccessfulCallByPage,
                         LinkedHashMap::new));
-        Map<HitNodeKey, Long> hitCounts = finalSuccessfulCallsByPage.values().stream()
+        Map<OcrDashboardHitNodeKey, Long> hitCounts = finalSuccessfulCallsByPage.values().stream()
                 .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
         return hitCounts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(HitNodeKey::modelKey)
-                        .thenComparing(HitNodeKey::nodeId)))
-                .map(entry -> hitNodeRow(nodesById, entry.getKey(), entry.getValue()))
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(OcrDashboardHitNodeKey::modelKey)
+                        .thenComparing(OcrDashboardHitNodeKey::nodeId)))
+                .map(entry -> hitNodeRow(nodesById, entry))
                 .toList();
     }
 
@@ -285,25 +287,29 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private HitNodeKey hitNodeKey(OcrNodeCall call) {
-        return new HitNodeKey(call.modelKey(), call.nodeId());
+    private OcrDashboardHitNodeKey hitNodeKey(OcrNodeCall call) {
+        return new OcrDashboardHitNodeKey(call.modelKey(), call.nodeId());
     }
 
     /**
      * 创建命中节点读模型。
      *
-     * @param key 命中节点聚合键
-     * @param imageCount 图片数量
+     * @param nodesById 节点索引
+     * @param hitCountEntry 命中节点统计项
      * @return 命中节点读模型
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> hitNodeRow(Map<String, OcrNode> nodesById, HitNodeKey key, long imageCount) {
+    private Map<String, Object> hitNodeRow(
+            Map<String, OcrNode> nodesById,
+            Map.Entry<OcrDashboardHitNodeKey, Long> hitCountEntry
+    ) {
+        OcrDashboardHitNodeKey key = hitCountEntry.getKey();
         return Map.ofEntries(
                 Map.entry("model_key", key.modelKey()),
                 Map.entry("node_id", key.nodeId()),
                 Map.entry("node_name", nodeName(nodesById, key.nodeId())),
-                Map.entry("image_count", imageCount)
+                Map.entry("image_count", hitCountEntry.getValue())
         );
     }
 
@@ -338,14 +344,4 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     ) {
     }
 
-    /**
-     * 命中节点聚合键。
-     *
-     * @param modelKey OCR 模型标识
-     * @param nodeId OCR 节点 ID
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private record HitNodeKey(String modelKey, String nodeId) {
-    }
 }

@@ -30,7 +30,9 @@ class StarterCodeReviewSpecStructureTest {
             STARTER_SOURCE_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java"),
             STARTER_SOURCE_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/adapter/infrastructure/OcrHealthChecker.java")
+                    "io/github/lvdaxianer/doclens/j/adapter/infrastructure/OcrHealthChecker.java"),
+            STARTER_SOURCE_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardMetricsProvider.java")
     );
 
     /**

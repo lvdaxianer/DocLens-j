@@ -316,3 +316,40 @@ Expected: PASS.
 - [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the OCR health checker split.
+
+### Task 7: 拆分 OcrDashboardMetricsProvider 边缘超限
+
+**Files:**
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardMetricsProvider.java`
+- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/query/infrastructure/OcrDashboardHitNodeKey.java`
+- Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/autoconfigure/StarterCodeReviewSpecStructureTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `OcrDashboardMetricsProvider.java` to the starter structure test line-limit list.
+
+- [x] **Step 2: Run RED**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: FAIL because `OcrDashboardMetricsProvider.java` currently has 351 lines.
+
+- [x] **Step 3: Extract hit node key**
+
+Move the private hit node aggregation key into `OcrDashboardHitNodeKey`.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dtest=StarterCodeReviewSpecStructureTest,OcrDashboardMetricsProviderTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `mvn -pl doclens-spring-boot-starter -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the dashboard metrics provider line-limit cleanup.
