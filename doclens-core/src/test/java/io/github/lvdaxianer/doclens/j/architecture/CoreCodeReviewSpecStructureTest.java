@@ -106,7 +106,18 @@ class CoreCodeReviewSpecStructureTest {
             CORE_TEST_ROOT.resolve(
                     "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrResultRepository.java"),
             CORE_TEST_ROOT.resolve(
-                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrEventRepository.java")
+                    "io/github/lvdaxianer/doclens/j/processing/application/DeleteUseCaseOcrEventRepository.java"),
+            // Dashboard 查询测试按读模型职责拆分。
+            // Summary 测试只覆盖总览聚合。
+            // BatchDetail 测试只覆盖处理轨道状态。
+            // OcrRouteDetail 测试只覆盖 OCR 路由展示。
+            // 三个文件一起纳入门禁，防止后续继续回涨。
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceBatchDetailTest.java"),
+            CORE_TEST_ROOT.resolve(
+                    "io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java")
     );
 
     /**

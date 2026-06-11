@@ -799,3 +799,49 @@ Expected: PASS.
 - [x] **Step 6: Commit**
 
 Create an atomic Chinese Conventional Commit for the useOcrResources split.
+
+### Task 17: 拆分 DashboardQueryServiceTest 查询测试职责
+
+**Files:**
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceTest.java`
+- Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/architecture/CoreCodeReviewSpecStructureTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceBatchDetailTest.java`
+- Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/query/application/DashboardQueryServiceOcrRouteDetailTest.java`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `DashboardQueryServiceTest.java` to `CoreCodeReviewSpecStructureTest.TOUCHED_PROCESSING_TESTS`.
+
+Run:
+
+```bash
+mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Expected: FAIL because `DashboardQueryServiceTest.java` currently has more than 350 lines.
+
+- [x] **Step 2: Split batch detail scenarios**
+
+Move batch detail ordering, route policy, final hit nodes and track state scenarios into
+`DashboardQueryServiceBatchDetailTest` and `DashboardQueryServiceOcrRouteDetailTest`.
+
+- [x] **Step 3: Keep summary test focused**
+
+Keep overview aggregation, stage breakdown, OCR metrics, processing batch and empty batch summary scenarios in
+`DashboardQueryServiceTest`.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `mvn -pl doclens-core -am -Dtest=CoreCodeReviewSpecStructureTest,DashboardQueryServiceTest,DashboardQueryServiceBatchDetailTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `mvn -pl doclens-core -am -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: PASS.
+
+- [x] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the DashboardQueryService test split.
