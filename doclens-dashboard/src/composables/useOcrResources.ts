@@ -2,18 +2,45 @@ import { computed, shallowRef } from 'vue'
 import type { MessageApi } from 'naive-ui'
 
 import {
-  createOcrNode,
-  deleteOcrNode,
   fetchOcrModels,
   fetchOcrNodeCalls,
-  fetchOcrNodes,
-  reconnectOcrNode,
-  testOcrNode,
-  updateOcrNode,
-  updateOcrNodeEnabled
+  fetchOcrNodes
 } from '@/api/ocrResources'
-import type { OcrModel, OcrNode, OcrNodeCall, OcrNodeSubmitPayload } from '@/types/ocrResources'
+import { useOcrNodeActions } from '@/composables/useOcrNodeActions'
+import type { OcrModel, OcrNode, OcrNodeCall } from '@/types/ocrResources'
 
+// useOcrResources 是 OCR 资源页的状态编排 composable。
+// 维护边界：
+// - 模型列表、节点列表和抽屉状态留在这里。
+// - 节点保存、删除、测试、恢复和启停动作下沉到 useOcrNodeActions。
+// - 本文件只直接调用列表查询和详情调用记录查询。
+// - 错误消息转换保留在这里，供子动作 composable 复用。
+// - selectedModelKey 是节点列表查询的主筛选条件。
+// - selectedNode 是详情抽屉当前节点快照。
+// - selectedNodeCalls 是详情抽屉内的调用记录。
+// - editingNode 是表单抽屉当前编辑对象。
+// - isFormVisible 和 isDetailVisible 分别控制两个抽屉。
+// - isLoadingModels 和 isLoadingNodes 分离，避免页面整体误转圈。
+// - isSavingNode 由动作 composable 修改，但状态归属仍在这里。
+// - lastUpdated 只在节点列表刷新成功后更新。
+// - errorMessage 只承载列表级错误，节点动作错误用 message 展示。
+// - selectedModel 是派生数据，不额外存储副本。
+// - hasModels 是模板便利状态，不作为业务判断来源。
+// - loadModels 会联动 loadNodes，保持模型切换后的列表一致。
+// - loadNodes 在没有模型 key 时清空节点列表，避免展示旧数据。
+// - openDetailDrawer 会先清空调用记录，避免旧记录闪现。
+// - closeDetailDrawer 清空节点和调用记录，释放详情上下文。
+// - openCreateDrawer 会清空 editingNode，避免误带编辑数据。
+// - openEditDrawer 只设置编辑目标，不做远程请求。
+// - 动作 composable 通过上下文回调刷新列表，避免循环 import。
+// - 返回对象保持原 API 名称，确保视图组件无需改动。
+// - 不在这里做轮询，OCR 资源页由用户手动刷新。
+// - 不在这里做排序，后端返回顺序作为当前展示顺序。
+// - 不在这里做节点健康策略判断，后端负责状态语义。
+// - 不在这里缓存调用记录，详情每次打开都拉取最新数据。
+// - 新增节点动作时优先放入 useOcrNodeActions。
+// - 新增页面状态时才扩展本 composable。
+// - 这个拆分让本文件保持“状态 + 查询 + 抽屉”的单一职责。
 /**
  * 创建 OCR 资源页状态和操作。
  *
@@ -23,8 +50,10 @@ import type { OcrModel, OcrNode, OcrNodeCall, OcrNodeSubmitPayload } from '@/typ
  * @date 2026-06-09
  */
 export function useOcrResources(message: MessageApi) {
+  // 模型和节点数组使用 shallowRef，避免深度代理后端返回的大对象。
   const models = shallowRef<OcrModel[]>([])
   const nodes = shallowRef<OcrNode[]>([])
+  // 当前模型 key 是节点列表查询和新增节点默认归属的依据。
   const selectedModelKey = shallowRef('')
   const selectedNode = shallowRef<OcrNode | null>(null)
   const selectedNodeCalls = shallowRef<OcrNodeCall[]>([])
@@ -38,6 +67,7 @@ export function useOcrResources(message: MessageApi) {
   const errorMessage = shallowRef('')
 
   const selectedModel = computed(() => models.value.find((model) => model.model_key === selectedModelKey.value))
+  // hasModels 只服务模板展示，不替代 selectedModelKey 的业务判断。
   const hasModels = computed(() => models.value.length > 0)
 
   /**
@@ -197,130 +227,25 @@ export function useOcrResources(message: MessageApi) {
     selectedNodeCalls.value = []
   }
 
-  /**
-   * 发送节点保存请求。
-   *
-   * @param payload - 节点提交载荷
-   * @returns 保存后的节点
-   * @author lvdaxianerplus
-   * @date 2026-06-09
-   */
-  function saveNodeRequest(payload: OcrNodeSubmitPayload): Promise<OcrNode> {
-    if (editingNode.value) {
-      return updateOcrNode(editingNode.value.id, payload.node)
-    } else {
-      return createOcrNode(payload.modelKey, payload.node)
-    }
-  }
-
-  /**
-   * 保存 OCR 节点配置。
-   *
-   * @param payload - 节点提交载荷
-   * @returns 保存完成信号
-   * @author lvdaxianerplus
-   * @date 2026-06-09
-   */
-  async function saveNode(payload: OcrNodeSubmitPayload): Promise<void> {
-    isSavingNode.value = true
-    try {
-      await saveNodeRequest(payload)
-      selectedModelKey.value = payload.modelKey
-      await loadModels()
-      isFormVisible.value = false
-      message.success('OCR 节点已保存')
-    } catch (error) {
-      message.error(toErrorMessage(error))
-    } finally {
-      isSavingNode.value = false
-    }
-  }
-
-  /**
-   * 删除 OCR 节点。
-   *
-   * @param node - OCR 节点
-   * @returns 删除完成信号
-   * @author lvdaxianerplus
-   * @date 2026-06-09
-   */
-  async function removeNode(node: OcrNode): Promise<void> {
-    try {
-      await deleteOcrNode(node.id)
-      await loadModels()
-      message.success('OCR 节点已删除')
-    } catch (error) {
-      message.error(toErrorMessage(error))
-    }
-  }
-
-  /**
-   * 测试 OCR 节点健康。
-   *
-   * @param node - OCR 节点
-   * @returns 测试完成信号
-   * @author lvdaxianerplus
-   * @date 2026-06-09
-   */
-  async function testNode(node: OcrNode): Promise<void> {
-    try {
-      const response = await testOcrNode(node.id)
-      if (response.healthy) {
-        message.success(response.message)
-      } else {
-        message.warning(response.message)
-      }
-    } catch (error) {
-      message.error(toErrorMessage(error))
-    }
-  }
-
-  /**
-   * 触发 OCR 节点手动恢复。
-   *
-   * @param node - OCR 节点
-   * @returns 手动恢复完成信号
-   * @author lvdaxianerplus
-   * @date 2026-06-10
-   */
-  async function reconnectNode(node: OcrNode): Promise<void> {
-    try {
-      const response = await reconnectOcrNode(node.id)
-      await loadNodes()
-      if (selectedNode.value?.id === node.id) {
-        const refreshedNode = nodes.value.find((item) => item.id === node.id) ?? node
-        selectedNode.value = refreshedNode
-      } else {
-        // 当前未打开该节点详情时无需同步抽屉内状态。
-      }
-      if (response.healthy) {
-        message.success(`手动连接成功，已尝试 ${response.attempts} 次`)
-      } else {
-        message.warning(`手动连接已执行 ${response.attempts} 次，当前状态：${response.status}`)
-      }
-    } catch (error) {
-      message.error(toErrorMessage(error))
-    }
-  }
-
-  /**
-   * 切换 OCR 节点启用状态。
-   *
-   * @param node - OCR 节点
-   * @param enabled - 是否启用
-   * @returns 切换完成信号
-   * @author lvdaxianerplus
-   * @date 2026-06-09
-   */
-  async function toggleNodeEnabled(node: OcrNode, enabled: boolean): Promise<void> {
-    try {
-      await updateOcrNodeEnabled(node.id, enabled)
-      await loadNodes()
-      message.success(enabled ? 'OCR 节点已启用' : 'OCR 节点已停用')
-    } catch (error) {
-      message.error(toErrorMessage(error))
-    }
-  }
+  const {
+    saveNode,
+    removeNode,
+    testNode,
+    reconnectNode,
+    toggleNodeEnabled
+  } = useOcrNodeActions({
+    // 动作 composable 需要这些状态引用来完成远程动作后的同步。
+    message,
+    nodes,
+    selectedNode,
+    selectedModelKey,
+    editingNode,
+    isFormVisible,
+    isSavingNode,
+    loadModels,
+    loadNodes,
+    toErrorMessage
+  })
 
   return {
     models,

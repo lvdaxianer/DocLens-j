@@ -5,13 +5,24 @@ import { describe, expect, it } from 'vitest'
 const DASHBOARD_SOURCE_ROOT = resolve(__dirname, '../../..')
 const CODE_REVIEW_SPEC_FILE_LINE_LIMIT = 350
 // 结构测试只覆盖本次拆分触达文件，避免把无关历史债务混入当前提交。
+// 每次拆分新增的文件也必须加入这里，防止“大文件拆成另一个大文件”。
+// 这个列表不扫描全仓库，是为了让每个原子任务只承担自己的范围。
+// 剩余历史超限文件会通过后续 Task 逐个加入并消化。
+// 生产构建产物不加入这里，因为它们是 Vite 输出。
+// 测试里的失败信息会展示 sourcePath，便于下一位维护者定位。
+// 路径基于 src 根目录，避免跨平台绝对路径差异。
+// 文件顺序按任务推进顺序排列，方便对照计划文档。
 const STRUCTURE_CHECKED_FILES = [
   'views/BatchDetailView.vue',
   'components/dashboard/BatchSummaryStrip.vue',
   'components/dashboard/BatchDocumentTable.vue',
   'components/dashboard/batchDocumentTableColumns.ts',
   'components/dashboard/batchDocumentTableActions.ts',
-  'components/dashboard/UploadDropzone.vue'
+  'components/dashboard/UploadDropzone.vue',
+  'components/dashboard/UploadFilePicker.vue',
+  'components/dashboard/UploadFileList.vue',
+  'composables/useOcrResources.ts',
+  'composables/useOcrNodeActions.ts'
 ]
 
 /**

@@ -755,3 +755,47 @@ Expected: PASS.
 - [x] **Step 7: Commit**
 
 Create an atomic Chinese Conventional Commit for the UploadDropzone split.
+
+### Task 16: 拆分 useOcrResources 资源操作职责
+
+**Files:**
+- Modify: `doclens-dashboard/src/composables/useOcrResources.ts`
+- Modify: `doclens-dashboard/src/components/dashboard/__tests__/DashboardStructure.test.ts`
+- Create: `doclens-dashboard/src/composables/useOcrNodeActions.ts`
+
+- [x] **Step 1: Write failing structure test**
+
+Add `composables/useOcrResources.ts` to `DashboardStructure.test.ts`.
+
+Run:
+
+```bash
+cd doclens-dashboard
+npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts
+```
+
+Expected: FAIL because `useOcrResources.ts` currently has more than 350 lines.
+
+- [x] **Step 2: Split node actions**
+
+Move node save, delete, health test, reconnect and enable/disable operations into `useOcrNodeActions`.
+
+- [x] **Step 3: Keep useOcrResources focused**
+
+Keep models/nodes state, selection, drawer open/close and list loading orchestration in `useOcrResources`.
+
+- [x] **Step 4: Run focused verification**
+
+Run: `npm run test:ui -- src/components/dashboard/__tests__/DashboardStructure.test.ts` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 5: Run broader verification**
+
+Run: `npm run build` and `npm test` in `doclens-dashboard`.
+
+Expected: PASS.
+
+- [x] **Step 6: Commit**
+
+Create an atomic Chinese Conventional Commit for the useOcrResources split.
