@@ -8,12 +8,16 @@ import {
   NDrawer,
   NDrawerContent,
   NSpin,
-  NTag
+  NTabPane,
+  NTabs,
+  NTag,
+  useMessage
 } from 'naive-ui'
 
 import type { DocumentResultResponse, DocumentRow } from '@/types/dashboard'
 import { formatNumber, formatPercent } from '@/utils/formatters'
 import {
+  extractOcrOriginalText,
   isLlmMarkdownApplied,
   llmStageDescription,
   llmPostProcessingStatus,
@@ -22,6 +26,8 @@ import {
 
 const RESULT_DRAWER_WIDTH = 720
 const TEXT_PREVIEW_MAX_HEIGHT = '52vh'
+const PRIMARY_TEXT_TAB = 'primary-text'
+const OCR_ORIGINAL_TAB = 'ocr-original'
 
 /**
  * 文档解析结果抽屉，展示上传文件名、纯文本结果和落盘路径。
@@ -42,8 +48,13 @@ const emit = defineEmits<{
   retry: []
 }>()
 
+const message = useMessage()
+const activeTab = defineModel<string>('activeTab', { default: PRIMARY_TEXT_TAB })
 const textTitle = computed(() => props.result ? resultTextTitle(props.result.result) : '解析内容')
-const textLength = computed(() => props.result?.result.finalText.length ?? 0)
+const markdownText = computed(() => props.result?.result.finalText ?? '')
+const ocrOriginalText = computed(() => props.result ? extractOcrOriginalText(props.result.result) : '')
+const textLength = computed(() => markdownText.value.length)
+const ocrTextLength = computed(() => ocrOriginalText.value.length)
 const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
 const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
 const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
@@ -51,6 +62,50 @@ const llmErrorMessage = computed(() => {
   const message = props.result?.result.llm_error_message?.trim() ?? ''
   return message
 })
+
+/**
+ * 判断当前是否展示主结果文本。
+ *
+ * @returns 是否展示主结果文本
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function isPrimaryTextTab(): boolean {
+  return activeTab.value === PRIMARY_TEXT_TAB
+}
+
+/**
+ * 判断当前是否展示 OCR 原内容。
+ *
+ * @returns 是否展示 OCR 原内容
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function isOcrOriginalTab(): boolean {
+  return activeTab.value === OCR_ORIGINAL_TAB
+}
+
+/**
+ * 复制指定解析内容到剪贴板。
+ *
+ * @param content 待复制内容
+ * @param label 内容标签
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+async function copyContent(content: string, label: string): Promise<void> {
+  // 空内容不进入剪贴板，直接提示用户。
+  if (!content.trim()) {
+    message.warning(`${label}暂无可复制内容`)
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(content)
+    message.success(`${label}已复制`)
+  } catch {
+    message.error(`${label}复制失败`)
+  }
+}
 </script>
 
 <template>
@@ -104,13 +159,36 @@ const llmErrorMessage = computed(() => {
               </NDescriptionsItem>
             </NDescriptions>
 
-            <section class="document-result__text">
-              <div class="document-result__text-header">
-                <span>{{ textTitle }}</span>
-                <NTag round>{{ formatNumber(textLength) }} 字符</NTag>
-              </div>
-              <pre>{{ result.result.finalText || '暂无文本内容' }}</pre>
-            </section>
+            <NTabs v-model:value="activeTab" class="document-result__tabs" type="line" animated>
+              <NTabPane :name="PRIMARY_TEXT_TAB" :tab="textTitle" display-directive="if">
+                <section v-if="isPrimaryTextTab()" class="document-result__text">
+                  <div class="document-result__text-header">
+                    <span>{{ textTitle }}</span>
+                    <div class="document-result__text-actions">
+                      <NTag round>{{ formatNumber(textLength) }} 字符</NTag>
+                      <NButton size="tiny" secondary :disabled="!markdownText" @click="copyContent(markdownText, textTitle)">
+                        复制
+                      </NButton>
+                    </div>
+                  </div>
+                  <pre>{{ markdownText || '暂无文本内容' }}</pre>
+                </section>
+              </NTabPane>
+              <NTabPane :name="OCR_ORIGINAL_TAB" tab="OCR 原内容" display-directive="if">
+                <section v-if="isOcrOriginalTab()" class="document-result__text">
+                  <div class="document-result__text-header">
+                    <span>OCR 原内容</span>
+                    <div class="document-result__text-actions">
+                      <NTag round>{{ formatNumber(ocrTextLength) }} 字符</NTag>
+                      <NButton size="tiny" secondary :disabled="!ocrOriginalText" @click="copyContent(ocrOriginalText, 'OCR 原内容')">
+                        复制
+                      </NButton>
+                    </div>
+                  </div>
+                  <pre>{{ ocrOriginalText || '暂无 OCR 原内容' }}</pre>
+                </section>
+              </NTabPane>
+            </NTabs>
           </template>
 
           <NAlert v-else-if="!loading && !error" type="info" title="暂无解析内容">
@@ -165,6 +243,13 @@ const llmErrorMessage = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.document-result__text-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
 }
 
 .document-result__text pre {

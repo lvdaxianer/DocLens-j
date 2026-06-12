@@ -419,7 +419,7 @@ feat(ocr): 增加 Ollama OCR 健康探测
 - Modify: `doclens-dashboard/src/components/dashboard/DocumentResultDrawer.vue`
 - Test: `doclens-dashboard/src/components/dashboard/__tests__/DocumentResultDrawer.test.ts`
 
-- [ ] **Step 1: Write RED UI test**
+- [x] **Step 1: Write RED UI test**
 
 Add or update a component test for `DocumentResultDrawer`:
 
@@ -430,7 +430,7 @@ Add or update a component test for `DocumentResultDrawer`:
 - Assert both tabs keep their own copy button and character count.
 - Assert the drawer no longer renders two stacked `.document-result__text` sections at the same time.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -440,7 +440,7 @@ cd doclens-dashboard && npm run test:ui -- DocumentResultDrawer
 
 Expected: FAIL because current UI renders Markdown/OCR final content and OCR original content as two vertical sections.
 
-- [ ] **Step 3: Implement Tab layout**
+- [x] **Step 3: Implement Tab layout**
 
 Implementation requirements:
 
@@ -452,7 +452,7 @@ Implementation requirements:
 - Do not place Markdown content and OCR original content one above another.
 - Empty content still shows the existing empty text for that tab.
 
-- [ ] **Step 4: Run GREEN and frontend verification**
+- [x] **Step 4: Run GREEN and frontend verification**
 
 Run:
 
@@ -463,7 +463,7 @@ cd doclens-dashboard && npm run test:ui && npm run build
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 
 Commit subject:
 
