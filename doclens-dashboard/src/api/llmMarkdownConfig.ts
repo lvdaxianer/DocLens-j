@@ -15,7 +15,7 @@ const DEFAULT_ERROR_MESSAGE = '请求失败'
 interface LlmConfigRequestOptions {
   method: string
   path?: string
-  body?: LlmMarkdownConfigPayload
+  body?: LlmMarkdownConfigPayload | LlmMarkdownConfigEnabledPayload
 }
 
 interface LlmConfigRequestContext {
@@ -23,6 +23,10 @@ interface LlmConfigRequestContext {
   method: string
   startedAt: number
   responseStatus: number | string
+}
+
+interface LlmMarkdownConfigEnabledPayload {
+  enabled: boolean
 }
 
 /**
@@ -135,6 +139,31 @@ function fetchLlmConfig(options: LlmConfigRequestOptions): Promise<Response> {
 }
 
 /**
+ * 创建指定配置资源路径。
+ *
+ * @param id - 配置 ID
+ * @returns 配置资源路径
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function configPath(id: string): string {
+  return `${LLM_CONFIG_PATH}/${encodeURIComponent(id)}`
+}
+
+/**
+ * 创建指定配置动作路径。
+ *
+ * @param id - 配置 ID
+ * @param action - 动作名称
+ * @returns 配置动作路径
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function configActionPath(id: string, action: string): string {
+  return `${configPath(id)}/${action}`
+}
+
+/**
  * 解析 LLM 配置接口响应。
  *
  * @param context - 请求上下文
@@ -149,6 +178,8 @@ async function parseResponse<T>(context: LlmConfigRequestContext, response: Resp
   logResponse(context)
   if (!response.ok) {
     throw new Error(errorMessageFromResponse(response, responseBody))
+  } else if (!responseBody) {
+    return undefined as T
   } else {
     return JSON.parse(responseBody) as T
   }
@@ -198,8 +229,8 @@ async function requestLlmConfig<T>(options: LlmConfigRequestOptions): Promise<T>
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-export function fetchLlmMarkdownConfig(): Promise<LlmMarkdownConfigResponse> {
-  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'GET' })
+export function fetchLlmMarkdownConfig(): Promise<LlmMarkdownConfigResponse[]> {
+  return requestLlmConfig<LlmMarkdownConfigResponse[]>({ method: 'GET' })
 }
 
 /**
@@ -212,6 +243,75 @@ export function fetchLlmMarkdownConfig(): Promise<LlmMarkdownConfigResponse> {
  */
 export function updateLlmMarkdownConfig(payload: LlmMarkdownConfigPayload): Promise<LlmMarkdownConfigResponse> {
   return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'PUT', body: payload })
+}
+
+/**
+ * 创建 LLM Markdown 后处理配置。
+ *
+ * @param payload - LLM Markdown 配置提交载荷
+ * @returns LLM Markdown 配置响应
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function createLlmMarkdownConfig(payload: LlmMarkdownConfigPayload): Promise<LlmMarkdownConfigResponse> {
+  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'POST', body: payload })
+}
+
+/**
+ * 更新指定 LLM Markdown 后处理配置。
+ *
+ * @param id - 配置 ID
+ * @param payload - LLM Markdown 配置提交载荷
+ * @returns LLM Markdown 配置响应
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function updateLlmMarkdownConfigById(
+  id: string,
+  payload: LlmMarkdownConfigPayload
+): Promise<LlmMarkdownConfigResponse> {
+  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'PUT', path: configPath(id), body: payload })
+}
+
+/**
+ * 更新 LLM Markdown 配置启停状态。
+ *
+ * @param id - 配置 ID
+ * @param enabled - 是否启用
+ * @returns LLM Markdown 配置响应
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function updateLlmMarkdownConfigEnabled(id: string, enabled: boolean): Promise<LlmMarkdownConfigResponse> {
+  return requestLlmConfig<LlmMarkdownConfigResponse>({
+    method: 'PATCH',
+    path: configActionPath(id, 'enabled'),
+    body: enabledPayload(enabled)
+  })
+}
+
+/**
+ * 设置默认 LLM Markdown 配置。
+ *
+ * @param id - 配置 ID
+ * @returns LLM Markdown 配置响应
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function makeDefaultLlmMarkdownConfig(id: string): Promise<LlmMarkdownConfigResponse> {
+  return requestLlmConfig<LlmMarkdownConfigResponse>({ method: 'PATCH', path: configActionPath(id, 'default') })
+}
+
+/**
+ * 删除 LLM Markdown 配置。
+ *
+ * @param id - 配置 ID
+ * @returns 删除完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function deleteLlmMarkdownConfig(id: string): Promise<void> {
+  return requestLlmConfig<void>({ method: 'DELETE', path: configPath(id) })
 }
 
 /**
@@ -228,4 +328,16 @@ export function testLlmMarkdownConfig(payload: LlmMarkdownConfigPayload): Promis
     path: LLM_CONFIG_TEST_PATH,
     body: payload
   })
+}
+
+/**
+ * 创建启停请求载荷。
+ *
+ * @param enabled - 是否启用
+ * @returns 启停请求载荷
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function enabledPayload(enabled: boolean): LlmMarkdownConfigEnabledPayload {
+  return { enabled }
 }

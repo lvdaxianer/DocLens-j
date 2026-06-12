@@ -793,7 +793,7 @@ feat(llm): 提供多配置管理接口
 - Modify: `doclens-dashboard/src/utils/llmMarkdownConfigRules.ts`
 - Test: `doclens-dashboard/src/utils/__tests__/llmMarkdownConfigRules.test.ts`
 
-- [ ] **Step 1: Write RED frontend utility tests**
+- [x] **Step 1: Write RED frontend utility tests**
 
 Test cases:
 
@@ -802,7 +802,7 @@ Test cases:
 - Full endpoint URL is accepted without educational endpoint hints.
 - Pause one config does not change other configs in local state.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -812,7 +812,7 @@ cd doclens-dashboard && npm run test:utils
 
 Expected: FAIL.
 
-- [ ] **Step 3: Implement UI**
+- [x] **Step 3: Implement UI**
 
 Page behavior:
 
@@ -822,7 +822,7 @@ Page behavior:
 - Do not show prompts like "OpenAI compatible 填到 /v1、Anthropic 填到 /anthropic".
 - Keep placeholder minimal: "请输入完整接口地址".
 
-- [ ] **Step 4: Run GREEN and build**
+- [x] **Step 4: Run GREEN and build**
 
 Run:
 
@@ -832,7 +832,7 @@ cd doclens-dashboard && npm run test:utils && npm run test:ui && npm run build
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 8**
+- [x] **Step 5: Commit Task 8**
 
 Commit subject:
 

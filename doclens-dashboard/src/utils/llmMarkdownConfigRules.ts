@@ -1,14 +1,37 @@
 import type { LlmMarkdownApiType, LlmMarkdownConfigPayload, LlmMarkdownConfigResponse } from '@/types/llmMarkdownConfig'
 
 export interface LlmMarkdownConfigFormState {
+  id: string
+  name: string
   apiType: LlmMarkdownApiType
   url: string
   model: string
   apiKey: string
   credentialConfigured: boolean
+  usageType: string
+  priority: number
+  defaultConfig: boolean
+  enabled: boolean
   healthy: boolean
   healthMessage: string
   lastHealthAt: string
+}
+
+export interface LlmMarkdownConfigRow {
+  id: string
+  name: string
+  apiType: LlmMarkdownApiType
+  url: string
+  model: string
+  credentialConfigured: boolean
+  usageType: string
+  priority: number
+  defaultConfig: boolean
+  enabled: boolean
+  healthy: boolean
+  healthMessage: string
+  lastHealthAt: string
+  statusLabel: string
 }
 
 export interface LlmConfigCapabilityHints {
@@ -19,10 +42,12 @@ export interface LlmConfigCapabilityHints {
 const HTTP_PROTOCOL = 'http:'
 const HTTPS_PROTOCOL = 'https:'
 const MASKED_SECRET = '***'
-const OPENAI_COMPATIBLE_URL_PLACEHOLDER = '请输入完整接口地址，例如 https://api.example.com/v1/chat/completions'
-const ANTHROPIC_URL_PLACEHOLDER = '请输入完整接口地址，例如 https://api.example.com/anthropic/v1/messages'
+const URL_PLACEHOLDER = '请输入完整接口地址'
 const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
+const DEFAULT_USAGE_TYPE = 'MARKDOWN_POST_PROCESSING'
+const DEFAULT_PRIORITY = 100
+const EMPTY_CONFIG_STATUS = '暂无 LLM 配置，OCR 可正常运行。'
 
 /**
  * 创建 LLM Markdown 配置表单默认值。
@@ -33,11 +58,17 @@ const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
  */
 export function createDefaultLlmMarkdownConfigForm(): LlmMarkdownConfigFormState {
   return {
+    id: '',
+    name: '',
     apiType: 'openai',
     url: '',
     model: '',
     apiKey: '',
     credentialConfigured: false,
+    usageType: DEFAULT_USAGE_TYPE,
+    priority: DEFAULT_PRIORITY,
+    defaultConfig: true,
+    enabled: true,
     healthy: false,
     healthMessage: '',
     lastHealthAt: ''
@@ -54,11 +85,17 @@ export function createDefaultLlmMarkdownConfigForm(): LlmMarkdownConfigFormState
  */
 export function fillLlmMarkdownConfigFormFromResponse(response: LlmMarkdownConfigResponse): LlmMarkdownConfigFormState {
   return {
+    id: response.id ?? '',
+    name: response.name ?? '',
     apiType: response.api_type ?? 'openai',
     url: response.url,
     model: response.model,
     apiKey: '',
     credentialConfigured: response.credential_configured,
+    usageType: response.usage_type ?? DEFAULT_USAGE_TYPE,
+    priority: response.priority ?? DEFAULT_PRIORITY,
+    defaultConfig: response.is_default ?? false,
+    enabled: response.enabled ?? true,
     healthy: response.healthy,
     healthMessage: response.health_message ?? '',
     lastHealthAt: response.last_health_at ?? ''
@@ -97,7 +134,18 @@ export function createLlmMarkdownConfigPayload(form: LlmMarkdownConfigFormState)
   const payload: LlmMarkdownConfigPayload = {
     api_type: form.apiType,
     url: form.url.trim(),
-    model: form.model.trim()
+    model: form.model.trim(),
+    enabled: form.enabled,
+    usage_type: form.usageType,
+    priority: form.priority,
+    is_default: form.defaultConfig
+  }
+  const trimmedName = trimmedValueOrUndefined(form.name)
+  if (trimmedName) {
+    // 非空名称才提交，空名称交由后端使用默认命名。
+    payload.name = trimmedName
+  } else {
+    // 空名称不提交，避免出现 name: undefined。
   }
   if (form.apiKey.trim()) {
     // 非空 API Key 表示用户主动轮换密钥。
@@ -134,9 +182,130 @@ export function llmConfigCapabilityHints(form: LlmMarkdownConfigFormState): LlmC
   const hasUrl = form.url.trim() !== ''
   const hasModel = form.model.trim() !== ''
   return {
-    urlPlaceholder: form.apiType === 'anthropic' ? ANTHROPIC_URL_PLACEHOLDER : OPENAI_COMPATIBLE_URL_PLACEHOLDER,
+    urlPlaceholder: URL_PLACEHOLDER,
     canTest: hasUrl && hasModel && isHttpUrl(form.url)
   }
+}
+
+/**
+ * 创建 LLM Markdown 配置列表行。
+ *
+ * @param response - LLM Markdown 配置响应
+ * @returns 配置列表行
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function createLlmMarkdownConfigRow(response: LlmMarkdownConfigResponse | undefined): LlmMarkdownConfigRow {
+  if (!response) {
+    // 空列表时展示非阻塞空状态，OCR 主流程仍可正常运行。
+    return createEmptyConfigRow()
+  } else {
+    // 有配置时将接口字段收敛成列表展示模型。
+    return createResponseConfigRow(response)
+  }
+}
+
+/**
+ * 切换指定配置行启停状态。
+ *
+ * @param rows - 配置行列表
+ * @param id - 配置 ID
+ * @param enabled - 启停状态
+ * @returns 更新后的配置行列表
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+export function toggleLlmMarkdownConfigRowEnabled(
+  rows: LlmMarkdownConfigRow[],
+  id: string,
+  enabled: boolean
+): LlmMarkdownConfigRow[] {
+  return rows.map((row) => row.id === id ? { ...row, enabled, statusLabel: statusLabel(enabled, row.healthy) } : row)
+}
+
+/**
+ * 创建空配置行。
+ *
+ * @returns 空配置行
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function createEmptyConfigRow(): LlmMarkdownConfigRow {
+  return {
+    id: '',
+    name: '未命名配置',
+    apiType: 'openai',
+    url: '',
+    model: '',
+    credentialConfigured: false,
+    usageType: DEFAULT_USAGE_TYPE,
+    priority: DEFAULT_PRIORITY,
+    defaultConfig: false,
+    enabled: false,
+    healthy: false,
+    healthMessage: '',
+    lastHealthAt: '',
+    statusLabel: EMPTY_CONFIG_STATUS
+  }
+}
+
+/**
+ * 创建接口响应配置行。
+ *
+ * @param response - LLM Markdown 配置响应
+ * @returns 配置行
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function createResponseConfigRow(response: LlmMarkdownConfigResponse): LlmMarkdownConfigRow {
+  return {
+    id: response.id ?? '',
+    name: response.name || '未命名配置',
+    apiType: response.api_type,
+    url: response.url,
+    model: response.model,
+    credentialConfigured: response.credential_configured,
+    usageType: response.usage_type ?? DEFAULT_USAGE_TYPE,
+    priority: response.priority ?? DEFAULT_PRIORITY,
+    defaultConfig: response.is_default ?? false,
+    enabled: response.enabled,
+    healthy: response.healthy,
+    healthMessage: response.health_message ?? '',
+    lastHealthAt: response.last_health_at ?? '',
+    statusLabel: statusLabel(response.enabled, response.healthy)
+  }
+}
+
+/**
+ * 生成配置状态文案。
+ *
+ * @param enabled - 是否启用
+ * @param healthy - 是否健康
+ * @returns 状态文案
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function statusLabel(enabled: boolean, healthy: boolean): string {
+  if (!enabled) {
+    // 手动暂停优先于健康状态展示。
+    return '已暂停'
+  } else {
+    // 启用时根据健康状态展示可用性。
+    return healthy ? '可用' : '心跳不可用'
+  }
+}
+
+/**
+ * 返回去空后的字符串或 undefined。
+ *
+ * @param value - 原始字符串
+ * @returns 去空字符串或 undefined
+ * @author lvdaxianerplus
+ * @date 2026-06-12
+ */
+function trimmedValueOrUndefined(value: string): string | undefined {
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
 }
 
 /**

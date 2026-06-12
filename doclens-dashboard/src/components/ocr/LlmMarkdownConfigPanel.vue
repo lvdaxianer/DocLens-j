@@ -1,9 +1,26 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { FlaskConical, RefreshCcw, Save } from '@lucide/vue'
-import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NSelect, NTag, useMessage } from 'naive-ui'
+import { computed, onMounted } from 'vue'
+import {
+  FlaskConical,
+  Plus,
+  RefreshCcw,
+  Save
+} from '@lucide/vue'
+import {
+  NAlert,
+  NButton,
+  NDataTable,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NInputNumber,
+  NSelect,
+  useMessage
+} from 'naive-ui'
 
 import { useLlmMarkdownConfig } from '@/composables/useLlmMarkdownConfig'
+import { createLlmMarkdownConfigColumns } from '@/components/ocr/LlmMarkdownConfigTableColumns'
 import { formatDateTime } from '@/utils/formatters'
 
 const message = useMessage()
@@ -12,6 +29,13 @@ const apiTypeOptions = [
   { label: 'OpenAI compatible', value: 'openai' },
   { label: 'Anthropic', value: 'anthropic' }
 ]
+const columns = computed(() => createLlmMarkdownConfigColumns({
+  actingId: llmConfig.actingId.value,
+  editConfig: llmConfig.editConfig,
+  toggleEnabled: llmConfig.toggleEnabled,
+  makeDefault: llmConfig.makeDefault,
+  removeConfig: llmConfig.removeConfig
+}))
 
 onMounted(llmConfig.loadConfig)
 </script>
@@ -24,74 +48,106 @@ onMounted(llmConfig.loadConfig)
         <span class="panel__hint">最后刷新：{{ formatDateTime(llmConfig.lastLoadedAt.value) }}</span>
       </div>
       <div class="llm-config-panel__actions">
-        <NTag size="small" :type="llmConfig.isConfigured.value ? 'success' : 'default'">
-          {{ llmConfig.isConfigured.value ? '已配置' : '未配置' }}
-        </NTag>
-        <NTag v-if="llmConfig.isConfigured.value" size="small" :type="llmConfig.form.healthy ? 'success' : 'error'">
-          {{ llmConfig.form.healthy ? '心跳正常' : '心跳不可用' }}
-        </NTag>
         <NButton size="small" :loading="llmConfig.isLoading.value" @click="llmConfig.loadConfig">
           <template #icon>
             <NIcon :component="RefreshCcw" />
           </template>
           刷新
         </NButton>
+        <NButton size="small" type="primary" secondary @click="llmConfig.resetForm">
+          <template #icon>
+            <NIcon :component="Plus" />
+          </template>
+          新增配置
+        </NButton>
       </div>
     </div>
 
-    <NAlert v-if="llmConfig.errorMessage.value" class="llm-config-panel__alert" type="error" :title="llmConfig.errorMessage.value" />
     <NAlert
-      v-if="llmConfig.isConfigured.value && !llmConfig.form.healthy"
+      v-if="llmConfig.errorMessage.value"
       class="llm-config-panel__alert"
       type="error"
-      :title="llmConfig.form.healthMessage || 'LLM Markdown 心跳不可用'"
-    >
-      最近心跳：{{ formatDateTime(llmConfig.form.lastHealthAt) }}
-    </NAlert>
+      :title="llmConfig.errorMessage.value"
+    />
+    <NAlert
+      v-if="!llmConfig.hasConfigs.value && !llmConfig.isLoading.value"
+      class="llm-config-panel__alert"
+      type="info"
+      :title="llmConfig.emptyStatus.value"
+    />
 
-    <NForm class="llm-config-panel__form" label-placement="top">
-      <NFormItem label="协议">
-        <NSelect v-model:value="llmConfig.form.apiType" :options="apiTypeOptions" />
-      </NFormItem>
-      <NFormItem label="URL">
-        <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.urlPlaceholder" />
-      </NFormItem>
-      <NFormItem label="模型名称">
-        <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />
-      </NFormItem>
-      <NFormItem label="API Key">
-        <NInput
-          v-model:value="llmConfig.form.apiKey"
-          type="password"
-          :placeholder="llmConfig.form.credentialConfigured ? '已配置，留空则沿用旧密钥' : '可选，保存后不再回显'"
-        />
-      </NFormItem>
-    </NForm>
+    <div class="llm-config-panel__body">
+      <NDataTable
+        class="llm-config-panel__table"
+        :columns="columns"
+        :data="llmConfig.rows.value"
+        :loading="llmConfig.isLoading.value"
+        :bordered="false"
+        size="small"
+      />
 
-    <div class="llm-config-panel__footer">
-      <span>
-        API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}
-        <template v-if="llmConfig.form.lastHealthAt">
-          · 最近心跳：{{ formatDateTime(llmConfig.form.lastHealthAt) }}
-        </template>
-      </span>
-      <NButton
-        secondary
-        :loading="llmConfig.isTesting.value"
-        :disabled="!llmConfig.capabilityHints.value.canTest"
-        @click="llmConfig.testConfig"
-      >
-        <template #icon>
-          <NIcon :component="FlaskConical" />
-        </template>
-        测试配置
-      </NButton>
-      <NButton type="primary" :loading="llmConfig.isSaving.value" :disabled="!llmConfig.canSubmit.value" @click="llmConfig.saveConfig">
-        <template #icon>
-          <NIcon :component="Save" />
-        </template>
-        保存
-      </NButton>
+      <section class="llm-config-panel__editor">
+        <div class="llm-config-panel__editor-head">
+          <strong>{{ llmConfig.editingTitle.value }}</strong>
+          <span>用户只需输入完整接口地址。</span>
+        </div>
+
+        <NForm class="llm-config-panel__form" label-placement="top">
+          <NFormItem label="配置名称">
+            <NInput v-model:value="llmConfig.form.name" placeholder="例如：主配置" />
+          </NFormItem>
+          <NFormItem label="协议">
+            <NSelect v-model:value="llmConfig.form.apiType" :options="apiTypeOptions" />
+          </NFormItem>
+          <NFormItem label="完整地址">
+            <NInput v-model:value="llmConfig.form.url" :placeholder="llmConfig.capabilityHints.value.urlPlaceholder" />
+          </NFormItem>
+          <NFormItem label="模型名称">
+            <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />
+          </NFormItem>
+          <NFormItem label="API Key">
+            <NInput
+              v-model:value="llmConfig.form.apiKey"
+              type="password"
+              :placeholder="llmConfig.form.credentialConfigured ? '已配置，留空则沿用旧密钥' : '可选，保存后不再回显'"
+            />
+          </NFormItem>
+          <NFormItem label="优先级">
+            <NInputNumber v-model:value="llmConfig.form.priority" :min="0" :precision="0" />
+          </NFormItem>
+        </NForm>
+
+        <div class="llm-config-panel__toggles">
+          <label><input v-model="llmConfig.form.enabled" type="checkbox" /> 启用</label>
+          <label><input v-model="llmConfig.form.defaultConfig" type="checkbox" /> 设为默认</label>
+        </div>
+
+        <div class="llm-config-panel__footer">
+          <span>API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}</span>
+          <NButton
+            secondary
+            :loading="llmConfig.isTesting.value"
+            :disabled="!llmConfig.capabilityHints.value.canTest"
+            @click="llmConfig.testConfig"
+          >
+            <template #icon>
+              <NIcon :component="FlaskConical" />
+            </template>
+            测试配置
+          </NButton>
+          <NButton
+            type="primary"
+            :loading="llmConfig.isSaving.value"
+            :disabled="!llmConfig.canSubmit.value"
+            @click="llmConfig.saveConfig"
+          >
+            <template #icon>
+              <NIcon :component="Save" />
+            </template>
+            保存
+          </NButton>
+        </div>
+      </section>
     </div>
   </section>
 </template>
@@ -106,7 +162,8 @@ onMounted(llmConfig.loadConfig)
 }
 
 .llm-config-panel__actions,
-.llm-config-panel__footer {
+.llm-config-panel__footer,
+.llm-config-panel__toggles {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -117,26 +174,68 @@ onMounted(llmConfig.loadConfig)
   margin-bottom: 12px;
 }
 
+.llm-config-panel__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+
+.llm-config-panel__table {
+  min-width: 0;
+}
+
+.llm-config-panel__editor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--rail-border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.llm-config-panel__editor-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.llm-config-panel__editor-head strong {
+  color: var(--ink-strong);
+}
+
+.llm-config-panel__editor-head span,
+.llm-config-panel__footer span {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
 .llm-config-panel__form {
   display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 1.5fr) minmax(180px, 1fr) minmax(220px, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.llm-config-panel__toggles {
+  justify-content: flex-start;
+}
+
+.llm-config-panel__toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .llm-config-panel__footer {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-.llm-config-panel__footer span {
-  min-width: 0;
-  color: var(--ink-muted);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 960px) {
-  .llm-config-panel__form {
+@media (max-width: 1280px) {
+  .llm-config-panel__body {
     grid-template-columns: 1fr;
   }
 }
