@@ -58,7 +58,7 @@
 - Create: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/integration/interfaces/OpenWebuiOcrIntegrationController.java`
 - Create: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OpenWebuiOcrIntegrationContractTest.java`
 
-- [ ] **Step 1: Write RED unauthorized test**
+- [x] **Step 1: Write RED unauthorized test**
 
 Add `OpenWebuiOcrIntegrationContractTest` with `@SpringBootTest`, `@AutoConfigureMockMvc`, isolated H2/storage properties, and:
 
@@ -77,7 +77,7 @@ void openWebuiCreateBatchRejectsMissingInternalToken() throws Exception {
 }
 ```
 
-- [ ] **Step 2: Write RED create success test**
+- [x] **Step 2: Write RED create success test**
 
 Add:
 
@@ -109,7 +109,7 @@ void openWebuiCreateBatchMapsIdentityMetadataAndFiles() throws Exception {
 
 Set `doclens.integrations.open-webui.internal-token=test-openwebui-token` in `DynamicPropertySource`.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -119,7 +119,7 @@ mvn -pl doclens-server -am -Dtest=OpenWebuiOcrIntegrationContractTest -Dsurefire
 
 Expected: FAIL because Open WebUI controller and support classes do not exist.
 
-- [ ] **Step 4: Implement minimal auth, metadata, create adapter**
+- [x] **Step 4: Implement minimal auth, metadata, create adapter**
 
 Implementation requirements:
 
@@ -133,7 +133,7 @@ Implementation requirements:
 - `OpenWebuiResponseMapper.createdBatch(...)` maps native `file_name` to `filename`; for content type infer by filename suffix minimally: `.pdf -> application/pdf`, `.md -> text/markdown`, `.txt -> text/plain`, `.png -> image/png`, `.jpg/.jpeg -> image/jpeg`, otherwise `application/octet-stream`.
 - `@ExceptionHandler(OpenWebuiIntegrationException.class)` in the controller returns `Map.of("code", code, "message", message, "details", details)` with the exception status.
 
-- [ ] **Step 5: Run GREEN and focused broader verification**
+- [x] **Step 5: Run GREEN and focused broader verification**
 
 Run:
 
@@ -144,7 +144,7 @@ mvn -pl doclens-server -am -DskipTests compile
 
 Expected: PASS.
 
-- [ ] **Step 6: code-review-spec gate**
+- [x] **Step 6: code-review-spec gate**
 
 Check Task 1 diff against canonical code-review-spec:
 
@@ -154,7 +154,7 @@ Check Task 1 diff against canonical code-review-spec:
 - No magic strings repeated in multiple classes without constants.
 - Controller stays focused; mapping logic lives in mapper classes.
 
-- [ ] **Step 7: Mark task complete and commit**
+- [x] **Step 7: Mark task complete and commit**
 
 Commit subject:
 
