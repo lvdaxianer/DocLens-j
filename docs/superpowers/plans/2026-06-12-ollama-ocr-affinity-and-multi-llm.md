@@ -163,7 +163,7 @@ feat(ocr): 支持 Ollama DeepSeek OCR 协议
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/PaddleOcrNativeResponseMapper.java`
 - Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/PaddleOcrNativeResponseMapperTest.java`
 
-- [ ] **Step 1: Write RED mapper test**
+- [x] **Step 1: Write RED mapper test**
 
 Add a test where Paddle returns:
 
@@ -203,7 +203,7 @@ ocr_provider=paddle_ocr
 ocr_format=markdown
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -213,7 +213,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=PaddleOcrNativeResponseMapperTest tes
 
 Expected: FAIL because current mapper joins blocks with single newline and does not mark Markdown format.
 
-- [ ] **Step 3: Implement deterministic Markdown wrapper**
+- [x] **Step 3: Implement deterministic Markdown wrapper**
 
 Implementation requirements:
 
@@ -223,7 +223,7 @@ Implementation requirements:
 - Add `ImageOcrResult.fromMarkdownBlocks(...)` or equivalent focused factory to avoid changing unrelated callers.
 - Empty Paddle output still returns a warning and empty Markdown string.
 
-- [ ] **Step 4: Run GREEN and existing result tests**
+- [x] **Step 4: Run GREEN and existing result tests**
 
 Run:
 
@@ -234,7 +234,7 @@ mvn -pl doclens-core -Dtest=BatchProcessingUseCaseLlmMarkdownTest test
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 Commit subject:
 

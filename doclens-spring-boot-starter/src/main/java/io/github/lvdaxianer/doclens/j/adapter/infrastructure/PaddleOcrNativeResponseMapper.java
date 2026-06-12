@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,11 @@ public class PaddleOcrNativeResponseMapper {
 
     private static final TypeReference<Map<String, Object>> OBJECT_MAP = new TypeReference<>() {
     };
+    private static final int RAW_OUTPUT_EXTRA_CAPACITY = 2;
+    private static final String OCR_PROVIDER_KEY = "ocr_provider";
+    private static final String OCR_FORMAT_KEY = "ocr_format";
+    private static final String PADDLE_OCR_PROVIDER = "paddle_ocr";
+    private static final String MARKDOWN_FORMAT = "markdown";
 
     private final ObjectMapper objectMapper;
 
@@ -69,8 +75,26 @@ public class PaddleOcrNativeResponseMapper {
         } else {
             List<OcrBlock> blocks = blocks(pageNo, response);
             List<String> warnings = blocks.isEmpty() ? List.of("PaddleOCR returned no OCR results") : List.of();
-            return ImageOcrResult.fromBlocks(pageNo, objectMapper.convertValue(response, OBJECT_MAP), blocks, warnings);
+            return ImageOcrResult.fromMarkdownBlocks(
+                    new ImageOcrResult.MarkdownBlocks(pageNo, rawOutput(response), blocks, warnings));
         }
+    }
+
+    /**
+     * 创建带 OCR 格式标识的原始输出。
+     *
+     * @param response PaddleOCR 响应
+     * @return 原始输出
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private Map<String, Object> rawOutput(JsonNode response) {
+        Map<String, Object> responseMap = objectMapper.convertValue(response, OBJECT_MAP);
+        Map<String, Object> rawOutput = new LinkedHashMap<>(responseMap.size() + RAW_OUTPUT_EXTRA_CAPACITY);
+        rawOutput.putAll(responseMap);
+        rawOutput.put(OCR_PROVIDER_KEY, PADDLE_OCR_PROVIDER);
+        rawOutput.put(OCR_FORMAT_KEY, MARKDOWN_FORMAT);
+        return rawOutput;
     }
 
     /**
