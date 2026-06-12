@@ -475,7 +475,7 @@ feat(dashboard): 结果抽屉支持内容 Tab 切换
 
 ## Change 1 Final Verification
 
-- [ ] **Step 1: Backend focused verification**
+- [x] **Step 1: Backend focused verification**
 
 Run:
 
@@ -487,7 +487,7 @@ mvn -pl doclens-server -am -Dtest=OcrNodeApiContractTest -Dsurefire.failIfNoSpec
 
 Expected: PASS.
 
-- [ ] **Step 2: Frontend focused verification**
+- [x] **Step 2: Frontend focused verification**
 
 Run:
 
