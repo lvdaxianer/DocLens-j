@@ -44,7 +44,7 @@ class OcrRoutingServiceTest {
     }
 
     /**
-     * 全局负载均衡在节点失败耗尽后应切换到其他模型或节点。
+     * 全局负载均衡在节点失败耗尽后应切换到同模型其他节点。
      *
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -53,17 +53,19 @@ class OcrRoutingServiceTest {
     void globalModeFailsOverToAnotherHealthyNode() {
         TestContext context = context(List.of(
                 node("paddle-1", "paddle_ocr", OcrNodeStatus.UP, 100),
-                node("other-1", "other_ocr", OcrNodeStatus.UP, 200)
+                node("paddle-2", "paddle_ocr", OcrNodeStatus.UP, 200),
+                node("other-1", "other_ocr", OcrNodeStatus.UP, 300)
         ));
         context.executor.fail("paddle-1", 3);
 
         OcrRouteExecutionResult result = context.service.recognize(request(),
                 OcrRoutePolicy.globalLoadBalance("least-inflight"));
 
-        assertThat(result.nodeId()).isEqualTo("other-1");
+        assertThat(result.nodeId()).isEqualTo("paddle-2");
         assertThat(result.retryCount()).isEqualTo(3);
         assertThat(context.executor.attempts("paddle-1")).isEqualTo(3);
-        assertThat(context.executor.attempts("other-1")).isEqualTo(1);
+        assertThat(context.executor.attempts("paddle-2")).isEqualTo(1);
+        assertThat(context.executor.attempts("other-1")).isZero();
     }
 
     /**

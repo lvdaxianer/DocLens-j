@@ -100,6 +100,21 @@ class PaddleOcrNativeClientTest {
     }
 
     /**
+     * 零秒超时配置应降级为最小 HTTP 超时，避免禁用 PaddleOCR 时客户端构造失败。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void treatsZeroTimeoutAsMinimumHttpTimeout() {
+        PaddleOcrNativeClient client = new PaddleOcrNativeClient(propertiesWithTimeout(0), objectMapper);
+
+        OcrRuntimeNode node = runtimeNode("node_zero_timeout", "127.0.0.1", 18081);
+
+        assertThat(client.ocrUri(node)).isEqualTo(URI.create("http://127.0.0.1:18081/ocr"));
+    }
+
+    /**
      * 启动本地 HTTP 测试服务。
      *
      * @param handler 请求处理器
@@ -155,13 +170,25 @@ class PaddleOcrNativeClientTest {
      * @date 2026-06-08
      */
     private DocLensProperties propertiesWithoutServer() {
+        return propertiesWithTimeout(TEST_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 生成指定 PaddleOCR 超时时间的配置。
+     *
+     * @param timeoutSeconds PaddleOCR 超时秒数
+     * @return DocLens 测试配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private DocLensProperties propertiesWithTimeout(int timeoutSeconds) {
         return new DocLensProperties(
                 "target/test-storage",
                 true,
                 "worker-test",
                 new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
                 new DocLensProperties.AdapterProperties("paddle_ocr"),
-                new DocLensProperties.PaddleOcrProperties(true, "http://127.0.0.1:1/ocr", TEST_TIMEOUT_SECONDS, false),
+                new DocLensProperties.PaddleOcrProperties(true, "http://127.0.0.1:1/ocr", timeoutSeconds, false),
                 new DocLensProperties.OcrHealthProperties(3, 2),
                 new DocLensProperties.ExtractionProperties(1),
                 new DocLensProperties.PdfRenderProperties(144, "png"),

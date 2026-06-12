@@ -31,6 +31,7 @@ public class PaddleOcrNativeClient {
     private static final String LEGACY_ENDPOINT_NODE_ID = "configured-endpoint";
     private static final String LEGACY_ENDPOINT_HOST = "configured";
     private static final int LEGACY_ENDPOINT_PORT = 0;
+    private static final int MIN_TIMEOUT_SECONDS = 1;
 
     private final DocLensProperties properties;
     private final ObjectMapper objectMapper;
@@ -49,7 +50,7 @@ public class PaddleOcrNativeClient {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(Duration.ofSeconds(properties.paddleOcr().timeoutSeconds()))
+                .connectTimeout(requestTimeout())
                 .build();
     }
 
@@ -160,10 +161,21 @@ public class PaddleOcrNativeClient {
     private HttpRequest buildRequest(URI uri, String requestBody) {
         return HttpRequest.newBuilder(uri)
                 .version(HttpClient.Version.HTTP_1_1)
-                .timeout(Duration.ofSeconds(properties.paddleOcr().timeoutSeconds()))
+                .timeout(requestTimeout())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
+    }
+
+    /**
+     * 解析 PaddleOCR HTTP 请求最小超时时间，避免 0 秒配置导致 JDK HTTP 客户端拒绝构造。
+     *
+     * @return HTTP 请求超时时间
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private Duration requestTimeout() {
+        return Duration.ofSeconds(Math.max(MIN_TIMEOUT_SECONDS, properties.paddleOcr().timeoutSeconds()));
     }
 
     /**

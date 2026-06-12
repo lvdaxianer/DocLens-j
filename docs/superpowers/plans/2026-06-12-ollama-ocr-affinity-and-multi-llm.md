@@ -498,12 +498,12 @@ cd doclens-dashboard && npm run build
 
 Expected: PASS.
 
-- [ ] **Step 3: Broader verification**
+- [x] **Step 3: Broader verification**
 
 Run:
 
 ```bash
-mvn -pl doclens-core,doclens-spring-boot-starter,doclens-server test
+mvn -pl doclens-core,doclens-spring-boot-starter,doclens-server -am test
 git diff --check
 ```
 
@@ -844,7 +844,7 @@ feat(dashboard): 支持多 LLM 配置管理
 
 ## Change 2 Final Verification
 
-- [ ] **Step 1: Backend verification**
+- [x] **Step 1: Backend verification**
 
 Run:
 
@@ -856,7 +856,7 @@ mvn -pl doclens-server -am -Dtest=LlmMarkdownConfigApiContractTest -Dsurefire.fa
 
 Expected: PASS.
 
-- [ ] **Step 2: Frontend verification**
+- [x] **Step 2: Frontend verification**
 
 Run:
 
@@ -895,17 +895,17 @@ Expected:
 
 ## Final Audit And Review
 
-- [ ] **Step 1: Full backend test**
+- [x] **Step 1: Full backend test**
 
 Run:
 
 ```bash
-mvn -pl doclens-core,doclens-spring-boot-starter,doclens-server test
+mvn -pl doclens-core,doclens-spring-boot-starter,doclens-server -am test
 ```
 
 Expected: PASS.
 
-- [ ] **Step 2: Full frontend test and build**
+- [x] **Step 2: Full frontend test and build**
 
 Run:
 
@@ -915,7 +915,7 @@ cd doclens-dashboard && npm run test:utils && npm run test:ui && npm run build
 
 Expected: PASS.
 
-- [ ] **Step 3: Static diff verification**
+- [x] **Step 3: Static diff verification**
 
 Run:
 
@@ -925,7 +925,7 @@ git diff --check
 
 Expected: PASS.
 
-- [ ] **Step 4: code-review-spec gate**
+- [x] **Step 4: code-review-spec gate**
 
 Review the full diff against:
 
@@ -942,7 +942,7 @@ Must verify:
 - Thread pools are not reused across health, OCR request, document processing, and frontend callbacks.
 - Error paths preserve OCR completion when LLM config is absent.
 
-- [ ] **Step 5: Final manual restart smoke**
+- [x] **Step 5: Final manual restart smoke**
 
 Run backend and frontend, then verify:
 
@@ -956,6 +956,15 @@ Expected:
 - Backend health is `UP`.
 - LLM config API returns `200` even if list is empty.
 - Frontend dashboard loads at `http://localhost:10002/dashboard/`.
+
+Verification evidence on 2026-06-12:
+
+- Backend focused verification passed for LLM config service, selector, post processor, health checker, and API contracts.
+- Frontend verification passed: `npm run test:utils && npm run test:ui && npm run build`.
+- Full backend verification passed with `-am` to include `doclens-api` reactor output and avoid stale local API classes.
+- `git diff --check` passed after stripping Vite generated trailing whitespace.
+- Dev services restarted with `./scripts/dev-up.sh`; health, LLM config API, and dashboard HTML smoke checks returned 200/UP.
+- Destructive or environment-mutating smoke steps that require emptying the local LLM config table or uploading to real OCR nodes were not executed; corresponding no-config and multi-config behavior is covered by automated selector/post-processor/API tests.
 
 ---
 
