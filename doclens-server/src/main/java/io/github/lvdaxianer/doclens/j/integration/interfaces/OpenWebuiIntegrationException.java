@@ -63,6 +63,21 @@ public class OpenWebuiIntegrationException extends RuntimeException {
     }
 
     /**
+     * 创建保留异常链的请求校验异常。
+     *
+     * @param message 错误消息
+     * @param cause 原始异常
+     * @return 请求校验异常
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public static OpenWebuiIntegrationException badRequest(String message, Throwable cause) {
+        OpenWebuiIntegrationException exception = badRequest(message);
+        exception.initCause(cause);
+        return exception;
+    }
+
+    /**
      * 获取 HTTP 状态。
      *
      * @return HTTP 状态

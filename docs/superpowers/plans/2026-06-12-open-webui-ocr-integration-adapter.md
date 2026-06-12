@@ -171,7 +171,7 @@ Commit subject:
 - Modify: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/integration/interfaces/OpenWebuiResponseMapper.java`
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OpenWebuiOcrIntegrationContractTest.java`
 
-- [ ] **Step 1: Write RED query chain test**
+- [x] **Step 1: Write RED query chain test**
 
 Add one contract test that creates a batch, waits for completion through adapter status endpoint, then asserts:
 
@@ -199,7 +199,7 @@ mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/documents/{documentId}"
         .andExpect(jsonPath("$.completed_pages").value(1));
 ```
 
-- [ ] **Step 2: Write RED result/events/retry/health tests**
+- [x] **Step 2: Write RED result/events/retry/health tests**
 
 Add assertions:
 
@@ -228,7 +228,7 @@ mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/health"))
 
 For retry, insert or create a failed document using existing support if needed and assert adapter returns `status=queued`, `stage=QUEUED`, null error fields.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -238,7 +238,7 @@ mvn -pl doclens-server -am -Dtest=OpenWebuiOcrIntegrationContractTest -Dsurefire
 
 Expected: FAIL because only create endpoint exists.
 
-- [ ] **Step 4: Implement adapter endpoints**
+- [x] **Step 4: Implement adapter endpoints**
 
 Add endpoints under `/api/v1/integrations/open-webui/ocr`:
 
@@ -258,7 +258,7 @@ Response mapping rules:
 - Metadata is copied from document native metadata.
 - ResourceNotFoundException is allowed to use existing global 404 for now unless Open WebUI contract requires specific code in a later task.
 
-- [ ] **Step 5: Run GREEN and broader server contracts**
+- [x] **Step 5: Run GREEN and broader server contracts**
 
 Run:
 
@@ -269,7 +269,7 @@ mvn -pl doclens-server -am -Dtest=DocLensOcrApiContractTest,DocLensOcrUploadApiC
 
 Expected: PASS.
 
-- [ ] **Step 6: code-review-spec gate**
+- [x] **Step 6: code-review-spec gate**
 
 Check Task 2 diff:
 
@@ -278,7 +278,7 @@ Check Task 2 diff:
 - Open WebUI headers are required on protected endpoints except `/health`.
 - No sensitive content in logs.
 
-- [ ] **Step 7: Mark task complete and commit**
+- [x] **Step 7: Mark task complete and commit**
 
 Commit subject:
 
