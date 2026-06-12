@@ -82,7 +82,7 @@
 - Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/OllamaOcrResponseMapperTest.java`
 - Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/PaddleOcrNodeImageExecutorTest.java`
 
-- [ ] **Step 1: Write RED client test**
+- [x] **Step 1: Write RED client test**
 
 Add `OllamaOcrClientTest` with a local HTTP server. The test must assert the request body contains the fixed prompt, node provider model, a base64 image, and `stream=false`.
 
@@ -100,7 +100,7 @@ void sendsDeepSeekOcrGenerateRequestWithFixedMarkdownPrompt() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -110,7 +110,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=OllamaOcrClientTest test
 
 Expected: FAIL because Ollama client does not exist.
 
-- [ ] **Step 3: Implement Ollama client and response mapper**
+- [x] **Step 3: Implement Ollama client and response mapper**
 
 Implementation requirements:
 
@@ -123,7 +123,7 @@ Implementation requirements:
 - `ImageOcrResult.rawOutput` includes `ocr_provider=ollama`, `ocr_format=markdown`, `ocr_model=<model>`.
 - Empty response throws `IllegalStateException("Ollama OCR returned empty response")`.
 
-- [ ] **Step 4: Route Ollama nodes from node executor**
+- [x] **Step 4: Route Ollama nodes from node executor**
 
 In `PaddleOcrNodeImageExecutor.recognizeByDeployment`, add a narrow branch:
 
@@ -133,7 +133,7 @@ In `PaddleOcrNodeImageExecutor.recognizeByDeployment`, add a narrow branch:
 
 If the file becomes too broad, rename in a later refactor task. Do not combine broad rename with the first protocol task.
 
-- [ ] **Step 5: Run GREEN and broader compile**
+- [x] **Step 5: Run GREEN and broader compile**
 
 Run:
 
@@ -144,7 +144,7 @@ mvn -pl doclens-spring-boot-starter -DskipTests compile
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 Run code-review-spec before committing.
 

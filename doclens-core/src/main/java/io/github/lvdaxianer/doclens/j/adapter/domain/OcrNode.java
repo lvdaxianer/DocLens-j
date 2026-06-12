@@ -104,7 +104,7 @@ public record OcrNode(
         host = OcrNodeNormalization.normalizeHost(deploymentType, host);
         port = OcrNodeNormalization.normalizePort(deploymentType, port);
         channelKey = OcrNodeNormalization.normalizeChannel(deploymentType, channelKey);
-        providerModel = OcrNodeNormalization.normalizeProviderModel(deploymentType, providerModel);
+        providerModel = OcrNodeNormalization.normalizeProviderModel(deploymentType, channelKey, providerModel);
         credentialRef = OcrNodeNormalization.normalize(credentialRef);
         credentialConfigured = credentialConfigured || credentialRef.isPresent();
         OcrNodeNormalization.validatePositive(weight, "ocr node weight must be greater than 0");

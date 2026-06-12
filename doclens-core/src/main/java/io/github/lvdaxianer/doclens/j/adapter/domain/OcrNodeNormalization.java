@@ -13,6 +13,7 @@ final class OcrNodeNormalization {
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65535;
     private static final String ALIYUN_BAILIAN_DASHSCOPE = "aliyun_bailian_dashscope";
+    private static final String OLLAMA_CHANNEL_KEY = "ollama";
 
     /**
      * 禁止实例化 OCR 节点标准化工具。
@@ -90,8 +91,11 @@ final class OcrNodeNormalization {
             String normalizedChannel = requiredText(optionalText(channelKey), "ocr online channel key is required");
             validateSupportedChannel(normalizedChannel);
             return Optional.of(normalizedChannel);
+        } else if (isOllamaChannel(channelKey)) {
+            // Ollama 是内网离线部署，但仍需要渠道标识选择 generate 协议。
+            return Optional.of(OLLAMA_CHANNEL_KEY);
         } else {
-            // 离线节点不允许残留在线渠道，避免混合路由。
+            // 普通离线 Paddle 节点不保留渠道，避免误走在线或 Ollama 协议。
             return Optional.empty();
         }
     }
@@ -100,20 +104,25 @@ final class OcrNodeNormalization {
      * 按部署类型标准化在线模型名称。
      *
      * @param deploymentType 节点部署类型
+     * @param channelKey 已标准化渠道标识
      * @param providerModel 在线模型名称
      * @return 标准化后的在线模型名称
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-12
      */
     static Optional<String> normalizeProviderModel(
             OcrNodeDeploymentType deploymentType,
+            Optional<String> channelKey,
             Optional<String> providerModel
     ) {
         if (deploymentType == OcrNodeDeploymentType.ONLINE) {
             // 在线节点必须保留供应商模型名称供请求构造使用。
             return Optional.of(requiredText(optionalText(providerModel), "ocr online provider model is required"));
+        } else if (isOllamaChannel(channelKey)) {
+            // Ollama 离线节点需要保留真实模型名，如 deepseek-ocr:latest。
+            return Optional.of(requiredText(optionalText(providerModel), "ollama ocr provider model is required"));
         } else {
-            // 离线节点不需要供应商模型，统一清空。
+            // 普通离线 Paddle 节点不需要供应商模型，统一清空。
             return Optional.empty();
         }
     }
@@ -237,4 +246,17 @@ final class OcrNodeNormalization {
     private static String optionalText(Optional<String> value) {
         return value == null ? "" : value.orElse("");
     }
+
+    /**
+     * 判断是否为 Ollama 渠道。
+     *
+     * @param channelKey 渠道标识
+     * @return 是否为 Ollama 渠道
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private static boolean isOllamaChannel(Optional<String> channelKey) {
+        return normalize(channelKey).filter(OLLAMA_CHANNEL_KEY::equals).isPresent();
+    }
+
 }

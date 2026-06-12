@@ -51,14 +51,16 @@ class PaddleOcrNodeImageExecutorTest {
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable,
                 "doclens-ocr-request-test-1"));
         RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient();
-        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool, client,
-                new PaddleOcrNativeResponseMapper(new ObjectMapper()), onlineClient, executor);
+        RecordingOllamaOcrClient ollamaClient = new RecordingOllamaOcrClient();
+        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool,
+                protocolClients(client, onlineClient, ollamaClient), executor);
 
         nodeExecutor.recognize(view(node), request());
         executor.shutdownNow();
 
         assertThat(client.threadName()).hasValue("doclens-ocr-request-test-1");
         assertThat(onlineClient.called()).isFalse();
+        assertThat(ollamaClient.called()).isFalse();
     }
 
     /**
@@ -73,17 +75,46 @@ class PaddleOcrNodeImageExecutorTest {
         OcrRuntimeNodePool nodePool = nodePool(node);
         RecordingPaddleOcrNativeClient paddleClient = new RecordingPaddleOcrNativeClient();
         RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient();
+        RecordingOllamaOcrClient ollamaClient = new RecordingOllamaOcrClient();
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable,
                 "doclens-ocr-request-online-test-1"));
-        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool, paddleClient,
-                new PaddleOcrNativeResponseMapper(new ObjectMapper()), onlineClient, executor);
+        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool,
+                protocolClients(paddleClient, onlineClient, ollamaClient), executor);
 
         ImageOcrResult result = nodeExecutor.recognize(view(node), request());
         executor.shutdownNow();
 
         assertThat(paddleClient.threadName()).isEmpty();
         assertThat(onlineClient.threadName()).hasValue("doclens-ocr-request-online-test-1");
+        assertThat(ollamaClient.called()).isFalse();
         assertThat(result.pageText()).first().extracting("text").isEqualTo("在线识别文本");
+    }
+
+    /**
+     * Ollama 节点应走 Ollama generate 客户端，不误入 PaddleOCR 原生接口。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void recognizesOllamaNodeThroughOllamaClient() {
+        OcrNode node = ollamaNode();
+        OcrRuntimeNodePool nodePool = nodePool(node);
+        RecordingPaddleOcrNativeClient paddleClient = new RecordingPaddleOcrNativeClient();
+        RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient();
+        RecordingOllamaOcrClient ollamaClient = new RecordingOllamaOcrClient();
+        ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable,
+                "doclens-ocr-request-ollama-test-1"));
+        PaddleOcrNodeImageExecutor nodeExecutor = new PaddleOcrNodeImageExecutor(nodePool,
+                protocolClients(paddleClient, onlineClient, ollamaClient), executor);
+
+        ImageOcrResult result = nodeExecutor.recognize(view(node), request());
+        executor.shutdownNow();
+
+        assertThat(paddleClient.threadName()).isEmpty();
+        assertThat(onlineClient.called()).isFalse();
+        assertThat(ollamaClient.threadName()).hasValue("doclens-ocr-request-ollama-test-1");
+        assertThat(result.pageText()).first().extracting("text").isEqualTo("# Ollama Markdown");
     }
 
     /**
@@ -147,6 +178,38 @@ class PaddleOcrNodeImageExecutorTest {
         return OcrNode.create(new OcrNodeCreateRequest("node-online", "paddle_ocr", OcrNodeDeploymentType.ONLINE,
                 "在线节点", "", 0, "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", "sk-test", true,
                 true, true, 100, 4, BASE_TIME));
+    }
+
+    /**
+     * 创建 Ollama OCR 节点。
+     *
+     * @return Ollama OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrNode ollamaNode() {
+        return OcrNode.create(new OcrNodeCreateRequest("node-ollama", "ollama_deepseek_ocr",
+                OcrNodeDeploymentType.OFFLINE, "Ollama OCR", "127.0.0.1", 11434, "ollama",
+                "deepseek-ocr:latest", "", false, true, true, 100, 4, BASE_TIME));
+    }
+
+    /**
+     * 创建 OCR 协议客户端集合。
+     *
+     * @param paddleClient PaddleOCR 客户端
+     * @param onlineClient 在线 OCR 客户端
+     * @param ollamaClient Ollama OCR 客户端
+     * @return OCR 协议客户端集合
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrNodeProtocolClients protocolClients(
+            RecordingPaddleOcrNativeClient paddleClient,
+            RecordingDashScopeOnlineOcrClient onlineClient,
+            RecordingOllamaOcrClient ollamaClient
+    ) {
+        return new OcrNodeProtocolClients(paddleClient, new PaddleOcrNativeResponseMapper(new ObjectMapper()),
+                onlineClient, ollamaClient);
     }
 
     /**
@@ -318,6 +381,59 @@ class PaddleOcrNodeImageExecutorTest {
          * @return 调用线程名
          * @author lvdaxianerplus
          * @date 2026-06-09
+         */
+        Optional<String> threadName() {
+            return Optional.ofNullable(threadName.get());
+        }
+    }
+
+    /**
+     * 记录调用线程的 Ollama OCR 客户端。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private static class RecordingOllamaOcrClient extends OllamaOcrClient {
+
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+        private final AtomicReference<String> threadName = new AtomicReference<>();
+
+        /**
+         * 创建记录调用线程的 Ollama OCR 客户端。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        RecordingOllamaOcrClient() {
+            super(OBJECT_MAPPER, Duration.ofSeconds(TEST_TIMEOUT_SECONDS));
+        }
+
+        @Override
+        public ImageOcrResult recognizeImage(OcrRuntimeNode node, ImageOcrRequest request) {
+            threadName.set(Thread.currentThread().getName());
+            return ImageOcrResult.fromBlocks(request.pageNo(), Map.of("ocr_provider", "ollama"),
+                    List.of(new OcrBlock(request.pageNo(), "# Ollama Markdown", 1D, List.of(), List.of(), "ollama")),
+                    List.of());
+        }
+
+        /**
+         * 返回是否被调用。
+         *
+         * @return 是否被调用
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        boolean called() {
+            return threadName.get() != null;
+        }
+
+        /**
+         * 返回记录到的调用线程名。
+         *
+         * @return 调用线程名
+         * @author lvdaxianerplus
+         * @date 2026-06-12
          */
         Optional<String> threadName() {
             return Optional.ofNullable(threadName.get());

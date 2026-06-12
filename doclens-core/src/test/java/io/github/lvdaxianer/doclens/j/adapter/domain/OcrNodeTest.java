@@ -60,6 +60,22 @@ class OcrNodeTest {
     }
 
     /**
+     * Ollama 离线节点需要保留协议渠道和供应商模型名称，用于构造 /api/generate 请求。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void ollamaOfflineNodeKeepsChannelAndProviderModel() {
+        OcrNode node = OcrNode.create(new OcrNodeCreateRequest("node_ollama", "ollama_deepseek_ocr",
+                OcrNodeDeploymentType.OFFLINE, "ollama-1", "10.100.30.215", 11434,
+                "ollama", "deepseek-ocr:latest", "", false, true, true, 100, 4, BASE_TIME));
+
+        assertThat(node.channelKey()).contains("ollama");
+        assertThat(node.providerModel()).contains("deepseek-ocr:latest");
+    }
+
+    /**
      * 创建指定端口的测试请求。
      *
      * @param port OCR 节点端口

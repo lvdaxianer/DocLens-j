@@ -6,6 +6,8 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.DashScopeOnlineOcrC
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeBootstrapper;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OllamaOcrClient;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrNodeProtocolClients;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeAdapter;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrNativeClient;
@@ -99,28 +101,62 @@ public class DocLensPaddleOcrAutoConfiguration {
     }
 
     /**
-     * 创建 PaddleOCR 节点执行器。
+     * 创建 Ollama OCR 客户端。
      *
-     * @param nodePool OCR 运行时节点池
+     * @param objectMapper Jackson 映射器
+     * @param properties DocLens 配置
+     * @return Ollama OCR 客户端
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OllamaOcrClient ollamaOcrClient(ObjectMapper objectMapper, DocLensProperties properties) {
+        return new OllamaOcrClient(objectMapper,
+                Duration.ofSeconds(Math.max(MIN_HTTP_TIMEOUT_SECONDS, properties.paddleOcr().timeoutSeconds())));
+    }
+
+    /**
+     * 创建 OCR 节点协议客户端集合。
+     *
      * @param client PaddleOCR 客户端
      * @param responseMapper PaddleOCR 响应映射器
      * @param onlineClient 在线 OCR 客户端
+     * @param ollamaClient Ollama OCR 客户端
+     * @return OCR 节点协议客户端集合
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrNodeProtocolClients ocrNodeProtocolClients(
+            PaddleOcrNativeClient client,
+            PaddleOcrNativeResponseMapper responseMapper,
+            DashScopeOnlineOcrClient onlineClient,
+            OllamaOcrClient ollamaClient
+    ) {
+        return new OcrNodeProtocolClients(client, responseMapper, onlineClient, ollamaClient);
+    }
+
+    /**
+     * 创建 PaddleOCR 节点执行器。
+     *
+     * @param nodePool OCR 运行时节点池
+     * @param protocolClients OCR 协议客户端集合
      * @param ocrRequestExecutor OCR 请求线程池
      * @return OCR 节点执行器
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-12
      */
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "doclens.paddle-ocr", name = "enabled", havingValue = "true", matchIfMissing = true)
     OcrNodeImageExecutor paddleOcrNodeImageExecutor(
             OcrRuntimeNodePool nodePool,
-            PaddleOcrNativeClient client,
-            PaddleOcrNativeResponseMapper responseMapper,
-            DashScopeOnlineOcrClient onlineClient,
+            OcrNodeProtocolClients protocolClients,
             @Qualifier("doclensOcrRequestExecutor") ExecutorService ocrRequestExecutor
     ) {
-        return new PaddleOcrNodeImageExecutor(nodePool, client, responseMapper, onlineClient, ocrRequestExecutor);
+        return new PaddleOcrNodeImageExecutor(nodePool, protocolClients, ocrRequestExecutor);
     }
 
     /**

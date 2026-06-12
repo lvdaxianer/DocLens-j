@@ -20,35 +20,29 @@ import org.slf4j.LoggerFactory;
 public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PaddleOcrNodeImageExecutor.class);
+    private static final String OLLAMA_CHANNEL_KEY = "ollama";
+    private static final String OLLAMA_MODEL_PREFIX = "ollama";
 
     private final OcrRuntimeNodePool nodePool;
-    private final PaddleOcrNativeClient client;
-    private final PaddleOcrNativeResponseMapper responseMapper;
-    private final DashScopeOnlineOcrClient onlineClient;
+    private final OcrNodeProtocolClients protocolClients;
     private final ExecutorService ocrRequestExecutor;
 
     /**
      * 创建 PaddleOCR 节点图片识别执行器。
      *
      * @param nodePool OCR 运行时节点池
-     * @param client PaddleOCR 客户端
-     * @param responseMapper PaddleOCR 响应映射器
-     * @param onlineClient 在线 OCR 客户端
+     * @param protocolClients OCR 协议客户端集合
      * @param ocrRequestExecutor OCR 请求线程池
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-12
      */
     public PaddleOcrNodeImageExecutor(
             OcrRuntimeNodePool nodePool,
-            PaddleOcrNativeClient client,
-            PaddleOcrNativeResponseMapper responseMapper,
-            DashScopeOnlineOcrClient onlineClient,
+            OcrNodeProtocolClients protocolClients,
             ExecutorService ocrRequestExecutor
     ) {
         this.nodePool = nodePool;
-        this.client = client;
-        this.responseMapper = responseMapper;
-        this.onlineClient = onlineClient;
+        this.protocolClients = protocolClients;
         this.ocrRequestExecutor = ocrRequestExecutor;
     }
 
@@ -88,9 +82,31 @@ public class PaddleOcrNodeImageExecutor implements OcrNodeImageExecutor {
      */
     private ImageOcrResult recognizeByDeployment(OcrRuntimeNode runtimeNode, ImageOcrRequest request) {
         if (runtimeNode.node().deploymentType() == OcrNodeDeploymentType.ONLINE) {
-            return onlineClient.recognizeImage(runtimeNode, request);
+            // 在线托管 OCR 走 DashScope compatible 协议。
+            return protocolClients.onlineClient().recognizeImage(runtimeNode, request);
+        } else if (isOllamaNode(runtimeNode)) {
+            // Ollama DeepSeek-OCR 节点走 /api/generate 协议。
+            return protocolClients.ollamaClient().recognizeImage(runtimeNode, request);
         } else {
-            return responseMapper.map(request.pageNo(), client.recognizeImage(runtimeNode, request.imageContent()));
+            // 其他离线节点保持 PaddleOCR 原生 /ocr 协议。
+            return protocolClients.paddleResponseMapper().map(request.pageNo(),
+                    protocolClients.paddleClient().recognizeImage(runtimeNode, request.imageContent()));
+        }
+    }
+
+    /**
+     * 判断节点是否为 Ollama OCR 节点。
+     *
+     * @param runtimeNode OCR 运行时节点
+     * @return 是否 Ollama OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private boolean isOllamaNode(OcrRuntimeNode runtimeNode) {
+        if (runtimeNode.node().channelKey().filter(OLLAMA_CHANNEL_KEY::equals).isPresent()) {
+            return true;
+        } else {
+            return runtimeNode.node().modelKey().startsWith(OLLAMA_MODEL_PREFIX);
         }
     }
 
