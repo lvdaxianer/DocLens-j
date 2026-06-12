@@ -658,7 +658,7 @@ feat(llm): 支持多 LLM 配置持久化
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/LlmConfigSelectorTest.java`
 - Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/ConfigurableMarkdownPostProcessorTest.java`
 
-- [ ] **Step 1: Write RED selector tests**
+- [x] **Step 1: Write RED selector tests**
 
 Test cases:
 
@@ -667,7 +667,7 @@ Test cases:
 - If no enabled healthy config exists, return empty.
 - If no config exists, return empty without exception.
 
-- [ ] **Step 2: Write RED post processor test**
+- [x] **Step 2: Write RED post processor test**
 
 Test:
 
@@ -677,7 +677,7 @@ Test:
 - Result reason is `no_available_llm_config`.
 - No exception is thrown.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -688,7 +688,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=ConfigurableMarkdownPostProcessorTest
 
 Expected: FAIL.
 
-- [ ] **Step 4: Implement selector and graceful fallback**
+- [x] **Step 4: Implement selector and graceful fallback**
 
 Rules:
 
@@ -697,7 +697,7 @@ Rules:
 - No LLM config must not affect OCR, batch status, document status, or result persistence.
 - Health checker list is empty when no configs exist and must not log warnings.
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run:
 
@@ -708,7 +708,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=ConfigurableMarkdownPostProcessorTest
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 Commit subject:
 

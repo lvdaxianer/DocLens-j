@@ -6,6 +6,8 @@ import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTe
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -16,8 +18,6 @@ import java.util.function.Supplier;
  * @date 2026-06-10
  */
 public class LlmMarkdownHealthChecker {
-
-    private static final String UNCONFIGURED_MESSAGE = "LLM Markdown config is not configured";
 
     private final LlmMarkdownConfigRepository configRepository;
     private final LlmMarkdownConfigTester configTester;
@@ -65,14 +65,37 @@ public class LlmMarkdownHealthChecker {
      * @date 2026-06-10
      */
     public Optional<LlmMarkdownConfig> checkOnce() {
-        Optional<LlmMarkdownConfig> current = configRepository.find();
-        if (current.isPresent() && current.get().isEnabled()) {
-            return Optional.of(updateCheckedConfig(current.get()));
+        List<LlmMarkdownConfig> configs = configRepository.listConfigs();
+        if (configs.isEmpty()) {
+            // 未配置任何 LLM 时健康检查空跑，不写失败状态。
+            return Optional.empty();
         } else {
-            current.ifPresent(config -> configRepository.updateHealth(
-                    config.updateHealth(false, UNCONFIGURED_MESSAGE, nowSupplier.get())));
-            return current;
+            // 有配置时批量检查所有已配置项，未配置占位项不写错误日志。
+            return checkConfigured(configs);
         }
+    }
+
+    /**
+     * 批量检查已配置的 LLM 配置。
+     *
+     * @param configs 配置列表
+     * @return 本轮第一条更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private Optional<LlmMarkdownConfig> checkConfigured(List<LlmMarkdownConfig> configs) {
+        List<LlmMarkdownConfig> updatedConfigs = new ArrayList<>(configs.size());
+        for (LlmMarkdownConfig config : configs) {
+            if (config.isConfigured()) {
+                // 已配置 URL 和模型时执行健康检查。
+                updatedConfigs.add(checkedConfig(config));
+            } else {
+                // 未配置占位项保持原状态，避免刷错误健康消息。
+                updatedConfigs.add(config);
+            }
+        }
+        configRepository.saveAll(updatedConfigs);
+        return updatedConfigs.stream().findFirst();
     }
 
     /**
@@ -83,12 +106,10 @@ public class LlmMarkdownHealthChecker {
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private LlmMarkdownConfig updateCheckedConfig(LlmMarkdownConfig config) {
+    private LlmMarkdownConfig checkedConfig(LlmMarkdownConfig config) {
         LlmMarkdownConfigTestResponse response = configTester.test(new LlmMarkdownConfigSettings(
                 config.apiType().value(), config.url(), config.model(), config.credentialValue()));
-        LlmMarkdownConfig updated = config.updateHealth(response.healthy(), healthMessage(response), nowSupplier.get());
-        configRepository.updateHealth(updated);
-        return updated;
+        return config.updateHealth(response.healthy(), healthMessage(response), nowSupplier.get());
     }
 
     /**

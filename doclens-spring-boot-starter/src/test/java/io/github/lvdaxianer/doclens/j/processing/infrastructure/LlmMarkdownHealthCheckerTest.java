@@ -83,6 +83,24 @@ class LlmMarkdownHealthCheckerTest {
     }
 
     /**
+     * 没有任何 LLM 配置时健康检查应空跑。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void checkReturnsEmptyWhenNoConfigExists() {
+        InMemoryConfigRepository repository = new InMemoryConfigRepository(null);
+        RecordingTester tester = new RecordingTester();
+        LlmMarkdownHealthChecker checker = new LlmMarkdownHealthChecker(repository, tester, () -> CHECKED_AT);
+
+        Optional<LlmMarkdownConfig> checked = checker.checkOnce();
+
+        assertThat(checked).isEmpty();
+        assertThat(tester.settings).isNull();
+    }
+
+    /**
      * 创建测试配置。
      *
      * @return LLM Markdown 配置
@@ -115,11 +133,37 @@ class LlmMarkdownHealthCheckerTest {
             this.config = config;
         }
 
+        /**
+         * 查询当前测试配置。
+         *
+         * @return 当前测试配置
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
         @Override
         public Optional<LlmMarkdownConfig> find() {
             return Optional.ofNullable(config);
         }
 
+        /**
+         * 查询全部测试配置。
+         *
+         * @return 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public List<LlmMarkdownConfig> listConfigs() {
+            return config == null ? List.of() : List.of(config);
+        }
+
+        /**
+         * 保存测试配置。
+         *
+         * @param config LLM Markdown 配置
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
         @Override
         public void save(LlmMarkdownConfig config) {
             this.config = config;
@@ -151,6 +195,14 @@ class LlmMarkdownHealthCheckerTest {
 
         private LlmMarkdownConfigSettings settings;
 
+        /**
+         * 记录健康测试请求并返回成功。
+         *
+         * @param settings LLM Markdown 测试配置
+         * @return 连通成功响应
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
         @Override
         public LlmMarkdownConfigTestResponse test(LlmMarkdownConfigSettings settings) {
             this.settings = settings;

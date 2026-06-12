@@ -10,10 +10,12 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcess
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 class ConfigurableMarkdownPostProcessorTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final OffsetDateTime CHECKED_AT = OffsetDateTime.parse("2026-06-12T12:00:00+08:00");
 
     /**
      * 存在数据库配置时应优先使用运行时配置调用 LLM。
@@ -40,8 +43,8 @@ class ConfigurableMarkdownPostProcessorTest {
     void usesRuntimeConfigBeforeFallbackProcessor() throws Exception {
         try (MockLlmServer server = MockLlmServer.start()) {
             LlmMarkdownConfig config = LlmMarkdownConfig.configured(
-                    "default",
-                    server.endpoint().toString(), "runtime-model", "sk-runtime");
+                    "default", server.endpoint().toString(), "runtime-model", "sk-runtime")
+                    .updateHealth(true, "", CHECKED_AT);
             ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
                     new FixedConfigRepository(config), new FallbackProcessor("fallback text"));
 
@@ -54,19 +57,21 @@ class ConfigurableMarkdownPostProcessorTest {
     }
 
     /**
-     * 没有数据库配置时应使用自动配置兜底处理器。
+     * 没有数据库配置时应直通 OCR 原文。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-12
      */
     @Test
-    void usesFallbackProcessorWhenRuntimeConfigIsAbsent() {
+    void returnsOriginalOcrTextWhenRuntimeConfigIsAbsent() {
         ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
                 new FixedConfigRepository(null), new FallbackProcessor("fallback text"));
 
         MarkdownPostProcessingResult result = processor.process(request());
 
-        assertThat(result.markdown()).isEqualTo("fallback text");
+        assertThat(result.markdown()).isEqualTo("OCR 文本");
+        assertThat(result.markdownApplied()).isFalse();
+        assertThat(result.warnings()).contains("no_available_llm_config");
     }
 
     /**
@@ -119,6 +124,22 @@ class ConfigurableMarkdownPostProcessorTest {
         @Override
         public Optional<LlmMarkdownConfig> find() {
             return Optional.ofNullable(config);
+        }
+
+        /**
+         * 按用途查询配置。
+         *
+         * @param usageType 配置用途
+         * @return 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public List<LlmMarkdownConfig> listByUsage(LlmUsageType usageType) {
+            return Optional.ofNullable(config)
+                    .filter(current -> current.usageType() == usageType)
+                    .stream()
+                    .toList();
         }
 
         /**

@@ -38,6 +38,19 @@ public record MarkdownPostProcessingResult(String markdown, List<String> warning
     }
 
     /**
+     * 创建带原因的未启用 LLM 直通结果。
+     *
+     * @param markdown 直通文本
+     * @param reason 直通原因
+     * @return 未应用 LLM 的结果
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public static MarkdownPostProcessingResult passthrough(String markdown, String reason) {
+        return new MarkdownPostProcessingResult(markdown, List.of(reason), false);
+    }
+
+    /**
      * 规整可空 Markdown 和警告集合。
      *
      * @author lvdaxianerplus
