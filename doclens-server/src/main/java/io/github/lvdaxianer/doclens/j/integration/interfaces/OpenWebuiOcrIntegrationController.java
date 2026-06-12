@@ -2,15 +2,12 @@ package io.github.lvdaxianer.doclens.j.integration.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Open WebUI OCR 集成适配器控制器。
@@ -22,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/integrations/open-webui/ocr")
 public class OpenWebuiOcrIntegrationController {
 
-    private static final String FILES_PARAM = "files";
     private static final String METADATA_PARAM = "metadata";
     private static final String IDEMPOTENCY_KEY_PARAM = "idempotency_key";
 
@@ -60,7 +56,6 @@ public class OpenWebuiOcrIntegrationController {
     /**
      * 创建 Open WebUI OCR 批次。
      *
-     * @param files 上传文件集合
      * @param request HTTP 请求
      * @return Open WebUI 创建响应
      * @author lvdaxianerplus
@@ -68,13 +63,10 @@ public class OpenWebuiOcrIntegrationController {
      */
     @PostMapping("/batches")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public Map<String, Object> createBatch(
-            @RequestParam(FILES_PARAM) List<MultipartFile> files,
-            HttpServletRequest request
-    ) {
+    public Map<String, Object> createBatch(HttpServletRequest request) {
         OpenWebuiIdentity identity = authGuard.requireIdentity(request);
         OpenWebuiMetadata metadata = metadataMapper.toMetadata(request.getParameter(METADATA_PARAM), identity,
                 request.getParameter(IDEMPOTENCY_KEY_PARAM));
-        return responseMapper.createdBatch(docLensEngine.createBatch(requestMapper.toRequest(files, request, metadata)));
+        return responseMapper.createdBatch(docLensEngine.createBatch(requestMapper.toRequest(request, metadata)));
     }
 }

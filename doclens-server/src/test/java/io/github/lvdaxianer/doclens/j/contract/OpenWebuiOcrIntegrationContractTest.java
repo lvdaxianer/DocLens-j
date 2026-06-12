@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,6 +38,21 @@ class OpenWebuiOcrIntegrationContractTest extends OpenWebuiOcrIntegrationContrac
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED_INTERNAL_CALLER"))
                 .andExpect(jsonPath("$.message").value("unauthorized internal caller"))
                 .andExpect(jsonPath("$.details").isMap());
+    }
+
+    /**
+     * 验证非 multipart 创建请求也会先执行内部 token 鉴权。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void openWebuiCreateBatchRejectsPlainPostBeforeMultipartParsing() throws Exception {
+        mockMvc.perform(post(OPENWEBUI_BATCHES_PATH))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED_INTERNAL_CALLER"))
+                .andExpect(jsonPath("$.message").value("unauthorized internal caller"));
     }
 
     /**

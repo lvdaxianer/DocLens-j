@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 /**
  * Open WebUI OCR 创建批次请求映射器。
@@ -25,26 +26,41 @@ public class OpenWebuiCreateBatchRequestMapper {
     private static final String IDEMPOTENCY_KEY_PARAM = "idempotency_key";
     private static final String ADAPTER_OVERRIDE_PARAM = "adapter_override";
     private static final String PDF_MODE_PARAM = "pdf_mode";
+    private static final String FILES_PARAM = "files";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
     /**
      * 将 Open WebUI multipart 请求转换为 DocLens 创建请求。
      *
-     * @param files 上传文件集合
      * @param request HTTP 请求
      * @param metadata Open WebUI metadata
      * @return DocLens 创建批次请求
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    public CreateBatchRequest toRequest(
-            List<MultipartFile> files,
-            HttpServletRequest request,
-            OpenWebuiMetadata metadata
-    ) {
+    public CreateBatchRequest toRequest(HttpServletRequest request, OpenWebuiMetadata metadata) {
+        List<MultipartFile> files = extractFiles(request);
         return new CreateBatchRequest(toDocumentInputs(files), metadata.values(), request.getParameter(CALLBACK_URL_PARAM),
                 request.getParameter(IDEMPOTENCY_KEY_PARAM), request.getParameter(ADAPTER_OVERRIDE_PARAM),
                 request.getParameter(PDF_MODE_PARAM));
+    }
+
+    /**
+     * 从已鉴权请求中提取上传文件集合。
+     *
+     * @param request HTTP 请求
+     * @return 上传文件集合
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private List<MultipartFile> extractFiles(HttpServletRequest request) {
+        if (request instanceof MultipartHttpServletRequest multipartRequest) {
+            // 请求已通过鉴权且为 multipart 时读取文件字段。
+            return multipartRequest.getFiles(FILES_PARAM);
+        } else {
+            // 非 multipart 请求视为参数错误，而不是绕过鉴权返回框架级 500。
+            return List.of();
+        }
     }
 
     /**

@@ -60,52 +60,11 @@
 
 - [x] **Step 1: Write RED unauthorized test**
 
-Add `OpenWebuiOcrIntegrationContractTest` with `@SpringBootTest`, `@AutoConfigureMockMvc`, isolated H2/storage properties, and:
-
-```java
-@Test
-void openWebuiCreateBatchRejectsMissingInternalToken() throws Exception {
-    mockMvc.perform(multipart("/api/v1/integrations/open-webui/ocr/batches")
-                    .file(openwebuiFile())
-                    .param("metadata", openwebuiMetadata())
-                    .param("idempotency_key", openwebuiIdempotencyKey())
-                    .param("pdf_mode", "page_image_fallback"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.code").value("UNAUTHORIZED_INTERNAL_CALLER"))
-            .andExpect(jsonPath("$.message").value("unauthorized internal caller"))
-            .andExpect(jsonPath("$.details").isMap());
-}
-```
+Add `OpenWebuiOcrIntegrationContractTest` with isolated H2/storage properties and verify missing token returns 401 with `UNAUTHORIZED_INTERNAL_CALLER`.
 
 - [x] **Step 2: Write RED create success test**
 
-Add:
-
-```java
-@Test
-void openWebuiCreateBatchMapsIdentityMetadataAndFiles() throws Exception {
-    MvcResult created = mockMvc.perform(multipart("/api/v1/integrations/open-webui/ocr/batches")
-                    .file(openwebuiFile())
-                    .header("Authorization", "Bearer test-openwebui-token")
-                    .header("X-OpenWebUI-User-Id", "user_123")
-                    .header("X-OpenWebUI-User-Email", "user@example.com")
-                    .header("X-OpenWebUI-User-Role", "admin")
-                    .header("X-OpenWebUI-Request-Id", "req_123")
-                    .param("metadata", openwebuiMetadata())
-                    .param("idempotency_key", openwebuiIdempotencyKey())
-                    .param("pdf_mode", "page_image_fallback"))
-            .andExpect(status().isAccepted())
-            .andExpect(jsonPath("$.batch_id").value(org.hamcrest.Matchers.startsWith("batch_")))
-            .andExpect(jsonPath("$.status").value("queued"))
-            .andExpect(jsonPath("$.documents[0].document_id").value(org.hamcrest.Matchers.startsWith("doc_")))
-            .andExpect(jsonPath("$.documents[0].filename").value("demo.pdf"))
-            .andExpect(jsonPath("$.documents[0].content_type").value("application/pdf"))
-            .andExpect(jsonPath("$.documents[0].status").value("queued"))
-            .andReturn();
-    JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
-    assertThat(body.get("created_at").asText()).isNotBlank();
-}
-```
+Add a create success contract test with bearer token, Open WebUI user/request headers, metadata, idempotency key, and response assertions for batch id, queued status, document id, filename, content type, and `created_at`.
 
 Set `doclens.integrations.open-webui.internal-token=test-openwebui-token` in `DynamicPropertySource`.
 
@@ -173,60 +132,11 @@ Commit subject:
 
 - [x] **Step 1: Write RED query chain test**
 
-Add one contract test that creates a batch, waits for completion through adapter status endpoint, then asserts:
-
-```java
-mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/batches/{batchId}", batchId)
-                .header("Authorization", "Bearer test-openwebui-token")
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.batch_id").value(batchId))
-        .andExpect(jsonPath("$.status").value("completed"))
-        .andExpect(jsonPath("$.total_documents").value(1))
-        .andExpect(jsonPath("$.completed_documents").value(1))
-        .andExpect(jsonPath("$.documents[0].filename").value("demo.pdf"));
-
-mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/documents/{documentId}", documentId)
-                .header("Authorization", "Bearer test-openwebui-token")
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.document_id").value(documentId))
-        .andExpect(jsonPath("$.filename").value("demo.pdf"))
-        .andExpect(jsonPath("$.content_type").value("application/pdf"))
-        .andExpect(jsonPath("$.page_count").value(1))
-        .andExpect(jsonPath("$.completed_pages").value(1));
-```
+Add one contract test that creates a batch, waits for completion through adapter status endpoint, then asserts batch status fields and document status fields through adapter-prefixed query endpoints.
 
 - [x] **Step 2: Write RED result/events/retry/health tests**
 
-Add assertions:
-
-```java
-mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/documents/{documentId}/result", documentId)
-                .header("Authorization", "Bearer test-openwebui-token")
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content_type").value("text/markdown"))
-        .andExpect(jsonPath("$.text").value("# Demo\ncontent"))
-        .andExpect(jsonPath("$.metadata.openwebui_user_id").value("user_123"));
-
-mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/batches/{batchId}/events", batchId)
-                .header("Authorization", "Bearer test-openwebui-token")
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.events").isArray());
-
-mockMvc.perform(get("/api/v1/integrations/open-webui/ocr/health"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("UP"))
-        .andExpect(jsonPath("$.service").value("doclens-j"));
-```
-
-For retry, insert or create a failed document using existing support if needed and assert adapter returns `status=queued`, `stage=QUEUED`, null error fields.
+Add result, events, retry, and health assertions: result returns markdown text plus metadata, events returns an array, retry resets failed document state to queued, and health returns `UP` for `doclens-j`.
 
 - [x] **Step 3: Run RED**
 
@@ -294,7 +204,7 @@ Commit subject:
 - Modify: `docs/integrations/open-webui-ocr-contract.md`
 - Modify: `docs/superpowers/plans/2026-06-12-open-webui-ocr-integration-adapter.md`
 
-- [ ] **Step 1: Update contract path section**
+- [x] **Step 1: Update contract path section**
 
 Update the integration contract to document adapter-prefixed paths while preserving the original native endpoint semantics note:
 
@@ -303,7 +213,7 @@ Open WebUI should call /api/v1/integrations/open-webui/ocr/*.
 DocLens native /api/v1/* endpoints remain available for first-party callers.
 ```
 
-- [ ] **Step 2: Run documentation diff check**
+- [x] **Step 2: Run documentation diff check**
 
 Run:
 
@@ -314,7 +224,7 @@ git diff --check
 
 Expected: PASS.
 
-- [ ] **Step 3: Full verification**
+- [x] **Step 3: Full verification**
 
 Run:
 
@@ -325,7 +235,7 @@ git diff --check
 
 Expected: PASS.
 
-- [ ] **Step 4: Manual smoke with running dev services**
+- [x] **Step 4: Manual smoke with running dev services**
 
 Run:
 
@@ -340,7 +250,7 @@ Expected:
 - Health returns `status=UP`.
 - Missing token create call returns 401 JSON with `UNAUTHORIZED_INTERNAL_CALLER`.
 
-- [ ] **Step 5: code-review-spec final gate**
+- [x] **Step 5: code-review-spec final gate**
 
 Review full change:
 
@@ -350,12 +260,12 @@ Review full change:
 - Contract doc and tests agree on endpoint prefix.
 - No unrelated dirty files are staged.
 
-- [ ] **Step 6: Mark task complete and commit**
+- [x] **Step 6: Mark task complete and commit**
 
 Commit subject:
 
 ```text
-📝 docs(integration): 对齐 Open WebUI 适配契约
+🐛 fix(integration): 修复 Open WebUI 创建鉴权顺序
 ```
 
 ---
