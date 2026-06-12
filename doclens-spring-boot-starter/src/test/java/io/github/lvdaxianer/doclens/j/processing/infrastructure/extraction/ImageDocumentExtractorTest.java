@@ -6,7 +6,9 @@ import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSe
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
+import io.github.lvdaxianer.doclens.j.adapter.application.InMemoryOcrDocumentAffinityTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrDocumentAffinityTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequest;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequestQueue;
@@ -64,7 +66,8 @@ class ImageDocumentExtractorTest {
         InMemoryNodeProvider nodeProvider = new InMemoryNodeProvider();
         RecordingNodeExecutor nodeExecutor = new RecordingNodeExecutor();
         InMemoryCallRepository callRepository = new InMemoryCallRepository();
-        OcrRoutingService routingService = routingService(nodeProvider, nodeExecutor, callRepository);
+        OcrDocumentAffinityTracker affinityTracker = new InMemoryOcrDocumentAffinityTracker();
+        OcrRoutingService routingService = routingService(nodeProvider, nodeExecutor, callRepository, affinityTracker);
         ImageDocumentExtractor extractor = new ImageDocumentExtractor(adapterRegistry(), routingService);
 
         DocumentTextExtractionResult result = extractor.extract(extractionRequest());
@@ -75,6 +78,7 @@ class ImageDocumentExtractorTest {
         assertThat(callRepository.calls).hasSize(1);
         assertThat(callRepository.calls.getFirst().routingMode()).isEqualTo(OcrRoutingMode.SPECIFIC_NODE);
         assertThat(callRepository.calls.getFirst().nodeId()).isEqualTo(NODE_ID);
+        assertThat(affinityTracker.boundModelKey("doc-1")).isEmpty();
     }
 
     /**
@@ -90,13 +94,15 @@ class ImageDocumentExtractorTest {
     private OcrRoutingService routingService(
             InMemoryNodeProvider nodeProvider,
             RecordingNodeExecutor nodeExecutor,
-            InMemoryCallRepository callRepository
+            InMemoryCallRepository callRepository,
+            OcrDocumentAffinityTracker affinityTracker
     ) {
         LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
         return new OcrRoutingService(new OcrRoutingDependencies(nodeProvider, selector,
                 new OcrDispatchCoordinator(nodeProvider, selector, new InMemoryPendingQueue()),
                 nodeExecutor, callRepository, new FixedCallIdGenerator(), noOpBatchHitTracker(),
-                new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)));
+                new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false),
+                affinityTracker));
     }
 
     /**

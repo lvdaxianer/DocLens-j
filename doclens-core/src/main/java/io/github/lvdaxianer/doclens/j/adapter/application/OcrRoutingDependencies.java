@@ -13,6 +13,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
  * @param callIdGenerator OCR 调用记录 ID 生成器
  * @param batchHitTracker 批次运行时命中跟踪器
  * @param properties OCR 路由服务配置
+ * @param documentAffinityTracker OCR 文档级模型亲和力跟踪器
  * @author lvdaxianerplus
  * @date 2026-06-08
  */
@@ -24,6 +25,35 @@ public record OcrRoutingDependencies(
         OcrNodeCallRepository callRepository,
         OcrCallIdGenerator callIdGenerator,
         OcrBatchHitTracker batchHitTracker,
-        OcrRoutingServiceProperties properties
+        OcrRoutingServiceProperties properties,
+        OcrDocumentAffinityTracker documentAffinityTracker
 ) {
+
+    /**
+     * 创建兼容旧装配路径的 OCR 路由依赖集合。
+     *
+     * @param nodeProvider OCR 运行时节点池端口
+     * @param nodeSelector OCR 节点选择器
+     * @param dispatchCoordinator OCR 同步派发协调器
+     * @param nodeExecutor OCR 节点执行端口
+     * @param callRepository OCR 调用记录仓储
+     * @param callIdGenerator OCR 调用记录 ID 生成器
+     * @param batchHitTracker 批次运行时命中跟踪器
+     * @param properties OCR 路由服务配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public OcrRoutingDependencies(
+            OcrRuntimeNodeProvider nodeProvider,
+            OcrNodeSelector nodeSelector,
+            OcrDispatchCoordinator dispatchCoordinator,
+            OcrNodeImageExecutor nodeExecutor,
+            OcrNodeCallRepository callRepository,
+            OcrCallIdGenerator callIdGenerator,
+            OcrBatchHitTracker batchHitTracker,
+            OcrRoutingServiceProperties properties
+    ) {
+        this(nodeProvider, nodeSelector, dispatchCoordinator, nodeExecutor, callRepository, callIdGenerator,
+                batchHitTracker, properties, new InMemoryOcrDocumentAffinityTracker());
+    }
 }

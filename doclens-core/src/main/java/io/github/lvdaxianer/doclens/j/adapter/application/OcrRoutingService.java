@@ -29,6 +29,7 @@ public class OcrRoutingService {
     private final OcrNodeCallRecorder callRecorder;
     private final OcrBatchHitTracker batchHitTracker;
     private final OcrRoutingServiceProperties properties;
+    private final OcrDocumentAffinityTracker documentAffinityTracker;
 
     /**
      * 创建 OCR 路由服务。
@@ -43,6 +44,7 @@ public class OcrRoutingService {
         this.callRecorder = new OcrNodeCallRecorder(dependencies.callRepository(), dependencies.callIdGenerator());
         this.batchHitTracker = dependencies.batchHitTracker();
         this.properties = dependencies.properties();
+        this.documentAffinityTracker = dependencies.documentAffinityTracker();
     }
 
     /**
@@ -56,11 +58,22 @@ public class OcrRoutingService {
      */
     public OcrRouteExecutionResult recognize(ImageOcrRequest request, OcrRoutePolicy requestedPolicy) {
         OffsetDateTime startedAt = OffsetDateTime.now();
-        OcrRoutePolicy policy = effectivePolicy(requestedPolicy);
+        OcrRoutePolicy policy = documentAffinityPolicy(request, effectivePolicy(requestedPolicy));
         Set<String> excludedNodeIds = new HashSet<>(Math.max(MIN_EXCLUDED_NODE_CAPACITY,
                 properties.requestRetryTimes()));
         OcrRouteAccumulator accumulator = new OcrRouteAccumulator(startedAt);
         return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
+    }
+
+    /**
+     * 释放文档级模型亲和力。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public void releaseDocumentAffinity(String documentId) {
+        documentAffinityTracker.release(documentId);
     }
 
     /**
@@ -103,14 +116,43 @@ public class OcrRoutingService {
     ) {
         OcrDispatchAcquireResult acquireResult = dispatchCoordinator.acquire(request, policy, excludedNodeIds);
         OcrRuntimeNodeView node = dispatchedNode(acquireResult);
+        OcrRoutePolicy effectivePolicy = confirmedAffinityPolicy(request, policy, node);
+        if (!node.modelKey().equals(effectivePolicy.modelKey().orElse(node.modelKey()))) {
+            dispatchCoordinator.release(node.nodeId());
+            return routeUntilSuccess(request, effectivePolicy, excludedNodeIds, accumulator);
+        } else {
+            // 选中节点与文档最终绑定模型一致，继续执行 OCR。
+        }
+        return executeConfirmedNode(request, effectivePolicy, excludedNodeIds, accumulator, node);
+    }
+
+    /**
+     * 执行已通过文档模型亲和力确认的 OCR 节点。
+     *
+     * @param request 图片 OCR 请求
+     * @param effectivePolicy 文档亲和力确认后的策略
+     * @param excludedNodeIds 已失败节点 ID
+     * @param accumulator 路由累计状态
+     * @param node 选中节点
+     * @return OCR 路由执行结果
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrRouteExecutionResult executeConfirmedNode(
+            ImageOcrRequest request,
+            OcrRoutePolicy effectivePolicy,
+            Set<String> excludedNodeIds,
+            OcrRouteAccumulator accumulator,
+            OcrRuntimeNodeView node
+    ) {
         batchHitTracker.recordDispatch(request.batchId(), node.modelKey(), node.nodeId());
         try {
-            NodeAttemptResult result = executeWithRetry(request, policy, node, accumulator);
+            NodeAttemptResult result = executeWithRetry(request, effectivePolicy, node, accumulator);
             if (result.result().isPresent()) {
                 return result.result().get();
-            } else if (canFailover(policy)) {
+            } else if (canFailover(effectivePolicy)) {
                 excludedNodeIds.add(node.nodeId());
-                return routeUntilSuccess(request, policy, excludedNodeIds, accumulator);
+                return routeUntilSuccess(request, effectivePolicy, excludedNodeIds, accumulator);
             } else {
                 throw routeException(accumulator.lastFailure());
             }
@@ -277,6 +319,81 @@ public class OcrRoutingService {
         } else {
             return requestedPolicy;
         }
+    }
+
+    /**
+     * 根据文档已有亲和力收窄路由策略。
+     *
+     * @param request 图片 OCR 请求
+     * @param policy 有效路由策略
+     * @return 文档亲和力收窄后的策略
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrRoutePolicy documentAffinityPolicy(ImageOcrRequest request, OcrRoutePolicy policy) {
+        Optional<String> boundModelKey = documentAffinityTracker.boundModelKey(request.documentId());
+        if (boundModelKey.isPresent()) {
+            return boundPolicy(boundModelKey.get(), policy);
+        } else {
+            return policy;
+        }
+    }
+
+    /**
+     * 根据已绑定模型生成路由策略。
+     *
+     * @param boundModelKey 已绑定模型标识
+     * @param policy 原策略
+     * @return 收窄后的路由策略
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrRoutePolicy boundPolicy(String boundModelKey, OcrRoutePolicy policy) {
+        if (policy.routingMode() == OcrRoutingMode.SPECIFIC_NODE
+                && policy.modelKey().filter(boundModelKey::equals).isPresent()) {
+            return policy;
+        } else {
+            return modelPolicy(boundModelKey, policy);
+        }
+    }
+
+    /**
+     * 确认节点命中后的文档最终模型亲和力。
+     *
+     * @param request 图片 OCR 请求
+     * @param policy 当前策略
+     * @param node 已占槽节点
+     * @return 最终绑定模型对应的策略
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrRoutePolicy confirmedAffinityPolicy(
+            ImageOcrRequest request,
+            OcrRoutePolicy policy,
+            OcrRuntimeNodeView node
+    ) {
+        String boundModelKey = documentAffinityTracker.bindIfAbsent(request.documentId(), node.modelKey());
+        if (!boundModelKey.equals(node.modelKey())) {
+            return modelPolicy(boundModelKey, policy);
+        } else if (policy.routingMode() == OcrRoutingMode.SPECIFIC_NODE) {
+            return policy;
+        } else {
+            return modelPolicy(boundModelKey, policy);
+        }
+    }
+
+    /**
+     * 创建指定模型负载均衡策略并保留原负载均衡算法。
+     *
+     * @param modelKey 模型标识
+     * @param policy 原策略
+     * @return 指定模型策略
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrRoutePolicy modelPolicy(String modelKey, OcrRoutePolicy policy) {
+        return OcrRoutePolicy.modelLoadBalance(modelKey,
+                policy.loadBalanceStrategy().orElse(OcrRoutingServiceProperties.DEFAULT_LOAD_BALANCE_STRATEGY));
     }
 
     /**

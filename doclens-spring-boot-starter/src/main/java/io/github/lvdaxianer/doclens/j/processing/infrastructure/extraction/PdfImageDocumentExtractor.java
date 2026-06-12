@@ -77,6 +77,8 @@ public class PdfImageDocumentExtractor {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("PDF OCR interrupted", ex);
+        } finally {
+            imageDocumentExtractor.releaseDocumentAffinity(request);
         }
     }
 

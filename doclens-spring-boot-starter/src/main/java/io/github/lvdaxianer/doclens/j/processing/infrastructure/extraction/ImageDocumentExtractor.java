@@ -57,11 +57,15 @@ public class ImageDocumentExtractor {
      * @date 2026-06-08
      */
     public DocumentTextExtractionResult extract(DocumentTextExtractionRequest request) {
-        request.progressReporter().report(ProcessingStage.OCR_IMAGES, 0, 1);
-        ImageOcrResult result = recognize(request, DocLensConstants.DEFAULT_PAGE_NO, request.content());
-        request.progressReporter().report(ProcessingStage.OCR_IMAGES, 1, 1);
-        return DocumentTextExtractionResult.fromPageResults(request.document().documentId(), request.document().fileName(),
-                List.of(result), List.of());
+        try {
+            request.progressReporter().report(ProcessingStage.OCR_IMAGES, 0, 1);
+            ImageOcrResult result = recognize(request, DocLensConstants.DEFAULT_PAGE_NO, request.content());
+            request.progressReporter().report(ProcessingStage.OCR_IMAGES, 1, 1);
+            return DocumentTextExtractionResult.fromPageResults(request.document().documentId(),
+                    request.document().fileName(), List.of(result), List.of());
+        } finally {
+            releaseDocumentAffinity(request);
+        }
     }
 
     /**
@@ -100,5 +104,20 @@ public class ImageDocumentExtractor {
         OcrAdapter adapter = adapterRegistry.find(request.adapterKey())
                 .orElseThrow(() -> new IllegalArgumentException("adapter not found: " + request.adapterKey()));
         return adapter.recognize(imageRequest);
+    }
+
+    /**
+     * 释放文档级 OCR 模型亲和力。
+     *
+     * @param request 提取请求
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    void releaseDocumentAffinity(DocumentTextExtractionRequest request) {
+        if (routingService.isPresent()) {
+            routingService.get().releaseDocumentAffinity(request.document().documentId());
+        } else {
+            // 未启用路由服务时没有亲和力状态需要释放。
+        }
     }
 }

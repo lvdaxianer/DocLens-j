@@ -44,7 +44,7 @@
 - Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/OllamaOcrClient.java`
 - Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/OllamaOcrResponseMapper.java`
 - Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrDocumentAffinityTracker.java`
-- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/InMemoryOcrDocumentAffinityTracker.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/InMemoryOcrDocumentAffinityTracker.java`
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/domain/ImageOcrResult.java`
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/PaddleOcrNativeResponseMapper.java`
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/PaddleOcrNodeImageExecutor.java`
@@ -248,7 +248,7 @@ feat(ocr): 统一 PaddleOCR Markdown 输出
 
 **Files:**
 - Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrDocumentAffinityTracker.java`
-- Create: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/InMemoryOcrDocumentAffinityTracker.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/InMemoryOcrDocumentAffinityTracker.java`
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingDependencies.java`
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingService.java`
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrDispatchCoordinator.java`
@@ -257,7 +257,7 @@ feat(ocr): 统一 PaddleOCR Markdown 输出
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrDocumentAffinityTrackerTest.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrRoutingDocumentAffinityTest.java`
 
-- [ ] **Step 1: Write RED affinity tracker tests**
+- [x] **Step 1: Write RED affinity tracker tests**
 
 Test cases:
 
@@ -266,7 +266,7 @@ Test cases:
 - Completion releases binding.
 - Binding is per document, not per batch.
 
-- [ ] **Step 2: Write RED routing test**
+- [x] **Step 2: Write RED routing test**
 
 Create two healthy model groups:
 
@@ -284,7 +284,7 @@ Add another test:
 - All Paddle nodes then fail.
 - Second page must not fail over to `ollama_deepseek_ocr`.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -294,7 +294,7 @@ mvn -pl doclens-core -Dtest=OcrDocumentAffinityTrackerTest,OcrRoutingDocumentAff
 
 Expected: FAIL because document affinity does not exist.
 
-- [ ] **Step 4: Implement affinity tracker**
+- [x] **Step 4: Implement affinity tracker**
 
 Interface:
 
@@ -312,7 +312,7 @@ Implementation:
 - Use `computeIfAbsent` for atomic first binding.
 - Do not persist affinity initially. It is a runtime routing guard for in-flight documents.
 
-- [ ] **Step 5: Apply affinity in routing**
+- [x] **Step 5: Apply affinity in routing**
 
 Routing rules:
 
@@ -323,7 +323,7 @@ Routing rules:
 - On retries and queue re-dispatch, carry the bound model key through pending request selection.
 - On document-level extraction completion, release affinity. If release cannot be safely called at document boundary immediately, release in `finally` around image/PDF extraction.
 
-- [ ] **Step 6: Run GREEN and concurrency tests**
+- [x] **Step 6: Run GREEN and concurrency tests**
 
 Run:
 
@@ -334,7 +334,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=PdfImageDocumentExtractorTest,ImageDo
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit Task 3**
+- [x] **Step 7: Commit Task 3**
 
 Commit subject:
 
