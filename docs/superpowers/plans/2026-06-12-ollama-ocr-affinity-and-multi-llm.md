@@ -579,7 +579,7 @@ Upload a multi-page PDF or image batch and verify:
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusLlmMarkdownConfigRepository.java`
 - Test: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/LlmMarkdownConfigServiceTest.java`
 
-- [ ] **Step 1: Write RED service tests**
+- [x] **Step 1: Write RED service tests**
 
 Test cases:
 
@@ -588,7 +588,7 @@ Test cases:
 - Disabling one config does not disable other configs.
 - Existing singleton row migrates to one `MARKDOWN_POST_PROCESSING` default config.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -598,7 +598,7 @@ mvn -pl doclens-core -Dtest=LlmMarkdownConfigServiceTest test
 
 Expected: FAIL because repository and domain still assume singleton.
 
-- [ ] **Step 3: Implement domain and migration**
+- [x] **Step 3: Implement domain and migration**
 
 New model fields:
 
@@ -628,7 +628,7 @@ Migration rules:
 - Set `is_default=true`.
 - Preserve `enabled`, `healthy`, `health_message`, `last_health_at`.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -639,7 +639,7 @@ mvn -pl doclens-spring-boot-starter -DskipTests compile
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 
 Commit subject:
 

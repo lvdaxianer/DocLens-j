@@ -6,32 +6,39 @@ import java.util.Optional;
 /**
  * LLM Markdown 后处理配置。
  *
- * @param id 配置 ID
- * @param apiType API 协议类型
- * @param url LLM 接口地址
- * @param model 模型名称
- * @param credentialRef API Key 凭证引用
- * @param credentialConfigured 是否已配置凭证
- * @param createdAt 创建时间
- * @param updatedAt 更新时间
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-public record LlmMarkdownConfig(
-        String id,
-        LlmMarkdownApiType apiType,
-        String url,
-        String model,
-        Optional<String> credentialRef,
-        boolean credentialConfigured,
-        boolean healthy,
-        String healthMessage,
-        Optional<OffsetDateTime> lastHealthAt,
-        OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
-) {
+public final class LlmMarkdownConfig extends LlmMarkdownConfigAccessors {
 
     public static final String SINGLETON_ID = "default";
+    static final String DEFAULT_NAME = "默认 LLM 配置";
+    static final int DEFAULT_PRIORITY = 100;
+
+    private final LlmMarkdownConfigState state;
+
+    /**
+     * 从状态对象创建配置。
+     *
+     * @param state 配置状态
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    LlmMarkdownConfig(LlmMarkdownConfigState state) {
+        this.state = state;
+    }
+
+    /**
+     * 获取不可变配置状态。
+     *
+     * @return 不可变配置状态
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Override
+    LlmMarkdownConfigState state() {
+        return state;
+    }
 
     /**
      * 创建已配置的 LLM Markdown 配置。
@@ -68,11 +75,19 @@ public record LlmMarkdownConfig(
             String credentialRef
     ) {
         OffsetDateTime now = OffsetDateTime.now();
-        String normalizedCredentialRef = normalize(credentialRef);
-        return new LlmMarkdownConfig(id, apiType == null ? LlmMarkdownApiType.OPENAI : apiType,
-                required(url, "llm markdown url is required"),
-                required(model, "llm markdown model is required"), Optional.ofNullable(blankToNull(normalizedCredentialRef)),
-                !normalizedCredentialRef.isBlank(), false, "", Optional.empty(), now, now);
+        return builder(id, DEFAULT_NAME, apiType == null ? LlmMarkdownApiType.OPENAI : apiType)
+                .endpoint(required(url, "llm markdown url is required"),
+                        required(model, "llm markdown model is required"))
+                .credential(credentialRef)
+                .usage(LlmUsageType.MARKDOWN_POST_PROCESSING, DEFAULT_PRIORITY)
+                .defaultConfig(true)
+                .enabled(true)
+                .healthy(false)
+                .healthMessage("")
+                .lastHealthAt(Optional.empty())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 
     /**
@@ -84,30 +99,32 @@ public record LlmMarkdownConfig(
      */
     public static LlmMarkdownConfig unconfigured() {
         OffsetDateTime now = OffsetDateTime.now();
-        return new LlmMarkdownConfig(SINGLETON_ID, LlmMarkdownApiType.OPENAI, "", "", Optional.empty(), false,
-                false, "", Optional.empty(), now, now);
+        return builder(SINGLETON_ID, DEFAULT_NAME, LlmMarkdownApiType.OPENAI)
+                .endpoint("", "")
+                .credential("")
+                .usage(LlmUsageType.MARKDOWN_POST_PROCESSING, DEFAULT_PRIORITY)
+                .defaultConfig(true)
+                .enabled(true)
+                .healthy(false)
+                .healthMessage("")
+                .lastHealthAt(Optional.empty())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 
     /**
-     * 判断是否可用于 LLM 后处理。
+     * 创建 LLM 配置构建器。
      *
-     * @return 是否已配置 URL 和模型
+     * @param id 配置 ID
+     * @param name 配置名称
+     * @param apiType API 协议类型
+     * @return 配置构建器
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-12
      */
-    public boolean isEnabled() {
-        return !url.isBlank() && !model.isBlank();
-    }
-
-    /**
-     * 获取凭证文本。
-     *
-     * @return 凭证文本
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    public String credentialValue() {
-        return credentialRef.orElse("");
+    public static LlmMarkdownConfigBuilder builder(String id, String name, LlmMarkdownApiType apiType) {
+        return new LlmMarkdownConfigBuilder(id, name, apiType);
     }
 
     /**
@@ -121,8 +138,46 @@ public record LlmMarkdownConfig(
      * @date 2026-06-10
      */
     public LlmMarkdownConfig updateHealth(boolean healthy, String healthMessage, OffsetDateTime lastHealthAt) {
-        return new LlmMarkdownConfig(id, apiType, url, model, credentialRef, credentialConfigured, healthy,
-                normalize(healthMessage), Optional.ofNullable(lastHealthAt), createdAt, OffsetDateTime.now());
+        return copyBuilder().healthy(healthy).healthMessage(healthMessage)
+                .lastHealthAt(Optional.ofNullable(lastHealthAt)).updatedAt(OffsetDateTime.now()).build();
+    }
+
+    /**
+     * 更新 LLM Markdown 后处理启停状态。
+     *
+     * @param enabled 是否启用 LLM Markdown 后处理
+     * @return 更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public LlmMarkdownConfig withEnabled(boolean enabled) {
+        return copyBuilder().enabled(enabled).updatedAt(OffsetDateTime.now()).build();
+    }
+
+    /**
+     * 更新默认配置标记。
+     *
+     * @param defaultConfig 是否默认配置
+     * @return 更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public LlmMarkdownConfig withDefaultConfig(boolean defaultConfig) {
+        return copyBuilder().defaultConfig(defaultConfig).updatedAt(OffsetDateTime.now()).build();
+    }
+
+    /**
+     * 复制当前配置到构建器。
+     *
+     * @return 预填充构建器
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private LlmMarkdownConfigBuilder copyBuilder() {
+        return builder(id(), name(), apiType()).endpoint(url(), model()).credential(credentialValue())
+                .usage(usageType(), priority()).defaultConfig(defaultConfig()).enabled(enabled()).healthy(healthy())
+                .healthMessage(healthMessage()).lastHealthAt(lastHealthAt()).createdAt(createdAt())
+                .updatedAt(updatedAt());
     }
 
     /**
@@ -136,9 +191,11 @@ public record LlmMarkdownConfig(
      */
     private static String required(String value, String message) {
         String normalized = normalize(value);
+        // 必填文本非空时返回去首尾空格后的值。
         if (!normalized.isBlank()) {
             return normalized;
         } else {
+            // 必填文本为空时立即失败，避免保存无效配置。
             throw new IllegalArgumentException(message);
         }
     }
@@ -151,19 +208,7 @@ public record LlmMarkdownConfig(
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private static String normalize(String value) {
+    static String normalize(String value) {
         return value == null ? "" : value.trim();
-    }
-
-    /**
-     * 空文本转空引用。
-     *
-     * @param value 文本
-     * @return 非空文本或空引用
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private static String blankToNull(String value) {
-        return value.isBlank() ? null : value;
     }
 }

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,26 @@ class ConfigurableMarkdownPostProcessorTest {
     }
 
     /**
+     * 运行时配置暂停使用时应直通 OCR 原文且不调用兜底 LLM。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void returnsPassthroughWhenRuntimeConfigIsDisabled() {
+        LlmMarkdownConfig disabledConfig = LlmMarkdownConfig.configured(
+                "default", "https://llm.example.com/v1/chat/completions", "runtime-model", "sk-runtime")
+                .withEnabled(false);
+        ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
+                new FixedConfigRepository(disabledConfig), new FallbackProcessor("fallback text"));
+
+        MarkdownPostProcessingResult result = processor.process(request());
+
+        assertThat(result.markdown()).isEqualTo("OCR 文本");
+        assertThat(result.markdownApplied()).isFalse();
+    }
+
+    /**
      * 创建 Markdown 后处理请求。
      *
      * @return Markdown 后处理请求
@@ -109,6 +130,17 @@ class ConfigurableMarkdownPostProcessorTest {
          */
         @Override
         public void save(LlmMarkdownConfig config) {
+        }
+
+        /**
+         * 批量保存配置。
+         *
+         * @param configs LLM Markdown 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public void saveAll(List<LlmMarkdownConfig> configs) {
         }
     }
 

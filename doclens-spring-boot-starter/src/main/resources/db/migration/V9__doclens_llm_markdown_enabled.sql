@@ -1,0 +1,2 @@
+ALTER TABLE doclens_llm_markdown_config
+    ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE;

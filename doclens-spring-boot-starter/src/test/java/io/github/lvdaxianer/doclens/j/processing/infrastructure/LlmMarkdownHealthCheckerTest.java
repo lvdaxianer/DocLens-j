@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -122,6 +123,21 @@ class LlmMarkdownHealthCheckerTest {
         @Override
         public void save(LlmMarkdownConfig config) {
             this.config = config;
+        }
+
+        /**
+         * 批量保存配置。
+         *
+         * @param configs LLM Markdown 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public void saveAll(List<LlmMarkdownConfig> configs) {
+            // 批量输入非空时，单配置测试仓储取最后一条作为最终状态。
+            if (!configs.isEmpty()) {
+                this.config = configs.get(configs.size() - 1);
+            }
         }
     }
 

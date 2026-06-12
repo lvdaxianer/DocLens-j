@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMark
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -157,6 +158,17 @@ class DocLensProcessingAutoConfigurationTest {
          */
         @Override
         public void save(io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig config) {
+        }
+
+        /**
+         * 批量保存配置。
+         *
+         * @param configs LLM Markdown 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public void saveAll(List<io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig> configs) {
         }
     }
 }

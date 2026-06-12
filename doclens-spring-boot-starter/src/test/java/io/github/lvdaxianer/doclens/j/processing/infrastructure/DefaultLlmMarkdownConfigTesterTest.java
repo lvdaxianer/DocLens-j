@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +130,17 @@ class DefaultLlmMarkdownConfigTesterTest {
          */
         @Override
         public void save(LlmMarkdownConfig config) {
+        }
+
+        /**
+         * 批量保存配置。
+         *
+         * @param configs LLM Markdown 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        @Override
+        public void saveAll(List<LlmMarkdownConfig> configs) {
         }
     }
 

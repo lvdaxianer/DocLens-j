@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.OffsetDateTime;
@@ -19,11 +20,17 @@ public class LlmMarkdownConfigEntity {
 
     @TableId("id")
     private String id;
+    private String name;
     private String apiType;
     private String url;
     private String model;
     private String credentialRef;
     private boolean credentialConfigured;
+    private String usageType;
+    private int priority;
+    @TableField("is_default")
+    private boolean defaultFlag;
+    private boolean enabled;
     private boolean healthy;
     private String healthMessage;
     private OffsetDateTime lastHealthAt;
