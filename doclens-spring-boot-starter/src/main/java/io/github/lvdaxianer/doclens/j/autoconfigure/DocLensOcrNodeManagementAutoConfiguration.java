@@ -22,6 +22,22 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration(after = DocLensAutoConfiguration.class)
 public class DocLensOcrNodeManagementAutoConfiguration {
 
+    private static final String IMAGE_INPUT_TYPE = "image";
+    private static final String PADDLE_MODEL_KEY = "paddle_ocr";
+    private static final String PADDLE_MODEL_NAME = "PaddleOCR";
+    private static final String PADDLE_MODEL_DESCRIPTION = "PaddleOCR native-compatible HTTP API";
+    private static final String PADDLE_OCR_PATH = "/ocr";
+    private static final String PADDLE_HEALTH_PATH = "/ocr";
+    private static final String OLLAMA_MODEL_KEY = "ollama_deepseek_ocr";
+    private static final String OLLAMA_MODEL_NAME = "Ollama DeepSeek OCR";
+    private static final String OLLAMA_MODEL_DESCRIPTION = "Ollama DeepSeek-OCR markdown API";
+    private static final String OLLAMA_GENERATE_PATH = "/api/generate";
+    private static final String OLLAMA_CHANNEL_KEY = "ollama";
+    private static final String OLLAMA_PROVIDER_MODEL = "deepseek-ocr:latest";
+    private static final String EMPTY_DEFAULT_VALUE = "";
+    private static final int PADDLE_DEFAULT_PORT = 18081;
+    private static final int OLLAMA_DEFAULT_PORT = 11434;
+
     /**
      * 创建 OCR 模型注册表。
      *
@@ -32,10 +48,38 @@ public class DocLensOcrNodeManagementAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     OcrModelRegistry ocrModelRegistry() {
-        OcrModelDefinition paddleOcr = OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
-                "paddle_ocr", "PaddleOCR", "PaddleOCR native-compatible HTTP API", List.of("image"),
-                "/ocr", "/ocr", true));
-        return new OcrModelRegistry(List.of(paddleOcr));
+        return new OcrModelRegistry(List.of(paddleOcrDefinition(), ollamaOcrDefinition()));
+    }
+
+    /**
+     * 创建 PaddleOCR 模型定义。
+     *
+     * @return PaddleOCR 模型定义
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrModelDefinition paddleOcrDefinition() {
+        return OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
+                new OcrModelDefinition.Identity(PADDLE_MODEL_KEY, PADDLE_MODEL_NAME, PADDLE_MODEL_DESCRIPTION),
+                new OcrModelDefinition.Capability(List.of(IMAGE_INPUT_TYPE), PADDLE_OCR_PATH, PADDLE_HEALTH_PATH),
+                new OcrModelDefinition.RuntimeDefaults(PADDLE_DEFAULT_PORT, EMPTY_DEFAULT_VALUE, EMPTY_DEFAULT_VALUE,
+                        true)));
+    }
+
+    /**
+     * 创建 Ollama DeepSeek OCR 模型定义。
+     *
+     * @return Ollama DeepSeek OCR 模型定义
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrModelDefinition ollamaOcrDefinition() {
+        return OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
+                new OcrModelDefinition.Identity(OLLAMA_MODEL_KEY, OLLAMA_MODEL_NAME, OLLAMA_MODEL_DESCRIPTION),
+                new OcrModelDefinition.Capability(List.of(IMAGE_INPUT_TYPE), OLLAMA_GENERATE_PATH,
+                        OLLAMA_GENERATE_PATH),
+                new OcrModelDefinition.RuntimeDefaults(OLLAMA_DEFAULT_PORT, OLLAMA_PROVIDER_MODEL,
+                        OLLAMA_CHANNEL_KEY, true)));
     }
 
     /**

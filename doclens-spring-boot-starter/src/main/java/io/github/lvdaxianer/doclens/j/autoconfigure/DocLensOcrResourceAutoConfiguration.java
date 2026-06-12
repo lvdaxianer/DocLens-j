@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
@@ -24,6 +25,7 @@ import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrManualRecoveryService;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OllamaOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.PaddleOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.RoutingOcrHealthClient;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -124,9 +126,12 @@ public class DocLensOcrResourceAutoConfiguration {
     @ConditionalOnMissingBean
     OcrHealthClient ocrHealthClient(
             DocLensSpringProperties properties,
+            ObjectMapper objectMapper,
             DashScopeOnlineOcrClient onlineOcrClient
     ) {
-        return new RoutingOcrHealthClient(new PaddleOcrHealthClient(properties.ocr().healthCheckTimeoutSeconds()),
+        int timeoutSeconds = properties.ocr().healthCheckTimeoutSeconds();
+        return new RoutingOcrHealthClient(new PaddleOcrHealthClient(timeoutSeconds),
+                new OllamaOcrHealthClient(objectMapper, timeoutSeconds),
                 onlineOcrClient);
     }
 

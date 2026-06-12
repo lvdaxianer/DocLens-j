@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 class OcrNodeControllerTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
+    private static final int PADDLE_DEFAULT_PORT = 18081;
 
     /**
      * 节点列表应返回基于调用记录聚合的真实耗时统计。
@@ -109,8 +110,10 @@ class OcrNodeControllerTest {
 
         private PassThroughModelRegistry() {
             super(List.of(OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
-                    "paddle_ocr", "PaddleOCR", "PaddleOCR native-compatible HTTP API", List.of("image"),
-                    "/ocr", "/ocr", true))));
+                    new OcrModelDefinition.Identity("paddle_ocr", "PaddleOCR",
+                            "PaddleOCR native-compatible HTTP API"),
+                    new OcrModelDefinition.Capability(List.of("image"), "/ocr", "/ocr"),
+                    new OcrModelDefinition.RuntimeDefaults(PADDLE_DEFAULT_PORT, "", "", true)))));
         }
     }
 

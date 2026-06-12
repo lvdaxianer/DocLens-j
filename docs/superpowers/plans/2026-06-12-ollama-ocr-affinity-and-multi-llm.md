@@ -353,7 +353,7 @@ feat(ocr): 增加文档级模型亲和力
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeApiContractTest.java`
 - Test: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/RoutingOcrHealthClientTest.java`
 
-- [ ] **Step 1: Write RED health routing test**
+- [x] **Step 1: Write RED health routing test**
 
 Add test:
 
@@ -361,7 +361,7 @@ Add test:
 - Probe body uses the fixed Markdown prompt and 1x1 image.
 - HTTP 200 with parseable response means healthy.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -371,7 +371,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=RoutingOcrHealthClientTest test
 
 Expected: FAIL because Ollama health routing does not exist.
 
-- [ ] **Step 3: Implement health probe**
+- [x] **Step 3: Implement health probe**
 
 Rules:
 
@@ -380,7 +380,7 @@ Rules:
 - DashScope keeps online permission probe.
 - Health logs include node id, model key, and sanitized error only.
 
-- [ ] **Step 4: Update supported model API**
+- [x] **Step 4: Update supported model API**
 
 Expose Ollama OCR as supported model:
 
@@ -392,7 +392,7 @@ providerModel=deepseek-ocr:latest
 channelKey=ollama
 ```
 
-- [ ] **Step 5: Run GREEN and API contract tests**
+- [x] **Step 5: Run GREEN and API contract tests**
 
 Run:
 
@@ -403,7 +403,7 @@ mvn -pl doclens-server -am -Dtest=OcrNodeApiContractTest -Dsurefire.failIfNoSpec
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 4**
+- [x] **Step 6: Commit Task 4**
 
 Commit subject:
 

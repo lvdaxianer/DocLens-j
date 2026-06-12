@@ -60,7 +60,6 @@ public class DocLensPaddleOcrAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "doclens.paddle-ocr", name = "enabled", havingValue = "true", matchIfMissing = true)
     PaddleOcrNativeClient paddleOcrNativeClient(DocLensProperties properties, ObjectMapper objectMapper) {
         return new PaddleOcrNativeClient(properties, objectMapper);
     }

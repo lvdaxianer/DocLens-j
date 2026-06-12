@@ -22,6 +22,9 @@ class RoutingOcrHealthClientTest {
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-11T10:00:00+08:00");
     private static final URI TEST_ENDPOINT = URI.create("http://127.0.0.1:1/compatible-mode/v1/chat/completions");
     private static final String PADDLE_MODEL_KEY = "paddle_ocr";
+    private static final String OLLAMA_MODEL_KEY = "ollama_deepseek_ocr";
+    private static final String OLLAMA_CHANNEL_KEY = "ollama";
+    private static final String OLLAMA_PROVIDER_MODEL = "deepseek-ocr:latest";
     private static final String ONLINE_CHANNEL_KEY = "aliyun_bailian_dashscope";
     private static final String ONLINE_PROVIDER_MODEL = "qwen-vl-ocr-2025-11-20";
     private static final String TEST_CREDENTIAL = "sk-test";
@@ -41,13 +44,15 @@ class RoutingOcrHealthClientTest {
     @Test
     void onlineNodeUsesOnlinePermissionProbeOnly() {
         RecordingOfflineHealthClient offlineClient = new RecordingOfflineHealthClient();
+        RecordingOfflineHealthClient ollamaClient = new RecordingOfflineHealthClient();
         RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient(true);
-        RoutingOcrHealthClient routingClient = new RoutingOcrHealthClient(offlineClient, onlineClient);
+        RoutingOcrHealthClient routingClient = new RoutingOcrHealthClient(offlineClient, ollamaClient, onlineClient);
 
         boolean healthy = routingClient.isHealthy(onlineNode());
 
         assertThat(healthy).isTrue();
         assertThat(offlineClient.callCount()).isZero();
+        assertThat(ollamaClient.callCount()).isZero();
         assertThat(onlineClient.callCount()).isEqualTo(1);
     }
 
@@ -60,13 +65,36 @@ class RoutingOcrHealthClientTest {
     @Test
     void offlinePaddleNodeUsesOfflineHealthClientOnly() {
         RecordingOfflineHealthClient offlineClient = new RecordingOfflineHealthClient();
+        RecordingOfflineHealthClient ollamaClient = new RecordingOfflineHealthClient();
         RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient(true);
-        RoutingOcrHealthClient routingClient = new RoutingOcrHealthClient(offlineClient, onlineClient);
+        RoutingOcrHealthClient routingClient = new RoutingOcrHealthClient(offlineClient, ollamaClient, onlineClient);
 
         boolean healthy = routingClient.isHealthy(offlineNode());
 
         assertThat(healthy).isTrue();
         assertThat(offlineClient.callCount()).isEqualTo(1);
+        assertThat(ollamaClient.callCount()).isZero();
+        assertThat(onlineClient.callCount()).isZero();
+    }
+
+    /**
+     * Ollama OCR 节点应走 Ollama 健康探测，不能误用 PaddleOCR /ocr 探测。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Test
+    void offlineOllamaNodeUsesOllamaHealthClientOnly() {
+        RecordingOfflineHealthClient paddleClient = new RecordingOfflineHealthClient();
+        RecordingOfflineHealthClient ollamaClient = new RecordingOfflineHealthClient();
+        RecordingDashScopeOnlineOcrClient onlineClient = new RecordingDashScopeOnlineOcrClient(true);
+        RoutingOcrHealthClient routingClient = new RoutingOcrHealthClient(paddleClient, ollamaClient, onlineClient);
+
+        boolean healthy = routingClient.isHealthy(ollamaNode());
+
+        assertThat(healthy).isTrue();
+        assertThat(paddleClient.callCount()).isZero();
+        assertThat(ollamaClient.callCount()).isEqualTo(1);
         assertThat(onlineClient.callCount()).isZero();
     }
 
@@ -93,6 +121,19 @@ class RoutingOcrHealthClientTest {
     private OcrNode offlineNode() {
         return OcrNode.create(new OcrNodeCreateRequest("node-offline", PADDLE_MODEL_KEY, "PaddleOCR",
                 OFFLINE_HOST, OFFLINE_PORT, true, true, DEFAULT_WEIGHT, DEFAULT_MAX_CONCURRENCY, BASE_TIME));
+    }
+
+    /**
+     * 创建离线 Ollama OCR 节点。
+     *
+     * @return 离线 Ollama OCR 节点
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private OcrNode ollamaNode() {
+        return OcrNode.create(new OcrNodeCreateRequest("node-ollama", OLLAMA_MODEL_KEY,
+                OcrNodeDeploymentType.OFFLINE, "Ollama OCR", OFFLINE_HOST, OFFLINE_PORT, OLLAMA_CHANNEL_KEY,
+                OLLAMA_PROVIDER_MODEL, "", false, true, true, DEFAULT_WEIGHT, DEFAULT_MAX_CONCURRENCY, BASE_TIME));
     }
 
     /**

@@ -36,11 +36,39 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
      */
     @Test
     void listSupportedModelsReturnsPaddleOcr() throws Exception {
-        mockMvc.perform(get("/api/v1/ocr-models"))
+        String response = mockMvc.perform(get("/api/v1/ocr-models"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].model_key").value("paddle_ocr"))
-                .andExpect(jsonPath("$.items[0].ocr_path").value("/ocr"))
-                .andExpect(jsonPath("$.items[0].health_path").value("/ocr"));
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode paddleModel = findModelByKey(response, "paddle_ocr");
+        JsonNode ollamaModel = findModelByKey(response, "ollama_deepseek_ocr");
+
+        assertThat(paddleModel.get("ocr_path").asText()).isEqualTo("/ocr");
+        assertThat(paddleModel.get("health_path").asText()).isEqualTo("/ocr");
+        assertThat(ollamaModel.get("default_port").asInt()).isEqualTo(11434);
+        assertThat(ollamaModel.get("provider_model").asText()).isEqualTo("deepseek-ocr:latest");
+        assertThat(ollamaModel.get("channel_key").asText()).isEqualTo("ollama");
+    }
+
+    /**
+     * 从模型列表响应中查找指定模型。
+     *
+     * @param response 响应 JSON
+     * @param modelKey 模型标识
+     * @return 模型节点
+     * @throws Exception JSON 解析失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private JsonNode findModelByKey(String response, String modelKey) throws Exception {
+        for (JsonNode item : objectMapper.readTree(response).path("items")) {
+            if (modelKey.equals(item.path("model_key").asText())) {
+                return item;
+            } else {
+                // 当前模型不是目标模型，继续检查下一个。
+            }
+        }
+        throw new AssertionError("model not found: " + modelKey);
     }
 
     /**
