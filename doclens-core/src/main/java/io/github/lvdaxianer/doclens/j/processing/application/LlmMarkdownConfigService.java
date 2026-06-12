@@ -61,7 +61,23 @@ public class LlmMarkdownConfigService {
     public LlmMarkdownConfig saveConfig(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfig current = getConfig();
         LlmMarkdownConfig updated = mutationFactory.buildUpdated(current, settings);
-        repository.save(updated);
+        saveWithDefaultUniqueness(updated);
+        return updated;
+    }
+
+    /**
+     * 更新指定 LLM Markdown 配置。
+     *
+     * @param id 配置 ID
+     * @param settings 配置提交参数
+     * @return 更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public LlmMarkdownConfig updateConfig(String id, LlmMarkdownConfigSettings settings) {
+        LlmMarkdownConfig current = findExistingConfig(id);
+        LlmMarkdownConfig updated = mutationFactory.buildUpdated(current, settings);
+        saveWithDefaultUniqueness(updated);
         return updated;
     }
 
@@ -89,11 +105,36 @@ public class LlmMarkdownConfigService {
      * @date 2026-06-12
      */
     public LlmMarkdownConfig updateEnabled(String id, boolean enabled) {
-        LlmMarkdownConfig current = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("llm markdown config not found"));
+        LlmMarkdownConfig current = findExistingConfig(id);
         LlmMarkdownConfig updated = current.withEnabled(enabled);
         repository.save(updated);
         return updated;
+    }
+
+    /**
+     * 将指定配置设置为默认配置。
+     *
+     * @param id 配置 ID
+     * @return 更新后的配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public LlmMarkdownConfig makeDefault(String id) {
+        LlmMarkdownConfig updated = findExistingConfig(id).withDefaultConfig(true);
+        saveWithDefaultUniqueness(updated);
+        return updated;
+    }
+
+    /**
+     * 删除指定 LLM Markdown 配置。
+     *
+     * @param id 配置 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public void deleteConfig(String id) {
+        findExistingConfig(id);
+        repository.deleteById(id);
     }
 
     /**
@@ -139,6 +180,19 @@ public class LlmMarkdownConfigService {
             // 非默认配置不影响同用途已有默认项。
             repository.save(target);
         }
+    }
+
+    /**
+     * 查询已存在配置，不存在时抛出明确异常。
+     *
+     * @param id 配置 ID
+     * @return 已存在配置
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private LlmMarkdownConfig findExistingConfig(String id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("llm markdown config not found"));
     }
 
     /**

@@ -4,11 +4,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -45,6 +47,10 @@ abstract class LlmMarkdownConfigApiContractSupport {
     @Autowired
     protected MockMvc mockMvc;
 
+    /** 测试数据库访问工具。 */
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     /** LLM Markdown 配置探测器 mock。 */
     @MockBean
     protected LlmMarkdownConfigTester configTester;
@@ -62,6 +68,17 @@ abstract class LlmMarkdownConfigApiContractSupport {
                 () -> "jdbc:h2:file:" + tempDir.resolve("llm-config-api") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+    }
+
+    /**
+     * 清理单例配置，避免契约用例之间互相污染。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @BeforeEach
+    void cleanLlmMarkdownConfig() {
+        jdbcTemplate.update("DELETE FROM doclens_llm_markdown_config");
     }
 
     /**
@@ -92,13 +109,12 @@ abstract class LlmMarkdownConfigApiContractSupport {
      * @date 2026-06-09
      */
     protected String configJson(String url, String model, String apiKey) {
-        return configJson("openai", url, model, apiKey);
+        return configJson(new CompatibilityConfig(url, model, apiKey));
     }
 
     /**
-     * 创建带协议类型的配置请求 JSON。
+     * 创建 Anthropic 配置请求 JSON。
      *
-     * @param apiType LLM API 协议类型
      * @param url 接口地址
      * @param model 模型名称
      * @param apiKey API Key
@@ -106,14 +122,166 @@ abstract class LlmMarkdownConfigApiContractSupport {
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    protected String configJson(String apiType, String url, String model, String apiKey) {
+    protected String anthropicConfigJson(String url, String model, String apiKey) {
+        return configJson(new CompatibilityConfig(url, model, apiKey).anthropic());
+    }
+
+    /**
+     * 创建禁用状态的 OpenAI 配置请求 JSON。
+     *
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String disabledOpenAiConfigJson() {
+        return configJson(new CompatibilityConfig(DEFAULT_LLM_URL, "markdown-model", TEST_API_KEY).disabled());
+    }
+
+    /**
+     * 创建兼容配置请求 JSON。
+     *
+     * @param config 兼容配置
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private String configJson(CompatibilityConfig config) {
         return """
                 {
                   "api_type": "%s",
                   "url": "%s",
                   "model": "%s",
-                  "api_key": "%s"
+                  "api_key": "%s",
+                  "enabled": %s
                 }
-                """.formatted(apiType, url, model, apiKey);
+                """.formatted(config.apiType(), config.url(), config.model(), config.apiKey(), config.enabled());
+    }
+
+    /**
+     * 创建默认 OpenAI 测试配置。
+     *
+     * @param name 配置名称
+     * @return 配置 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String createDefaultOpenAiConfig(String name) throws Exception {
+        return fixtures().createDefaultOpenAiConfig(name);
+    }
+
+    /**
+     * 创建备用 Anthropic 测试配置。
+     *
+     * @param name 配置名称
+     * @return 配置 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String createBackupAnthropicConfig(String name) throws Exception {
+        return fixtures().createBackupAnthropicConfig(name);
+    }
+
+    /**
+     * 创建最小 OpenAI 请求 JSON。
+     *
+     * @param name 配置名称
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String minimalOpenAiJson(String name) {
+        return fixtures().minimalOpenAiJson(name);
+    }
+
+    /**
+     * 创建 OpenAI 更新请求 JSON。
+     *
+     * @param name 配置名称
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String updatedOpenAiJson(String name) {
+        return fixtures().updatedOpenAiJson(name);
+    }
+
+    /**
+     * 创建启停请求 JSON。
+     *
+     * @param enabled 是否启用
+     * @return 请求 JSON
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    protected String enabledJson(boolean enabled) {
+        return fixtures().enabledJson(enabled);
+    }
+
+    /**
+     * 创建多配置测试夹具。
+     *
+     * @return 多配置测试夹具
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private LlmMarkdownMultiConfigApiFixtures fixtures() {
+        return new LlmMarkdownMultiConfigApiFixtures(mockMvc);
+    }
+
+    /**
+     * 兼容配置测试数据。
+     *
+     * @param url 接口地址
+     * @param model 模型名称
+     * @param apiKey API Key
+     * @param apiType API 协议类型
+     * @param enabled 是否启用
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    private record CompatibilityConfig(
+            String url,
+            String model,
+            String apiKey,
+            String apiType,
+            boolean enabled
+    ) {
+
+        /**
+         * 创建默认 OpenAI 兼容配置。
+         *
+         * @param url 接口地址
+         * @param model 模型名称
+         * @param apiKey API Key
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        private CompatibilityConfig(String url, String model, String apiKey) {
+            this(url, model, apiKey, "openai", true);
+        }
+
+        /**
+         * 复制为 Anthropic 协议配置。
+         *
+         * @return Anthropic 协议配置
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        private CompatibilityConfig anthropic() {
+            return new CompatibilityConfig(url, model, apiKey, "anthropic", enabled);
+        }
+
+        /**
+         * 复制为禁用状态配置。
+         *
+         * @return 禁用状态配置
+         * @author lvdaxianerplus
+         * @date 2026-06-12
+         */
+        private CompatibilityConfig disabled() {
+            return new CompatibilityConfig(url, model, apiKey, apiType, false);
+        }
     }
 }

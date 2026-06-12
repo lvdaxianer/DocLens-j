@@ -726,7 +726,7 @@ feat(llm): 增加配置选择和无配置降级
 - Modify: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/processing/interfaces/LlmMarkdownConfigResponse.java`
 - Test: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigApiContractTest.java`
 
-- [ ] **Step 1: Write RED API contract tests**
+- [x] **Step 1: Write RED API contract tests**
 
 Endpoints:
 
@@ -745,7 +745,7 @@ Backward compatibility:
 - Existing `GET /api/v1/llm-markdown-config` may return a list or a compatibility object only if frontend is updated in the same task.
 - Prefer a list response for new UI.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -755,7 +755,7 @@ mvn -pl doclens-server -am -Dtest=LlmMarkdownConfigApiContractTest -Dsurefire.fa
 
 Expected: FAIL.
 
-- [ ] **Step 3: Implement API**
+- [x] **Step 3: Implement API**
 
 Rules:
 
@@ -764,7 +764,7 @@ Rules:
 - Empty list returns `[]` with HTTP 200.
 - Test endpoint can test unsaved config.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -774,7 +774,7 @@ mvn -pl doclens-server -am -Dtest=LlmMarkdownConfigApiContractTest -Dsurefire.fa
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 7**
+- [x] **Step 5: Commit Task 7**
 
 Commit subject:
 

@@ -74,6 +74,17 @@ public interface LlmMarkdownConfigRepository {
     void saveAll(List<LlmMarkdownConfig> configs);
 
     /**
+     * 删除 LLM Markdown 配置。
+     *
+     * @param id 配置 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    default void deleteById(String id) {
+        throw new UnsupportedOperationException("llm markdown config delete is not supported");
+    }
+
+    /**
      * 更新 LLM Markdown 健康状态。
      *
      * @param config 含最新健康状态的 LLM Markdown 配置

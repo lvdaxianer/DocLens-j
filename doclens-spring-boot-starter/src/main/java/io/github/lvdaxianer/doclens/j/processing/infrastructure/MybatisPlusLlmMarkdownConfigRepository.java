@@ -112,6 +112,18 @@ public class MybatisPlusLlmMarkdownConfigRepository
     }
 
     /**
+     * 删除 LLM Markdown 配置。
+     *
+     * @param id 配置 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    @Override
+    public void deleteById(String id) {
+        removeById(id);
+    }
+
+    /**
      * 更新 LLM Markdown 健康状态。
      *
      * @param config LLM Markdown 配置

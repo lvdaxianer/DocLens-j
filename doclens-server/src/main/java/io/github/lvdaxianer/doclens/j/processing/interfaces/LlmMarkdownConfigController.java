@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.interfaces;
 
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -31,19 +32,19 @@ public class LlmMarkdownConfigController {
     }
 
     /**
-     * 查询 LLM Markdown 配置。
+     * 查询全部 LLM Markdown 配置。
      *
-     * @return LLM Markdown 配置响应
+     * @return LLM Markdown 配置响应列表
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-12
      */
     @GetMapping
-    public LlmMarkdownConfigResponse getConfig() {
-        return operations.getConfig();
+    public List<LlmMarkdownConfigResponse> listConfigs() {
+        return operations.listConfigs();
     }
 
     /**
-     * 保存 LLM Markdown 配置。
+     * 保存兼容单配置入口的 LLM Markdown 配置。
      *
      * @param request LLM Markdown 配置请求
      * @return LLM Markdown 配置响应
