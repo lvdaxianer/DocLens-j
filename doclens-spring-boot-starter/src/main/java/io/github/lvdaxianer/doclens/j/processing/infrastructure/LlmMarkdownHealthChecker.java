@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LLM Markdown 配置健康检查器。
@@ -18,6 +20,8 @@ import java.util.function.Supplier;
  * @date 2026-06-10
  */
 public class LlmMarkdownHealthChecker {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LlmMarkdownHealthChecker.class);
 
     private final LlmMarkdownConfigRepository configRepository;
     private final LlmMarkdownConfigTester configTester;
@@ -107,9 +111,26 @@ public class LlmMarkdownHealthChecker {
      * @date 2026-06-10
      */
     private LlmMarkdownConfig checkedConfig(LlmMarkdownConfig config) {
-        LlmMarkdownConfigTestResponse response = configTester.test(new LlmMarkdownConfigSettings(
-                config.apiType().value(), config.url(), config.model(), config.credentialValue()));
+        LlmMarkdownConfigTestResponse response = testConfig(config);
         return config.updateHealth(response.healthy(), healthMessage(response), nowSupplier.get());
+    }
+
+    /**
+     * 测试单个 LLM 配置并将旧配置异常转换为健康失败。
+     *
+     * @param config 当前配置
+     * @return 测试响应
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private LlmMarkdownConfigTestResponse testConfig(LlmMarkdownConfig config) {
+        try {
+            return configTester.test(new LlmMarkdownConfigSettings(
+                    config.apiType().value(), config.url(), config.model(), config.credentialValue()));
+        } catch (IllegalArgumentException ex) {
+            LOGGER.warn("[LLM Markdown 健康检查] 配置参数非法，已标记为不健康, configId={}", config.id());
+            return LlmMarkdownConfigTestResponse.unreachable(ex.getMessage());
+        }
     }
 
     /**

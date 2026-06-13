@@ -1338,7 +1338,7 @@ git commit -m "docs: 说明LLM分片和环境变量凭证配置"
 **Files:**
 - No code files expected.
 
-- [ ] **Step 1: Run backend focused tests**
+- [x] **Step 1: Run backend focused tests**
 
 ```bash
 mvn -pl doclens-core -Dtest=LlmMarkdownConfigServiceTest,LlmConfigSelectorRoundRobinTest,ApproximateTokenEstimatorTest,MarkdownChunkerTest,DocumentOcrResultBuilderTest test
@@ -1348,7 +1348,7 @@ mvn -pl doclens-server -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfig
 
 Expected: PASS.
 
-- [ ] **Step 2: Run frontend tests**
+- [x] **Step 2: Run frontend tests**
 
 ```bash
 cd doclens-dashboard && npm run test -- llmMarkdownConfigRules ocrNodeFormRules
@@ -1356,7 +1356,7 @@ cd doclens-dashboard && npm run test -- llmMarkdownConfigRules ocrNodeFormRules
 
 Expected: PASS.
 
-- [ ] **Step 3: Run package build**
+- [x] **Step 3: Run package build**
 
 ```bash
 mvn -pl doclens-server -am package -DskipTests
@@ -1364,7 +1364,7 @@ mvn -pl doclens-server -am package -DskipTests
 
 Expected: PASS.
 
-- [ ] **Step 4: Restart services**
+- [x] **Step 4: Restart services**
 
 Stop old backend process on `10003`, then start:
 
@@ -1377,7 +1377,7 @@ java -jar doclens-server/target/doclens-server-0.1.0-SNAPSHOT.jar
 
 Ensure frontend is running on `10002`.
 
-- [ ] **Step 5: Smoke verify**
+- [x] **Step 5: Smoke verify**
 
 ```bash
 curl -sS http://127.0.0.1:10003/actuator/health
@@ -1389,7 +1389,7 @@ Expected:
 - backend returns `{"status":"UP",...}`
 - frontend returns `200`
 
-- [ ] **Step 6: Commit final verification fixes if needed**
+- [x] **Step 6: Commit final verification fixes if needed**
 
 Only commit if verification required code/test/doc fixes:
 
@@ -1399,23 +1399,40 @@ git add <verified-files>
 git commit -m "chore: 修复LLM分片凭证改造验证问题"
 ```
 
+Verification notes:
+
+- Backend focused tests passed:
+  `mvn -pl doclens-core -am -Dtest=LlmMarkdownConfigServiceTest,LlmConfigSelectorRoundRobinTest,ApproximateTokenEstimatorTest,MarkdownChunkerTest,DocumentOcrResultBuilderTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- Starter focused tests passed:
+  `mvn -pl doclens-spring-boot-starter -am -Dtest=EnvironmentCredentialResolverTest,LlmConfigRateLimiterTest,ChunkedMarkdownPostProcessorTest,MarkdownPromptTest,DashScopeOnlineOcrClientTest,LlmMarkdownHealthCheckerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- Server contract tests passed:
+  `mvn -pl doclens-server -am -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfigValidationApiContractTest,LlmMarkdownConfigTestApiContractTest,OcrNodeCredentialApiContractTest,OcrNodeApiContractTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- Frontend focused tests passed:
+  `npm run test:utils -- llmMarkdownConfigRules ocrNodeFormRules`
+- Package build passed:
+  `mvn -pl doclens-server -am package -DskipTests`
+- Services restarted and smoke verified:
+  backend `curl -sS http://127.0.0.1:10003/actuator/health` returned `{"status":"UP","groups":["liveness","readiness"]}`;
+  frontend `curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:10002/dashboard/` returned `200`.
+- Final verification fix: legacy raw credential references are now rejected without echoing secret-like values and LLM health checks persist an unhealthy state instead of crashing the scheduler.
+
 ---
 
 ## Self-Review Checklist
 
-- [ ] Every requirement has at least one task.
-- [ ] LLM max token input is required in backend and frontend.
-- [ ] Large OCR text is chunked when estimated tokens exceed 80% of max context tokens.
-- [ ] Chunk overlap is context-only and excluded from merge output.
-- [ ] Chunk outputs merge in original order.
-- [ ] Any chunk failure falls back to OCR original text.
-- [ ] LLM raw API Key input is removed from UI and API.
-- [ ] Online OCR raw API Key input is removed from UI and API.
-- [ ] Runtime callers resolve secrets from environment variables.
-- [ ] API responses never expose raw secrets.
-- [ ] Documentation explains env var setup and token-budget behavior.
-- [ ] Multiple healthy LLM configs are selected by round-robin instead of default-first behavior.
-- [ ] Each LLM config enforces its own max concurrency.
-- [ ] Each LLM config enforces its own request interval.
-- [ ] All new Java files/classes/methods include code-review-spec-required Javadocs and `@author lvdaxianerplus`.
-- [ ] Relevant tests and package build pass before service restart.
+- [x] Every requirement has at least one task.
+- [x] LLM max token input is required in backend and frontend.
+- [x] Large OCR text is chunked when estimated tokens exceed 80% of max context tokens.
+- [x] Chunk overlap is context-only and excluded from merge output.
+- [x] Chunk outputs merge in original order.
+- [x] Any chunk failure falls back to OCR original text.
+- [x] LLM raw API Key input is removed from UI and API.
+- [x] Online OCR raw API Key input is removed from UI and API.
+- [x] Runtime callers resolve secrets from environment variables.
+- [x] API responses never expose raw secrets.
+- [x] Documentation explains env var setup and token-budget behavior.
+- [x] Multiple healthy LLM configs are selected by round-robin instead of default-first behavior.
+- [x] Each LLM config enforces its own max concurrency.
+- [x] Each LLM config enforces its own request interval.
+- [x] All new Java files/classes/methods include code-review-spec-required Javadocs and `@author lvdaxianerplus`.
+- [x] Relevant tests and package build pass before service restart.

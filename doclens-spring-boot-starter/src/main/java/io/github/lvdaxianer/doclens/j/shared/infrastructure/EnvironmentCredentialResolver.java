@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.shared.infrastructure;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * 环境变量凭证解析器。
@@ -10,6 +11,9 @@ import java.util.Objects;
  * @date 2026-06-13
  */
 public class EnvironmentCredentialResolver {
+
+    private static final String INVALID_ENV_VAR_MESSAGE = "credential environment variable name is invalid";
+    private static final Pattern ENV_VAR_NAME = Pattern.compile("[A-Z_][A-Z0-9_]*");
 
     private final Map<String, String> environmentValues;
 
@@ -47,6 +51,8 @@ public class EnvironmentCredentialResolver {
         // 空环境变量名用于本地无鉴权模型，保持无凭证调用。
         if (envVarName.isBlank()) {
             return "";
+        } else if (!ENV_VAR_NAME.matcher(envVarName).matches()) {
+            throw new IllegalStateException(INVALID_ENV_VAR_MESSAGE);
         } else {
             return requireConfiguredValue(envVarName);
         }

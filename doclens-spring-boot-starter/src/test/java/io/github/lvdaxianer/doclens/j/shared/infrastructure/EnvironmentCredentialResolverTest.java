@@ -46,6 +46,21 @@ class EnvironmentCredentialResolverTest {
     }
 
     /**
+     * 非法环境变量名可能来自旧版明文密钥，错误消息不能回显原值。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void rejectsInvalidEnvironmentNameWithoutEchoingValue() {
+        EnvironmentCredentialResolver resolver = new EnvironmentCredentialResolver(Map.of());
+
+        assertThatThrownBy(() -> resolver.resolve("sk-secret"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("credential environment variable name is invalid");
+    }
+
+    /**
      * 环境变量名为空时应允许无凭证本地模型路径。
      *
      * @author lvdaxianerplus

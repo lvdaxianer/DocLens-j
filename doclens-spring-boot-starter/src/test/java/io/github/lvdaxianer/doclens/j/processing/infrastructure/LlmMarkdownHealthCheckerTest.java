@@ -64,6 +64,29 @@ class LlmMarkdownHealthCheckerTest {
     }
 
     /**
+     * 旧版明文凭证不符合环境变量名规则时，应记录为不健康而不是抛出异常中断调度。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void invalidLegacyCredentialPersistsFailureMessage() {
+        InMemoryConfigRepository repository = new InMemoryConfigRepository(config());
+        LlmMarkdownHealthChecker checker = new LlmMarkdownHealthChecker(repository,
+                settings -> {
+                    throw new IllegalArgumentException("credential env var must match [A-Z_][A-Z0-9_]*");
+                },
+                () -> CHECKED_AT);
+
+        Optional<LlmMarkdownConfig> checked = checker.checkOnce();
+
+        assertThat(checked).get().extracting(LlmMarkdownConfig::healthy).isEqualTo(false);
+        assertThat(repository.config.healthMessage())
+                .isEqualTo("credential env var must match [A-Z_][A-Z0-9_]*");
+        assertThat(repository.config.lastHealthAt()).contains(CHECKED_AT);
+    }
+
+    /**
      * 健康检查应携带保存的协议类型和凭证。
      *
      * @author lvdaxianerplus
