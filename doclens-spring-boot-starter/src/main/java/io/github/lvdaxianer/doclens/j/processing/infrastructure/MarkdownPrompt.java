@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import java.io.IOException;
 
@@ -45,6 +46,28 @@ final class MarkdownPrompt {
             OCR 文本：
             %s
             """;
+    private static final String CHUNK_USER_PROMPT_TEMPLATE = """
+            请将下面的 OCR 分片主内容转换为 Markdown。
+
+            分片规则：
+            - previous_context 和 next_context 只用于理解上下文连续性。
+            - 只输出 main_content 对应的 Markdown 内容。
+            - 不要重复 previous_context 或 next_context。
+            - 不要输出思考过程、推理过程、分析过程或任何非正文说明。
+            - 不要新增、猜测、扩写、总结或删除正文信息。
+
+            元数据：
+            %s
+
+            previous_context:
+            %s
+
+            main_content:
+            %s
+
+            next_context:
+            %s
+            """;
 
     private MarkdownPrompt() {
     }
@@ -73,5 +96,25 @@ final class MarkdownPrompt {
     static String userPrompt(ObjectMapper objectMapper, MarkdownPostProcessingRequest request) throws IOException {
         return USER_PROMPT_TEMPLATE.formatted(objectMapper.writeValueAsString(request.metadata()),
                 request.ocrText());
+    }
+
+    /**
+     * 构建分片用户提示词。
+     *
+     * @param objectMapper JSON 映射器
+     * @param request Markdown 后处理请求
+     * @param chunk Markdown 分片
+     * @return 分片用户提示词
+     * @throws IOException 元数据序列化失败
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    static String chunkUserPrompt(
+            ObjectMapper objectMapper,
+            MarkdownPostProcessingRequest request,
+            MarkdownChunk chunk
+    ) throws IOException {
+        return CHUNK_USER_PROMPT_TEMPLATE.formatted(objectMapper.writeValueAsString(request.metadata()),
+                chunk.previousContext(), chunk.mainContent(), chunk.nextContext());
     }
 }

@@ -770,7 +770,7 @@ git commit -m "feat: 增加LLM文本token估算和分片计划"
 - Create: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/ChunkedMarkdownPostProcessorTest.java`
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MarkdownPromptTest.java`
 
-- [ ] **Step 1: Write failing chunked processor tests**
+- [x] **Step 1: Write failing chunked processor tests**
 
 ```java
 @Test
@@ -817,7 +817,7 @@ void fallsBackToOriginalTextWhenAnyChunkFails() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -827,7 +827,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=ChunkedMarkdownPostProcessorTest,Mark
 
 Expected: FAIL because chunked processor does not exist.
 
-- [ ] **Step 3: Implement chunk processor and prompt**
+- [x] **Step 3: Implement chunk processor and prompt**
 
 Prompt shape for chunk request:
 
@@ -848,7 +848,7 @@ next_context:
 ...
 ```
 
-- [ ] **Step 4: Wire runtime config max token**
+- [x] **Step 4: Wire runtime config max token**
 
 `ConfigurableMarkdownPostProcessor` should create:
 
@@ -858,7 +858,7 @@ return new ChunkedMarkdownPostProcessor(delegate, new MarkdownChunker(new Approx
         config.maxContextTokens()).process(request);
 ```
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run:
 
@@ -868,7 +868,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=ChunkedMarkdownPostProcessorTest,Mark
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownPostProcessingRequest.java \

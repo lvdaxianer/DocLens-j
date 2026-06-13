@@ -1,7 +1,9 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.processing.application.ApproximateTokenEstimator;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmConfigSelector;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingResult;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
@@ -128,6 +130,8 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @date 2026-06-09
      */
     private MarkdownPostProcessor runtimeProcessor(LlmMarkdownConfig config) {
-        return processorFactory.create(config);
+        MarkdownPostProcessor delegate = processorFactory.create(config);
+        MarkdownChunker chunker = new MarkdownChunker(new ApproximateTokenEstimator());
+        return new ChunkedMarkdownPostProcessor(delegate, chunker, config.maxContextTokens());
     }
 }
