@@ -738,7 +738,7 @@ mvn -pl doclens-core -Dtest=ApproximateTokenEstimatorTest,MarkdownChunkerTest te
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/TokenEstimator.java \
