@@ -14,6 +14,9 @@ public final class LlmMarkdownConfig extends LlmMarkdownConfigAccessors {
     public static final String SINGLETON_ID = "default";
     static final String DEFAULT_NAME = "默认 LLM 配置";
     static final int DEFAULT_PRIORITY = 100;
+    public static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
+    public static final int DEFAULT_MAX_CONCURRENCY = 1;
+    public static final int DEFAULT_REQUEST_INTERVAL_MILLIS = 1000;
 
     private final LlmMarkdownConfigState state;
 
@@ -80,6 +83,7 @@ public final class LlmMarkdownConfig extends LlmMarkdownConfigAccessors {
                         required(model, "llm markdown model is required"))
                 .credential(credentialRef)
                 .usage(LlmUsageType.MARKDOWN_POST_PROCESSING, DEFAULT_PRIORITY)
+                .runtimeLimits(DEFAULT_MAX_CONTEXT_TOKENS, DEFAULT_MAX_CONCURRENCY, DEFAULT_REQUEST_INTERVAL_MILLIS)
                 .defaultConfig(true)
                 .enabled(true)
                 .healthy(false)
@@ -103,6 +107,7 @@ public final class LlmMarkdownConfig extends LlmMarkdownConfigAccessors {
                 .endpoint("", "")
                 .credential("")
                 .usage(LlmUsageType.MARKDOWN_POST_PROCESSING, DEFAULT_PRIORITY)
+                .runtimeLimits(DEFAULT_MAX_CONTEXT_TOKENS, DEFAULT_MAX_CONCURRENCY, DEFAULT_REQUEST_INTERVAL_MILLIS)
                 .defaultConfig(true)
                 .enabled(true)
                 .healthy(false)
@@ -175,7 +180,9 @@ public final class LlmMarkdownConfig extends LlmMarkdownConfigAccessors {
      */
     private LlmMarkdownConfigBuilder copyBuilder() {
         return builder(id(), name(), apiType()).endpoint(url(), model()).credential(credentialValue())
-                .usage(usageType(), priority()).defaultConfig(defaultConfig()).enabled(enabled()).healthy(healthy())
+                .usage(usageType(), priority())
+                .runtimeLimits(maxContextTokens(), maxConcurrency(), requestIntervalMillis())
+                .defaultConfig(defaultConfig()).enabled(enabled()).healthy(healthy())
                 .healthMessage(healthMessage()).lastHealthAt(lastHealthAt()).createdAt(createdAt())
                 .updatedAt(updatedAt());
     }

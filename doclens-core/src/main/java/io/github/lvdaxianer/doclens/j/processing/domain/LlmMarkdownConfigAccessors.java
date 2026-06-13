@@ -120,6 +120,39 @@ abstract class LlmMarkdownConfigAccessors {
     }
 
     /**
+     * 获取 LLM 最大上下文 token 数。
+     *
+     * @return 最大上下文 token 数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    public int maxContextTokens() {
+        return state().maxContextTokens();
+    }
+
+    /**
+     * 获取 LLM 最大并发数。
+     *
+     * @return 最大并发数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    public int maxConcurrency() {
+        return state().maxConcurrency();
+    }
+
+    /**
+     * 获取 LLM 请求启动最小间隔毫秒数。
+     *
+     * @return 请求启动最小间隔毫秒数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    public int requestIntervalMillis() {
+        return state().requestIntervalMillis();
+    }
+
+    /**
      * 判断是否默认配置。
      *
      * @return 是否默认配置

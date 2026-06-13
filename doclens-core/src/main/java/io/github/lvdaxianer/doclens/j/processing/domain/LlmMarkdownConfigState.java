@@ -20,6 +20,9 @@ final class LlmMarkdownConfigState {
     private final boolean credentialConfigured;
     private final LlmUsageType usageType;
     private final int priority;
+    private final int maxContextTokens;
+    private final int maxConcurrency;
+    private final int requestIntervalMillis;
     private final boolean defaultConfig;
     private final boolean enabled;
     private final boolean healthy;
@@ -45,6 +48,9 @@ final class LlmMarkdownConfigState {
         this.credentialConfigured = builder.credentialConfigured;
         this.usageType = builder.usageType;
         this.priority = builder.priority;
+        this.maxContextTokens = builder.maxContextTokens;
+        this.maxConcurrency = builder.maxConcurrency;
+        this.requestIntervalMillis = builder.requestIntervalMillis;
         this.defaultConfig = builder.defaultConfig;
         this.enabled = builder.enabled;
         this.healthy = builder.healthy;
@@ -151,6 +157,39 @@ final class LlmMarkdownConfigState {
      */
     int priority() {
         return priority;
+    }
+
+    /**
+     * 获取最大上下文 token 数。
+     *
+     * @return 最大上下文 token 数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    int maxContextTokens() {
+        return maxContextTokens;
+    }
+
+    /**
+     * 获取最大并发数。
+     *
+     * @return 最大并发数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    int maxConcurrency() {
+        return maxConcurrency;
+    }
+
+    /**
+     * 获取请求启动最小间隔毫秒数。
+     *
+     * @return 请求启动最小间隔毫秒数
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    int requestIntervalMillis() {
+        return requestIntervalMillis;
     }
 
     /**

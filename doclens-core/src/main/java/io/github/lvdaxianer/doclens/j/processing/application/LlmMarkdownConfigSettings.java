@@ -12,8 +12,11 @@ package io.github.lvdaxianer.doclens.j.processing.application;
  * @param priority 优先级
  * @param defaultConfig 是否默认配置
  * @param enabled 是否启用 LLM Markdown 后处理，可为空表示沿用当前状态
+ * @param maxContextTokens LLM 最大上下文 token 数
+ * @param maxConcurrency LLM 最大并发数
+ * @param requestIntervalMillis LLM 请求启动最小间隔毫秒
  * @author lvdaxianerplus
- * @date 2026-06-12
+ * @date 2026-06-13
  */
 public record LlmMarkdownConfigSettings(
         String name,
@@ -24,10 +27,16 @@ public record LlmMarkdownConfigSettings(
         String usageType,
         int priority,
         boolean defaultConfig,
-        Boolean enabled
+        Boolean enabled,
+        int maxContextTokens,
+        int maxConcurrency,
+        int requestIntervalMillis
 ) {
 
     private static final int DEFAULT_PRIORITY = 100;
+    static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
+    static final int DEFAULT_MAX_CONCURRENCY = 1;
+    static final int DEFAULT_REQUEST_INTERVAL_MILLIS = 1000;
 
     /**
      * 兼容不关心启停状态的调用方。
@@ -67,7 +76,8 @@ public record LlmMarkdownConfigSettings(
      */
     private LlmMarkdownConfigSettings(Builder builder) {
         this(builder.name, builder.apiType, builder.url, builder.model, builder.apiKey, builder.usageType,
-                builder.priority, builder.defaultConfig, builder.enabled);
+                builder.priority, builder.defaultConfig, builder.enabled, builder.maxContextTokens,
+                builder.maxConcurrency, builder.requestIntervalMillis);
     }
 
     /**
@@ -116,6 +126,9 @@ public record LlmMarkdownConfigSettings(
         private int priority = DEFAULT_PRIORITY;
         private boolean defaultConfig = true;
         private Boolean enabled;
+        private int maxContextTokens = DEFAULT_MAX_CONTEXT_TOKENS;
+        private int maxConcurrency = DEFAULT_MAX_CONCURRENCY;
+        private int requestIntervalMillis = DEFAULT_REQUEST_INTERVAL_MILLIS;
 
         /**
          * 创建基础构建器。
@@ -207,6 +220,45 @@ public record LlmMarkdownConfigSettings(
          */
         public Builder enabled(Boolean enabled) {
             this.enabled = enabled;
+            return this;
+        }
+
+        /**
+         * 设置 LLM 最大上下文 token 数。
+         *
+         * @param maxContextTokens LLM 最大上下文 token 数
+         * @return 当前构建器
+         * @author lvdaxianerplus
+         * @date 2026-06-13
+         */
+        public Builder maxContextTokens(int maxContextTokens) {
+            this.maxContextTokens = maxContextTokens;
+            return this;
+        }
+
+        /**
+         * 设置 LLM 最大并发数。
+         *
+         * @param maxConcurrency LLM 最大并发数
+         * @return 当前构建器
+         * @author lvdaxianerplus
+         * @date 2026-06-13
+         */
+        public Builder maxConcurrency(int maxConcurrency) {
+            this.maxConcurrency = maxConcurrency;
+            return this;
+        }
+
+        /**
+         * 设置 LLM 请求启动最小间隔。
+         *
+         * @param requestIntervalMillis 请求启动最小间隔毫秒
+         * @return 当前构建器
+         * @author lvdaxianerplus
+         * @date 2026-06-13
+         */
+        public Builder requestIntervalMillis(int requestIntervalMillis) {
+            this.requestIntervalMillis = requestIntervalMillis;
             return this;
         }
 

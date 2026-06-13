@@ -20,6 +20,9 @@ public final class LlmMarkdownConfigBuilder {
     boolean credentialConfigured;
     LlmUsageType usageType = LlmUsageType.MARKDOWN_POST_PROCESSING;
     int priority = LlmMarkdownConfig.DEFAULT_PRIORITY;
+    int maxContextTokens = LlmMarkdownConfig.DEFAULT_MAX_CONTEXT_TOKENS;
+    int maxConcurrency = LlmMarkdownConfig.DEFAULT_MAX_CONCURRENCY;
+    int requestIntervalMillis = LlmMarkdownConfig.DEFAULT_REQUEST_INTERVAL_MILLIS;
     boolean defaultConfig = true;
     boolean enabled = true;
     boolean healthy;
@@ -85,6 +88,27 @@ public final class LlmMarkdownConfigBuilder {
     public LlmMarkdownConfigBuilder usage(LlmUsageType usageType, int priority) {
         this.usageType = usageType;
         this.priority = priority;
+        return this;
+    }
+
+    /**
+     * 设置 LLM 调用治理参数。
+     *
+     * @param maxContextTokens 最大上下文 token 数
+     * @param maxConcurrency 最大并发数
+     * @param requestIntervalMillis 请求启动最小间隔毫秒
+     * @return 当前构建器
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    public LlmMarkdownConfigBuilder runtimeLimits(
+            int maxContextTokens,
+            int maxConcurrency,
+            int requestIntervalMillis
+    ) {
+        this.maxContextTokens = maxContextTokens;
+        this.maxConcurrency = maxConcurrency;
+        this.requestIntervalMillis = requestIntervalMillis;
         return this;
     }
 

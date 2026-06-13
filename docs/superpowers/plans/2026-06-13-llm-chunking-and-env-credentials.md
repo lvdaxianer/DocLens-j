@@ -194,7 +194,7 @@
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/LlmMarkdownConfigMutationFactory.java`
 - Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/LlmMarkdownConfigServiceTest.java`
 
-- [ ] **Step 1: Write failing domain validation tests**
+- [x] **Step 1: Write failing domain validation tests**
 
 Add focused tests to `LlmMarkdownConfigServiceTest`:
 
@@ -222,7 +222,7 @@ void rejectsInvalidMaxContextTokens() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -232,7 +232,7 @@ mvn -pl doclens-core -Dtest=LlmMarkdownConfigServiceTest test
 
 Expected: compilation fails because `maxContextTokens` does not exist.
 
-- [ ] **Step 3: Implement max token field**
+- [x] **Step 3: Implement max token field**
 
 Add `maxContextTokens` to state, builder, accessors, settings, mutation normalization, and default/unconfigured creation.
 
@@ -249,7 +249,7 @@ Validation message:
 "llm markdown max context tokens must be at least 1000"
 ```
 
-- [ ] **Step 4: Add Flyway migration**
+- [x] **Step 4: Add Flyway migration**
 
 Create `V11__doclens_llm_context_and_env_credentials.sql`:
 
@@ -258,7 +258,7 @@ ALTER TABLE doclens_llm_markdown_config
     ADD COLUMN IF NOT EXISTS max_context_tokens INTEGER NOT NULL DEFAULT 16000;
 ```
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run:
 
@@ -268,7 +268,7 @@ mvn -pl doclens-core -Dtest=LlmMarkdownConfigServiceTest test
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain \

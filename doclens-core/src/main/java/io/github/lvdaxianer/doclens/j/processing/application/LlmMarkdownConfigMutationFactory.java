@@ -4,7 +4,6 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigBuilder;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
-import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,11 +16,8 @@ import java.util.UUID;
  */
 final class LlmMarkdownConfigMutationFactory {
 
-    private static final String SCHEME_HTTP = "http";
-    private static final String SCHEME_HTTPS = "https";
-    private static final String DEFAULT_CONFIG_NAME = "默认 LLM 配置";
     private static final String CONFIG_ID_PREFIX = "llm_config_";
-    private static final int DEFAULT_PRIORITY = 100;
+    private final LlmMarkdownConfigSettingsNormalizer normalizer = new LlmMarkdownConfigSettingsNormalizer();
 
     /**
      * 构建用于连通性测试的配置参数。
@@ -46,15 +42,7 @@ final class LlmMarkdownConfigMutationFactory {
      * @date 2026-06-12
      */
     LlmMarkdownConfigSettings normalizeSettings(LlmMarkdownConfigSettings settings) {
-        LlmMarkdownApiType apiType = LlmMarkdownApiType.from(settings.apiType());
-        return LlmMarkdownConfigSettings.builder(configName(settings.name()), apiType.value(), validUrl(settings.url()))
-                .model(required(settings.model(), "llm markdown model is required"))
-                .apiKey(normalize(settings.apiKey()))
-                .usageType(LlmUsageType.from(settings.usageType()).name())
-                .priority(normalizedPriority(settings.priority()))
-                .defaultConfig(settings.defaultConfig())
-                .enabled(settings.enabled())
-                .build();
+        return normalizer.normalize(settings);
     }
 
     /**
@@ -115,7 +103,10 @@ final class LlmMarkdownConfigMutationFactory {
                 .usageType(settings.usageType())
                 .priority(settings.priority())
                 .defaultConfig(settings.defaultConfig())
-                .enabled(settings.enabled());
+                .enabled(settings.enabled())
+                .maxContextTokens(settings.maxContextTokens())
+                .maxConcurrency(settings.maxConcurrency())
+                .requestIntervalMillis(settings.requestIntervalMillis());
     }
 
     /**
@@ -139,68 +130,10 @@ final class LlmMarkdownConfigMutationFactory {
                 .endpoint(settings.url(), settings.model())
                 .credential(credential)
                 .usage(LlmUsageType.from(settings.usageType()), settings.priority())
+                .runtimeLimits(settings.maxContextTokens(), settings.maxConcurrency(),
+                        settings.requestIntervalMillis())
                 .defaultConfig(settings.defaultConfig())
                 .updatedAt(now);
-    }
-
-    /**
-     * 校验 LLM Markdown URL。
-     *
-     * @param value 原始 URL
-     * @return 规整后的完整 URL
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private String validUrl(String value) {
-        String url = required(value, "llm markdown url is required");
-        URI uri = parseUrl(url);
-        // URL 使用 http/https 且包含主机时，按用户提交的完整地址保存。
-        if (hasHttpScheme(uri) && hasHost(uri)) {
-            return uri.toString();
-        } else {
-            // URL 协议或主机缺失时拒绝保存，避免后续请求阶段才失败。
-            throw new IllegalArgumentException("llm markdown url must be http or https URL");
-        }
-    }
-
-    /**
-     * 判断 URL 是否使用 HTTP/HTTPS 协议。
-     *
-     * @param uri URI 对象
-     * @return 是否为 HTTP/HTTPS
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private boolean hasHttpScheme(URI uri) {
-        return SCHEME_HTTP.equalsIgnoreCase(uri.getScheme()) || SCHEME_HTTPS.equalsIgnoreCase(uri.getScheme());
-    }
-
-    /**
-     * 判断 URL 是否包含 host。
-     *
-     * @param uri URI 对象
-     * @return 是否包含 host
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private boolean hasHost(URI uri) {
-        return uri.getHost() != null && !uri.getHost().isBlank();
-    }
-
-    /**
-     * 解析 LLM Markdown URL。
-     *
-     * @param url 标准化 URL
-     * @return URI 对象
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private URI parseUrl(String url) {
-        try {
-            return URI.create(url);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("llm markdown url must be http or https URL", ex);
-        }
     }
 
     /**
@@ -291,63 +224,6 @@ final class LlmMarkdownConfigMutationFactory {
      */
     private String newConfigId() {
         return CONFIG_ID_PREFIX + UUID.randomUUID().toString().replace("-", "");
-    }
-
-    /**
-     * 标准化配置名称。
-     *
-     * @param value 配置名称
-     * @return 配置名称
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private String configName(String value) {
-        String normalized = normalize(value);
-        // 名称为空时给出兼容旧单配置的默认名称。
-        if (normalized.isBlank()) {
-            return DEFAULT_CONFIG_NAME;
-        } else {
-            // 名称非空时保留用户提交名称。
-            return normalized;
-        }
-    }
-
-    /**
-     * 标准化优先级。
-     *
-     * @param priority 优先级
-     * @return 优先级
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private int normalizedPriority(int priority) {
-        // 正数优先级代表用户已显式配置。
-        if (priority > 0) {
-            return priority;
-        } else {
-            // 非法或缺省优先级使用系统默认值。
-            return DEFAULT_PRIORITY;
-        }
-    }
-
-    /**
-     * 校验并规整必填文本。
-     *
-     * @param value 原始文本
-     * @param message 异常消息
-     * @return 规整文本
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private String required(String value, String message) {
-        String normalized = normalize(value);
-        // 必填文本非空时返回去首尾空格后的值。
-        if (!normalized.isBlank()) {
-            return normalized;
-        } else {
-            // 必填文本为空时立即失败，避免保存无效配置。
-            throw new IllegalArgumentException(message);
-        }
     }
 
     /**
