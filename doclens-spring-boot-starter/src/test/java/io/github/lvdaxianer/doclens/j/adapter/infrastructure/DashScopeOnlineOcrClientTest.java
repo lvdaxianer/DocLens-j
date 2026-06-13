@@ -12,12 +12,14 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.EnvironmentCredentialResolver;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +33,8 @@ class DashScopeOnlineOcrClientTest {
 
     private static final int SERVER_BACKLOG = 1;
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T12:00:00+08:00");
+    private static final String CREDENTIAL_ENV_VAR = "DASHSCOPE_API_KEY";
+    private static final String API_KEY = "sk-test";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,11 +56,10 @@ class DashScopeOnlineOcrClientTest {
         });
 
         try {
-            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(objectMapper, endpointFor(server),
-                    Duration.ofSeconds(5));
+            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(options(endpointFor(server)));
             ImageOcrResult result = client.recognizeImage(new OcrRuntimeNode(onlineNode()), request());
 
-            assertThat(authorization.get()).isEqualTo("Bearer sk-test");
+            assertThat(authorization.get()).isEqualTo("Bearer " + API_KEY);
             assertThat(requestBody.get())
                     .contains("qwen-vl-ocr-2025-11-20")
                     .contains("请仅输出图像中的文本内容")
@@ -80,16 +83,30 @@ class DashScopeOnlineOcrClientTest {
                 "{\"error\":\"invalid api key sk-test\"}"));
 
         try {
-            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(objectMapper, endpointFor(server),
-                    Duration.ofSeconds(5));
+            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(options(endpointFor(server)));
 
             assertThatThrownBy(() -> client.recognizeImage(new OcrRuntimeNode(onlineNode()), request()))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("***")
-                    .hasMessageNotContaining("sk-test");
+                    .hasMessageNotContaining(API_KEY);
         } finally {
             server.stop(0);
         }
+    }
+
+    /**
+     * 在线 OCR 凭证环境变量缺失时应返回清晰错误。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void rejectsMissingCredentialEnvironmentValue() {
+        DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(missingCredentialOptions());
+
+        assertThatThrownBy(() -> client.recognizeImage(new OcrRuntimeNode(onlineNode()), request()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("credential environment variable DASHSCOPE_API_KEY is not configured");
     }
 
     /**
@@ -105,8 +122,7 @@ class DashScopeOnlineOcrClientTest {
                 "{\"error\":{\"message\":\"Model access denied.\",\"code\":\"Model.AccessDenied\"}}"));
 
         try {
-            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(objectMapper, endpointFor(server),
-                    Duration.ofSeconds(5));
+            DashScopeOnlineOcrClient client = new DashScopeOnlineOcrClient(options(endpointFor(server)));
 
             assertThat(client.hasExecutionPermission(new OcrRuntimeNode(onlineNode()))).isFalse();
         } finally {
@@ -123,7 +139,7 @@ class DashScopeOnlineOcrClientTest {
      */
     private OcrNode onlineNode() {
         return OcrNode.create(new OcrNodeCreateRequest("node-online", "paddle_ocr", OcrNodeDeploymentType.ONLINE,
-                "在线 OCR", "", 0, "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", "sk-test", true,
+                "在线 OCR", "", 0, "aliyun_bailian_dashscope", "qwen-vl-ocr-2025-11-20", CREDENTIAL_ENV_VAR, true,
                 true, true, 100, 4, BASE_TIME));
     }
 
@@ -166,6 +182,32 @@ class DashScopeOnlineOcrClientTest {
     private URI endpointFor(HttpServer server) {
         return URI.create("http://127.0.0.1:" + server.getAddress().getPort()
                 + "/compatible-mode/v1/chat/completions");
+    }
+
+    /**
+     * 创建带测试环境变量的客户端配置。
+     *
+     * @param endpoint 在线 OCR endpoint
+     * @return 客户端配置
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private DashScopeOnlineOcrClient.Options options(URI endpoint) {
+        return new DashScopeOnlineOcrClient.Options(objectMapper, endpoint, Duration.ofSeconds(5),
+                new EnvironmentCredentialResolver(Map.of(CREDENTIAL_ENV_VAR, API_KEY)));
+    }
+
+    /**
+     * 创建缺失环境变量的客户端配置。
+     *
+     * @return 客户端配置
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private DashScopeOnlineOcrClient.Options missingCredentialOptions() {
+        URI endpoint = URI.create("http://127.0.0.1:1/compatible-mode/v1/chat/completions");
+        return new DashScopeOnlineOcrClient.Options(objectMapper, endpoint, Duration.ofSeconds(5),
+                new EnvironmentCredentialResolver(Map.of()));
     }
 
     /**

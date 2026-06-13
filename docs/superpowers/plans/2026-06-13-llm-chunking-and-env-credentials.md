@@ -562,14 +562,17 @@ git commit -m "feat: 运行时解析LLM环境变量凭证"
 ## Task 5: Replace Online OCR API Key With Env Var Reference
 
 **Files:**
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettings.java`
+- Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettingsRequestFactory.java`
 - Modify: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/adapter/interfaces/OcrNodeRequest.java`
 - Modify: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/adapter/interfaces/OcrNodeResponse.java`
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeApiContractSupport.java`
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeCredentialApiContractTest.java`
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java`
+- Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOcrResponseSanitizer.java`
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClientTest.java`
 
-- [ ] **Step 1: Write failing online OCR credential tests**
+- [x] **Step 1: Write failing online OCR credential tests**
 
 Update online OCR node JSON from:
 
@@ -591,7 +594,7 @@ Assert:
 .andExpect(jsonPath("$.api_key").doesNotExist())
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -601,11 +604,11 @@ mvn -pl doclens-server -Dtest=OcrNodeCredentialApiContractTest,OcrNodeApiContrac
 
 Expected: FAIL because online OCR request field is not supported.
 
-- [ ] **Step 3: Implement server request/response change**
+- [x] **Step 3: Implement server request/response change**
 
 Map `credential_env_var` into the existing node credential reference. Keep local Paddle/Ollama nodes credential-optional.
 
-- [ ] **Step 4: Wire DashScope runtime env resolution**
+- [x] **Step 4: Wire DashScope runtime env resolution**
 
 Use `EnvironmentCredentialResolver` in DashScope client path. Missing env var should produce a clear health/call failure:
 
@@ -613,7 +616,7 @@ Use `EnvironmentCredentialResolver` in DashScope client path. Missing env var sh
 credential environment variable DASHSCOPE_API_KEY is not configured
 ```
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run:
 
@@ -627,10 +630,13 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/adapter/interfaces \
+git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettings.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettingsRequestFactory.java \
+  doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/adapter/interfaces \
   doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeApiContractSupport.java \
   doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/OcrNodeCredentialApiContractTest.java \
   doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClient.java \
+  doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOcrResponseSanitizer.java \
   doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/adapter/infrastructure/DashScopeOnlineOcrClientTest.java
 git commit -m "feat: 使用环境变量引用在线OCR凭证"
 ```

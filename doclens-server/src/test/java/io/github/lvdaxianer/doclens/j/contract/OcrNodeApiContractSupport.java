@@ -103,16 +103,16 @@ abstract class OcrNodeApiContractSupport {
      *
      * @param name 节点名称
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线凭证环境变量名
      * @return 节点 ID
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    protected String createOnlineNode(String name, String providerModel, String apiKey) throws Exception {
+    protected String createOnlineNode(String name, String providerModel, String credentialEnvVar) throws Exception {
         String response = mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(onlineNodeJson(name, providerModel, apiKey)))
+                        .content(onlineNodeJson(name, providerModel, credentialEnvVar)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isString())
                 .andReturn()
@@ -151,25 +151,25 @@ abstract class OcrNodeApiContractSupport {
      *
      * @param name 节点名称
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线凭证环境变量名
      * @return 请求 JSON
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    protected String onlineNodeJson(String name, String providerModel, String apiKey) {
+    protected String onlineNodeJson(String name, String providerModel, String credentialEnvVar) {
         return """
                 {
                   "deployment_type": "ONLINE",
                   "name": "%s",
                   "channel_key": "aliyun_bailian_dashscope",
                   "provider_model": "%s",
-                  "api_key": "%s",
+                  "credential_env_var": "%s",
                   "enabled": true,
                   "participate_global": true,
                   "weight": 100,
                   "max_concurrency": 4
                 }
-                """.formatted(name, providerModel, apiKey);
+                """.formatted(name, providerModel, credentialEnvVar);
     }
 
     /**

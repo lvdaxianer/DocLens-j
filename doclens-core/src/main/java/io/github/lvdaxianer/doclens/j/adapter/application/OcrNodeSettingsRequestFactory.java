@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import java.time.OffsetDateTime;
+import java.util.regex.Pattern;
 
 /**
  * OCR 节点配置请求工厂。
@@ -15,6 +16,7 @@ final class OcrNodeSettingsRequestFactory {
 
     private static final int DEFAULT_WEIGHT = 100;
     private static final int DEFAULT_MAX_CONCURRENCY = 4;
+    private static final Pattern ENV_VAR_NAME = Pattern.compile("[A-Z_][A-Z0-9_]*");
 
     /**
      * 创建 OCR 节点配置请求工厂。
@@ -112,8 +114,8 @@ final class OcrNodeSettingsRequestFactory {
      */
     private OcrNodeCredential credentialForCreate(OcrNodeSettings settings) {
         if (deploymentType(settings) == OcrNodeDeploymentType.ONLINE) {
-            // 新增在线节点必须显式提供 API Key。
-            return new OcrNodeCredential(requiredApiKey(online(settings).apiKey()), true);
+            // 新增在线节点必须显式提供 API Key 环境变量名。
+            return new OcrNodeCredential(requiredCredentialEnvVar(online(settings).credentialEnvVar()), true);
         } else {
             // 离线节点不保存在线凭证。
             return new OcrNodeCredential("", false);
@@ -149,16 +151,16 @@ final class OcrNodeSettingsRequestFactory {
      * @date 2026-06-11
      */
     private OcrNodeCredential credentialFromUpdate(OcrNode current, OcrNodeSettings settings) {
-        String apiKey = normalized(online(settings).apiKey());
-        if (!apiKey.isBlank()) {
-            // 请求带了新 API Key 时覆盖旧凭证。
-            return new OcrNodeCredential(apiKey, true);
+        String credentialEnvVar = normalized(online(settings).credentialEnvVar());
+        if (!credentialEnvVar.isBlank()) {
+            // 请求带了新环境变量名时覆盖旧凭证引用。
+            return new OcrNodeCredential(requiredCredentialEnvVar(credentialEnvVar), true);
         } else if (current.credentialConfigured() && current.credentialRef().isPresent()) {
-            // 未输入新 API Key 时复用当前已配置凭证。
+            // 未输入新环境变量名时复用当前已配置凭证引用。
             return new OcrNodeCredential(current.credentialRef().orElse(""), true);
         } else {
-            // 当前没有可复用凭证时仍要求显式输入。
-            return new OcrNodeCredential(requiredApiKey(apiKey), false);
+            // 当前没有可复用凭证引用时仍要求显式输入。
+            return new OcrNodeCredential(requiredCredentialEnvVar(credentialEnvVar), false);
         }
     }
 
@@ -189,21 +191,24 @@ final class OcrNodeSettingsRequestFactory {
     }
 
     /**
-     * 校验新增在线节点 API Key。
+     * 校验在线节点 API Key 环境变量名。
      *
-     * @param apiKey API Key
-     * @return 标准化 API Key
+     * @param credentialEnvVar API Key 环境变量名
+     * @return 标准化 API Key 环境变量名
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-13
      */
-    private String requiredApiKey(String apiKey) {
-        String normalized = normalized(apiKey);
-        if (!normalized.isBlank()) {
-            // 标准化后非空的 API Key 可以持久化。
+    private String requiredCredentialEnvVar(String credentialEnvVar) {
+        String normalized = normalized(credentialEnvVar);
+        if (normalized.isBlank()) {
+            // 在线节点没有可用环境变量名时不能创建或更新。
+            throw new IllegalArgumentException("ocr online credential env var is required");
+        } else if (ENV_VAR_NAME.matcher(normalized).matches()) {
+            // 标准化后合法的环境变量名可以持久化为凭证引用。
             return normalized;
         } else {
-            // 在线节点没有可用 API Key 时不能创建或更新。
-            throw new IllegalArgumentException("ocr online api key is required");
+            // 环境变量名必须可被服务器进程稳定读取。
+            throw new IllegalArgumentException("credential env var must match [A-Z_][A-Z0-9_]*");
         }
     }
 

@@ -12,16 +12,16 @@ final class DashScopeOcrResponseSanitizer {
     private static final String MASKED_CREDENTIAL = "***";
 
     /**
-     * 截断响应体，避免日志和错误提示过长。
+     * 对第三方响应体中可能回显的密钥做脱敏。
      *
-     * @param node OCR 运行时节点
      * @param responseBody 响应体
-     * @return 响应体摘要
+     * @param credential 真实凭证
+     * @return 脱敏后的响应体
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-13
      */
-    String summarizeBody(OcrRuntimeNode node, String responseBody) {
-        String sanitizedBody = sanitizeBody(node, responseBody);
+    String summarizeBody(String responseBody, String credential) {
+        String sanitizedBody = sanitizeBody(responseBody, credential);
         if (sanitizedBody.length() <= ERROR_BODY_MAX_LENGTH) {
             // 短响应可完整保留，方便排查第三方错误。
             return sanitizedBody;
@@ -34,17 +34,18 @@ final class DashScopeOcrResponseSanitizer {
     /**
      * 对第三方响应体中可能回显的密钥做脱敏。
      *
-     * @param node OCR 运行时节点
      * @param responseBody 响应体
+     * @param credential 真实凭证
      * @return 脱敏后的响应体
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-13
      */
-    private String sanitizeBody(OcrRuntimeNode node, String responseBody) {
+    private String sanitizeBody(String responseBody, String credential) {
         String safeBody = responseBody == null ? "" : responseBody;
-        if (node.node().credentialRef().isPresent()) {
+        String safeCredential = credential == null ? "" : credential.trim();
+        if (!safeCredential.isBlank()) {
             // 第三方错误体可能回显密钥，写日志前必须脱敏。
-            return safeBody.replace(node.node().credentialRef().get(), MASKED_CREDENTIAL);
+            return safeBody.replace(safeCredential, MASKED_CREDENTIAL);
         } else {
             // 未配置密钥时无需替换，直接返回安全响应体。
             return safeBody;

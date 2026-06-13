@@ -73,7 +73,8 @@ public record OcrNodeRequest(
         if (online == null) {
             return new OcrNodeSettings.Online("", "", "");
         } else {
-            return new OcrNodeSettings.Online(online.channelKey(), online.providerModel(), online.apiKey());
+            return new OcrNodeSettings.Online(online.channelKey(), online.providerModel(),
+                    online.credentialEnvVar());
         }
     }
 
@@ -110,14 +111,14 @@ public record OcrNodeRequest(
      *
      * @param channelKey 在线渠道标识
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线 API Key 环境变量名
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     public record Online(
             @JsonProperty("channel_key") String channelKey,
             @JsonProperty("provider_model") String providerModel,
-            @JsonProperty("api_key") String apiKey
+            @JsonProperty("credential_env_var") String credentialEnvVar
     ) {
     }
 

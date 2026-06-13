@@ -35,11 +35,11 @@ public record OcrNodeSettings(
      *
      * @param channelKey 在线渠道标识
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线 API Key 环境变量名
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    public record Online(String channelKey, String providerModel, String apiKey) {
+    public record Online(String channelKey, String providerModel, String credentialEnvVar) {
     }
 
     /**
