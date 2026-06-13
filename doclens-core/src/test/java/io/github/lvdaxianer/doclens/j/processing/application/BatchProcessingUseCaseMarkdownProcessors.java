@@ -1,5 +1,8 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
+import java.util.Map;
+import java.util.LinkedHashMap;
+
 /**
  * 批次处理 Markdown 后处理器测试替身集合。
  *
@@ -26,9 +29,51 @@ final class BatchProcessingUseCaseMarkdownProcessors {
  */
 record FixedMarkdownPostProcessor(String markdown) implements MarkdownPostProcessor {
 
+    /**
+     * 返回固定 Markdown 结果。
+     *
+     * @param request Markdown 后处理请求
+     * @return 固定 Markdown 结果
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
     @Override
     public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
         return MarkdownPostProcessingResult.markdown(markdown);
+    }
+}
+
+/**
+ * 返回带分片元数据 Markdown 的 LLM 后处理器。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+record ChunkedMetadataMarkdownPostProcessor(
+        String markdown,
+        int chunkCount,
+        int maxContextTokens,
+        int estimatedOcrTokens
+) implements MarkdownPostProcessor {
+
+    private static final int CHUNK_METADATA_CAPACITY = 4;
+
+    /**
+     * 返回带 LLM 分片观测字段的 Markdown 结果。
+     *
+     * @param request Markdown 后处理请求
+     * @return Markdown 后处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Override
+    public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+        Map<String, Object> metadata = new LinkedHashMap<>(CHUNK_METADATA_CAPACITY);
+        metadata.put("llm_chunked", true);
+        metadata.put("llm_chunk_count", chunkCount);
+        metadata.put("llm_max_context_tokens", maxContextTokens);
+        metadata.put("llm_estimated_ocr_tokens", estimatedOcrTokens);
+        return MarkdownPostProcessingResult.markdown(markdown, metadata);
     }
 }
 
@@ -40,6 +85,14 @@ record FixedMarkdownPostProcessor(String markdown) implements MarkdownPostProces
  */
 class FailingMarkdownPostProcessor implements MarkdownPostProcessor {
 
+    /**
+     * 抛出固定 LLM 不可用异常。
+     *
+     * @param request Markdown 后处理请求
+     * @return 不会返回成功结果
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
     @Override
     public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
         throw new IllegalStateException("llm unavailable");

@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcess
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,10 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     private static final Logger LOGGER = LoggerFactory.getLogger(ChunkedMarkdownPostProcessor.class);
     private static final String CHUNK_FAILED_WARNING = "llm_markdown_chunk_failed";
     private static final String CHUNK_SEPARATOR = "\n\n";
+    private static final String LLM_CHUNKED_FIELD = "llm_chunked";
+    private static final String LLM_CHUNK_COUNT_FIELD = "llm_chunk_count";
+    private static final String LLM_MAX_CONTEXT_TOKENS_FIELD = "llm_max_context_tokens";
+    private static final String LLM_ESTIMATED_OCR_TOKENS_FIELD = "llm_estimated_ocr_tokens";
 
     private final MarkdownPostProcessor delegate;
     private final MarkdownChunker chunker;
@@ -66,7 +71,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             return processChunks(request, plan);
         } else {
             // 小文本保持原调用路径，避免引入额外提示词噪音。
-            return delegate.process(request);
+            return withChunkMetadata(delegate.process(request), plan);
         }
     }
 
@@ -91,7 +96,8 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
                 return fallbackOriginal(request, chunk);
             }
         }
-        return MarkdownPostProcessingResult.markdown(String.join(CHUNK_SEPARATOR, markdownParts));
+        return MarkdownPostProcessingResult.markdown(String.join(CHUNK_SEPARATOR, markdownParts),
+                chunkMetadata(plan));
     }
 
     /**
@@ -148,5 +154,43 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
         LOGGER.warn("[LLM Markdown 分片] 分片未应用，回退原文, documentId={}, chunkIndex={}", request.documentId(),
                 chunk.chunkIndex());
         return MarkdownPostProcessingResult.passthrough(request.ocrText(), CHUNK_FAILED_WARNING);
+    }
+
+    /**
+     * 合并委托处理器结果与分片观测元数据。
+     *
+     * @param result 委托处理器结果
+     * @param plan 分片计划
+     * @return 带分片元数据的处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private MarkdownPostProcessingResult withChunkMetadata(
+            MarkdownPostProcessingResult result,
+            MarkdownChunkPlan plan
+    ) {
+        if (result.markdownApplied()) {
+            // LLM 成功应用时补充是否分片等观测字段。
+            return MarkdownPostProcessingResult.markdown(result.markdown(), chunkMetadata(plan));
+        } else {
+            // 未应用 LLM 时保持原始直通结果，避免误报分片成功。
+            return result;
+        }
+    }
+
+    /**
+     * 构建 LLM 分片观测元数据。
+     *
+     * @param plan 分片计划
+     * @return 分片观测元数据
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private Map<String, Object> chunkMetadata(MarkdownChunkPlan plan) {
+        return Map.of(
+                LLM_CHUNKED_FIELD, plan.chunked(),
+                LLM_CHUNK_COUNT_FIELD, plan.chunks().size(),
+                LLM_MAX_CONTEXT_TOKENS_FIELD, maxContextTokens,
+                LLM_ESTIMATED_OCR_TOKENS_FIELD, plan.estimatedInputTokens());
     }
 }

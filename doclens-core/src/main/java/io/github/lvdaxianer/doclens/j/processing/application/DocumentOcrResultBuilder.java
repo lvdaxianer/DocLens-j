@@ -29,7 +29,7 @@ class DocumentOcrResultBuilder {
     private static final String OCR_TEXT_FIELD = "ocr_text";
     private static final String LLM_MARKDOWN_APPLIED_FIELD = "llm_markdown_applied";
     private static final String LLM_ERROR_MESSAGE_FIELD = "llm_error_message";
-    private static final int RAW_OUTPUT_TRACE_CAPACITY = 3;
+    private static final int RAW_OUTPUT_TRACE_BASE_CAPACITY = 3;
 
     private final DocumentOcrResultBuilderDependencies dependencies;
     private final DocumentMarkdownPostProcessingService markdownPostProcessingService;
@@ -142,10 +142,12 @@ class DocumentOcrResultBuilder {
             DocumentTextExtractionResult extracted,
             DocumentPostProcessedText postProcessed
     ) {
-        Map<String, Object> rawOutput = new LinkedHashMap<>(extracted.rawOutput().size() + RAW_OUTPUT_TRACE_CAPACITY);
+        Map<String, Object> rawOutput = new LinkedHashMap<>(extracted.rawOutput().size()
+                + RAW_OUTPUT_TRACE_BASE_CAPACITY + postProcessed.llmMetadata().size());
         rawOutput.putAll(extracted.rawOutput());
         rawOutput.put(OCR_TEXT_FIELD, extracted.finalText());
         rawOutput.put(LLM_MARKDOWN_APPLIED_FIELD, postProcessed.llmMarkdownApplied());
+        rawOutput.putAll(postProcessed.llmMetadata());
         postProcessed.llmErrorMessage().ifPresent(message -> rawOutput.put(LLM_ERROR_MESSAGE_FIELD, message));
         return rawOutput;
     }

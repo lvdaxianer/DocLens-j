@@ -17,6 +17,10 @@ import org.junit.jupiter.api.Test;
  */
 class BatchProcessingUseCaseLlmMarkdownTest {
 
+    private static final int TEST_CHUNK_COUNT = 2;
+    private static final int TEST_MAX_CONTEXT_TOKENS = 2000;
+    private static final int TEST_ESTIMATED_OCR_TOKENS = 3600;
+
     /*
      * 本类只覆盖 LLM Markdown 后处理结果写入语义：
      * 成功时保存 Markdown，失败时回退 OCR，think 块清洗不能泄露推理过程。
@@ -76,6 +80,38 @@ class BatchProcessingUseCaseLlmMarkdownTest {
                 .satisfies(event -> assertThat(event.resultSummary()).extracting("callback_body")
                         .isEqualTo(Map.of("meta", Map.of("kind", "invoice"), "text", "# 发票\n\n原始 OCR 文本",
                                 "idempotency_key", "")));
+    }
+
+    /**
+     * LLM 分片后处理元数据应写入 OCR 原始输出。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void processBatchWritesLlmChunkMetadataToRawOutput() {
+        // 准备带分片元数据的 Markdown 后处理器，模拟大文档被分片处理。
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        // 单文档足以验证 rawVendorOutput 的观测字段。
+        documentRepository.save(document("doc-1", 0));
+        BatchProcessingUseCase batchUseCase = useCase(BatchProcessingUseCaseConfig.of(documentRepository,
+                resultRepository, new FixedTextExtractor("原始 OCR 文本"),
+                new ChunkedMetadataMarkdownPostProcessor("# 分片 Markdown", TEST_CHUNK_COUNT,
+                        TEST_MAX_CONTEXT_TOKENS, TEST_ESTIMATED_OCR_TOKENS)));
+
+        // 执行批次处理，后处理元数据应随最终结果落库。
+        batchUseCase.processBatch("batch-test");
+
+        // rawVendorOutput 需要包含分片观测字段，便于定位大文档是否走了分片链路。
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("# 分片 Markdown");
+            assertThat(result.rawVendorOutput())
+                    .containsEntry("llm_chunked", true)
+                    .containsEntry("llm_chunk_count", TEST_CHUNK_COUNT)
+                    .containsEntry("llm_max_context_tokens", TEST_MAX_CONTEXT_TOKENS)
+                    .containsEntry("llm_estimated_ocr_tokens", TEST_ESTIMATED_OCR_TOKENS);
+        });
     }
 
     /**

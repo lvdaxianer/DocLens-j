@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.extraction.Document
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,7 +96,7 @@ class DocumentMarkdownPostProcessingService {
         if (sanitizationResult.fallbackToOcrText()) {
             // LLM 只返回思考内容时回退 OCR 原文，避免保存无正文结果。
             return new DocumentPostProcessedText(extracted.finalText(),
-                    thinkingFallbackWarnings(extracted.warnings()), false, Optional.empty());
+                    thinkingFallbackWarnings(extracted.warnings()), false, Optional.empty(), Map.of());
         } else {
             // 正常 Markdown 仅移除思考块，保留 LLM 排版结果。
             return sanitizedPostProcessedText(extracted, result, sanitizationResult);
@@ -120,7 +121,7 @@ class DocumentMarkdownPostProcessingService {
         List<String> warnings = mergeWarnings(extracted.warnings(), thinkingWarnings(result.warnings(),
                 result.markdown(), sanitizationResult.markdown()));
         return new DocumentPostProcessedText(sanitizationResult.markdown(), warnings, result.markdownApplied(),
-                Optional.empty());
+                Optional.empty(), result.metadata());
     }
 
     /**
@@ -141,7 +142,8 @@ class DocumentMarkdownPostProcessingService {
         LOGGER.warn("[LLM后处理] Markdown 后处理重试耗尽并回退 OCR 原文 documentId={}, attempts={}, errorType={}",
                 document.documentId(), LLM_MARKDOWN_MAX_ATTEMPTS, errorType(lastFailure));
         return new DocumentPostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()), false,
-                Optional.ofNullable(lastFailure).map(RuntimeException::getMessage).filter(message -> !message.isBlank()));
+                Optional.ofNullable(lastFailure).map(RuntimeException::getMessage).filter(message -> !message.isBlank()),
+                Map.of());
     }
 
     /**

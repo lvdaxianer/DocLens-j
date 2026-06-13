@@ -1071,7 +1071,7 @@ git commit -m "feat: 增加LLM轮询负载均衡和限流"
 - Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/BatchProcessingUseCaseTest.java`
 - Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentOcrResultBuilderTest.java`
 
-- [ ] **Step 1: Write failing raw output test**
+- [x] **Step 1: Write failing raw output test**
 
 Assert final raw output includes:
 
@@ -1082,7 +1082,7 @@ assertThat(rawOutput).containsEntry("llm_max_context_tokens", 2000);
 assertThat(rawOutput).containsKey("llm_estimated_ocr_tokens");
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -1092,11 +1092,11 @@ mvn -pl doclens-core -Dtest=DocumentOcrResultBuilderTest,BatchProcessingUseCaseT
 
 Expected: FAIL because raw output metadata does not exist.
 
-- [ ] **Step 3: Implement metadata propagation**
+- [x] **Step 3: Implement metadata propagation**
 
 Extend `MarkdownPostProcessingResult` metadata or add a small metadata record. Keep old behavior for processors that do not provide chunk metadata.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -1106,7 +1106,7 @@ mvn -pl doclens-core -Dtest=DocumentOcrResultBuilderTest,BatchProcessingUseCaseT
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentOcrResultBuilder.java \
