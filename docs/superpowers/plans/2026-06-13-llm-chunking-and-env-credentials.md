@@ -651,10 +651,16 @@ git commit -m "feat: 使用环境变量引用在线OCR凭证"
 - Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunk.java`
 - Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunkPlan.java`
 - Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunker.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ChunkPlanContext.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/RangeBuildContext.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ChunkBuildContext.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/BoundarySearch.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ContextWindow.java`
+- Create: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/Range.java`
 - Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/ApproximateTokenEstimatorTest.java`
 - Create: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunkerTest.java`
 
-- [ ] **Step 1: Write failing estimator tests**
+- [x] **Step 1: Write failing estimator tests**
 
 ```java
 @Test
@@ -672,7 +678,7 @@ void estimatesBlankTextAsZero() {
 }
 ```
 
-- [ ] **Step 2: Write failing chunker tests**
+- [x] **Step 2: Write failing chunker tests**
 
 ```java
 @Test
@@ -702,7 +708,7 @@ void splitsLargeDocumentWithContextOnlyOverlap() {
 }
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -712,7 +718,7 @@ mvn -pl doclens-core -Dtest=ApproximateTokenEstimatorTest,MarkdownChunkerTest te
 
 Expected: FAIL because classes do not exist.
 
-- [ ] **Step 4: Implement estimator and chunker**
+- [x] **Step 4: Implement estimator and chunker**
 
 Rules:
 
@@ -722,7 +728,7 @@ Rules:
 - Never reorder chunks.
 - Never include overlap in `mainContent`.
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
 Run:
 
@@ -740,6 +746,12 @@ git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/app
   doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunk.java \
   doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunkPlan.java \
   doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunker.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ChunkPlanContext.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/RangeBuildContext.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ChunkBuildContext.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/BoundarySearch.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/ContextWindow.java \
+  doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/Range.java \
   doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/ApproximateTokenEstimatorTest.java \
   doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/MarkdownChunkerTest.java
 git commit -m "feat: 增加LLM文本token估算和分片计划"
