@@ -6,7 +6,8 @@ import {
   createOcrNodePayload,
   fillOcrNodeFormFromNode,
   isOcrNodeFormSubmittable,
-  shouldShowOcrModelSelect
+  shouldShowOcrModelSelect,
+  validateOcrNodeCredentialEnvVar
 } from '../ocrNodeFormRules.ts'
 
 test('offline node form submits only host and port endpoint fields', () => {
@@ -29,14 +30,40 @@ test('offline node form submits only host and port endpoint fields', () => {
   })
 })
 
-test('online node form submits channel model and api key without endpoint fields', () => {
+test('ollama offline node form requires provider model and submits generate channel', () => {
+  const form = createDefaultOcrNodeForm('ollama')
+
+  form.name = '内网 Ollama 节点'
+  form.host = '10.100.30.215'
+  form.port = 11434
+
+  assert.equal(isOcrNodeFormSubmittable(form), false)
+
+  form.providerModel = 'deepseek-ocr:latest'
+
+  assert.equal(isOcrNodeFormSubmittable(form), true)
+  assert.deepEqual(createOcrNodePayload(form).node, {
+    deployment_type: 'OFFLINE',
+    name: '内网 Ollama 节点',
+    host: '10.100.30.215',
+    port: 11434,
+    channel_key: 'ollama',
+    provider_model: 'deepseek-ocr:latest',
+    enabled: true,
+    participate_global: true,
+    weight: 50,
+    max_concurrency: 10
+  })
+})
+
+test('online node form submits channel model and credential env var without endpoint fields', () => {
   const form = createDefaultOcrNodeForm('paddle_ocr')
 
   form.deploymentType = 'ONLINE'
   form.name = '阿里百炼 OCR'
   form.channelKey = 'aliyun_bailian_dashscope'
   form.providerModel = 'qwen-vl-ocr-2025-11-20'
-  form.apiKey = 'sk-secret'
+  form.credentialEnvVar = 'DASHSCOPE_API_KEY'
 
   assert.equal(isOcrNodeFormSubmittable(form), true)
   assert.deepEqual(createOcrNodePayload(form).node, {
@@ -44,12 +71,17 @@ test('online node form submits channel model and api key without endpoint fields
     name: '阿里百炼 OCR',
     channel_key: 'aliyun_bailian_dashscope',
     provider_model: 'qwen-vl-ocr-2025-11-20',
-    api_key: 'sk-secret',
+    credential_env_var: 'DASHSCOPE_API_KEY',
     enabled: true,
     participate_global: true,
     weight: 50,
     max_concurrency: 10
   })
+})
+
+test('online ocr node requires credential env var but ollama does not', () => {
+  assert.equal(validateOcrNodeCredentialEnvVar('', 'online_ocr'), '请输入 API Key 环境变量名')
+  assert.equal(validateOcrNodeCredentialEnvVar('', 'ollama'), '')
 })
 
 test('ocr node form defaults weight and max concurrency to product values', () => {
@@ -71,13 +103,13 @@ test('online node form does not require user selected ocr model', () => {
   form.name = '阿里百炼 OCR'
   form.channelKey = 'aliyun_bailian_dashscope'
   form.providerModel = 'qwen-vl-ocr-2025-11-20'
-  form.apiKey = 'sk-secret'
+  form.credentialEnvVar = 'DASHSCOPE_API_KEY'
 
   assert.equal(isOcrNodeFormSubmittable(form), true)
   assert.equal(createOcrNodePayload(form).modelKey, 'paddle_ocr')
 })
 
-test('editing online node never hydrates existing api key into form', () => {
+test('editing online node hydrates credential env var into form', () => {
   const form = fillOcrNodeFormFromNode({
     id: 'ocr_node_1',
     model_key: 'paddle_ocr',
@@ -87,6 +119,7 @@ test('editing online node never hydrates existing api key into form', () => {
     port: 0,
     channel_key: 'aliyun_bailian_dashscope',
     provider_model: 'qwen-vl-ocr-2025-11-20',
+    credential_env_var: 'DASHSCOPE_API_KEY',
     credential_configured: true,
     enabled: true,
     participate_global: true,
@@ -108,8 +141,8 @@ test('editing online node never hydrates existing api key into form', () => {
     last_error: ''
   })
 
-  assert.equal(form.apiKey, '')
+  assert.equal(form.credentialEnvVar, 'DASHSCOPE_API_KEY')
   assert.equal(form.credentialConfigured, true)
   assert.equal(isOcrNodeFormSubmittable(form), true)
-  assert.equal('api_key' in createOcrNodePayload(form).node, false)
+  assert.equal(createOcrNodePayload(form).node.credential_env_var, 'DASHSCOPE_API_KEY')
 })

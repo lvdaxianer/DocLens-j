@@ -100,6 +100,10 @@ const governanceSummary = computed(() => summarizeOcrNode(props.node ?? {}))
               <dt>密钥状态</dt>
               <dd>{{ node.credential_configured ? '已配置' : '未配置' }}</dd>
             </div>
+            <div v-if="node.deployment_type === 'ONLINE'">
+              <dt>环境变量名</dt>
+              <dd>{{ node.credential_env_var || '未填写环境变量名' }}</dd>
+            </div>
             <div>
               <dt>排队图片</dt>
               <dd>{{ formatNumber(node.queued_images) }}</dd>

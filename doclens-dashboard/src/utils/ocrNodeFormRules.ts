@@ -10,6 +10,9 @@ const DEFAULT_PORT = 8080
 const DEFAULT_WEIGHT = 50
 const DEFAULT_MAX_CONCURRENCY = 10
 const COMPATIBLE_ONLINE_MODEL_KEY = 'paddle_ocr'
+const ONLINE_OCR_MODEL_KEY = 'online_ocr'
+export const OLLAMA_MODEL_KEY = 'ollama'
+export const OLLAMA_CHANNEL_KEY = 'ollama'
 export const DASHSCOPE_CHANNEL_KEY: OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
 
 export interface OcrNodeFormState {
@@ -20,7 +23,7 @@ export interface OcrNodeFormState {
   port: number
   channelKey: OcrOnlineChannelKey
   providerModel: string
-  apiKey: string
+  credentialEnvVar: string
   credentialConfigured: boolean
   enabled: boolean
   participateGlobal: boolean
@@ -45,7 +48,7 @@ export function createDefaultOcrNodeForm(modelKey: string): OcrNodeFormState {
     port: DEFAULT_PORT,
     channelKey: DASHSCOPE_CHANNEL_KEY,
     providerModel: '',
-    apiKey: '',
+    credentialEnvVar: '',
     credentialConfigured: false,
     enabled: true,
     participateGlobal: true,
@@ -71,7 +74,7 @@ export function fillOcrNodeFormFromNode(node: OcrNode): OcrNodeFormState {
     port: node.port || DEFAULT_PORT,
     channelKey: onlineChannel(node.channel_key),
     providerModel: node.provider_model,
-    apiKey: '',
+    credentialEnvVar: node.credential_env_var ?? '',
     credentialConfigured: node.credential_configured,
     enabled: node.enabled,
     participateGlobal: node.participate_global,
@@ -92,7 +95,7 @@ export function isOcrNodeFormSubmittable(form: OcrNodeFormState): boolean {
   if (!hasBaseFields(form)) {
     return false
   } else if (form.deploymentType === 'OFFLINE') {
-    return form.host.trim() !== ''
+    return hasOfflineFields(form)
   } else {
     return hasOnlineFields(form)
   }
@@ -108,6 +111,27 @@ export function isOcrNodeFormSubmittable(form: OcrNodeFormState): boolean {
  */
 export function shouldShowOcrModelSelect(deploymentType: OcrNodeDeploymentType): boolean {
   return deploymentType === 'OFFLINE'
+}
+
+/**
+ * 校验在线 OCR API Key 环境变量名。
+ *
+ * @param value - 环境变量名
+ * @param modelKey - OCR 模型标识
+ * @returns 校验错误消息，空字符串表示通过
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function validateOcrNodeCredentialEnvVar(value: string, modelKey: string): string {
+  if (!isOnlineOcrModel(modelKey)) {
+    return ''
+  } else if (!value.trim()) {
+    return '请输入 API Key 环境变量名'
+  } else if (!/^[A-Z_][A-Z0-9_]*$/.test(value.trim())) {
+    return '环境变量名只能包含大写字母、数字和下划线，且不能以数字开头'
+  } else {
+    return ''
+  }
 }
 
 /**
@@ -166,7 +190,23 @@ function effectiveModelKey(form: OcrNodeFormState): string {
 function hasOnlineFields(form: OcrNodeFormState): boolean {
   return form.channelKey.trim() !== ''
     && form.providerModel.trim() !== ''
-    && (form.credentialConfigured || form.apiKey.trim() !== '')
+    && validateOcrNodeCredentialEnvVar(form.credentialEnvVar, 'online_ocr') === ''
+}
+
+/**
+ * 判断离线节点字段是否完整。
+ *
+ * @param form - OCR 节点表单状态
+ * @returns 是否完整
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+function hasOfflineFields(form: OcrNodeFormState): boolean {
+  if (isOllamaModel(form.modelKey)) {
+    return form.host.trim() !== '' && form.providerModel.trim() !== ''
+  } else {
+    return form.host.trim() !== ''
+  }
 }
 
 /**
@@ -178,12 +218,20 @@ function hasOnlineFields(form: OcrNodeFormState): boolean {
  * @date 2026-06-09
  */
 function offlinePayload(form: OcrNodeFormState): OcrNodePayload {
-  return withScheduling(form, {
+  const node = withScheduling(form, {
     deployment_type: 'OFFLINE',
     name: form.name.trim(),
     host: form.host.trim(),
     port: form.port
   })
+  if (isOllamaModel(form.modelKey)) {
+    // Ollama 统一走 /api/generate，真实 OCR 模型名由用户输入。
+    node.channel_key = OLLAMA_CHANNEL_KEY
+    node.provider_model = form.providerModel.trim()
+  } else {
+    // PaddleOCR 离线节点只需要主机和端口。
+  }
+  return node
 }
 
 /**
@@ -195,18 +243,13 @@ function offlinePayload(form: OcrNodeFormState): OcrNodePayload {
  * @date 2026-06-09
  */
 function onlinePayload(form: OcrNodeFormState): OcrNodePayload {
-  const node = withScheduling(form, {
+  return withScheduling(form, {
     deployment_type: 'ONLINE',
     name: form.name.trim(),
     channel_key: form.channelKey,
-    provider_model: form.providerModel.trim()
+    provider_model: form.providerModel.trim(),
+    credential_env_var: form.credentialEnvVar.trim()
   })
-  if (form.apiKey.trim()) {
-    node.api_key = form.apiKey.trim()
-  } else {
-    // 编辑在线节点且未重新填写 API Key 时，后端沿用已保存密钥。
-  }
-  return node
 }
 
 /**
@@ -238,4 +281,28 @@ function withScheduling(form: OcrNodeFormState, node: Omit<OcrNodePayload, 'enab
  */
 function onlineChannel(channelKey: string): OcrOnlineChannelKey {
   return channelKey === DASHSCOPE_CHANNEL_KEY ? DASHSCOPE_CHANNEL_KEY : DASHSCOPE_CHANNEL_KEY
+}
+
+/**
+ * 判断是否为 Ollama OCR 类型。
+ *
+ * @param modelKey - OCR 模型标识
+ * @returns 是否为 Ollama
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function isOllamaModel(modelKey: string): boolean {
+  return modelKey.trim() === OLLAMA_MODEL_KEY
+}
+
+/**
+ * 判断是否为在线 OCR 表单校验目标。
+ *
+ * @param modelKey - OCR 模型标识
+ * @returns 是否需要在线 OCR 凭证校验
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+function isOnlineOcrModel(modelKey: string): boolean {
+  return modelKey.trim() === ONLINE_OCR_MODEL_KEY
 }

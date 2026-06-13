@@ -20,9 +20,11 @@ import {
   createOcrNodePayload,
   DASHSCOPE_CHANNEL_KEY,
   fillOcrNodeFormFromNode,
+  isOllamaModel,
   isOcrNodeFormSubmittable,
   shouldShowOcrModelSelect
 } from '@/utils/ocrNodeFormRules'
+import { displayModelName } from '@/utils/ocrDisplayRules'
 
 const props = defineProps<{
   visible: boolean
@@ -41,7 +43,10 @@ let form = reactive(createDefaultOcrNodeForm(''))
 
 const title = computed(() => (props.node ? '编辑 OCR 节点' : '新增 OCR 节点'))
 const isEditing = computed(() => Boolean(props.node))
-const modelOptions = computed(() => props.models.map((model) => ({ label: `${model.name} · ${model.model_key}`, value: model.model_key })))
+const modelOptions = computed(() => props.models.map((model) => ({
+  label: `${displayModelName(model)} · ${model.model_key}`,
+  value: model.model_key
+})))
 const hasOcrModelSelect = computed(() => shouldShowOcrModelSelect(form.deploymentType))
 const channelOptions = [
   {
@@ -50,6 +55,7 @@ const channelOptions = [
   }
 ]
 const canSubmit = computed(() => isOcrNodeFormSubmittable(form))
+const hasOllamaProviderModel = computed(() => form.deploymentType === 'OFFLINE' && isOllamaModel(form.modelKey))
 
 /**
  * 将节点配置写入本地表单。
@@ -145,6 +151,9 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
           <NFormItem label="Port">
             <NInputNumber v-model:value="form.port" class="ocr-node-form__number" :min="1" :max="65535" />
           </NFormItem>
+          <NFormItem v-if="hasOllamaProviderModel" label="模型名称">
+            <NInput v-model:value="form.providerModel" placeholder="例如 deepseek-ocr:latest" />
+          </NFormItem>
         </template>
         <template v-else>
           <NFormItem label="在线渠道">
@@ -153,11 +162,10 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
           <NFormItem label="模型名称">
             <NInput v-model:value="form.providerModel" placeholder="qwen-vl-ocr-2025-11-20" />
           </NFormItem>
-          <NFormItem label="API Key">
+          <NFormItem label="API Key 环境变量名">
             <NInput
-              v-model:value="form.apiKey"
-              type="password"
-              :placeholder="form.credentialConfigured ? '已配置，留空则沿用旧密钥' : '保存后不再回显'"
+              v-model:value="form.credentialEnvVar"
+              placeholder="例如：DASHSCOPE_API_KEY"
             />
           </NFormItem>
         </template>

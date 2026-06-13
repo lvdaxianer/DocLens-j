@@ -1,11 +1,12 @@
 export type OcrNodeStatus = 'UP' | 'DOWN' | 'RECOVERING' | 'DISABLED'
 export type OcrNodeDeploymentType = 'OFFLINE' | 'ONLINE'
 export type OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
+export type OcrNodeChannelKey = OcrOnlineChannelKey | 'ollama'
 
 export interface OcrModel {
   model_key: string
-  name: string
-  description: string
+  name?: string
+  description?: string
   supported_inputs: string[]
   ocr_path: string
   health_path: string
@@ -37,6 +38,7 @@ export interface OcrNode {
   port: number
   channel_key: string
   provider_model: string
+  credential_env_var?: string
   credential_configured: boolean
   enabled: boolean
   participate_global: boolean
@@ -83,9 +85,9 @@ export interface OcrNodePayload {
   name: string
   host?: string
   port?: number
-  channel_key?: OcrOnlineChannelKey
+  channel_key?: OcrNodeChannelKey
   provider_model?: string
-  api_key?: string
+  credential_env_var?: string
   enabled: boolean
   participate_global: boolean
   weight: number

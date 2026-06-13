@@ -1215,7 +1215,7 @@ git commit -m "feat: 前端LLM配置使用环境变量和token预算"
 - Modify: `doclens-dashboard/src/components/ocr/OcrNodeFormDrawer.vue`
 - Modify: `doclens-dashboard/src/components/ocr/OcrNodeDetailDrawer.vue`
 
-- [ ] **Step 1: Write failing OCR node form tests**
+- [x] **Step 1: Write failing OCR node form tests**
 
 Add tests:
 
@@ -1231,7 +1231,7 @@ it('does not require credential env var for ollama nodes', () => {
 })
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -1241,7 +1241,7 @@ cd doclens-dashboard && npm run test -- ocrNodeFormRules
 
 Expected: FAIL because env-var validator is missing.
 
-- [ ] **Step 3: Implement OCR form change**
+- [x] **Step 3: Implement OCR form change**
 
 For online OCR nodes:
 
@@ -1253,7 +1253,7 @@ For Paddle/Ollama nodes:
 - Hide credential input.
 - Do not submit raw key or env var unless future provider requires it.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -1263,7 +1263,7 @@ cd doclens-dashboard && npm run test -- ocrNodeFormRules
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-dashboard/src/types/ocrResources.ts \
