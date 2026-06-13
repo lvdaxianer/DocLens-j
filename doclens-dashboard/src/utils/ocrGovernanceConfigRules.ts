@@ -1,4 +1,5 @@
 import type { OcrGovernanceConfigPayload, OcrGovernanceConfigResponse } from '@/types/ocrGovernanceConfig'
+import type { FormRules } from 'naive-ui'
 
 export interface OcrGovernanceConfigFormState {
   failureThreshold: number
@@ -13,6 +14,24 @@ const DEFAULT_PROBE_INTERVAL_SECONDS = 5
 const DEFAULT_CIRCUIT_OPEN_SECONDS = 86400
 const DEFAULT_RECOVERY_SUCCESS_THRESHOLD = 3
 const DEFAULT_MANUAL_RECOVERY_ATTEMPTS = 3
+
+/**
+ * 创建 OCR 全局治理配置表单校验规则。
+ *
+ * @param form - OCR 全局治理配置表单状态
+ * @returns Naive UI 表单校验规则
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function createOcrGovernanceConfigFormRules(form: OcrGovernanceConfigFormState): FormRules {
+  return {
+    failureThreshold: [positiveIntegerRule(form, 'failureThreshold')],
+    probeIntervalSeconds: [positiveIntegerRule(form, 'probeIntervalSeconds')],
+    circuitOpenSeconds: [positiveIntegerRule(form, 'circuitOpenSeconds')],
+    recoverySuccessThreshold: [positiveIntegerRule(form, 'recoverySuccessThreshold')],
+    manualRecoveryAttempts: [positiveIntegerRule(form, 'manualRecoveryAttempts')]
+  }
+}
 
 /**
  * 创建 OCR 全局治理配置表单默认值。
@@ -109,4 +128,21 @@ function isPositiveInteger(value: number): boolean {
  */
 function normalizePositiveInteger(value: number): number {
   return Math.max(1, Math.trunc(value))
+}
+
+/**
+ * 创建正整数校验规则。
+ *
+ * @param form - OCR 全局治理配置表单状态
+ * @param field - 待校验字段
+ * @returns Naive UI 单字段校验规则
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+function positiveIntegerRule(form: OcrGovernanceConfigFormState, field: keyof OcrGovernanceConfigFormState) {
+  return {
+    validator: () => isPositiveInteger(form[field]),
+    message: '请输入大于 0 的整数',
+    trigger: ['input', 'blur']
+  }
 }

@@ -69,6 +69,17 @@ public class IdGenerator {
         return prefixedId("ocr_call");
     }
 
+    /**
+     * 创建文档页任务标识。
+     *
+     * @return 文档页任务 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    public String newPageTaskId() {
+        return prefixedId("page_task");
+    }
+
     private String prefixedId(String prefix) {
         byte[] bytes = new byte[RANDOM_BYTES];
         random.nextBytes(bytes);

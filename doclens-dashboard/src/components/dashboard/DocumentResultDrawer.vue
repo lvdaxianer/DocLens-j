@@ -23,6 +23,7 @@ import {
   llmPostProcessingStatus,
   resultTextTitle
 } from '@/utils/llmResultDisplayRules'
+import { renderMarkdownPreviewHtml } from '@/utils/markdownPreviewRules'
 
 const RESULT_DRAWER_WIDTH = 720
 const TEXT_PREVIEW_MAX_HEIGHT = '52vh'
@@ -55,6 +56,7 @@ const markdownText = computed(() => props.result?.result.finalText ?? '')
 const ocrOriginalText = computed(() => props.result ? extractOcrOriginalText(props.result.result) : '')
 const textLength = computed(() => markdownText.value.length)
 const ocrTextLength = computed(() => ocrOriginalText.value.length)
+const markdownPreviewHtml = computed(() => renderMarkdownPreviewHtml(markdownText.value))
 const llmStatus = computed(() => props.result ? llmPostProcessingStatus(props.result.result) : 'LLM 未生效')
 const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.result.result) : false)
 const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
@@ -171,7 +173,12 @@ async function copyContent(content: string, label: string): Promise<void> {
                       </NButton>
                     </div>
                   </div>
-                  <pre>{{ markdownText || '暂无文本内容' }}</pre>
+                  <article
+                    v-if="markdownText"
+                    class="document-result__markdown"
+                    v-html="markdownPreviewHtml"
+                  />
+                  <pre v-else>暂无文本内容</pre>
                 </section>
               </NTabPane>
               <NTabPane :name="OCR_ORIGINAL_TAB" tab="OCR 原内容" display-directive="if">
@@ -252,7 +259,8 @@ async function copyContent(content: string, label: string): Promise<void> {
   gap: 8px;
 }
 
-.document-result__text pre {
+.document-result__text pre,
+.document-result__markdown {
   max-height: var(--document-result-text-max-height);
   margin: 0;
   padding: 14px 16px;
@@ -261,10 +269,38 @@ async function copyContent(content: string, label: string): Promise<void> {
   overflow: auto;
   background: var(--surface-inset);
   color: var(--ink-strong);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   line-height: 1.65;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.document-result__text pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.document-result__markdown :deep(h1),
+.document-result__markdown :deep(h2),
+.document-result__markdown :deep(h3),
+.document-result__markdown :deep(h4),
+.document-result__markdown :deep(h5),
+.document-result__markdown :deep(h6) {
+  margin: 0 0 10px;
+  color: var(--ink-strong);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.document-result__markdown :deep(p) {
+  margin: 0 0 12px;
+}
+
+.document-result__markdown :deep(a) {
+  color: var(--active);
+  font-weight: 700;
+}
+
+.document-result__markdown :deep(strong) {
+  color: var(--ink-strong);
 }
 </style>

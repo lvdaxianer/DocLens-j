@@ -1,4 +1,5 @@
 import type { UploadAdvancedOptionsValue, UploadOcrRoutingOptions } from '@/types/upload'
+import type { FormRules } from 'naive-ui'
 
 export const DEFAULT_UPLOAD_METADATA_JSON = '{}'
 export const DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY = 'weighted-idle'
@@ -12,6 +13,23 @@ export interface UploadCallbackContractHints {
     idempotency_key: string
   }
   textSourceHint: string
+}
+
+/**
+ * 创建上传高级选项表单校验规则。
+ *
+ * @returns Naive UI 表单校验规则
+ * @author lvdaxianerplus
+ * @date 2026-06-10
+ */
+export function createUploadAdvancedOptionsRules(): FormRules {
+  return {
+    metadata: [{
+      validator: (_rule, value: string) => validateMetadataJson(value) === '',
+      message: '元数据 JSON 格式不正确',
+      trigger: ['input', 'blur']
+    }]
+  }
 }
 
 /**

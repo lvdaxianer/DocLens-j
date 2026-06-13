@@ -2,10 +2,12 @@ export interface DocumentResultDisplayPayload {
   finalText: string
   llmMarkdownApplied?: boolean
   llm_markdown_applied?: boolean
+  rawVendorOutput?: Record<string, unknown>
   warnings: string[]
 }
 
 const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_failed'
+const OCR_TEXT_FIELD = 'ocr_text'
 
 /**
  * 判断当前结果是否因为 LLM 排版失败而回退。
@@ -44,6 +46,23 @@ export function isLlmMarkdownApplied(result: DocumentResultDisplayPayload): bool
  */
 export function resultTextTitle(result: DocumentResultDisplayPayload): string {
   return isLlmMarkdownApplied(result) ? 'Markdown 内容' : 'OCR 纯文本'
+}
+
+/**
+ * 提取厂商原始 OCR 文本。
+ *
+ * @param result - 文档结果载荷
+ * @returns OCR 原始文本，不存在时返回空字符串
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function extractOcrOriginalText(result: DocumentResultDisplayPayload): string {
+  const rawText = result.rawVendorOutput?.[OCR_TEXT_FIELD]
+  if (typeof rawText === 'string') {
+    return rawText
+  } else {
+    return ''
+  }
 }
 
 /**

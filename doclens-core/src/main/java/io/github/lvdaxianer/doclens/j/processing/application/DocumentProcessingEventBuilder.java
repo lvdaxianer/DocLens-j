@@ -124,6 +124,21 @@ class DocumentProcessingEventBuilder {
     }
 
     /**
+     * 构建 OCR 页任务入队事件。
+     *
+     * @param queued 已入队文档
+     * @param pageCount 页数
+     * @return OCR 页任务入队事件
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    OcrEvent ocrQueuedEvent(DocumentJob queued, int pageCount) {
+        return event(new DocumentEventPlan(queued, DocLensConstants.EVENT_DOCUMENT_STAGE_CHANGED,
+                pageProgress(queued), Map.of("stage", queued.stage().name().toLowerCase(),
+                PAGE_COUNT_FIELD, pageCount)));
+    }
+
+    /**
      * 构建批次结束事件。
      *
      * @param batchId 批次 ID

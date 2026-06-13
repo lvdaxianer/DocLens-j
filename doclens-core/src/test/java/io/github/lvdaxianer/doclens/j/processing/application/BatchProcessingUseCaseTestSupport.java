@@ -82,8 +82,25 @@ final class BatchProcessingUseCaseTestSupport {
         BatchProcessingDependencies dependencies = new BatchProcessingDependencies(config.documentRepository(),
                 config.resultRepository(), config.eventRepository(), config.batchRepository(), new DefaultAdapterRegistry(
                 List.of(new StubAdapter())), new InMemoryObjectStorage(), config.extractor(), new IdGenerator(),
-                new OcrEventFactory(new IdGenerator()), config.markdownPostProcessor(), config.documentExecutor());
+                new OcrEventFactory(new IdGenerator()), config.markdownPostProcessor(), config.documentExecutor(),
+                pageTaskPreparationService(config.documentRepository()));
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
+    }
+
+    /**
+     * 创建测试页任务准备服务。
+     *
+     * @param documentRepository 文档仓储
+     * @return 页任务准备服务
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private static DocumentPageTaskPreparationService pageTaskPreparationService(
+            InMemoryDocumentJobRepository documentRepository
+    ) {
+        PageImagePreparation preparation = ignored -> List.of();
+        return new DocumentPageTaskPreparationService(documentRepository, new InMemoryDocumentPageTaskRepository(),
+                preparation, new IdGenerator());
     }
 
     /**

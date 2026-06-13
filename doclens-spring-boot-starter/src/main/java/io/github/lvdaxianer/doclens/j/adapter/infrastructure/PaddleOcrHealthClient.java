@@ -9,7 +9,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +22,8 @@ public class PaddleOcrHealthClient implements OcrHealthClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PaddleOcrHealthClient.class);
     private static final String OCR_PATH = "/ocr";
+    private static final String REQUEST_BODY_LOG =
+            "{\"file\":\"<base64-health-check-image>\",\"fileType\":1,\"visualize\":false}";
     private static final String HEALTH_CHECK_IMAGE_BASE64 =
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
     private static final String HEALTH_CHECK_REQUEST_BODY =
@@ -50,27 +51,26 @@ public class PaddleOcrHealthClient implements OcrHealthClient {
     }
 
     /**
-     * 通过 PaddleOCR 原生 /ocr 接口判断节点是否健康。
+     * 使用 PaddleOCR 原生识别接口判断节点是否健康。
      *
      * @param node OCR 节点
-     * @return 是否健康
+     * @return 节点是否健康
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-10
      */
     @Override
     public boolean isHealthy(OcrNode node) {
         URI uri = ocrUri(node);
+        long startMillis = System.currentTimeMillis();
         try {
             HttpResponse<String> response = httpClient.send(request(uri), HttpResponse.BodyHandlers.ofString());
-            LOGGER.debug("[服务间调用] 收到响应|PaddleOCR健康检查|{}|{}|-|body={}",
-                    uri, response.statusCode(), response.body());
-            return isSuccess(response);
+            return handleResponse(uri, startMillis, response);
         } catch (IOException ex) {
-            LOGGER.warn("[服务间调用] 调用失败|PaddleOCR健康检查|{}|-|-|error={}", uri, ex.getMessage(), ex);
+            logFailure(uri, startMillis, ex);
             return false;
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("[服务间调用] 调用失败|PaddleOCR健康检查|{}|-|-|error={}", uri, ex.getMessage(), ex);
+            logFailure(uri, startMillis, ex);
             return false;
         }
     }
@@ -81,65 +81,29 @@ public class PaddleOcrHealthClient implements OcrHealthClient {
      * @param uri 健康检查 URI
      * @return HTTP 请求
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-08
      */
     private HttpRequest request(URI uri) {
-        String requestBody = healthCheckRequestBody();
-        LOGGER.debug("[服务间调用] 发起请求|PaddleOCR健康检查|{}|POST|-|-|headers={{Content-Type=application/json}}, body={}",
-                uri, requestBody);
+        LOGGER.debug("[服务间调用] 发起请求|PaddleOCR健康检查|{}|POST|-|body={}, headers={{Content-Type=application/json}}",
+                uri, REQUEST_BODY_LOG);
         return HttpRequest.newBuilder(uri)
                 .version(HttpClient.Version.HTTP_1_1)
                 .timeout(timeout)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody()))
                 .build();
     }
 
     /**
-     * 拼接 PaddleOCR OCR 健康探测 URI。
+     * 拼接 PaddleOCR 健康检查 URI。
      *
      * @param node OCR 节点
-     * @return OCR 健康探测 URI
+     * @return 健康检查 URI
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-08
      */
     private URI ocrUri(OcrNode node) {
         return URI.create("http://" + node.host() + ":" + node.port() + OCR_PATH);
-    }
-
-    /**
-     * 构建 PaddleOCR 原生 JSON/Base64 健康探测请求体。
-     *
-     * @return 健康探测请求体
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private String healthCheckRequestBody() {
-        return HEALTH_CHECK_REQUEST_BODY.formatted(normalizedHealthCheckImage());
-    }
-
-    /**
-     * 规范化健康探测图片 Base64 文本。
-     *
-     * @return 健康探测图片 Base64
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private String normalizedHealthCheckImage() {
-        byte[] imageBytes = Base64.getDecoder().decode(HEALTH_CHECK_IMAGE_BASE64);
-        return Base64.getEncoder().encodeToString(imageBytes);
-    }
-
-    /**
-     * 判断 HTTP 响应和 PaddleOCR 业务码是否成功。
-     *
-     * @param response HTTP 响应
-     * @return 是否成功
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private boolean isSuccess(HttpResponse<String> response) throws IOException {
-        return isHttpSuccess(response.statusCode()) && isOcrBusinessSuccess(response.body());
     }
 
     /**
@@ -148,23 +112,81 @@ public class PaddleOcrHealthClient implements OcrHealthClient {
      * @param statusCode HTTP 状态码
      * @return 是否成功
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-08
      */
-    private boolean isHttpSuccess(int statusCode) {
+    private boolean isSuccess(int statusCode) {
         return statusCode >= HTTP_SUCCESS_MIN && statusCode < HTTP_SUCCESS_MAX;
     }
 
     /**
-     * 判断 PaddleOCR 响应业务码是否成功。
+     * 构建 PaddleOCR 原生接口探测请求体。
      *
-     * @param responseBody 响应体
-     * @return 是否成功
-     * @throws IOException JSON 解析失败
+     * @return JSON 请求体
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-10
      */
-    private boolean isOcrBusinessSuccess(String responseBody) throws IOException {
-        JsonNode body = objectMapper.readTree(responseBody);
-        return body.path("errorCode").asInt(-1) == 0;
+    private String requestBody() {
+        return HEALTH_CHECK_REQUEST_BODY.formatted(HEALTH_CHECK_IMAGE_BASE64);
+    }
+
+    /**
+     * 处理 PaddleOCR 健康检查响应。
+     *
+     * @param uri 请求 URI
+     * @param startMillis 开始时间戳
+     * @param response HTTP 响应
+     * @return 节点是否健康
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean handleResponse(URI uri, long startMillis, HttpResponse<String> response) {
+        long elapsedMillis = elapsedMillis(startMillis);
+        LOGGER.debug("[服务间调用] 收到响应|PaddleOCR健康检查|{}|{}|{}ms|body={}",
+                uri, response.statusCode(), elapsedMillis, response.body());
+        return isSuccess(response.statusCode()) && isNativeSuccess(response.body());
+    }
+
+    /**
+     * 记录 PaddleOCR 健康检查异常。
+     *
+     * @param uri 请求 URI
+     * @param startMillis 开始时间戳
+     * @param ex 调用异常
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private void logFailure(URI uri, long startMillis, Exception ex) {
+        LOGGER.warn("[服务间调用] 调用失败|PaddleOCR健康检查|{}|-|{}ms|error={}",
+                uri, elapsedMillis(startMillis), ex.getMessage(), ex);
+    }
+
+    /**
+     * 计算调用耗时。
+     *
+     * @param startMillis 开始时间戳
+     * @return 耗时毫秒数
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private long elapsedMillis(long startMillis) {
+        return System.currentTimeMillis() - startMillis;
+    }
+
+    /**
+     * 判断 PaddleOCR 原生响应是否成功。
+     *
+     * @param body 响应体
+     * @return 是否成功
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean isNativeSuccess(String body) {
+        try {
+            JsonNode jsonBody = objectMapper.readTree(body);
+            return jsonBody.path("errorCode").asInt(-1) == 0;
+        } catch (IOException ex) {
+            LOGGER.warn("[服务间调用] PaddleOCR健康检查响应解析失败, error={}", ex.getMessage(), ex);
+            return false;
+        }
     }
 }

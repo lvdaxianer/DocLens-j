@@ -27,7 +27,7 @@ class DashboardStageMetricsAssembler {
      */
     List<Map<String, Object>> stageStatusCounts(List<DocumentJob> documents) {
         return List.of(
-                stageStatusRow("queued", "待解析", List.of(ProcessingStage.QUEUED), documents),
+                stageStatusRow("queued", "待调度", List.of(ProcessingStage.QUEUED), documents),
                 stageStatusRow("direct_text_saved", "直通文本保存", List.of(ProcessingStage.DIRECT_TEXT_SAVED),
                         documents),
                 stageStatusRow("word_to_pdf", "Word 转 PDF", List.of(ProcessingStage.WORD_TO_PDF), documents),
@@ -36,6 +36,7 @@ class DashboardStageMetricsAssembler {
                 stageStatusRow("pdf_to_images", "PDF 转图片", List.of(ProcessingStage.PDF_TO_IMAGES), documents),
                 stageStatusRow("pdf_to_images_completed", "PDF 转图片完成",
                         List.of(ProcessingStage.PDF_TO_IMAGES_COMPLETED), documents),
+                stageStatusRow("ocr_queued", "OCR 排队中", List.of(ProcessingStage.OCR_QUEUED), documents),
                 stageStatusRow("ocr_images", "OCR 图片解析", List.of(ProcessingStage.OCR_IMAGES), documents),
                 stageStatusRow("merge_text", "文本合并", List.of(ProcessingStage.MERGE_TEXT), documents),
                 stageStatusRow("save_text", "文本保存", List.of(ProcessingStage.SAVE_TEXT), documents),

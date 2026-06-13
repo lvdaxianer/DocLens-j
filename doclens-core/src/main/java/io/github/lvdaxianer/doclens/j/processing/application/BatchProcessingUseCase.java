@@ -8,6 +8,8 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentProcessingE
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
@@ -43,6 +45,7 @@ public class BatchProcessingUseCase {
     private final BatchRepository batchRepository;
     private final DocumentOcrResultBuilder resultBuilder;
     private final DocumentProcessingEventBuilder eventBuilder;
+    private final DocumentPageTaskPreparationService pageTaskPreparationService;
     private final TransactionRunner transactionRunner;
     private final ExecutorService documentProcessingExecutor;
 
@@ -65,6 +68,7 @@ public class BatchProcessingUseCase {
                 dependencies.documentRepository()));
         this.eventBuilder = new DocumentProcessingEventBuilder(dependencies.eventFactory());
         this.documentProcessingExecutor = dependencies.documentProcessingExecutor();
+        this.pageTaskPreparationService = dependencies.pageTaskPreparationService();
         this.transactionRunner = transactionRunner;
     }
 
@@ -162,12 +166,45 @@ public class BatchProcessingUseCase {
      */
     private DocumentProcessingResult processDocument(DocumentJob document, Optional<Batch> batch) {
         try {
+            if (requiresPageOcrQueue(document)) {
+                return queueDocumentPages(document);
+            }
+            // 文本类文档不需要 OCR 节点，继续沿用同步直通链路。
             DocumentJob started = startDocument(document);
             return completeDocument(started, batch);
         } catch (RuntimeException ex) {
             LOGGER.warn("[OCR处理] 文档处理失败 documentId={}, error={}", document.documentId(), ex.getMessage(), ex);
             return failDocument(document, ex);
         }
+    }
+
+    /**
+     * 判断文档是否需要进入页级 OCR 队列。
+     *
+     * @param document 文档任务
+     * @return 是否需要页级 OCR 队列
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private boolean requiresPageOcrQueue(DocumentJob document) {
+        return document.fileType() == DocumentType.IMAGE
+                || document.fileType() == DocumentType.PDF
+                || document.fileType() == DocumentType.WORD;
+    }
+
+    /**
+     * 准备文档页任务并等待 OCR worker 执行。
+     *
+     * @param document 文档任务
+     * @return 文档入队结果
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    private DocumentProcessingResult queueDocumentPages(DocumentJob document) {
+        PreparedDocumentPages prepared = pageTaskPreparationService.prepare(document);
+        DocumentJob queued = latestDocument(document);
+        OcrEvent event = eventBuilder.ocrQueuedEvent(queued, prepared.pageImages().size());
+        return new DocumentProcessingResult(queued, Optional.empty(), List.of(event));
     }
 
     /**
@@ -319,24 +356,27 @@ public class BatchProcessingUseCase {
     }
 
     /**
-     * 根据文档完成与失败数量解析批次终态。
+     * 根据批次内文档终态数量解析批次状态。
      *
      * @param total 文档总数
      * @param completed 完成数量
      * @param failed 失败数量
-     * @return 批次终态
+     * @return 批次状态
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
     private BatchStatus resolveBatchStatus(int total, long completed, long failed) {
-        if (failed == 0 && completed == total) {
-            // 全部文档成功时批次整体成功。
+        if (completed + failed < total) {
+            // 存在未完成的异步页任务时，批次仍处于处理中。
+            return BatchStatus.PROCESSING;
+        } else if (failed == 0 && completed == total) {
+            // 全部文档成功完成时，批次完成。
             return BatchStatus.COMPLETED;
         } else if (completed == 0 && failed == total) {
-            // 全部文档失败时批次整体失败。
+            // 全部文档失败时，批次失败。
             return BatchStatus.FAILED;
         } else {
-            // 成功和失败混合时保留部分失败状态。
+            // 成功和失败文档同时存在时，批次部分失败。
             return BatchStatus.PARTIAL_FAILED;
         }
     }

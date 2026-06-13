@@ -2,16 +2,19 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
+import io.github.lvdaxianer.doclens.j.processing.application.PageImagePreparation;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.LibreOfficeWordToPdfConverter;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.PdfPageImageRenderer;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.WordToPdfConverter;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.DefaultPageImagePreparation;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.DefaultDocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.ImageDocumentExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.PdfImageDocumentExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.PlainTextDocumentExtractor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.extraction.WordDocumentExtractor;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -145,6 +148,26 @@ public class DocLensExtractionAutoConfiguration {
     @ConditionalOnMissingBean
     WordToPdfConverter wordToPdfConverter(DocLensProperties properties) {
         return new LibreOfficeWordToPdfConverter(properties);
+    }
+
+    /**
+     * 创建页图片准备器。
+     *
+     * @param objectStorage 对象存储
+     * @param pdfPageImageRenderer PDF 页图片渲染器
+     * @param wordToPdfConverter Word 转 PDF 转换器
+     * @return 页图片准备器
+     * @author lvdaxianerplus
+     * @date 2026-06-10
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    PageImagePreparation pageImagePreparation(
+            ObjectStorage objectStorage,
+            PdfPageImageRenderer pdfPageImageRenderer,
+            WordToPdfConverter wordToPdfConverter
+    ) {
+        return new DefaultPageImagePreparation(objectStorage, pdfPageImageRenderer, wordToPdfConverter);
     }
 
     /**

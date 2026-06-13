@@ -8,9 +8,12 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.AsyncBatchProcessingScheduler;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCase;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskPreparationService;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.application.PageImagePreparation;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
@@ -78,7 +81,31 @@ public class DocLensProcessingAutoConfiguration {
         return new BatchProcessingDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
-                dependencies.eventFactory(), dependencies.markdownPostProcessor(), documentProcessingExecutor);
+                dependencies.eventFactory(), dependencies.markdownPostProcessor(), documentProcessingExecutor,
+                dependencies.pageTaskPreparationService());
+    }
+
+    /**
+     * 创建文档页任务预处理服务。
+     *
+     * @param documentRepository 文档仓储
+     * @param pageTaskRepository 页任务仓储
+     * @param pageImagePreparation 页图片准备器
+     * @param idGenerator ID 生成器
+     * @return 文档页任务预处理服务
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DocumentPageTaskPreparationService documentPageTaskPreparationService(
+            DocumentJobRepository documentRepository,
+            DocumentPageTaskRepository pageTaskRepository,
+            PageImagePreparation pageImagePreparation,
+            IdGenerator idGenerator
+    ) {
+        return new DocumentPageTaskPreparationService(documentRepository, pageTaskRepository, pageImagePreparation,
+                idGenerator);
     }
 
     /**
@@ -96,7 +123,8 @@ public class DocLensProcessingAutoConfiguration {
         return new BatchProcessingBeanDependencies(dependencies.documentRepository(), dependencies.resultRepository(),
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
-                dependencies.eventFactory(), dependencies.markdownPostProcessor());
+                dependencies.eventFactory(), dependencies.markdownPostProcessor(),
+                dependencies.pageTaskPreparationService());
     }
 
     /**
@@ -210,7 +238,8 @@ public class DocLensProcessingAutoConfiguration {
                 context.getBean(BatchRepository.class), context.getBean(DefaultAdapterRegistry.class),
                 context.getBean(ObjectStorage.class), context.getBean(DocumentTextExtractor.class),
                 context.getBean(IdGenerator.class), context.getBean(OcrEventFactory.class),
-                context.getBean(MarkdownPostProcessor.class));
+                context.getBean(MarkdownPostProcessor.class),
+                context.getBean(DocumentPageTaskPreparationService.class));
     }
 
     /**
@@ -226,6 +255,7 @@ public class DocLensProcessingAutoConfiguration {
      * @param idGenerator ID 生成器
      * @param eventFactory 事件工厂
      * @param markdownPostProcessor Markdown 后处理器
+     * @param pageTaskPreparationService 页任务预处理服务
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -239,7 +269,8 @@ public class DocLensProcessingAutoConfiguration {
             DocumentTextExtractor documentTextExtractor,
             IdGenerator idGenerator,
             OcrEventFactory eventFactory,
-            MarkdownPostProcessor markdownPostProcessor
+            MarkdownPostProcessor markdownPostProcessor,
+            DocumentPageTaskPreparationService pageTaskPreparationService
     ) {
     }
 

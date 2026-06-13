@@ -15,7 +15,19 @@ const emit = defineEmits<{
   select: [modelKey: string]
 }>()
 
-const sortedModels = computed(() => [...props.models].sort((left, right) => left.name.localeCompare(right.name)))
+const sortedModels = computed(() => [...props.models].sort((left, right) => modelDisplayName(left).localeCompare(modelDisplayName(right))))
+
+/**
+ * 获取 OCR 模型展示名称。
+ *
+ * @param model - OCR 模型
+ * @returns 展示名称
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+function modelDisplayName(model: OcrModel): string {
+  return model.name ?? model.model_key
+}
 
 /**
  * 计算异常节点数量。
@@ -55,7 +67,7 @@ function selectModel(modelKey: string): void {
           <NIcon :component="Server" />
         </span>
         <div class="ocr-model__title">
-          <strong>{{ model.name }}</strong>
+          <strong>{{ modelDisplayName(model) }}</strong>
           <span>{{ model.model_key }}</span>
         </div>
         <NTag size="small" :type="model.healthy_node_count > 0 ? 'success' : 'warning'">
@@ -63,7 +75,7 @@ function selectModel(modelKey: string): void {
         </NTag>
       </div>
 
-      <p class="ocr-model__description">{{ model.description }}</p>
+      <p class="ocr-model__description">{{ model.description ?? '暂无模型说明' }}</p>
 
       <div class="ocr-model__stats">
         <span>

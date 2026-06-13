@@ -170,6 +170,7 @@ export interface DocumentResultPayload {
   finalText: string
   llm_markdown_applied: boolean
   llm_error_message?: string
+  rawVendorOutput?: Record<string, unknown>
   markdownStorageUri: string
   pages: unknown[]
   confidence: number
