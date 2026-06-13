@@ -627,7 +627,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=DashScopeOnlineOcrClientTest test
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/adapter/application/OcrNodeSettings.java \
