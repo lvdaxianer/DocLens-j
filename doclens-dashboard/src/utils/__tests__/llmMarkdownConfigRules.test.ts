@@ -9,10 +9,14 @@ import {
   fillLlmMarkdownConfigFormFromResponse,
   isLlmMarkdownConfigFormSubmittable,
   toggleLlmMarkdownConfigRowEnabled,
-  sanitizeLlmMarkdownConfigErrorMessage
+  sanitizeLlmMarkdownConfigErrorMessage,
+  validateCredentialEnvVar,
+  validateMaxConcurrency,
+  validateMaxContextTokens,
+  validateRequestIntervalMillis
 } from '../llmMarkdownConfigRules.ts'
 
-test('default llm markdown config form starts disabled and without credential', () => {
+test('default llm markdown config form starts with env credential and runtime limits', () => {
   const form = createDefaultLlmMarkdownConfigForm()
 
   assert.deepEqual(form, {
@@ -20,8 +24,11 @@ test('default llm markdown config form starts disabled and without credential', 
     apiType: 'openai',
     url: '',
     model: '',
-    apiKey: '',
+    credentialEnvVar: '',
     credentialConfigured: false,
+    maxContextTokens: 16000,
+    maxConcurrency: 1,
+    requestIntervalMillis: 1000,
     enabled: true,
     healthy: false,
     healthMessage: '',
@@ -36,48 +43,63 @@ test('default llm markdown config form starts disabled and without credential', 
     api_type: 'openai',
     url: '',
     model: '',
+    credential_env_var: '',
     enabled: true,
     is_default: true,
+    max_concurrency: 1,
+    max_context_tokens: 16000,
     priority: 100,
+    request_interval_millis: 1000,
     usage_type: 'MARKDOWN_POST_PROCESSING'
   })
 })
 
-test('llm markdown config response never hydrates api key into edit form', () => {
+test('llm markdown config response hydrates credential env var into edit form', () => {
   const form = fillLlmMarkdownConfigFormFromResponse({
     id: 'llm_config_main',
     name: '主配置',
     api_type: 'openai',
     url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: 'qwen-vl-ocr-2025-11-20',
+    credential_env_var: 'DASHSCOPE_API_KEY',
     credential_configured: true,
     usage_type: 'MARKDOWN_POST_PROCESSING',
     priority: 10,
+    max_context_tokens: 32000,
+    max_concurrency: 2,
+    request_interval_millis: 1500,
     is_default: true,
     enabled: false,
     healthy: true,
     health_message: ''
   })
 
-  assert.equal(form.apiKey, '')
+  assert.equal(form.credentialEnvVar, 'DASHSCOPE_API_KEY')
   assert.equal(form.credentialConfigured, true)
   assert.equal(form.enabled, false)
   assert.equal(form.id, 'llm_config_main')
   assert.equal(form.name, '主配置')
   assert.equal(form.priority, 10)
+  assert.equal(form.maxContextTokens, 32000)
+  assert.equal(form.maxConcurrency, 2)
+  assert.equal(form.requestIntervalMillis, 1500)
   assert.equal(isLlmMarkdownConfigFormSubmittable(form), true)
-  assert.equal('api_key' in createLlmMarkdownConfigPayload(form), false)
+  assert.equal(createLlmMarkdownConfigPayload(form).credential_env_var, 'DASHSCOPE_API_KEY')
 })
 
-test('llm markdown config payload includes api key only when nonblank', () => {
+test('llm markdown config payload uses credential env var and runtime limits', () => {
   const form = fillLlmMarkdownConfigFormFromResponse({
     id: 'llm_config_main',
     name: '主配置',
     api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model',
+    credential_env_var: 'MINIMAX_API_KEY',
     usage_type: 'MARKDOWN_POST_PROCESSING',
     priority: 10,
+    max_context_tokens: 16000,
+    max_concurrency: 1,
+    request_interval_millis: 1000,
     is_default: true,
     enabled: true,
     credential_configured: true,
@@ -89,26 +111,43 @@ test('llm markdown config payload includes api key only when nonblank', () => {
     api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model',
+    credential_env_var: 'MINIMAX_API_KEY',
     enabled: true,
     is_default: true,
+    max_concurrency: 1,
+    max_context_tokens: 16000,
     name: '主配置',
     priority: 10,
+    request_interval_millis: 1000,
     usage_type: 'MARKDOWN_POST_PROCESSING'
   })
 
-  form.apiKey = '  sk-new-secret  '
+  form.credentialEnvVar = '  DASHSCOPE_API_KEY  '
 
   assert.deepEqual(createLlmMarkdownConfigPayload(form), {
     api_type: 'openai',
     url: 'https://llm.example.com/v1/chat/completions',
     model: 'markdown-model',
+    credential_env_var: 'DASHSCOPE_API_KEY',
     enabled: true,
     is_default: true,
+    max_concurrency: 1,
+    max_context_tokens: 16000,
     name: '主配置',
     priority: 10,
-    usage_type: 'MARKDOWN_POST_PROCESSING',
-    api_key: 'sk-new-secret'
+    request_interval_millis: 1000,
+    usage_type: 'MARKDOWN_POST_PROCESSING'
   })
+})
+
+test('llm markdown config validators reject invalid runtime fields', () => {
+  assert.equal(validateMaxContextTokens(undefined), '请输入最大上下文 Token 数')
+  assert.equal(
+    validateCredentialEnvVar('bad-name'),
+    '环境变量名只能包含大写字母、数字和下划线，且不能以数字开头'
+  )
+  assert.equal(validateMaxConcurrency(0), '最大并发数必须大于等于 1')
+  assert.equal(validateRequestIntervalMillis(-1), '请求间隔不能小于 0')
 })
 
 test('llm markdown config requires url and model together with http url', () => {
@@ -178,9 +217,13 @@ test('llm markdown config supports anthropic endpoint hints and payload', () => 
     api_type: 'anthropic',
     url: 'https://api.minimaxi.com/anthropic',
     model: 'MiniMax-M3',
+    credential_env_var: '',
     enabled: true,
     is_default: true,
+    max_concurrency: 1,
+    max_context_tokens: 16000,
     priority: 100,
+    request_interval_millis: 1000,
     usage_type: 'MARKDOWN_POST_PROCESSING'
   })
 })
@@ -202,15 +245,20 @@ test('llm markdown config create payload includes multi config governance fields
   form.model = 'MiniMax-M3'
   form.priority = 20
   form.defaultConfig = false
+  form.credentialEnvVar = 'MINIMAX_API_KEY'
 
   assert.deepEqual(createLlmMarkdownConfigPayload(form), {
     name: '备用配置',
     api_type: 'anthropic',
     url: 'https://api.example.com/anthropic/v1/messages',
     model: 'MiniMax-M3',
+    credential_env_var: 'MINIMAX_API_KEY',
     enabled: true,
     is_default: false,
+    max_concurrency: 1,
+    max_context_tokens: 16000,
     priority: 20,
+    request_interval_millis: 1000,
     usage_type: 'MARKDOWN_POST_PROCESSING'
   })
 })

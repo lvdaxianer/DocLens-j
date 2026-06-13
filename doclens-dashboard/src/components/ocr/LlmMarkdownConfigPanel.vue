@@ -105,11 +105,34 @@ onMounted(llmConfig.loadConfig)
           <NFormItem label="模型名称">
             <NInput v-model:value="llmConfig.form.model" placeholder="markdown-model" />
           </NFormItem>
-          <NFormItem label="API Key">
+          <NFormItem label="API Key 环境变量名">
             <NInput
-              v-model:value="llmConfig.form.apiKey"
-              type="password"
-              :placeholder="llmConfig.form.credentialConfigured ? '已配置，留空则沿用旧密钥' : '可选，保存后不再回显'"
+              v-model:value="llmConfig.form.credentialEnvVar"
+              placeholder="例如：MINIMAX_API_KEY"
+            />
+          </NFormItem>
+          <NFormItem label="最大上下文 Token 数">
+            <NInputNumber
+              v-model:value="llmConfig.form.maxContextTokens"
+              :min="1000"
+              :precision="0"
+              placeholder="例如：16000"
+            />
+          </NFormItem>
+          <NFormItem label="最大并发数">
+            <NInputNumber
+              v-model:value="llmConfig.form.maxConcurrency"
+              :min="1"
+              :precision="0"
+              placeholder="例如：1"
+            />
+          </NFormItem>
+          <NFormItem label="请求间隔（毫秒）">
+            <NInputNumber
+              v-model:value="llmConfig.form.requestIntervalMillis"
+              :min="0"
+              :precision="0"
+              placeholder="例如：1000"
             />
           </NFormItem>
           <NFormItem label="优先级">
@@ -123,7 +146,10 @@ onMounted(llmConfig.loadConfig)
         </div>
 
         <div class="llm-config-panel__footer">
-          <span>API Key：{{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}</span>
+          <span>
+            凭证：{{ llmConfig.form.credentialEnvVar || '未填写环境变量名' }}
+            / {{ llmConfig.form.credentialConfigured ? '已配置' : '未配置' }}
+          </span>
           <NButton
             secondary
             :loading="llmConfig.isTesting.value"

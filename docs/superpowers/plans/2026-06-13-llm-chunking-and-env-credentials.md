@@ -1128,7 +1128,7 @@ git commit -m "feat: 增加LLM分片处理观测字段"
 - Modify: `doclens-dashboard/src/components/ocr/LlmMarkdownConfigTableColumns.ts`
 - Modify: `doclens-dashboard/src/components/ocr/__tests__/LlmMarkdownConfigPanel.test.ts`
 
-- [ ] **Step 1: Write failing frontend validation tests**
+- [x] **Step 1: Write failing frontend validation tests**
 
 Add tests:
 
@@ -1150,7 +1150,7 @@ it('requires a non-negative request interval', () => {
 })
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -1160,7 +1160,7 @@ cd doclens-dashboard && npm run test -- llmMarkdownConfigRules
 
 Expected: FAIL because validators/fields are missing.
 
-- [ ] **Step 3: Implement frontend type and form changes**
+- [x] **Step 3: Implement frontend type and form changes**
 
 UI labels:
 
@@ -1180,7 +1180,7 @@ Remove raw secret placeholder:
 
 - `可选，保存后不可回显`
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -1190,7 +1190,7 @@ cd doclens-dashboard && npm run test -- llmMarkdownConfigRules LlmMarkdownConfig
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-dashboard/src/types/llmMarkdownConfig.ts \

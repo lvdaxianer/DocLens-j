@@ -6,10 +6,13 @@ export interface LlmMarkdownConfigFormState {
   apiType: LlmMarkdownApiType
   url: string
   model: string
-  apiKey: string
+  credentialEnvVar: string
   credentialConfigured: boolean
   usageType: string
   priority: number
+  maxContextTokens: number | undefined
+  maxConcurrency: number | undefined
+  requestIntervalMillis: number | undefined
   defaultConfig: boolean
   enabled: boolean
   healthy: boolean
@@ -23,9 +26,13 @@ export interface LlmMarkdownConfigRow {
   apiType: LlmMarkdownApiType
   url: string
   model: string
+  credentialEnvVar: string
   credentialConfigured: boolean
   usageType: string
   priority: number
+  maxContextTokens: number
+  maxConcurrency: number
+  requestIntervalMillis: number
   defaultConfig: boolean
   enabled: boolean
   healthy: boolean
@@ -47,7 +54,14 @@ const API_KEY_VALUE_PATTERN = /(api_key\s*[:=]\s*["']?)([^"',\s]+)/gi
 const BEARER_VALUE_PATTERN = /(Bearer\s+)([A-Za-z0-9._~+/=-]+)/gi
 const DEFAULT_USAGE_TYPE = 'MARKDOWN_POST_PROCESSING'
 const DEFAULT_PRIORITY = 100
+const DEFAULT_MAX_CONTEXT_TOKENS = 16000
+const DEFAULT_MAX_CONCURRENCY = 1
+const DEFAULT_REQUEST_INTERVAL_MILLIS = 1000
+const MIN_MAX_CONTEXT_TOKENS = 1000
+const MIN_MAX_CONCURRENCY = 1
+const MIN_REQUEST_INTERVAL_MILLIS = 0
 const EMPTY_CONFIG_STATUS = '暂无 LLM 配置，OCR 可正常运行。'
+const ENV_VAR_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/
 
 /**
  * 创建 LLM Markdown 配置表单默认值。
@@ -63,8 +77,11 @@ export function createDefaultLlmMarkdownConfigForm(): LlmMarkdownConfigFormState
     apiType: 'openai',
     url: '',
     model: '',
-    apiKey: '',
+    credentialEnvVar: '',
     credentialConfigured: false,
+    maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,
+    maxConcurrency: DEFAULT_MAX_CONCURRENCY,
+    requestIntervalMillis: DEFAULT_REQUEST_INTERVAL_MILLIS,
     usageType: DEFAULT_USAGE_TYPE,
     priority: DEFAULT_PRIORITY,
     defaultConfig: true,
@@ -90,10 +107,13 @@ export function fillLlmMarkdownConfigFormFromResponse(response: LlmMarkdownConfi
     apiType: response.api_type ?? 'openai',
     url: response.url,
     model: response.model,
-    apiKey: '',
+    credentialEnvVar: response.credential_env_var ?? '',
     credentialConfigured: response.credential_configured,
     usageType: response.usage_type ?? DEFAULT_USAGE_TYPE,
     priority: response.priority ?? DEFAULT_PRIORITY,
+    maxContextTokens: response.max_context_tokens ?? DEFAULT_MAX_CONTEXT_TOKENS,
+    maxConcurrency: response.max_concurrency ?? DEFAULT_MAX_CONCURRENCY,
+    requestIntervalMillis: response.request_interval_millis ?? DEFAULT_REQUEST_INTERVAL_MILLIS,
     defaultConfig: response.is_default ?? false,
     enabled: response.enabled ?? true,
     healthy: response.healthy,
@@ -113,12 +133,96 @@ export function fillLlmMarkdownConfigFormFromResponse(response: LlmMarkdownConfi
 export function isLlmMarkdownConfigFormSubmittable(form: LlmMarkdownConfigFormState): boolean {
   const hasUrl = form.url.trim() !== ''
   const hasModel = form.model.trim() !== ''
+  const hasValidCredential = validateCredentialEnvVar(form.credentialEnvVar) === ''
+  const hasValidMaxTokens = validateMaxContextTokens(form.maxContextTokens) === ''
+  const hasValidConcurrency = validateMaxConcurrency(form.maxConcurrency) === ''
+  const hasValidInterval = validateRequestIntervalMillis(form.requestIntervalMillis) === ''
   if (!hasUrl && !hasModel) {
     // URL 和模型都为空时表示关闭可选后处理。
     return true
   } else {
     // 只要填写任一核心字段，就必须形成可调用的完整配置。
-    return hasUrl && hasModel && isHttpUrl(form.url)
+    return hasUrl && hasModel && isHttpUrl(form.url) && hasValidCredential && hasValidMaxTokens
+      && hasValidConcurrency && hasValidInterval
+  }
+}
+
+/**
+ * 校验凭证环境变量名。
+ *
+ * @param value - 环境变量名
+ * @returns 错误文案，空字符串表示通过
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function validateCredentialEnvVar(value: string | undefined): string {
+  const trimmed = value?.trim() ?? ''
+  if (trimmed === '') {
+    // 没有密钥的本地或测试配置允许留空，由后端测试阶段判断是否需要真实凭证。
+    return ''
+  } else if (ENV_VAR_NAME_PATTERN.test(trimmed)) {
+    // 合法环境变量名可以提交。
+    return ''
+  } else {
+    // 环境变量名不允许使用横线、小写字母或数字开头。
+    return '环境变量名只能包含大写字母、数字和下划线，且不能以数字开头'
+  }
+}
+
+/**
+ * 校验最大上下文 Token 数。
+ *
+ * @param value - 最大上下文 Token 数
+ * @returns 错误文案，空字符串表示通过
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function validateMaxContextTokens(value: number | undefined): string {
+  if (value === undefined || value === null) {
+    // Token 预算是必填项，否则无法判断是否需要分片。
+    return '请输入最大上下文 Token 数'
+  } else if (value >= MIN_MAX_CONTEXT_TOKENS) {
+    // 达到后端最小上下文要求时允许提交。
+    return ''
+  } else {
+    // 过小上下文会导致分片不可用。
+    return '最大上下文 Token 数必须大于等于 1000'
+  }
+}
+
+/**
+ * 校验最大并发数。
+ *
+ * @param value - 最大并发数
+ * @returns 错误文案，空字符串表示通过
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function validateMaxConcurrency(value: number | undefined): string {
+  if (value === undefined || value === null || value < MIN_MAX_CONCURRENCY) {
+    // 并发数至少为 1，避免配置无法获得任何执行槽位。
+    return '最大并发数必须大于等于 1'
+  } else {
+    // 有效并发数允许提交。
+    return ''
+  }
+}
+
+/**
+ * 校验请求间隔毫秒数。
+ *
+ * @param value - 请求间隔毫秒数
+ * @returns 错误文案，空字符串表示通过
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+export function validateRequestIntervalMillis(value: number | undefined): string {
+  if (value === undefined || value === null || value < MIN_REQUEST_INTERVAL_MILLIS) {
+    // 间隔不能为负数，0 表示不额外等待。
+    return '请求间隔不能小于 0'
+  } else {
+    // 非负间隔允许提交。
+    return ''
   }
 }
 
@@ -138,7 +242,11 @@ export function createLlmMarkdownConfigPayload(form: LlmMarkdownConfigFormState)
     enabled: form.enabled,
     usage_type: form.usageType,
     priority: form.priority,
-    is_default: form.defaultConfig
+    is_default: form.defaultConfig,
+    credential_env_var: form.credentialEnvVar.trim(),
+    max_context_tokens: form.maxContextTokens ?? DEFAULT_MAX_CONTEXT_TOKENS,
+    max_concurrency: form.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
+    request_interval_millis: form.requestIntervalMillis ?? DEFAULT_REQUEST_INTERVAL_MILLIS
   }
   const trimmedName = trimmedValueOrUndefined(form.name)
   if (trimmedName) {
@@ -146,12 +254,6 @@ export function createLlmMarkdownConfigPayload(form: LlmMarkdownConfigFormState)
     payload.name = trimmedName
   } else {
     // 空名称不提交，避免出现 name: undefined。
-  }
-  if (form.apiKey.trim()) {
-    // 非空 API Key 表示用户主动轮换密钥。
-    payload.api_key = form.apiKey.trim()
-  } else {
-    // 编辑时密钥留空由后端沿用旧值，前端不提交空 api_key。
   }
   return payload
 }
@@ -237,9 +339,13 @@ function createEmptyConfigRow(): LlmMarkdownConfigRow {
     apiType: 'openai',
     url: '',
     model: '',
+    credentialEnvVar: '',
     credentialConfigured: false,
     usageType: DEFAULT_USAGE_TYPE,
     priority: DEFAULT_PRIORITY,
+    maxContextTokens: DEFAULT_MAX_CONTEXT_TOKENS,
+    maxConcurrency: DEFAULT_MAX_CONCURRENCY,
+    requestIntervalMillis: DEFAULT_REQUEST_INTERVAL_MILLIS,
     defaultConfig: false,
     enabled: false,
     healthy: false,
@@ -264,9 +370,13 @@ function createResponseConfigRow(response: LlmMarkdownConfigResponse): LlmMarkdo
     apiType: response.api_type,
     url: response.url,
     model: response.model,
+    credentialEnvVar: response.credential_env_var ?? '',
     credentialConfigured: response.credential_configured,
     usageType: response.usage_type ?? DEFAULT_USAGE_TYPE,
     priority: response.priority ?? DEFAULT_PRIORITY,
+    maxContextTokens: response.max_context_tokens ?? DEFAULT_MAX_CONTEXT_TOKENS,
+    maxConcurrency: response.max_concurrency ?? DEFAULT_MAX_CONCURRENCY,
+    requestIntervalMillis: response.request_interval_millis ?? DEFAULT_REQUEST_INTERVAL_MILLIS,
     defaultConfig: response.is_default ?? false,
     enabled: response.enabled,
     healthy: response.healthy,

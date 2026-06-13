@@ -37,12 +37,25 @@ export function createLlmMarkdownConfigColumns(
     { title: '模型', key: 'model', minWidth: 150 },
     { title: '完整地址', key: 'url', minWidth: 260, ellipsis: { tooltip: true } },
     { title: '优先级', key: 'priority', width: 90 },
+    { title: '治理', key: 'runtimeLimits', width: 190, render: renderRuntimeLimits },
     { title: '状态', key: 'status', width: 150, render: renderStatus },
     { title: '健康', key: 'healthy', width: 110, render: renderHealth },
     { title: '默认', key: 'defaultConfig', width: 90, render: renderDefault },
     { title: '最近心跳', key: 'lastHealthAt', width: 150, render: (row) => formatDateTime(row.lastHealthAt) },
     { title: '操作', key: 'actions', width: 310, render: (row) => renderActions(row, actions) }
   ]
+}
+
+/**
+ * 渲染运行时治理参数。
+ *
+ * @param row - 配置行
+ * @returns 治理参数文案
+ * @author lvdaxianerplus
+ * @date 2026-06-13
+ */
+function renderRuntimeLimits(row: LlmMarkdownConfigRow) {
+  return `${row.maxContextTokens} tokens / 并发 ${row.maxConcurrency} / ${row.requestIntervalMillis}ms`
 }
 
 /**

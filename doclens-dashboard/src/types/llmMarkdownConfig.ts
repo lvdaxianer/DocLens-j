@@ -6,9 +6,13 @@ export interface LlmMarkdownConfigResponse {
   api_type: LlmMarkdownApiType
   url: string
   model: string
+  credential_env_var?: string
   credential_configured: boolean
   usage_type?: string
   priority?: number
+  max_context_tokens?: number
+  max_concurrency?: number
+  request_interval_millis?: number
   is_default?: boolean
   enabled: boolean
   healthy: boolean
@@ -25,7 +29,10 @@ export interface LlmMarkdownConfigPayload {
   usage_type: string
   priority: number
   is_default: boolean
-  api_key?: string
+  credential_env_var: string
+  max_context_tokens: number
+  max_concurrency: number
+  request_interval_millis: number
 }
 
 export interface LlmMarkdownConfigTestResponse {
