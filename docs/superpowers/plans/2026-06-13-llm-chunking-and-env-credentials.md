@@ -1286,7 +1286,7 @@ git commit -m "feat: 前端在线OCR凭证改为环境变量"
 - Check: `docker-compose.yml`
 - Check: `docs/**/*.md`
 
-- [ ] **Step 1: Update documentation**
+- [x] **Step 1: Update documentation**
 
 Add Chinese docs:
 
@@ -1305,7 +1305,7 @@ export DASHSCOPE_API_KEY=真实密钥
 
 Add English mirror text.
 
-- [ ] **Step 2: Add script comments**
+- [x] **Step 2: Add script comments**
 
 In `scripts/run-backend-dev.sh`, add commented examples only:
 
@@ -1314,7 +1314,7 @@ In `scripts/run-backend-dev.sh`, add commented examples only:
 # export DASHSCOPE_API_KEY=replace-with-real-secret
 ```
 
-- [ ] **Step 3: Run docs grep**
+- [x] **Step 3: Run docs grep**
 
 Run:
 
@@ -1324,7 +1324,7 @@ rg -n "api_key|API Key|credential_env_var|max_context_tokens|max_concurrency|req
 
 Expected: docs mention env-var references and do not instruct users to paste raw secrets into UI.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md README_EN.md scripts/run-backend-dev.sh docs

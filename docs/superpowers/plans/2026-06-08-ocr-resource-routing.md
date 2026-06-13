@@ -75,15 +75,15 @@
 - 离线节点表示用户自建或内网部署的 OCR 服务；当前已对接的 `paddle_ocr` 属于离线节点。
 - 离线节点表单只需要填写节点别名、OCR 类型、IP/Host、端口，以及是否启用、是否参与全局负载均衡等调度配置。
 - 离线节点不能让用户填写完整接口 URL；接口路径仍由适配器固定约定，例如 PaddleOCR 的 `/ocr` 和 `/health`。
-- 在线节点表示调用云厂商托管 OCR/视觉模型；添加在线节点时先选择渠道，再输入模型名称和 API Key。
+- 在线节点表示调用云厂商托管 OCR/视觉模型；添加在线节点时先选择渠道，再输入模型名称和 API Key 环境变量名。
 - 当前在线渠道需要支持阿里百炼，调用方式使用 DashScope OpenAI compatible chat completions API：
   - endpoint: `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`
   - header: `Authorization: Bearer ${DASHSCOPE_API_KEY}`
   - header: `Content-Type: application/json`
   - model 示例：`qwen-vl-ocr-2025-11-20`
   - message 内容包含图片 URL 或图片内容，以及固定提示词：`请仅输出图像中的文本内容。`
-- 在线节点 API Key 属于敏感信息，保存后不再回显；页面只能展示是否已配置、脱敏状态或更新时间。
-- 编辑在线节点时如果不重新输入 API Key，则沿用已保存密钥；如果重新输入，则覆盖旧密钥。
+- 在线节点 API Key 属于敏感信息，服务端运行时只从环境变量读取；页面只能展示环境变量名、是否已配置或更新时间。
+- 编辑在线节点时填写的是环境变量名，不在前端输入或保存真实 API Key。
 - API Key 不能出现在前端响应、Dashboard 列表、详情页、日志、错误提示或 OCR 调用记录中。
 - 在线节点的健康检查需要至少校验渠道配置、模型配置和密钥可用性；失败时记录脱敏后的错误原因。
 - 在线节点和离线节点都可以作为 OCR 路由候选资源，是否参与全局负载均衡由节点配置决定。
@@ -94,9 +94,9 @@
 - LLM 后处理步骤的目标是将 OCR 得到的纯文本转换为 Markdown，不负责摘要、改写、补充内容或事实纠错。
 - 如果用户配置了 LLM，则在 OCR 文本合并后调用 LLM 生成 Markdown。
 - 如果用户没有配置 LLM，则直接返回 OCR 合并后的纯文本，不额外生成 Markdown 结构。
-- LLM 配置需要填写 URL、模型名称和 API Key。
-- API Key 为可选字段：在线模型通常需要 API Key；离线/内网模型可以不填写 API Key。
-- LLM API Key 属于敏感信息，保存后不再回显；编辑时不填则沿用已保存密钥，重新填写才覆盖。
+- LLM 配置需要填写 URL、模型名称和 API Key 环境变量名。
+- API Key 为可选运行时依赖：在线模型通常需要在服务启动环境中配置对应环境变量；离线/内网模型可以使用空环境变量名。
+- LLM API Key 属于敏感信息，服务端运行时只从环境变量读取；前端和配置表不保存真实 API Key。
 - LLM API Key 不允许出现在前端响应、Dashboard 页面、日志、错误提示或调用记录中。
 - LLM 输出需要保留原始 OCR text 作为可追溯数据，Markdown 作为结构化结果保存或返回。
 - LLM 后处理失败时不能吞异常，需要记录错误；失败策略可以配置为返回原始 OCR text 或标记批次失败，默认建议回退到原始 OCR text 并记录告警。
@@ -336,8 +336,8 @@ CREATE TABLE doclens_ocr_nodes (
 - `deployment_type` 用于区分 `OFFLINE` 与 `ONLINE`。
 - 离线节点使用 `host + port`，例如当前 `paddle_ocr`。
 - 在线节点使用 `channel_key + provider_model + credential_ref`，例如 `aliyun_bailian + qwen-vl-ocr-2025-11-20`。
-- `credential_ref` 存储密钥引用或加密后的密钥定位信息，不能通过前端 API 原文返回。
-- `credential_configured` 用于前端展示是否已经配置 API Key。
+- `credential_ref` 存储环境变量名，不能存储真实 API Key。
+- `credential_configured` 用于前端展示环境变量名是否已经配置。
 
 ### `doclens_ocr_node_calls`
 

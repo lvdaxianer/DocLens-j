@@ -93,6 +93,45 @@ mvn -pl doclens-server spring-boot:run -Dspring-boot.run.arguments=--server.port
 
 仓库自带开发脚本默认已经把 DocLens 服务固定到 `10003`，避免与本地 OCR 服务的 `8080` 冲突。
 
+Ollama OCR 节点使用 `/api/generate` 协议，节点配置里需要选择 `Ollama OCR`，并在“模型名称”中填写真实 Ollama 模型，例如 `deepseek-ocr:latest`。手工联调示例：
+
+```bash
+IMG=/Users/lvdaxianer/Desktop/test.png
+IMG_B64=$(base64 -i "$IMG" | tr -d '\n')
+
+curl --max-time 180 http://10.100.30.215:11434/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"deepseek-ocr:latest\",
+    \"prompt\": \"Extract the text in the image. Return only the recognized text.\",
+    \"images\": [\"$IMG_B64\"],
+    \"stream\": false
+  }"
+```
+
+Ollama OCR 注意事项：
+
+- 图片建议使用 `png`、`jpg`、`jpeg`，不要用 `svg`。
+- `images` 里只放纯 base64，不要带 `data:image/png;base64,` 前缀。
+- base64 必须去掉换行，macOS 使用 `base64 -i "$IMG" | tr -d '\n'`，Linux 使用 `base64 -w 0 "$IMG"`。
+- CPU 跑 `deepseek-ocr` 可能超过 40 秒，建议保留 `curl --max-time 180`，DocLens 默认 OCR 健康检查超时也按 180 秒配置。
+- 图片建议控制在 1-3MB 内，过大的截图先裁剪或压缩。
+- 如果 Ollama 返回 `Failed to load image or audio file`，通常是图片格式不支持、base64 被截断、带了 data URL 前缀，或图片文件损坏。
+- 建议始终从图片文件路径生成 base64，不要手动复制粘贴大段 base64。
+
+## LLM Markdown 与凭证
+
+LLM Markdown 后处理配置不保存真实 API Key。页面只填写环境变量名，例如 `MINIMAX_API_KEY`；在线 OCR 节点也同样只填写环境变量名，例如 `DASHSCOPE_API_KEY`。启动服务前设置真实密钥：
+
+```bash
+export MINIMAX_API_KEY=replace-with-real-secret
+export DASHSCOPE_API_KEY=replace-with-real-secret
+```
+
+`最大上下文 Token 数` 用于控制大文档分片。DocLens 会使用 80% 作为正文预算；如果 OCR 内容超过预算，会按顺序拆成多个片段处理，并用前后各约 10% 的 overlap 作为上下文，最终只按顺序合并每个片段的正文输出。
+
+如果没有配置任何 LLM，OCR 主流程不受影响，结果直接返回 OCR 合并文本。存在多个健康可用的 LLM 配置时，DocLens 会按轮询方式负载均衡；每个配置可单独设置 `最大并发数` 和 `请求间隔（毫秒）`，例如并发 `1`、间隔 `1000` 表示同一配置一次只处理一个请求，且请求启动间隔至少 1 秒。
+
 文档转文本流水线：
 
 - Markdown/TXT：直接读取文本，不调用 OCR。
@@ -191,6 +230,7 @@ public class HostOcrService {
 | `doclens.auto-process-on-upload` | `true` | 上传后是否调度后台进程内处理 |
 | `doclens.worker-id` | `local-worker` | 本地 Worker 标识 |
 | `doclens.adapter.default-key` | `paddle_ocr` | 默认 OCR 适配器键 |
+| `doclens.ocr.health-check-timeout-seconds` | `180` | OCR 节点健康检查超时；CPU Ollama/DeepSeek-OCR 建议保留较大值 |
 | `doclens.paddle-ocr.enabled` | `true` | 是否启用 PaddleOCR 原生适配器 |
 | `doclens.paddle-ocr.endpoint` | `http://127.0.0.1:8080/ocr` | PaddleOCR 原生 API 地址 |
 | `doclens.paddle-ocr.timeout-seconds` | `600` | PaddleOCR 请求超时 |
@@ -199,6 +239,19 @@ public class HostOcrService {
 | `doclens.word-conversion.command` | `/opt/homebrew/bin/soffice` | Word 转 PDF 命令 |
 | `doclens.callback.max-retries` | `3` | 回调最大重试次数 |
 | `doclens.callback.timeout-seconds` | `10` | 回调超时时间 |
+| `doclens.integrations.open-webui.internal-token` | `7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea` | OpenWebUI OCR 集成内部 Bearer token |
+
+OpenWebUI OCR 集成接口必须携带以下内部鉴权头：
+
+```http
+Authorization: Bearer 7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea
+```
+
+部署时也可以通过 Spring Boot 环境变量绑定：
+
+```bash
+DOCLENS_INTEGRATIONS_OPEN_WEBUI_INTERNAL_TOKEN=7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea
+```
 
 ## 开发与测试
 

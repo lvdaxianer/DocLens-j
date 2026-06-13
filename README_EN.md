@@ -52,6 +52,44 @@ The PaddleOCR native service listens on `http://127.0.0.1:8080/ocr`. Run DocLens
 mvn -pl doclens-server spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
 ```
 
+Ollama OCR nodes use the `/api/generate` protocol. Select `Ollama OCR` in the node form and set the provider model explicitly, for example `deepseek-ocr:latest`. Manual smoke-test example:
+
+```bash
+IMG=/Users/lvdaxianer/Desktop/test.png
+IMG_B64=$(base64 -i "$IMG" | tr -d '\n')
+
+curl --max-time 180 http://10.100.30.215:11434/api/generate \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"deepseek-ocr:latest\",
+    \"prompt\": \"Extract the text in the image. Return only the recognized text.\",
+    \"images\": [\"$IMG_B64\"],
+    \"stream\": false
+  }"
+```
+
+Ollama OCR notes:
+
+- Prefer `png`, `jpg`, or `jpeg`; do not use `svg`.
+- Put raw base64 only in `images`; do not include a `data:image/png;base64,` prefix.
+- Remove base64 newlines. On macOS use `base64 -i "$IMG" | tr -d '\n'`; on Linux use `base64 -w 0 "$IMG"`.
+- CPU-based `deepseek-ocr` can take more than 40 seconds, so keep `curl --max-time 180`; DocLens also defaults OCR health-check timeout to 180 seconds.
+- Keep images around 1-3MB when possible; crop or compress large screenshots first.
+- `Failed to load image or audio file` usually means unsupported image format, truncated base64, a data URL prefix, or a broken image file.
+
+## LLM Markdown And Credentials
+
+LLM Markdown post-processing configs do not store real API keys. The dashboard only accepts an environment variable name such as `MINIMAX_API_KEY`; online OCR nodes follow the same rule and should reference an environment variable such as `DASHSCOPE_API_KEY`. Set the real secrets before starting the service:
+
+```bash
+export MINIMAX_API_KEY=replace-with-real-secret
+export DASHSCOPE_API_KEY=replace-with-real-secret
+```
+
+`Max context tokens` controls large-document chunking. DocLens uses 80% of that value as the main content budget. When OCR text exceeds the budget, it is split into ordered chunks with roughly 10% previous and next overlap as context, and DocLens merges only each chunk's main-content output in order.
+
+If no LLM config exists, OCR processing continues normally and returns merged OCR text. When multiple healthy LLM configs are enabled, DocLens selects them by round-robin load balancing. Each config has its own `max concurrency` and `request interval (milliseconds)` controls; for example, concurrency `1` and interval `1000` means that config starts at most one request per second and only one request runs at a time.
+
 Document text pipeline:
 
 - Markdown/TXT: read text directly.
@@ -148,6 +186,7 @@ Use `doclens-api` and `doclens-core` when Spring Boot auto-configuration is not 
 | `doclens.auto-process-on-upload` | `true` | Schedule uploaded batches on the in-process background worker |
 | `doclens.worker-id` | `local-worker` | Local worker identifier |
 | `doclens.adapter.default-key` | `paddle_ocr` | Default OCR adapter key |
+| `doclens.ocr.health-check-timeout-seconds` | `180` | OCR node health-check timeout; keep high for CPU Ollama/DeepSeek-OCR nodes |
 | `doclens.paddle-ocr.enabled` | `true` | Enable PaddleOCR native adapter |
 | `doclens.paddle-ocr.endpoint` | `http://127.0.0.1:8080/ocr` | PaddleOCR native API endpoint |
 | `doclens.paddle-ocr.timeout-seconds` | `600` | PaddleOCR request timeout |
@@ -156,6 +195,19 @@ Use `doclens-api` and `doclens-core` when Spring Boot auto-configuration is not 
 | `doclens.word-conversion.command` | `/opt/homebrew/bin/soffice` | Word-to-PDF command |
 | `doclens.callback.max-retries` | `3` | Maximum callback retries |
 | `doclens.callback.timeout-seconds` | `10` | Callback timeout in seconds |
+| `doclens.integrations.open-webui.internal-token` | `7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea` | Internal Bearer token for OpenWebUI OCR integration |
+
+OpenWebUI OCR integration endpoints must send this internal authorization header:
+
+```http
+Authorization: Bearer 7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea
+```
+
+For Spring Boot environment binding, use:
+
+```bash
+DOCLENS_INTEGRATIONS_OPEN_WEBUI_INTERNAL_TOKEN=7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea
+```
 
 ## Development
 
