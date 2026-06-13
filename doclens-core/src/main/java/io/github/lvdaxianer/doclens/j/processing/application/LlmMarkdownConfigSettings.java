@@ -7,7 +7,7 @@ package io.github.lvdaxianer.doclens.j.processing.application;
  * @param apiType API 协议类型
  * @param url LLM 接口地址
  * @param model 模型名称
- * @param apiKey API Key，可为空
+ * @param apiKey 凭证环境变量名，可为空
  * @param usageType 配置用途
  * @param priority 优先级
  * @param defaultConfig 是否默认配置
@@ -44,7 +44,7 @@ public record LlmMarkdownConfigSettings(
      * @param apiType API 协议类型
      * @param url LLM 接口地址
      * @param model 模型名称
-     * @param apiKey API Key，可为空
+     * @param apiKey 凭证环境变量名，可为空
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
@@ -53,12 +53,23 @@ public record LlmMarkdownConfigSettings(
     }
 
     /**
+     * 读取凭证环境变量名。
+     *
+     * @return 凭证环境变量名
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    public String credentialEnvVar() {
+        return apiKey;
+    }
+
+    /**
      * 兼容只提交启停状态的调用方。
      *
      * @param apiType API 协议类型
      * @param url LLM 接口地址
      * @param model 模型名称
-     * @param apiKey API Key，可为空
+     * @param apiKey 凭证环境变量名，可为空
      * @param enabled 是否启用
      * @author lvdaxianerplus
      * @date 2026-06-12
@@ -100,13 +111,13 @@ public record LlmMarkdownConfigSettings(
      * @param apiType API 协议类型
      * @param url LLM 接口地址
      * @param model 模型名称
-     * @param apiKey API Key，可为空
+     * @param apiKey 凭证环境变量名，可为空
      * @return 配置构建器
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
     private static Builder baseBuilder(String apiType, String url, String model, String apiKey) {
-        return builder("", apiType, url).model(model).apiKey(apiKey);
+        return builder("", apiType, url).model(model).credentialEnvVar(apiKey);
     }
 
     /**
@@ -159,15 +170,28 @@ public record LlmMarkdownConfigSettings(
         }
 
         /**
-         * 设置 API Key。
+         * 设置凭证环境变量名。
          *
-         * @param apiKey API Key，可为空
+         * @param apiKey 凭证环境变量名，可为空
          * @return 当前构建器
          * @author lvdaxianerplus
          * @date 2026-06-12
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * 设置凭证环境变量名。
+         *
+         * @param credentialEnvVar 凭证环境变量名，可为空
+         * @return 当前构建器
+         * @author lvdaxianerplus
+         * @date 2026-06-13
+         */
+        public Builder credentialEnvVar(String credentialEnvVar) {
+            this.apiKey = credentialEnvVar;
             return this;
         }
 

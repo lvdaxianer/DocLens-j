@@ -40,16 +40,17 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
                 .andExpect(jsonPath("$.priority").value(100))
                 .andExpect(jsonPath("$.is_default").value(true))
                 .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.credential_env_var").value(TEST_CREDENTIAL_ENV_VAR))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response).doesNotContain(TEST_API_KEY).doesNotContain("api_key");
+        assertThat(response).doesNotContain("api_key");
     }
 
     /**
-     * 列表接口应按优先级返回多个配置且不回显 API Key。
+     * 列表接口应按优先级返回多个配置且不回显 api_key 字段。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
@@ -66,13 +67,15 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
                 .andExpect(jsonPath("$[0].priority").value(10))
                 .andExpect(jsonPath("$[1].name").value("主配置"))
                 .andExpect(jsonPath("$[1].priority").value(20))
+                .andExpect(jsonPath("$[0].credential_env_var").value(OLD_TEST_CREDENTIAL_ENV_VAR))
+                .andExpect(jsonPath("$[1].credential_env_var").value(TEST_CREDENTIAL_ENV_VAR))
                 .andExpect(jsonPath("$[0].api_key").doesNotExist())
                 .andExpect(jsonPath("$[1].api_key").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response).doesNotContain(TEST_API_KEY).doesNotContain(OLD_TEST_API_KEY);
+        assertThat(response).doesNotContain("api_key");
     }
 
     /**

@@ -20,11 +20,14 @@ public class LlmMarkdownConfigResponse {
     /** API 协议类型。 */
     @JsonProperty("api_type")
     private String apiType;
-    /** OpenAI compatible 接口地址。 */
+    /** LLM 完整接口地址。 */
     private String url;
     /** 模型名称。 */
     private String model;
-    /** 是否已配置 API Key。 */
+    /** 凭证环境变量名。 */
+    @JsonProperty("credential_env_var")
+    private String credentialEnvVar;
+    /** 是否已配置凭证环境变量名。 */
     @JsonProperty("credential_configured")
     private boolean credentialConfigured;
     /** 配置用途。 */
@@ -84,6 +87,7 @@ public class LlmMarkdownConfigResponse {
         apiType = config.apiType().value();
         url = config.url();
         model = config.model();
+        credentialEnvVar = config.credentialValue();
         credentialConfigured = config.credentialConfigured();
     }
 

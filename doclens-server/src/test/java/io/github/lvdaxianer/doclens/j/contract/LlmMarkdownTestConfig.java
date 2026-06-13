@@ -12,10 +12,10 @@ final class LlmMarkdownTestConfig {
     private static final String DEFAULT_LLM_URL = "https://llm.example.com/v1/chat/completions";
     /** 备用 Anthropic 接口地址。 */
     private static final String ANTHROPIC_URL = "https://api.minimaxi.com/anthropic";
-    /** 测试专用 API Key 占位值。 */
-    private static final String TEST_API_KEY = "test-api-key";
-    /** 测试专用旧 API Key 占位值。 */
-    private static final String OLD_TEST_API_KEY = "old-test-api-key";
+    /** 测试专用凭证环境变量名。 */
+    private static final String TEST_CREDENTIAL_ENV_VAR = "MINIMAX_API_KEY";
+    /** 测试专用旧凭证环境变量名。 */
+    private static final String OLD_TEST_CREDENTIAL_ENV_VAR = "OLD_MINIMAX_API_KEY";
     /** 默认用途类型。 */
     private static final String MARKDOWN_POST_PROCESSING = "MARKDOWN_POST_PROCESSING";
     /** OpenAI 协议类型。 */
@@ -39,8 +39,8 @@ final class LlmMarkdownTestConfig {
     private String url;
     /** 模型名称。 */
     private String model;
-    /** API Key 占位值。 */
-    private String apiKey;
+    /** 凭证环境变量名。 */
+    private String credentialEnvVar;
     /** 用途类型。 */
     private String usageType = MARKDOWN_POST_PROCESSING;
     /** 优先级。 */
@@ -73,7 +73,7 @@ final class LlmMarkdownTestConfig {
         config.apiType = OPENAI_API_TYPE;
         config.url = DEFAULT_LLM_URL;
         config.model = MARKDOWN_MODEL;
-        config.apiKey = TEST_API_KEY;
+        config.credentialEnvVar = TEST_CREDENTIAL_ENV_VAR;
         config.priority = CREATED_PRIORITY;
         config.isDefault = true;
         return config;
@@ -93,21 +93,21 @@ final class LlmMarkdownTestConfig {
         config.apiType = ANTHROPIC_API_TYPE;
         config.url = ANTHROPIC_URL;
         config.model = ANTHROPIC_MODEL;
-        config.apiKey = OLD_TEST_API_KEY;
+        config.credentialEnvVar = OLD_TEST_CREDENTIAL_ENV_VAR;
         config.priority = BACKUP_PRIORITY;
         config.isDefault = false;
         return config;
     }
 
     /**
-     * 复制为无 API Key 的配置。
+     * 复制为无凭证环境变量名的配置。
      *
-     * @return 无 API Key 的配置
+     * @return 无凭证环境变量名的配置
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    LlmMarkdownTestConfig withoutApiKey() {
-        apiKey = "";
+    LlmMarkdownTestConfig withoutCredentialEnvVar() {
+        credentialEnvVar = "";
         return this;
     }
 
@@ -182,14 +182,14 @@ final class LlmMarkdownTestConfig {
     }
 
     /**
-     * 读取 API Key。
+     * 读取凭证环境变量名。
      *
-     * @return API Key 占位值
+     * @return 凭证环境变量名
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-13
      */
-    String apiKey() {
-        return apiKey;
+    String credentialEnvVar() {
+        return credentialEnvVar;
     }
 
     /**

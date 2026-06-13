@@ -19,7 +19,7 @@ import org.springframework.http.MediaType;
 class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSupport {
 
     /**
-     * 初始列表应为空且不包含 API Key 字段。
+     * 初始列表应为空且不包含 api_key 字段。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
@@ -39,17 +39,17 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
     }
 
     /**
-     * 兼容保存配置后响应不能回显 API Key。
+     * 兼容保存配置后响应只展示凭证环境变量名。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     @Test
-    void updateConfigDoesNotExposeApiKey() throws Exception {
+    void updateConfigReturnsCredentialEnvVarWithoutApiKey() throws Exception {
         String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_API_KEY)))
+                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value(DEFAULT_LLM_URL))
                 .andExpect(jsonPath("$.api_type").value("openai"))
@@ -57,59 +57,58 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
                 .andExpect(jsonPath("$.max_context_tokens").value(16000))
                 .andExpect(jsonPath("$.max_concurrency").value(2))
                 .andExpect(jsonPath("$.request_interval_millis").value(1500))
+                .andExpect(jsonPath("$.credential_env_var").value(TEST_CREDENTIAL_ENV_VAR))
                 .andExpect(jsonPath("$.credential_configured").value(true))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response)
-                .doesNotContain(TEST_API_KEY)
-                .doesNotContain("api_key");
+        assertThat(response).doesNotContain("api_key");
     }
 
     /**
-     * 编辑时 API Key 留空应沿用旧密钥配置。
+     * 编辑时凭证环境变量名留空应沿用旧配置。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     @Test
-    void updateConfigKeepsCredentialWhenApiKeyBlank() throws Exception {
-        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_API_KEY);
+    void updateConfigKeepsCredentialEnvVarWhenBlank() throws Exception {
+        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
 
         String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model-v2", "")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.model").value("markdown-model-v2"))
+                .andExpect(jsonPath("$.credential_env_var").value(OLD_TEST_CREDENTIAL_ENV_VAR))
                 .andExpect(jsonPath("$.credential_configured").value(true))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response)
-                .doesNotContain(OLD_TEST_API_KEY)
-                .doesNotContain("api_key");
+        assertThat(response).doesNotContain("api_key");
     }
 
     /**
-     * 重新填写 API Key 应覆盖旧密钥且响应仍不回显。
+     * 重新填写凭证环境变量名应覆盖旧配置且响应仍不回显 api_key。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     @Test
-    void updateConfigOverwritesCredentialWhenApiKeyProvided() throws Exception {
-        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_API_KEY);
+    void updateConfigOverwritesCredentialEnvVarWhenProvided() throws Exception {
+        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
 
         String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", NEW_TEST_API_KEY)))
+                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", NEW_TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.credential_env_var").value(NEW_TEST_CREDENTIAL_ENV_VAR))
                 .andExpect(jsonPath("$.credential_configured").value(true))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
                 .andReturn()
@@ -117,8 +116,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
                 .getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(response)
-                .doesNotContain(OLD_TEST_API_KEY)
-                .doesNotContain(NEW_TEST_API_KEY)
+                .doesNotContain(OLD_TEST_CREDENTIAL_ENV_VAR)
                 .doesNotContain("api_key");
     }
 
@@ -133,7 +131,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
     void updateConfigKeepsOpenAiCompatibleUrlUnchanged() throws Exception {
         mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(DASHSCOPE_COMPATIBLE_URL, "qwen-vl-ocr-2025-11-20", TEST_API_KEY)))
+                        .content(configJson(DASHSCOPE_COMPATIBLE_URL, "qwen-vl-ocr-2025-11-20", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value(DASHSCOPE_COMPATIBLE_URL))
                 .andExpect(jsonPath("$.model").value("qwen-vl-ocr-2025-11-20"))
@@ -151,7 +149,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
     void updateConfigKeepsAnthropicUrlUnchanged() throws Exception {
         mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(anthropicConfigJson(ANTHROPIC_URL, "MiniMax-M3", TEST_API_KEY)))
+                        .content(anthropicConfigJson(ANTHROPIC_URL, "MiniMax-M3", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.api_type").value("anthropic"))
                 .andExpect(jsonPath("$.url").value(ANTHROPIC_URL))

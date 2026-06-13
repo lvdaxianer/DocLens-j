@@ -20,10 +20,10 @@ final class LlmMarkdownMultiConfigApiFixtures {
     private static final String DEFAULT_LLM_URL = "https://llm.example.com/v1/chat/completions";
     /** 备用 Anthropic 接口地址。 */
     private static final String ANTHROPIC_URL = "https://api.minimaxi.com/anthropic";
-    /** 测试专用 API Key 占位值。 */
-    private static final String TEST_API_KEY = "test-api-key";
-    /** 测试专用旧 API Key 占位值。 */
-    private static final String OLD_TEST_API_KEY = "old-test-api-key";
+    /** 测试专用凭证环境变量名。 */
+    private static final String TEST_CREDENTIAL_ENV_VAR = "MINIMAX_API_KEY";
+    /** 测试专用旧凭证环境变量名。 */
+    private static final String OLD_TEST_CREDENTIAL_ENV_VAR = "OLD_MINIMAX_API_KEY";
     /** 默认更新模型名称。 */
     private static final String MARKDOWN_MODEL_V2 = "markdown-model-v2";
     /** 默认配置优先级。 */
@@ -94,7 +94,8 @@ final class LlmMarkdownMultiConfigApiFixtures {
      * @date 2026-06-12
      */
     String updatedOpenAiJson(String name) {
-        return llmConfigJson(openAiConfig(name).withoutApiKey().priority(UPDATED_PRIORITY).model(MARKDOWN_MODEL_V2));
+        return llmConfigJson(openAiConfig(name).withoutCredentialEnvVar().priority(UPDATED_PRIORITY)
+                .model(MARKDOWN_MODEL_V2));
     }
 
     /**
@@ -196,7 +197,7 @@ final class LlmMarkdownMultiConfigApiFixtures {
                   "api_type": "%s",
                   "url": "%s",
                   "model": "%s",
-                  "api_key": "%s",
+                  "credential_env_var": "%s",
                   "usage_type": "%s",
                   "priority": %d,
                   "is_default": %s,
@@ -205,7 +206,7 @@ final class LlmMarkdownMultiConfigApiFixtures {
                   "request_interval_millis": 1500,
                   "enabled": %s
                 }
-                """.formatted(config.name(), config.apiType(), config.url(), config.model(), config.apiKey(),
+                """.formatted(config.name(), config.apiType(), config.url(), config.model(), config.credentialEnvVar(),
                 config.usageType(), config.priority(), config.isDefault(), config.isEnabled());
     }
 }

@@ -18,13 +18,13 @@ public class LlmMarkdownConfigRequest {
     /** API 协议类型。 */
     @JsonProperty("api_type")
     private String apiType;
-    /** OpenAI compatible 接口地址。 */
+    /** LLM 完整接口地址。 */
     private String url;
     /** 模型名称。 */
     private String model;
-    /** API Key，可为空。 */
-    @JsonProperty("api_key")
-    private String apiKey;
+    /** 凭证环境变量名，可为空。 */
+    @JsonProperty("credential_env_var")
+    private String credentialEnvVar;
     /** 配置用途。 */
     @JsonProperty("usage_type")
     private String usageType;
@@ -55,7 +55,7 @@ public class LlmMarkdownConfigRequest {
     LlmMarkdownConfigSettings toSettings() {
         return LlmMarkdownConfigSettings.builder(name, apiType, url)
                 .model(model)
-                .apiKey(apiKey)
+                .credentialEnvVar(credentialEnvVar)
                 .usageType(usageType)
                 .priority(priority == null ? 0 : priority)
                 .defaultConfig(defaultConfig == null || defaultConfig)

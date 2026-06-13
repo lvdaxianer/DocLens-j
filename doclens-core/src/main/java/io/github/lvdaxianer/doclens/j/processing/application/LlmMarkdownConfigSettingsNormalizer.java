@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
 import java.net.URI;
+import java.util.regex.Pattern;
 
 /**
  * LLM Markdown 配置提交参数规整器。
@@ -19,6 +20,7 @@ final class LlmMarkdownConfigSettingsNormalizer {
     private static final int MIN_MAX_CONTEXT_TOKENS = 1000;
     private static final int MIN_MAX_CONCURRENCY = 1;
     private static final int MIN_REQUEST_INTERVAL_MILLIS = 0;
+    private static final Pattern ENV_VAR_NAME = Pattern.compile("[A-Z_][A-Z0-9_]*");
 
     /**
      * 校验并规整 LLM Markdown 配置参数。
@@ -32,7 +34,7 @@ final class LlmMarkdownConfigSettingsNormalizer {
         LlmMarkdownApiType apiType = LlmMarkdownApiType.from(settings.apiType());
         return LlmMarkdownConfigSettings.builder(configName(settings.name()), apiType.value(), validUrl(settings.url()))
                 .model(required(settings.model(), "llm markdown model is required"))
-                .apiKey(normalizeText(settings.apiKey()))
+                .credentialEnvVar(normalizedCredentialEnvVar(settings.credentialEnvVar()))
                 .usageType(LlmUsageType.from(settings.usageType()).name())
                 .priority(normalizedPriority(settings.priority()))
                 .defaultConfig(settings.defaultConfig())
@@ -179,6 +181,26 @@ final class LlmMarkdownConfigSettingsNormalizer {
             return value;
         } else {
             throw new IllegalArgumentException("llm markdown request interval millis must be at least 0");
+        }
+    }
+
+    /**
+     * 校验凭证环境变量名。
+     *
+     * @param value 原始凭证环境变量名
+     * @return 标准化凭证环境变量名
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private String normalizedCredentialEnvVar(String value) {
+        String normalized = normalizeText(value);
+        // 空值表示复用已保存环境变量名，由变更工厂补齐。
+        if (normalized.isBlank()) {
+            return normalized;
+        } else if (ENV_VAR_NAME.matcher(normalized).matches()) {
+            return normalized;
+        } else {
+            throw new IllegalArgumentException("credential env var must match [A-Z_][A-Z0-9_]*");
         }
     }
 

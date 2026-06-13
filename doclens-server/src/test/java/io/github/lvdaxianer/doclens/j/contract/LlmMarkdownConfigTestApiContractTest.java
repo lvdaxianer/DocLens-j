@@ -25,16 +25,16 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
 
     /*
      * 该类只覆盖 /llm-markdown-config/test 探测接口。
-     * 它验证健康响应、失败原因透传和空密钥沿用逻辑，
+     * 它验证健康响应、失败原因透传和空环境变量名沿用逻辑，
      * 不再混入保存配置的 URL 校验场景。
      *
      * 探测接口不会落库新配置，
-     * 但会临时组合请求参数与已保存密钥。
+     * 但会临时组合请求参数与已保存环境变量名。
      * 所以这里重点验证传给 tester 的配置语义。
      */
 
     /**
-     * 测试接口应按 OpenAI compatible 配置执行探测且不回显 API Key。
+     * 测试接口应按 OpenAI compatible 配置执行探测且不回显 api_key 字段。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
@@ -44,13 +44,13 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
     void testConfigReportsConnectivityWithoutExposingApiKey() throws Exception {
         /*
          * 健康探测成功时，只能返回健康状态和展示消息。
-         * 即使请求体带了密钥，也不能在响应中回显。
+         * 即使请求体带了环境变量名，也不能出现 api_key 字段。
          */
         given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
 
         String response = mockMvc.perform(post("/api/v1/llm-markdown-config/test")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_API_KEY)))
+                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthy").value(true))
                 .andExpect(jsonPath("$.message").value("llm markdown config is reachable"))
@@ -59,7 +59,6 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
                 .getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(response)
-                .doesNotContain(TEST_API_KEY)
                 .doesNotContain("api_key");
     }
 
@@ -81,27 +80,27 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
 
         mockMvc.perform(post("/api/v1/llm-markdown-config/test")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_API_KEY)))
+                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthy").value(false))
                 .andExpect(jsonPath("$.message").value("LLM Markdown returned HTTP 401: invalid api key"));
     }
 
     /**
-     * 测试配置时 API Key 留空应沿用已保存旧密钥。
+     * 测试配置时凭证环境变量名留空应沿用已保存配置。
      *
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
     @Test
-    void testConfigKeepsSavedCredentialWhenApiKeyBlank() throws Exception {
+    void testConfigKeepsSavedCredentialEnvVarWhenBlank() throws Exception {
         /*
-         * 探测时密钥留空代表复用已保存密钥。
+         * 探测时环境变量名留空代表复用已保存配置。
          * ArgumentCaptor 验证传入 tester 的实际配置，
          * 比只看 HTTP 响应更能覆盖该分支。
          */
-        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_API_KEY);
+        saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
         given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
 
         mockMvc.perform(post("/api/v1/llm-markdown-config/test")
@@ -112,6 +111,6 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
 
         ArgumentCaptor<LlmMarkdownConfigSettings> captor = ArgumentCaptor.forClass(LlmMarkdownConfigSettings.class);
         verify(configTester).test(captor.capture());
-        assertThat(captor.getValue().apiKey()).isEqualTo(OLD_TEST_API_KEY);
+        assertThat(captor.getValue().apiKey()).isEqualTo(OLD_TEST_CREDENTIAL_ENV_VAR);
     }
 }

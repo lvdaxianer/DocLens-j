@@ -32,12 +32,12 @@ abstract class LlmMarkdownConfigApiContractSupport {
     protected static final String DASHSCOPE_COMPATIBLE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     /** Anthropic 完整地址。 */
     protected static final String ANTHROPIC_URL = "https://api.minimaxi.com/anthropic";
-    /** 测试专用 API Key 占位值。 */
-    protected static final String TEST_API_KEY = "test-api-key";
-    /** 测试专用旧 API Key 占位值。 */
-    protected static final String OLD_TEST_API_KEY = "old-test-api-key";
-    /** 测试专用新 API Key 占位值。 */
-    protected static final String NEW_TEST_API_KEY = "new-test-api-key";
+    /** 测试专用凭证环境变量名。 */
+    protected static final String TEST_CREDENTIAL_ENV_VAR = "MINIMAX_API_KEY";
+    /** 测试专用旧凭证环境变量名。 */
+    protected static final String OLD_TEST_CREDENTIAL_ENV_VAR = "OLD_MINIMAX_API_KEY";
+    /** 测试专用新凭证环境变量名。 */
+    protected static final String NEW_TEST_CREDENTIAL_ENV_VAR = "NEW_MINIMAX_API_KEY";
 
     /** 临时目录用于隔离测试数据库和存储。 */
     @TempDir
@@ -86,15 +86,15 @@ abstract class LlmMarkdownConfigApiContractSupport {
      *
      * @param url 接口地址
      * @param model 模型名称
-     * @param apiKey API Key
+     * @param credentialEnvVar 凭证环境变量名
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    protected void saveConfig(String url, String model, String apiKey) throws Exception {
+    protected void saveConfig(String url, String model, String credentialEnvVar) throws Exception {
         mockMvc.perform(put("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(configJson(url, model, apiKey)))
+                        .content(configJson(url, model, credentialEnvVar)))
                 .andExpect(status().isOk());
     }
 
@@ -103,13 +103,13 @@ abstract class LlmMarkdownConfigApiContractSupport {
      *
      * @param url 接口地址
      * @param model 模型名称
-     * @param apiKey API Key
+     * @param credentialEnvVar 凭证环境变量名
      * @return 请求 JSON
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    protected String configJson(String url, String model, String apiKey) {
-        return configJson(new CompatibilityConfig(url, model, apiKey));
+    protected String configJson(String url, String model, String credentialEnvVar) {
+        return configJson(new CompatibilityConfig(url, model, credentialEnvVar));
     }
 
     /**
@@ -117,13 +117,13 @@ abstract class LlmMarkdownConfigApiContractSupport {
      *
      * @param url 接口地址
      * @param model 模型名称
-     * @param apiKey API Key
+     * @param credentialEnvVar 凭证环境变量名
      * @return 请求 JSON
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    protected String anthropicConfigJson(String url, String model, String apiKey) {
-        return configJson(new CompatibilityConfig(url, model, apiKey).anthropic());
+    protected String anthropicConfigJson(String url, String model, String credentialEnvVar) {
+        return configJson(new CompatibilityConfig(url, model, credentialEnvVar).anthropic());
     }
 
     /**
@@ -134,7 +134,8 @@ abstract class LlmMarkdownConfigApiContractSupport {
      * @date 2026-06-12
      */
     protected String disabledOpenAiConfigJson() {
-        return configJson(new CompatibilityConfig(DEFAULT_LLM_URL, "markdown-model", TEST_API_KEY).disabled());
+        return configJson(new CompatibilityConfig(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)
+                .disabled());
     }
 
     /**
@@ -151,13 +152,14 @@ abstract class LlmMarkdownConfigApiContractSupport {
                   "api_type": "%s",
                   "url": "%s",
                   "model": "%s",
-                  "api_key": "%s",
+                  "credential_env_var": "%s",
                   "max_context_tokens": 16000,
                   "max_concurrency": 2,
                   "request_interval_millis": 1500,
                   "enabled": %s
                 }
-                """.formatted(config.apiType(), config.url(), config.model(), config.apiKey(), config.enabled());
+                """.formatted(config.apiType(), config.url(), config.model(), config.credentialEnvVar(),
+                config.enabled());
     }
 
     /**
@@ -238,7 +240,7 @@ abstract class LlmMarkdownConfigApiContractSupport {
      *
      * @param url 接口地址
      * @param model 模型名称
-     * @param apiKey API Key
+     * @param credentialEnvVar 凭证环境变量名
      * @param apiType API 协议类型
      * @param enabled 是否启用
      * @author lvdaxianerplus
@@ -247,7 +249,7 @@ abstract class LlmMarkdownConfigApiContractSupport {
     private record CompatibilityConfig(
             String url,
             String model,
-            String apiKey,
+            String credentialEnvVar,
             String apiType,
             boolean enabled
     ) {
@@ -257,12 +259,12 @@ abstract class LlmMarkdownConfigApiContractSupport {
          *
          * @param url 接口地址
          * @param model 模型名称
-         * @param apiKey API Key
+         * @param credentialEnvVar 凭证环境变量名
          * @author lvdaxianerplus
          * @date 2026-06-12
          */
-        private CompatibilityConfig(String url, String model, String apiKey) {
-            this(url, model, apiKey, "openai", true);
+        private CompatibilityConfig(String url, String model, String credentialEnvVar) {
+            this(url, model, credentialEnvVar, "openai", true);
         }
 
         /**
@@ -273,7 +275,7 @@ abstract class LlmMarkdownConfigApiContractSupport {
          * @date 2026-06-12
          */
         private CompatibilityConfig anthropic() {
-            return new CompatibilityConfig(url, model, apiKey, "anthropic", enabled);
+            return new CompatibilityConfig(url, model, credentialEnvVar, "anthropic", enabled);
         }
 
         /**
@@ -284,7 +286,7 @@ abstract class LlmMarkdownConfigApiContractSupport {
          * @date 2026-06-12
          */
         private CompatibilityConfig disabled() {
-            return new CompatibilityConfig(url, model, apiKey, apiType, false);
+            return new CompatibilityConfig(url, model, credentialEnvVar, apiType, false);
         }
     }
 }

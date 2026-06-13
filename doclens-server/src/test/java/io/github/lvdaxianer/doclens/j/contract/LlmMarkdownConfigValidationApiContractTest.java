@@ -101,7 +101,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
                                   "api_type": "openai",
                                   "url": "%s",
                                   "model": "markdown-model",
-                                  "api_key": "test-api-key",
+                                  "credential_env_var": "MINIMAX_API_KEY",
                                   "max_context_tokens": 999,
                                   "max_concurrency": 1,
                                   "request_interval_millis": 1000
@@ -109,5 +109,21 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
                                 """.formatted(DEFAULT_LLM_URL)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("llm markdown max context tokens must be at least 1000"));
+    }
+
+    /**
+     * 凭证环境变量名格式非法时应拒绝保存。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void updateConfigRejectsInvalidCredentialEnvVarName() throws Exception {
+        mockMvc.perform(put("/api/v1/llm-markdown-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(configJson(DEFAULT_LLM_URL, "markdown-model", "bad-name")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("credential env var must match [A-Z_][A-Z0-9_]*"));
     }
 }

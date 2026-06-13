@@ -382,7 +382,7 @@ git commit -m "feat: 暴露LLM上下文token接口"
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigTestApiContractTest.java`
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigValidationApiContractTest.java`
 
-- [ ] **Step 1: Write failing env var contract tests**
+- [x] **Step 1: Write failing env var contract tests**
 
 Change request payload from:
 
@@ -430,7 +430,7 @@ void rejectsInvalidCredentialEnvVarName() throws Exception {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -440,7 +440,7 @@ mvn -pl doclens-server -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfig
 
 Expected: FAIL because `credential_env_var` is not supported.
 
-- [ ] **Step 3: Implement LLM env var reference semantics**
+- [x] **Step 3: Implement LLM env var reference semantics**
 
 Rename request-facing API field to `credential_env_var`. Internally keep `credentialRef` field name if a larger DB migration is not needed, but update Javadoc and variable names around API/application code to clarify it stores an environment variable reference.
 
@@ -456,7 +456,7 @@ Message:
 "credential env var must match [A-Z_][A-Z0-9_]*"
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -466,7 +466,7 @@ mvn -pl doclens-server -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfig
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/LlmMarkdownConfigSettings.java \

@@ -30,7 +30,8 @@ final class LlmMarkdownConfigMutationFactory {
      */
     LlmMarkdownConfigSettings settingsForTest(LlmMarkdownConfig current, LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfigSettings normalized = normalizeSettings(settings);
-        return builderOf(normalized).apiKey(credentialForUpdate(current, normalized.apiKey())).build();
+        return builderOf(normalized).credentialEnvVar(credentialForUpdate(current, normalized.credentialEnvVar()))
+                .build();
     }
 
     /**
@@ -56,7 +57,7 @@ final class LlmMarkdownConfigMutationFactory {
      */
     LlmMarkdownConfig buildUpdated(LlmMarkdownConfig current, LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfigSettings normalized = normalizeSettings(settings);
-        String credential = credentialForUpdate(current, normalized.apiKey());
+        String credential = credentialForUpdate(current, normalized.credentialEnvVar());
         OffsetDateTime now = OffsetDateTime.now();
         return domainBuilder(current.id(), normalized, credential, now)
                 .enabled(enabledForUpdate(current, normalized.enabled()))
@@ -77,7 +78,7 @@ final class LlmMarkdownConfigMutationFactory {
      */
     LlmMarkdownConfig buildNew(LlmMarkdownConfigSettings settings) {
         LlmMarkdownConfigSettings normalized = normalizeSettings(settings);
-        String credential = normalize(normalized.apiKey());
+        String credential = normalize(normalized.credentialEnvVar());
         OffsetDateTime now = OffsetDateTime.now();
         return domainBuilder(newConfigId(), normalized, credential, now)
                 .enabled(enabledForCreate(normalized.enabled()))
@@ -99,7 +100,7 @@ final class LlmMarkdownConfigMutationFactory {
     private LlmMarkdownConfigSettings.Builder builderOf(LlmMarkdownConfigSettings settings) {
         return LlmMarkdownConfigSettings.builder(settings.name(), settings.apiType(), settings.url())
                 .model(settings.model())
-                .apiKey(settings.apiKey())
+                .credentialEnvVar(settings.credentialEnvVar())
                 .usageType(settings.usageType())
                 .priority(settings.priority())
                 .defaultConfig(settings.defaultConfig())
@@ -140,18 +141,18 @@ final class LlmMarkdownConfigMutationFactory {
      * 解析编辑请求中的凭证。
      *
      * @param current 当前配置
-     * @param apiKey 请求 API Key
+     * @param credentialEnvVar 请求凭证环境变量名
      * @return 应保存的凭证
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    private String credentialForUpdate(LlmMarkdownConfig current, String apiKey) {
-        String normalized = normalize(apiKey);
-        // 用户提交新凭证时，优先使用本次提交值。
+    private String credentialForUpdate(LlmMarkdownConfig current, String credentialEnvVar) {
+        String normalized = normalize(credentialEnvVar);
+        // 用户提交新环境变量名时，优先使用本次提交值。
         if (!normalized.isBlank()) {
             return normalized;
         } else {
-            // 用户未提交凭证时，沿用已保存凭证避免误清空。
+            // 用户未提交环境变量名时，沿用已保存引用避免误清空。
             return current.credentialValue();
         }
     }

@@ -95,7 +95,7 @@ class LlmMarkdownConfigRuntimeSettingsTest {
     private LlmMarkdownConfigSettings.Builder settingsBuilder() {
         return LlmMarkdownConfigSettings.builder("主配置", "openai", "https://llm.example.com/v1/chat/completions")
                 .model("markdown-model")
-                .apiKey("sk-test")
+                .credentialEnvVar("MINIMAX_API_KEY")
                 .usageType(LlmUsageType.MARKDOWN_POST_PROCESSING.name())
                 .priority(10)
                 .defaultConfig(true)

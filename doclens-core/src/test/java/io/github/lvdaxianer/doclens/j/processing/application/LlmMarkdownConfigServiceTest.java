@@ -20,16 +20,16 @@ import org.junit.jupiter.api.Test;
 class LlmMarkdownConfigServiceTest {
 
     /**
-     * 测试配置时 API Key 留空应沿用已保存旧密钥。
+     * 测试配置时凭证环境变量名留空应沿用已保存引用。
      *
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
     @Test
-    void settingsForTestKeepsSavedCredentialWhenApiKeyBlank() {
+    void settingsForTestKeepsSavedCredentialEnvVarWhenBlank() {
         InMemoryConfigRepository repository = new InMemoryConfigRepository(
                 LlmMarkdownConfig.configured("default", "https://llm.example.com/v1/chat/completions",
-                        "markdown-model", "sk-saved-secret"));
+                        "markdown-model", "MINIMAX_API_KEY"));
         LlmMarkdownConfigService service = new LlmMarkdownConfigService(repository);
 
         LlmMarkdownConfigSettings settings = service.settingsForTest(
@@ -39,7 +39,7 @@ class LlmMarkdownConfigServiceTest {
         assertThat(settings.apiType()).isEqualTo(LlmMarkdownApiType.OPENAI.value());
         assertThat(settings.url()).isEqualTo("https://llm.example.com/v1/chat/completions");
         assertThat(settings.model()).isEqualTo("markdown-model");
-        assertThat(settings.apiKey()).isEqualTo("sk-saved-secret");
+        assertThat(settings.apiKey()).isEqualTo("MINIMAX_API_KEY");
     }
 
     /**
@@ -55,7 +55,7 @@ class LlmMarkdownConfigServiceTest {
 
         LlmMarkdownConfig saved = service.saveConfig(new LlmMarkdownConfigSettings("openai",
                 "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-vl-ocr-2025-11-20",
-                "sk-dashscope"));
+                "DASHSCOPE_API_KEY"));
 
         assertThat(saved.apiType()).isEqualTo(LlmMarkdownApiType.OPENAI);
         assertThat(saved.url()).isEqualTo("https://dashscope.aliyuncs.com/compatible-mode/v1");
@@ -73,7 +73,7 @@ class LlmMarkdownConfigServiceTest {
         LlmMarkdownConfigService service = new LlmMarkdownConfigService(repository);
 
         LlmMarkdownConfig saved = service.saveConfig(new LlmMarkdownConfigSettings("anthropic",
-                "https://api.minimaxi.com/anthropic", "MiniMax-M3", "sk-minimax", false));
+                "https://api.minimaxi.com/anthropic", "MiniMax-M3", "MINIMAX_API_KEY", false));
 
         assertThat(saved.apiType()).isEqualTo(LlmMarkdownApiType.ANTHROPIC);
         assertThat(saved.url()).isEqualTo("https://api.minimaxi.com/anthropic");
@@ -92,7 +92,7 @@ class LlmMarkdownConfigServiceTest {
     void saveConfigKeepsCurrentEnabledStateWhenRequestOmitsIt() {
         InMemoryConfigRepository repository = new InMemoryConfigRepository(
                 LlmMarkdownConfig.configured("default", "https://llm.example.com/v1/chat/completions",
-                        "markdown-model", "sk-saved-secret").withEnabled(false));
+                        "markdown-model", "MINIMAX_API_KEY").withEnabled(false));
         LlmMarkdownConfigService service = new LlmMarkdownConfigService(repository);
 
         LlmMarkdownConfig saved = service.saveConfig(new LlmMarkdownConfigSettings("openai",
@@ -179,7 +179,7 @@ class LlmMarkdownConfigServiceTest {
     ) {
         return LlmMarkdownConfigSettings.builder(name, "openai", "https://llm.example.com/v1/chat/completions")
                 .model("markdown-model")
-                .apiKey("sk-test")
+                .credentialEnvVar("MINIMAX_API_KEY")
                 .usageType(LlmUsageType.MARKDOWN_POST_PROCESSING.name())
                 .priority(priority)
                 .defaultConfig(defaultConfig)
