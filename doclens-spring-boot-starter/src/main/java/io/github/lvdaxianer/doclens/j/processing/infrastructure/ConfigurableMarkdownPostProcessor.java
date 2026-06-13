@@ -28,6 +28,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private final LlmConfigSelector configSelector;
     private final MarkdownPostProcessor fallbackProcessor;
     private final MarkdownPostProcessorFactory processorFactory;
+    private final LlmConfigRateLimiter rateLimiter = new LlmConfigRateLimiter();
 
     /**
      * 创建可配置 Markdown 后处理器。
@@ -130,8 +131,25 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @date 2026-06-09
      */
     private MarkdownPostProcessor runtimeProcessor(LlmMarkdownConfig config) {
-        MarkdownPostProcessor delegate = processorFactory.create(config);
+        MarkdownPostProcessor delegate = rateLimitedProcessor(config, processorFactory.create(config));
         MarkdownChunker chunker = new MarkdownChunker(new ApproximateTokenEstimator());
         return new ChunkedMarkdownPostProcessor(delegate, chunker, config.maxContextTokens());
+    }
+
+    /**
+     * 创建按配置限流的 Markdown 后处理器。
+     *
+     * @param config LLM Markdown 配置
+     * @param delegate 实际 Markdown 后处理器
+     * @return 限流后的 Markdown 后处理器
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    private MarkdownPostProcessor rateLimitedProcessor(LlmMarkdownConfig config, MarkdownPostProcessor delegate) {
+        return request -> {
+            try (LlmConfigRateLimiter.Permit ignored = rateLimiter.acquire(config)) {
+                return delegate.process(request);
+            }
+        };
     }
 }

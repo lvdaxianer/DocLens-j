@@ -6,6 +6,9 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * LLM 配置选择器。
@@ -16,6 +19,7 @@ import java.util.Optional;
 public class LlmConfigSelector {
 
     private final LlmMarkdownConfigRepository repository;
+    private final ConcurrentMap<LlmUsageType, AtomicLong> cursors = new ConcurrentHashMap<>();
 
     /**
      * 创建 LLM 配置选择器。
@@ -38,13 +42,12 @@ public class LlmConfigSelector {
      */
     public Optional<LlmMarkdownConfig> select(LlmUsageType usageType) {
         List<LlmMarkdownConfig> configs = availableConfigs(usageType);
-        Optional<LlmMarkdownConfig> defaultConfig = defaultConfig(configs);
-        if (defaultConfig.isPresent()) {
-            // 默认配置可用时优先使用默认配置。
-            return defaultConfig;
+        if (configs.isEmpty()) {
+            // 无健康可用配置时返回空，由调用方保持 OCR 原文直通。
+            return Optional.empty();
         } else {
-            // 没有可用默认配置时，按优先级选择第一个健康配置。
-            return firstByPriority(configs);
+            // 多个健康配置按稳定排序池轮询，避免默认配置长期独占流量。
+            return Optional.of(roundRobin(usageType, configs));
         }
     }
 
@@ -59,7 +62,8 @@ public class LlmConfigSelector {
     private List<LlmMarkdownConfig> availableConfigs(LlmUsageType usageType) {
         return repository.listByUsage(usageType).stream()
                 .filter(this::isSelectable)
-                .sorted(Comparator.comparingInt(LlmMarkdownConfig::priority))
+                .sorted(Comparator.comparingInt(LlmMarkdownConfig::priority)
+                        .thenComparing(LlmMarkdownConfig::id))
                 .toList();
     }
 
@@ -76,26 +80,17 @@ public class LlmConfigSelector {
     }
 
     /**
-     * 查询可用默认配置。
+     * 从可用配置池轮询选择一个配置。
      *
+     * @param usageType 配置用途
      * @param configs 可用配置列表
-     * @return 默认配置
+     * @return 本次选中的配置
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-13
      */
-    private Optional<LlmMarkdownConfig> defaultConfig(List<LlmMarkdownConfig> configs) {
-        return configs.stream().filter(LlmMarkdownConfig::defaultConfig).findFirst();
-    }
-
-    /**
-     * 选择优先级最高的可用配置。
-     *
-     * @param configs 可用配置列表
-     * @return 优先级最高的配置
-     * @author lvdaxianerplus
-     * @date 2026-06-12
-     */
-    private Optional<LlmMarkdownConfig> firstByPriority(List<LlmMarkdownConfig> configs) {
-        return configs.stream().findFirst();
+    private LlmMarkdownConfig roundRobin(LlmUsageType usageType, List<LlmMarkdownConfig> configs) {
+        AtomicLong cursor = cursors.computeIfAbsent(usageType, ignored -> new AtomicLong());
+        int selectedIndex = Math.floorMod(cursor.getAndIncrement(), configs.size());
+        return configs.get(selectedIndex);
     }
 }

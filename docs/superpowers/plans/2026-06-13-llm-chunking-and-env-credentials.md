@@ -900,7 +900,7 @@ git commit -m "feat: 支持LLM Markdown大文档分片处理"
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusLlmMarkdownConfigRepository.java`
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/ConfigurableMarkdownPostProcessor.java`
 
-- [ ] **Step 1: Write failing round-robin selector tests**
+- [x] **Step 1: Write failing round-robin selector tests**
 
 ```java
 @Test
@@ -932,7 +932,7 @@ void skipsUnhealthyConfigsDuringRoundRobin() {
 }
 ```
 
-- [ ] **Step 2: Write failing rate limiter tests**
+- [x] **Step 2: Write failing rate limiter tests**
 
 ```java
 @Test
@@ -967,7 +967,7 @@ void waitsBetweenRequestStartsForSameConfig() {
 }
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -978,7 +978,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=LlmConfigRateLimiterTest test
 
 Expected: FAIL because round-robin and rate limiter are not implemented.
 
-- [ ] **Step 4: Implement config fields and migration columns**
+- [x] **Step 4: Implement config fields and migration columns**
 
 Add fields:
 
@@ -1001,7 +1001,7 @@ ALTER TABLE doclens_llm_markdown_config
     ADD COLUMN IF NOT EXISTS request_interval_millis INTEGER NOT NULL DEFAULT 1000;
 ```
 
-- [ ] **Step 5: Implement round-robin selector**
+- [x] **Step 5: Implement round-robin selector**
 
 `LlmConfigSelector` should:
 
@@ -1011,7 +1011,7 @@ ALTER TABLE doclens_llm_markdown_config
 - Not always prefer default config when multiple configs are healthy.
 - Return empty only when no healthy enabled config exists.
 
-- [ ] **Step 6: Implement per-config rate limiter**
+- [x] **Step 6: Implement per-config rate limiter**
 
 `LlmConfigRateLimiter` should:
 
@@ -1021,7 +1021,7 @@ ALTER TABLE doclens_llm_markdown_config
 - Enforce interval between request starts for the same config.
 - Release semaphore in `Permit.close()`.
 
-- [ ] **Step 7: Wire limiter into LLM processing**
+- [x] **Step 7: Wire limiter into LLM processing**
 
 Wrap each actual LLM HTTP call:
 
@@ -1033,7 +1033,7 @@ try (LlmConfigRateLimiter.Permit ignored = rateLimiter.acquire(config)) {
 
 For chunked processing, selection can happen per document in v1 so all chunks from one document use the same LLM config. This keeps style consistent inside one document while still load-balancing documents across configs.
 
-- [ ] **Step 8: Run GREEN**
+- [x] **Step 8: Run GREEN**
 
 Run:
 
@@ -1044,7 +1044,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=LlmConfigRateLimiterTest,Configurable
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain \
