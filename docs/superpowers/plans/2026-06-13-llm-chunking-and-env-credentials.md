@@ -490,7 +490,7 @@ git commit -m "feat: 使用环境变量引用LLM凭证"
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/DefaultLlmMarkdownConfigTesterTest.java`
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/HttpMarkdownPostProcessorTest.java`
 
-- [ ] **Step 1: Write failing resolver tests**
+- [x] **Step 1: Write failing resolver tests**
 
 ```java
 @Test
@@ -510,7 +510,7 @@ void rejectsMissingEnvironmentValue() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -520,7 +520,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=EnvironmentCredentialResolverTest,Def
 
 Expected: FAIL because resolver does not exist.
 
-- [ ] **Step 3: Implement resolver and wire LLM factory**
+- [x] **Step 3: Implement resolver and wire LLM factory**
 
 `EnvironmentCredentialResolver` must have:
 
@@ -536,7 +536,7 @@ Factory behavior:
 - Resolve the actual secret immediately before creating HTTP/Anthropic processors.
 - Never log resolved value.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -546,7 +546,7 @@ mvn -pl doclens-spring-boot-starter -Dtest=EnvironmentCredentialResolverTest,Def
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/shared/infrastructure/EnvironmentCredentialResolver.java \

@@ -13,7 +13,9 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigReposit
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,6 +28,7 @@ class DefaultLlmMarkdownConfigTesterTest {
 
     private static final int SERVER_BACKLOG = 1;
     private static final String API_KEY = "sk-llm-secret";
+    private static final String API_KEY_ENV_VAR = "MINIMAX_API_KEY";
 
     /**
      * 供应商探测失败时应返回可展示且已脱敏的失败原因。
@@ -39,17 +42,45 @@ class DefaultLlmMarkdownConfigTesterTest {
         HttpServer server = startServer(exchange -> writeResponse(exchange, 401,
                 "{\"error\":\"invalid api key sk-llm-secret\"}"));
         DefaultLlmMarkdownConfigTester tester = new DefaultLlmMarkdownConfigTester(new ObjectMapper(),
-                new LlmMarkdownConfigService(new EmptyConfigRepository()));
+                new LlmMarkdownConfigService(new EmptyConfigRepository()), Map.of(API_KEY_ENV_VAR, API_KEY));
 
         try {
             LlmMarkdownConfigTestResponse response = tester.test(new LlmMarkdownConfigSettings(
-                    "openai", endpointFor(server), "markdown-model", API_KEY));
+                    "openai", endpointFor(server), "markdown-model", API_KEY_ENV_VAR));
 
             assertThat(response.healthy()).isFalse();
             assertThat(response.message())
                     .contains("LLM Markdown returned HTTP 401")
                     .contains("***")
                     .doesNotContain(API_KEY);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
+     * 测试器应在运行时用环境变量名解析真实凭证。
+     *
+     * @throws IOException 本地 HTTP 服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void resolvesCredentialEnvVarBeforeConnectivityTest() throws IOException {
+        AtomicReference<String> authorization = new AtomicReference<>();
+        HttpServer server = startServer(exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            writeResponse(exchange, 200, "{\"choices\":[{\"message\":{\"content\":\"Markdown\"}}]}");
+        });
+        DefaultLlmMarkdownConfigTester tester = new DefaultLlmMarkdownConfigTester(new ObjectMapper(),
+                new LlmMarkdownConfigService(new EmptyConfigRepository()), Map.of(API_KEY_ENV_VAR, API_KEY));
+
+        try {
+            LlmMarkdownConfigTestResponse response = tester.test(new LlmMarkdownConfigSettings(
+                    "openai", endpointFor(server), "markdown-model", API_KEY_ENV_VAR));
+
+            assertThat(response.healthy()).isTrue();
+            assertThat(authorization.get()).isEqualTo("Bearer " + API_KEY);
         } finally {
             server.stop(0);
         }

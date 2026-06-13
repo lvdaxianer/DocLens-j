@@ -31,6 +31,8 @@ class ConfigurableMarkdownPostProcessorTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final OffsetDateTime CHECKED_AT = OffsetDateTime.parse("2026-06-12T12:00:00+08:00");
+    private static final String RUNTIME_API_KEY_ENV_VAR = "RUNTIME_LLM_API_KEY";
+    private static final String RUNTIME_API_KEY = "sk-runtime";
 
     /**
      * 存在数据库配置时应优先使用运行时配置调用 LLM。
@@ -43,15 +45,16 @@ class ConfigurableMarkdownPostProcessorTest {
     void usesRuntimeConfigBeforeFallbackProcessor() throws Exception {
         try (MockLlmServer server = MockLlmServer.start()) {
             LlmMarkdownConfig config = LlmMarkdownConfig.configured(
-                    "default", server.endpoint().toString(), "runtime-model", "sk-runtime")
+                    "default", server.endpoint().toString(), "runtime-model", RUNTIME_API_KEY_ENV_VAR)
                     .updateHealth(true, "", CHECKED_AT);
             ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
-                    new FixedConfigRepository(config), new FallbackProcessor("fallback text"));
+                    new FixedConfigRepository(config), new FallbackProcessor("fallback text"),
+                    Map.of(RUNTIME_API_KEY_ENV_VAR, RUNTIME_API_KEY));
 
             MarkdownPostProcessingResult result = processor.process(request());
 
             assertThat(result.markdown()).isEqualTo("# 运行时 Markdown");
-            assertThat(server.lastAuthorization()).isEqualTo("Bearer sk-runtime");
+            assertThat(server.lastAuthorization()).isEqualTo("Bearer " + RUNTIME_API_KEY);
             assertThat(server.lastBody()).contains("\"model\":\"runtime-model\"");
         }
     }
@@ -83,7 +86,8 @@ class ConfigurableMarkdownPostProcessorTest {
     @Test
     void returnsPassthroughWhenRuntimeConfigIsDisabled() {
         LlmMarkdownConfig disabledConfig = LlmMarkdownConfig.configured(
-                "default", "https://llm.example.com/v1/chat/completions", "runtime-model", "sk-runtime")
+                "default", "https://llm.example.com/v1/chat/completions", "runtime-model",
+                RUNTIME_API_KEY_ENV_VAR)
                 .withEnabled(false);
         ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
                 new FixedConfigRepository(disabledConfig), new FallbackProcessor("fallback text"));

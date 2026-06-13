@@ -6,10 +6,11 @@ import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigSe
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTestResponse;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.EnvironmentCredentialResolver;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
-import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 
 /**
  * 基于 OpenAI compatible HTTP 后处理器的 LLM 配置测试实现。
@@ -26,6 +27,7 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
 
     private final ObjectMapper objectMapper;
     private final LlmMarkdownConfigService configService;
+    private final EnvironmentCredentialResolver credentialResolver;
 
     /**
      * 创建 LLM 配置测试实现。
@@ -36,8 +38,43 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
      * @date 2026-06-09
      */
     public DefaultLlmMarkdownConfigTester(ObjectMapper objectMapper, LlmMarkdownConfigService configService) {
+        this(objectMapper, configService, new EnvironmentCredentialResolver());
+    }
+
+    /**
+     * 创建 LLM 配置测试实现。
+     *
+     * @param objectMapper JSON 映射器
+     * @param configService LLM 配置服务
+     * @param environmentValues 环境变量映射
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    DefaultLlmMarkdownConfigTester(
+            ObjectMapper objectMapper,
+            LlmMarkdownConfigService configService,
+            Map<String, String> environmentValues
+    ) {
+        this(objectMapper, configService, new EnvironmentCredentialResolver(environmentValues));
+    }
+
+    /**
+     * 创建 LLM 配置测试实现。
+     *
+     * @param objectMapper JSON 映射器
+     * @param configService LLM 配置服务
+     * @param credentialResolver 凭证解析器
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    DefaultLlmMarkdownConfigTester(
+            ObjectMapper objectMapper,
+            LlmMarkdownConfigService configService,
+            EnvironmentCredentialResolver credentialResolver
+    ) {
         this.objectMapper = objectMapper;
         this.configService = configService;
+        this.credentialResolver = credentialResolver;
     }
 
     /**
@@ -54,9 +91,9 @@ public class DefaultLlmMarkdownConfigTester implements LlmMarkdownConfigTester {
         LlmMarkdownApiType apiType = LlmMarkdownApiType.from(normalized.apiType());
         URI endpoint = URI.create(normalized.url());
         MarkdownPostProcessorFactory factory = new MarkdownPostProcessorFactory(objectMapper,
-                Duration.ofSeconds(TEST_TIMEOUT_SECONDS));
+                Duration.ofSeconds(TEST_TIMEOUT_SECONDS), credentialResolver);
         try {
-            factory.create(apiType, endpoint, normalized.model(), normalized.apiKey())
+            factory.createWithCredentialEnvVar(apiType, endpoint, normalized.model(), normalized.credentialEnvVar())
                     .process(new MarkdownPostProcessingRequest(TEST_DOCUMENT_ID, TEST_FILE_NAME, Map.of(), TEST_OCR_TEXT));
             return LlmMarkdownConfigTestResponse.reachable();
         } catch (IllegalStateException ex) {

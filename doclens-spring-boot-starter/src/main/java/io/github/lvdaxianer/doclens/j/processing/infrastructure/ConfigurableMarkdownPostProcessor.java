@@ -8,7 +8,9 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcess
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.EnvironmentCredentialResolver;
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * 支持运行时配置覆盖的 Markdown 后处理器。
@@ -43,6 +45,29 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
         this.fallbackProcessor = fallbackProcessor;
         this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
+    }
+
+    /**
+     * 创建可配置 Markdown 后处理器。
+     *
+     * @param objectMapper JSON 映射器
+     * @param configRepository LLM Markdown 配置仓储
+     * @param fallbackProcessor 兜底处理器
+     * @param environmentValues 环境变量映射
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    ConfigurableMarkdownPostProcessor(
+            ObjectMapper objectMapper,
+            LlmMarkdownConfigRepository configRepository,
+            MarkdownPostProcessor fallbackProcessor,
+            Map<String, String> environmentValues
+    ) {
+        this.configSelector = new LlmConfigSelector(configRepository);
+        this.fallbackProcessor = fallbackProcessor;
+        this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
+                Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS),
+                new EnvironmentCredentialResolver(environmentValues));
     }
 
     /**
