@@ -32,6 +32,15 @@ public class LlmMarkdownConfigResponse {
     private String usageType;
     /** 优先级。 */
     private int priority;
+    /** LLM 最大上下文 token 数。 */
+    @JsonProperty("max_context_tokens")
+    private int maxContextTokens;
+    /** LLM 最大并发数。 */
+    @JsonProperty("max_concurrency")
+    private int maxConcurrency;
+    /** LLM 请求启动最小间隔毫秒数。 */
+    @JsonProperty("request_interval_millis")
+    private int requestIntervalMillis;
     /** 是否默认配置。 */
     @JsonProperty("is_default")
     private boolean defaultConfig;
@@ -88,6 +97,9 @@ public class LlmMarkdownConfigResponse {
     private void fillGovernance(LlmMarkdownConfig config) {
         usageType = config.usageType().name();
         priority = config.priority();
+        maxContextTokens = config.maxContextTokens();
+        maxConcurrency = config.maxConcurrency();
+        requestIntervalMillis = config.requestIntervalMillis();
         defaultConfig = config.defaultConfig();
         enabled = config.enabled();
     }

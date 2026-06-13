@@ -152,6 +152,9 @@ abstract class LlmMarkdownConfigApiContractSupport {
                   "url": "%s",
                   "model": "%s",
                   "api_key": "%s",
+                  "max_context_tokens": 16000,
+                  "max_concurrency": 2,
+                  "request_interval_millis": 1500,
                   "enabled": %s
                 }
                 """.formatted(config.apiType(), config.url(), config.model(), config.apiKey(), config.enabled());

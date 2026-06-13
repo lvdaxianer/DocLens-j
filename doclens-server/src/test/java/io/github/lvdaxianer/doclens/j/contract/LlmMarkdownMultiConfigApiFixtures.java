@@ -200,6 +200,9 @@ final class LlmMarkdownMultiConfigApiFixtures {
                   "usage_type": "%s",
                   "priority": %d,
                   "is_default": %s,
+                  "max_context_tokens": 16000,
+                  "max_concurrency": 2,
+                  "request_interval_millis": 1500,
                   "enabled": %s
                 }
                 """.formatted(config.name(), config.apiType(), config.url(), config.model(), config.apiKey(),

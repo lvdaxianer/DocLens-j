@@ -84,4 +84,30 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("llm markdown url must be http or https URL"));
     }
+
+    /**
+     * 最大上下文 token 数过小时应拒绝保存。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-13
+     */
+    @Test
+    void updateConfigRejectsSmallMaxContextTokens() throws Exception {
+        mockMvc.perform(put("/api/v1/llm-markdown-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "api_type": "openai",
+                                  "url": "%s",
+                                  "model": "markdown-model",
+                                  "api_key": "test-api-key",
+                                  "max_context_tokens": 999,
+                                  "max_concurrency": 1,
+                                  "request_interval_millis": 1000
+                                }
+                                """.formatted(DEFAULT_LLM_URL)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("llm markdown max context tokens must be at least 1000"));
+    }
 }

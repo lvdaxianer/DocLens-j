@@ -28,6 +28,9 @@ public class LlmMarkdownConfigEntity {
     private boolean credentialConfigured;
     private String usageType;
     private int priority;
+    private int maxContextTokens;
+    private int maxConcurrency;
+    private int requestIntervalMillis;
     @TableField("is_default")
     private boolean defaultFlag;
     private boolean enabled;

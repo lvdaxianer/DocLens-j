@@ -33,6 +33,15 @@ public class LlmMarkdownConfigRequest {
     /** 是否默认配置。 */
     @JsonProperty("is_default")
     private Boolean defaultConfig;
+    /** LLM 最大上下文 token 数。 */
+    @JsonProperty("max_context_tokens")
+    private Integer maxContextTokens;
+    /** LLM 最大并发数。 */
+    @JsonProperty("max_concurrency")
+    private Integer maxConcurrency;
+    /** LLM 请求启动最小间隔毫秒数。 */
+    @JsonProperty("request_interval_millis")
+    private Integer requestIntervalMillis;
     /** 是否启用 LLM Markdown 后处理。 */
     private Boolean enabled;
 
@@ -51,6 +60,12 @@ public class LlmMarkdownConfigRequest {
                 .priority(priority == null ? 0 : priority)
                 .defaultConfig(defaultConfig == null || defaultConfig)
                 .enabled(enabled)
+                .maxContextTokens(maxContextTokens == null
+                        ? LlmMarkdownConfigSettings.DEFAULT_MAX_CONTEXT_TOKENS : maxContextTokens)
+                .maxConcurrency(maxConcurrency == null
+                        ? LlmMarkdownConfigSettings.DEFAULT_MAX_CONCURRENCY : maxConcurrency)
+                .requestIntervalMillis(requestIntervalMillis == null
+                        ? LlmMarkdownConfigSettings.DEFAULT_REQUEST_INTERVAL_MILLIS : requestIntervalMillis)
                 .build();
     }
 }

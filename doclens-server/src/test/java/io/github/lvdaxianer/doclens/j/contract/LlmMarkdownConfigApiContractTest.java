@@ -54,6 +54,9 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
                 .andExpect(jsonPath("$.url").value(DEFAULT_LLM_URL))
                 .andExpect(jsonPath("$.api_type").value("openai"))
                 .andExpect(jsonPath("$.model").value("markdown-model"))
+                .andExpect(jsonPath("$.max_context_tokens").value(16000))
+                .andExpect(jsonPath("$.max_concurrency").value(2))
+                .andExpect(jsonPath("$.request_interval_millis").value(1500))
                 .andExpect(jsonPath("$.credential_configured").value(true))
                 .andExpect(jsonPath("$.api_key").doesNotExist())
                 .andReturn()
@@ -173,6 +176,9 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
 
         mockMvc.perform(get("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].enabled").value(false));
+                .andExpect(jsonPath("$[0].enabled").value(false))
+                .andExpect(jsonPath("$[0].max_context_tokens").value(16000))
+                .andExpect(jsonPath("$[0].max_concurrency").value(2))
+                .andExpect(jsonPath("$[0].request_interval_millis").value(1500));
     }
 }

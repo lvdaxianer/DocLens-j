@@ -154,6 +154,9 @@ public class MybatisPlusLlmMarkdownConfigRepository
         entity.setCredentialConfigured(config.credentialConfigured());
         entity.setUsageType(config.usageType().name());
         entity.setPriority(config.priority());
+        entity.setMaxContextTokens(config.maxContextTokens());
+        entity.setMaxConcurrency(config.maxConcurrency());
+        entity.setRequestIntervalMillis(config.requestIntervalMillis());
         entity.setDefaultFlag(config.defaultConfig());
         entity.setEnabled(config.enabled());
         entity.setHealthy(config.healthy());
@@ -178,6 +181,8 @@ public class MybatisPlusLlmMarkdownConfigRepository
                 .endpoint(entity.getUrl(), entity.getModel())
                 .credential(entity.getCredentialRef())
                 .usage(LlmUsageType.from(entity.getUsageType()), entity.getPriority())
+                .runtimeLimits(entity.getMaxContextTokens(), entity.getMaxConcurrency(),
+                        entity.getRequestIntervalMillis())
                 .defaultConfig(entity.isDefaultFlag())
                 .enabled(entity.isEnabled())
                 .healthy(entity.isHealthy())

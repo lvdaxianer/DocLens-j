@@ -293,7 +293,7 @@ git commit -m "feat: 增加LLM上下文token配置"
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownConfigValidationApiContractTest.java`
 - Modify: `doclens-server/src/test/java/io/github/lvdaxianer/doclens/j/contract/LlmMarkdownMultiConfigApiContractTest.java`
 
-- [ ] **Step 1: Write failing API contract tests**
+- [x] **Step 1: Write failing API contract tests**
 
 Update create/edit payloads to include:
 
@@ -333,7 +333,7 @@ void rejectsTooSmallMaxContextTokens() throws Exception {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -343,11 +343,11 @@ mvn -pl doclens-server -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfig
 
 Expected: FAIL because request/response field is missing.
 
-- [ ] **Step 3: Implement API and persistence mapping**
+- [x] **Step 3: Implement API and persistence mapping**
 
 Add `maxContextTokens` to entity, repository mapper conversion, request, response, and operations mapping.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -357,7 +357,7 @@ mvn -pl doclens-server -Dtest=LlmMarkdownConfigApiContractTest,LlmMarkdownConfig
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/LlmMarkdownConfigEntity.java \

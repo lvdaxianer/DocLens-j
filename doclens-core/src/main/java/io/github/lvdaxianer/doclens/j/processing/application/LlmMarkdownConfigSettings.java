@@ -34,9 +34,9 @@ public record LlmMarkdownConfigSettings(
 ) {
 
     private static final int DEFAULT_PRIORITY = 100;
-    static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
-    static final int DEFAULT_MAX_CONCURRENCY = 1;
-    static final int DEFAULT_REQUEST_INTERVAL_MILLIS = 1000;
+    public static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
+    public static final int DEFAULT_MAX_CONCURRENCY = 1;
+    public static final int DEFAULT_REQUEST_INTERVAL_MILLIS = 1000;
 
     /**
      * 兼容不关心启停状态的调用方。
