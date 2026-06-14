@@ -7,7 +7,7 @@ import {
   NIcon,
   NMessageProvider
 } from 'naive-ui'
-import type { GlobalThemeOverrides } from 'naive-ui'
+import { createDashboardThemeOverrides } from '@/theme/dashboardTheme'
 
 const route = useRoute()
 
@@ -21,23 +21,7 @@ const navigationItems = [
 
 const activeTitle = computed(() => route.meta.title ?? 'DocLens 控制台')
 
-const themeOverrides: GlobalThemeOverrides = {
-  common: {
-    primaryColor: '#256d85',
-    primaryColorHover: '#2f829c',
-    primaryColorPressed: '#1f5b70',
-    primaryColorSuppl: '#dceff5',
-    borderRadius: '8px',
-    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    fontSize: '13px',
-    fontSizeSmall: '12px',
-    fontSizeMedium: '13px',
-    fontSizeLarge: '14px',
-    heightSmall: '26px',
-    heightMedium: '30px',
-    heightLarge: '34px'
-  }
-}
+const themeOverrides = createDashboardThemeOverrides()
 </script>
 
 <template>
@@ -133,7 +117,7 @@ const themeOverrides: GlobalThemeOverrides = {
   background: linear-gradient(135deg, var(--active), var(--active-strong));
   color: #ffffff;
   font-size: 19px;
-  box-shadow: 0 10px 22px rgba(37, 109, 133, 0.22);
+  box-shadow: 0 10px 22px rgba(249, 115, 22, 0.22);
 }
 
 .app-shell__brand-copy {

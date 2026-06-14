@@ -11,6 +11,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import type { BatchRow } from '@/types/dashboard'
+import { DASHBOARD_THEME } from '@/theme/dashboardTheme'
 import { formatDuration } from '@/utils/formatters'
 
 echarts.use([BarChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
@@ -25,7 +26,7 @@ let chart: echarts.ECharts | null = null
 const option = computed<EChartsCoreOption>(() => {
   const batches = props.batches.slice(0, 8).reverse()
   return {
-    color: ['#256d85', '#3d9b6d', '#c75146'],
+    color: [...DASHBOARD_THEME.chartAccentColors],
     grid: {
       left: 58,
       right: 28,

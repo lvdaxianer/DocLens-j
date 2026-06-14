@@ -174,10 +174,10 @@ defineExpose({ reset })
   gap: 14px;
   /* padding 让拖拽区域在视觉上足够可点击。 */
   padding: 22px;
-  border: 1px dashed rgba(37, 109, 133, 0.48);
+  border: 1px dashed rgba(249, 115, 22, 0.48);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(220, 239, 245, 0.88), rgba(255, 255, 255, 0.82)),
+    linear-gradient(135deg, rgba(255, 240, 229, 0.88), rgba(255, 255, 255, 0.82)),
     var(--surface-inset);
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }

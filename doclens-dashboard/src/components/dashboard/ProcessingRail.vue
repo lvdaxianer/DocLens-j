@@ -188,7 +188,7 @@ function nodeNumber(index: number): number {
   border-color: var(--active);
   background: var(--surface-raised);
   color: var(--active-strong);
-  box-shadow: 0 0 0 3px rgba(37, 109, 133, 0.14);
+  box-shadow: var(--focus-ring);
 }
 
 .processing-rail__node--skipped {
@@ -243,7 +243,7 @@ function nodeNumber(index: number): number {
 
 .processing-rail__node--current .processing-rail__state,
 .processing-rail__node--done .processing-rail__state {
-  background: rgba(37, 109, 133, 0.08);
+  background: var(--active-muted);
 }
 
 .processing-rail__node--failed .processing-rail__state {

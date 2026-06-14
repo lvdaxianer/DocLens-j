@@ -123,7 +123,7 @@ function selectModel(modelKey: string): void {
 }
 
 .ocr-model--active {
-  border-color: rgba(37, 109, 133, 0.46);
+  border-color: rgba(249, 115, 22, 0.46);
   box-shadow: var(--focus-ring);
 }
 
