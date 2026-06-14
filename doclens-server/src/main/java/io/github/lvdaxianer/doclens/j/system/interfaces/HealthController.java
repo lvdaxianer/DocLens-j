@@ -4,7 +4,9 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
 
 /**
  * 兼容 Python 服务契约的系统健康 API 控制器。
@@ -57,5 +59,17 @@ public class HealthController {
                 SERVICE_KEY, SERVICE_NAME,
                 TIMESTAMP_KEY, OffsetDateTime.now().toString()
         );
+    }
+
+    /**
+     * 返回给外部服务使用的无响应体心跳探测信息。
+     *
+     * @return 空响应
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    @RequestMapping(value = HEARTBEAT_PATH, method = RequestMethod.HEAD)
+    public ResponseEntity<Void> heartbeatHead() {
+        return ResponseEntity.ok().build();
     }
 }

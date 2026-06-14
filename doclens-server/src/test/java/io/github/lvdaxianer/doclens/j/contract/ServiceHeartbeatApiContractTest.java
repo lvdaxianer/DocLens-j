@@ -1,6 +1,9 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.handler;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -51,5 +54,21 @@ class ServiceHeartbeatApiContractTest {
                 .andExpect(jsonPath(STATUS_JSON_PATH).value(STATUS_OK))
                 .andExpect(jsonPath(SERVICE_JSON_PATH).value(SERVICE_NAME))
                 .andExpect(jsonPath(TIMESTAMP_JSON_PATH).isString());
+    }
+
+    /**
+     * 验证服务心跳接口支持无响应体的 HEAD 请求。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    @Test
+    void heartbeatHeadEndpointReturnsNoBody() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new HealthController()).build();
+        mockMvc.perform(head(HEARTBEAT_PATH))
+                .andExpect(status().isOk())
+                .andExpect(handler().methodName("heartbeatHead"))
+                .andExpect(content().string(""));
     }
 }
