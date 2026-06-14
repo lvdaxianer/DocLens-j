@@ -1,7 +1,11 @@
 package io.github.lvdaxianer.doclens.j.query.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
+import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,6 +47,27 @@ public class OcrQueryController {
     @GetMapping("/batches/{batchId}")
     public Map<String, Object> getBatch(@PathVariable String batchId) {
         return docLensEngine.getBatch(batchId);
+    }
+
+    /**
+     * 根据幂等键获取批次 reconciliation 视图。
+     *
+     * @param idempotencyKey 幂等键
+     * @return 批次 reconciliation 视图
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    @GetMapping("/batches/by-idempotency-key/{idempotencyKey}")
+    public ResponseEntity<Map<String, Object>> getBatchByIdempotencyKey(@PathVariable String idempotencyKey) {
+        try {
+            return ResponseEntity.ok(docLensEngine.getBatchByIdempotencyKey(idempotencyKey));
+        } catch (ResourceNotFoundException ex) {
+            Map<String, Object> body = new LinkedHashMap<>(3);
+            body.put("code", 404);
+            body.put("message", "batch not found");
+            body.put("data", null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        }
     }
 
     /**

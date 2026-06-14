@@ -72,6 +72,11 @@ public class DefaultDocLensEngine implements DocLensEngine {
     }
 
     @Override
+    public Map<String, Object> getBatchByIdempotencyKey(String idempotencyKey) {
+        return queryService.getBatchByIdempotencyKey(idempotencyKey);
+    }
+
+    @Override
     public Map<String, Object> getDocument(String documentId) {
         return queryService.getDocument(documentId);
     }

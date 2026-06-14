@@ -10,7 +10,10 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -20,6 +23,27 @@ import java.util.Map;
  * @date 2026-06-07
  */
 public class OcrQueryService {
+
+    private static final String BATCH_ID_FIELD = "batch_id";
+    private static final String IDEMPOTENCY_KEY_FIELD = "idempotency_key";
+    private static final String STATUS_FIELD = "status";
+    private static final String TOTAL_FILES_FIELD = "total_files";
+    private static final String COMPLETED_FILES_FIELD = "completed_files";
+    private static final String FAILED_FILES_FIELD = "failed_files";
+    private static final String PROGRESS_PERCENT_FIELD = "progress_percent";
+    private static final String DOCUMENTS_FIELD = "documents";
+    private static final String DOCUMENT_ID_FIELD = "document_id";
+    private static final String FILE_NAME_FIELD = "file_name";
+    private static final String CURRENT_PAGE_FIELD = "current_page";
+    private static final String TOTAL_PAGES_FIELD = "total_pages";
+    private static final String RESULT_ID_FIELD = "result_id";
+    private static final String ERROR_FIELD = "error";
+    private static final String CODE_FIELD = "code";
+    private static final String MESSAGE_FIELD = "message";
+    private static final String CREATED_AT_FIELD = "created_at";
+    private static final String UPDATED_AT_FIELD = "updated_at";
+    private static final String EMPTY_VALUE = "";
+    private static final String BATCH_NOT_FOUND_MESSAGE_TEMPLATE = "batch not found for idempotency key %s";
 
     private final BatchRepository batchRepository;
     private final DocumentJobRepository documentRepository;
@@ -60,16 +84,35 @@ public class OcrQueryService {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
         return Map.ofEntries(
-                Map.entry("batch_id", batch.batchId()),
-                Map.entry("status", batch.status().name().toLowerCase()),
-                Map.entry("total_files", batch.totalFiles()),
-                Map.entry("completed_files", batch.completedFiles()),
-                Map.entry("failed_files", batch.failedFiles()),
-                Map.entry("progress_percent", batchProgress(batch)),
+                Map.entry(BATCH_ID_FIELD, batch.batchId()),
+                Map.entry(STATUS_FIELD, batch.status().name().toLowerCase(Locale.ROOT)),
+                Map.entry(TOTAL_FILES_FIELD, batch.totalFiles()),
+                Map.entry(COMPLETED_FILES_FIELD, batch.completedFiles()),
+                Map.entry(FAILED_FILES_FIELD, batch.failedFiles()),
+                Map.entry(PROGRESS_PERCENT_FIELD, batchProgress(batch)),
                 Map.entry("metadata", batch.metadata().values()),
-                Map.entry("created_at", batch.createdAt().toString()),
-                Map.entry("updated_at", batch.updatedAt().toString())
+                Map.entry(CREATED_AT_FIELD, batch.createdAt().toString()),
+                Map.entry(UPDATED_AT_FIELD, batch.updatedAt().toString())
         );
+    }
+
+    /**
+     * 通过幂等键获取批次 reconciliation 视图。
+     *
+     * @param idempotencyKey 幂等键
+     * @return reconciliation 批次视图
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    public Map<String, Object> getBatchByIdempotencyKey(String idempotencyKey) {
+        Batch batch = batchRepository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format(BATCH_NOT_FOUND_MESSAGE_TEMPLATE, idempotencyKey)));
+        List<Map<String, Object>> documents = documentRepository.listByBatchId(batch.batchId()).stream()
+                .sorted(Comparator.comparingInt(DocumentJob::sortOrder))
+                .map(this::reconciliationDocumentView)
+                .toList();
+        return reconciliationBatchView(batch, documents);
     }
 
     /**
@@ -99,6 +142,123 @@ public class OcrQueryService {
                 Map.entry("error", documentError(document)),
                 Map.entry("created_at", document.createdAt().toString()),
                 Map.entry("updated_at", document.updatedAt().toString())
+        );
+    }
+
+    /**
+     * 构建 reconciliation 批次视图。
+     *
+     * @param batch 批次聚合
+     * @param documents 文档视图
+     * @return 批次 reconciliation 视图
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private Map<String, Object> reconciliationBatchView(Batch batch, List<Map<String, Object>> documents) {
+        Map<String, Object> payload = new LinkedHashMap<>(8);
+        payload.put(BATCH_ID_FIELD, batch.batchId());
+        payload.put(IDEMPOTENCY_KEY_FIELD, batch.idempotencyKey().orElse(EMPTY_VALUE));
+        payload.put(STATUS_FIELD, batchStatus(batch));
+        payload.put(TOTAL_FILES_FIELD, batch.totalFiles());
+        payload.put(COMPLETED_FILES_FIELD, batch.completedFiles());
+        payload.put(FAILED_FILES_FIELD, batch.failedFiles());
+        payload.put(PROGRESS_PERCENT_FIELD, batchProgress(batch));
+        payload.put(DOCUMENTS_FIELD, documents);
+        payload.put(CREATED_AT_FIELD, batch.createdAt().toString());
+        payload.put(UPDATED_AT_FIELD, batch.updatedAt().toString());
+        return payload;
+    }
+
+    /**
+     * 构建 reconciliation 文档视图。
+     *
+     * @param document 文档任务
+     * @return 文档 reconciliation 视图
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private Map<String, Object> reconciliationDocumentView(DocumentJob document) {
+        Map<String, Object> payload = new LinkedHashMap<>(11);
+        payload.put(DOCUMENT_ID_FIELD, document.documentId());
+        payload.put(FILE_NAME_FIELD, document.fileName());
+        payload.put(STATUS_FIELD, documentStatus(document));
+        payload.put("stage", reconciliationStage(document));
+        payload.put(PROGRESS_PERCENT_FIELD, document.progressPercent());
+        payload.put(CURRENT_PAGE_FIELD, document.currentPage());
+        payload.put(TOTAL_PAGES_FIELD, document.totalPages());
+        payload.put(RESULT_ID_FIELD, document.resultId().orElse(EMPTY_VALUE));
+        payload.put(ERROR_FIELD, reconciliationError(document));
+        payload.put(CREATED_AT_FIELD, document.createdAt().toString());
+        payload.put(UPDATED_AT_FIELD, document.updatedAt().toString());
+        return payload;
+    }
+
+    /**
+     * 将批次状态转换为稳定 reconciliation 状态。
+     *
+     * @param batch 批次聚合
+     * @return reconciliation 状态
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private String batchStatus(Batch batch) {
+        return switch (batch.status()) {
+            case QUEUED -> "queued";
+            case PROCESSING -> "processing";
+            case COMPLETED -> "completed";
+            case FAILED, PARTIAL_FAILED -> "failed";
+        };
+    }
+
+    /**
+     * 将文档状态转换为稳定 reconciliation 状态。
+     *
+     * @param document 文档任务
+     * @return reconciliation 状态
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private String documentStatus(DocumentJob document) {
+        return switch (document.status()) {
+            case QUEUED -> "queued";
+            case PROCESSING, STALLED -> "processing";
+            case COMPLETED -> "completed";
+            case FAILED -> "failed";
+        };
+    }
+
+    /**
+     * 将文档阶段转换为稳定 reconciliation 阶段。
+     *
+     * @param document 文档任务
+     * @return reconciliation 阶段
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private String reconciliationStage(DocumentJob document) {
+        return switch (document.stage()) {
+            case QUEUED, OCR_QUEUED -> "queued";
+            case WORD_TO_PDF, WORD_TO_PDF_COMPLETED, PDF_TO_IMAGES, PDF_TO_IMAGES_COMPLETED, RENDERING ->
+                    "extracting";
+            case OCR_IMAGES, OCR_PROCESSING -> "ocr";
+            case DIRECT_TEXT_SAVED, MERGE_TEXT, SAVE_TEXT, NORMALIZING -> "markdown";
+            case COMPLETED, OCR_COMPLETED -> "completed";
+            case FAILED, OCR_FAILED -> "failed";
+        };
+    }
+
+    /**
+     * 将文档错误转换为 reconciliation 错误对象。
+     *
+     * @param document 文档任务
+     * @return reconciliation 错误对象
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    private Map<String, Object> reconciliationError(DocumentJob document) {
+        return Map.of(
+                CODE_FIELD, document.errorCode().orElse(EMPTY_VALUE),
+                MESSAGE_FIELD, document.errorMessage().orElse(EMPTY_VALUE)
         );
     }
 
@@ -161,9 +321,11 @@ public class OcrQueryService {
      */
     private String llmErrorMessage(OcrResult result) {
         Object rawMessage = result.rawVendorOutput().get("llm_error_message");
+        // 原始结果里有明确失败信息时直接返回。
         if (rawMessage instanceof String message && !message.isBlank()) {
             return message;
         } else {
+            // 原始结果没有失败信息时返回空值，避免把 null 继续向上抛。
             return DocLensConstants.EMPTY_VALUE;
         }
     }
@@ -182,17 +344,21 @@ public class OcrQueryService {
     }
 
     private int batchProgress(Batch batch) {
+        // 总文件数大于 0 时按完成与失败的文件数计算进度。
         if (batch.totalFiles() > 0) {
             return (int) Math.round((batch.completedFiles() + batch.failedFiles()) * 100.0 / batch.totalFiles());
         } else {
+            // 没有文件时直接返回 0，避免除零并保持响应稳定。
             return 0;
         }
     }
 
     private Map<String, Object> documentError(DocumentJob document) {
+        // 文档没有错误码时返回空对象，表示不存在业务错误。
         if (document.errorCode().isEmpty()) {
             return Map.of();
         } else {
+            // 文档有错误码时返回稳定的错误结构，方便前端直接消费。
             return Map.of("code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE),
                     "message", document.errorMessage().orElse(DocLensConstants.EMPTY_VALUE));
         }

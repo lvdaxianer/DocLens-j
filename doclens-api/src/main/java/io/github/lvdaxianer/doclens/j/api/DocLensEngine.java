@@ -32,6 +32,16 @@ public interface DocLensEngine {
     Map<String, Object> getBatch(String batchId);
 
     /**
+     * 按幂等键获取批次 reconciliation 视图。
+     *
+     * @param idempotencyKey 幂等键
+     * @return 批次 reconciliation 视图
+     * @author lvdaxianerplus
+     * @date 2026-06-14
+     */
+    Map<String, Object> getBatchByIdempotencyKey(String idempotencyKey);
+
+    /**
      * 获取单个文档的状态和进度。
      *
      * @param documentId 文档标识

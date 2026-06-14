@@ -44,6 +44,7 @@ mvn -pl doclens-server spring-boot:run
 ```bash
 ./scripts/dev-up.sh
 ./scripts/dev-status.sh
+./scripts/dev-restart.sh
 ./scripts/dev-down.sh
 ```
 

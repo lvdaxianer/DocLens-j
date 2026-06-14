@@ -330,6 +330,15 @@ openwebui:file:<openwebui_file_id>:hash:<sha256>
 openwebui:file:file_abc123:hash:9f86d081...
 ```
 
+当 Open WebUI 需要对账某个文件时，可以直接通过该幂等键回查批次：
+
+```http
+GET /api/v1/batches/by-idempotency-key/{idempotencyKey}
+```
+
+该查询接口只读，返回的 batch snapshot 会包含 `documents` 数组，便于 Open WebUI
+在回调丢失、重启恢复或人工重试时继续对账。
+
 ### 2.4 查询归属
 
 DocLens-j 返回 batch、document、result 时，需要带回原始 metadata：
