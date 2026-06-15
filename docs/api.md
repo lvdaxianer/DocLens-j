@@ -45,6 +45,24 @@ Common fields:
 | `callback_url` | No | Callback URL for completion notification |
 | `pdf_mode` | No | PDF handling mode, commonly `page_image_fallback` |
 
+When `callback_url` is present, DocLens creates a durable callback job after a
+document reaches OCR completion and sends an asynchronous HTTP `POST` to that
+URL. The request body uses the completion callback contract:
+
+```json
+{
+  "meta": {},
+  "text": {},
+  "idempotency_key": ""
+}
+```
+
+Any HTTP `2xx` response marks the callback job as `success`. Non-`2xx`
+responses, timeouts, network failures, and unexpected delivery exceptions are
+recorded with a machine-readable `failure_reason` and a readable
+`failure_detail`. Failed jobs are retried with bounded backoff until the retry
+limit is reached.
+
 ## OCR Documents And Results
 
 | Method | Path | Description |
@@ -71,6 +89,23 @@ OCR health information.
 | `GET` | `/api/v1/dashboard/batches` | Dashboard batch list |
 | `GET` | `/api/v1/dashboard/batches/{batchId}` | Dashboard batch details |
 | `GET` | `/api/v1/dashboard/ocr-health` | OCR node and model health summary |
+
+`GET /api/v1/dashboard/batches/{batchId}` includes a `callback_jobs` array for
+callback inspection. Each item exposes:
+
+| Field | Description |
+| --- | --- |
+| `callback_job_id` | Callback job identifier |
+| `event_id` | Completion event that produced the callback job |
+| `batch_id` | Batch identifier |
+| `document_id` | Document identifier, or empty when unavailable |
+| `callback_url` | Delivery target URL |
+| `status` | `pending`, `retrying`, `success`, or `failed` |
+| `retry_count` | Failed delivery attempts already recorded |
+| `next_retry_at` | Next scheduled retry time for retrying jobs |
+| `failure_reason` | Failure category such as `http_status`, `timeout`, `network`, or `unexpected` |
+| `failure_detail` | Human-readable failure detail; terminal failures always keep this value |
+| `updated_at` | Last callback job update time |
 
 ## OCR Models And Nodes
 

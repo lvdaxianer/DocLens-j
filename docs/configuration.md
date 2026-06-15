@@ -60,6 +60,14 @@ endpoint or node configuration for your local environment.
 | `doclens.callback.max-retries` | `3` | Maximum callback retries |
 | `doclens.callback.timeout-seconds` | `10` | Callback timeout in seconds |
 
+Callback delivery is asynchronous. A completed OCR document with a non-empty
+`callback_url` creates a persistent callback job, then the callback worker sends
+the stored payload by HTTP `POST`. Delivery succeeds on any `2xx` response.
+Failures record both `failure_reason` and `failure_detail`, then retry until
+`doclens.callback.max-retries` is exhausted. The current implementation uses a
+30-second retry backoff and exposes callback job status through the dashboard
+batch detail API as `callback_jobs`.
+
 ## Secrets And Environment Variables
 
 LLM Markdown configurations and online OCR nodes store environment variable
