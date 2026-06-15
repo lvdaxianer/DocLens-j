@@ -64,7 +64,7 @@ describe('DocumentResultDrawer', () => {
     expect(wrapper.find('.document-result__tabs').exists()).toBe(true)
     expect(wrapper.findAll('.document-result__text')).toHaveLength(1)
     expect(wrapper.text()).toContain('Markdown 内容')
-    expect(wrapper.text()).toContain('# Markdown 结果')
+    expect(wrapper.text()).toContain('Markdown 结果')
     expect(wrapper.text()).not.toContain('原始 OCR 文本')
 
     await wrapper.find('.n-tab').trigger('click')
@@ -72,7 +72,7 @@ describe('DocumentResultDrawer', () => {
     expect(wrapper.findAll('.document-result__text')).toHaveLength(1)
     expect(wrapper.text()).toContain('OCR 原内容')
     expect(wrapper.text()).toContain('原始 OCR 文本')
-    expect(wrapper.text()).not.toContain('# Markdown 结果')
+    expect(wrapper.text()).not.toContain('Markdown 结果')
   })
 })
 

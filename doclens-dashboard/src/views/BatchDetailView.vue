@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { NAlert } from 'naive-ui'
 
 import { deleteDocument, retryDocument } from '@/api/dashboard'
+import BatchCallbackJobsPanel from '@/components/dashboard/BatchCallbackJobsPanel.vue'
 import BatchDocumentTable from '@/components/dashboard/BatchDocumentTable.vue'
 import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
 import BatchSummaryStrip from '@/components/dashboard/BatchSummaryStrip.vue'
@@ -181,6 +182,12 @@ useAutoRefresh(refresh)
       :current-document-name="currentRouteDocument?.file_name"
       :current-document-final-hit-nodes="currentRouteDocument?.ocr_final_hit_nodes ?? []"
       :hit-nodes="selectedBatch.batch_dispatch_hit_nodes"
+    />
+
+    <!-- 回调投递结果直接来自批次详情响应，便于排查 callback 成功、失败和重试。 -->
+    <BatchCallbackJobsPanel
+      v-if="selectedBatch"
+      :callback-jobs="selectedBatch.callback_jobs ?? []"
     />
 
     <!-- 文档轨道区域由轨道卡片、文档表格和结果抽屉三个独立子组件组成。 -->

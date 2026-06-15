@@ -118,6 +118,37 @@ export interface OcrEventRow {
   occurred_at: string
 }
 
+/**
+ * Dashboard 批次详情中的回调投递任务读模型。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+export interface CallbackJobRow {
+  /** 回调任务 ID。 */
+  callback_job_id: string
+  /** 产生回调任务的完成事件 ID。 */
+  event_id: string
+  /** 回调任务所属批次 ID。 */
+  batch_id: string
+  /** 可选文档 ID。 */
+  document_id: string
+  /** 回调投递目标地址。 */
+  callback_url: string
+  /** 回调任务状态编码。 */
+  status: string
+  /** 已记录的投递失败次数。 */
+  retry_count: number
+  /** 下次自动重试时间。 */
+  next_retry_at: string
+  /** 最近一次失败原因编码。 */
+  failure_reason: string
+  /** 最近一次失败详情。 */
+  failure_detail: string
+  /** 最近更新时间。 */
+  updated_at: string
+}
+
 export interface DashboardSummary {
   overview: DashboardOverview
   throughput: DashboardThroughput
@@ -155,6 +186,7 @@ export interface BatchDetailResponse {
   batch: BatchRow
   documents: DocumentRow[]
   events: OcrEventRow[]
+  callback_jobs: CallbackJobRow[]
   ocr_route_policy: BatchOcrRoutePolicy
   batch_dispatch_hit_nodes: BatchOcrHitNode[]
   failure_summary: Record<string, number>

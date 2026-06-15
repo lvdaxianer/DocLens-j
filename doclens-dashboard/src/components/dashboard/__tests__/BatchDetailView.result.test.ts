@@ -6,7 +6,8 @@ import { NConfigProvider } from 'naive-ui'
 const openDocumentResult = vi.fn(() => Promise.resolve())
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { batchId: 'batch-test' } })
+  useRoute: () => ({ params: { batchId: 'batch-test' } }),
+  useRouter: () => ({ back: vi.fn() })
 }))
 
 vi.mock('pinia', () => ({
