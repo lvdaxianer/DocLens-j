@@ -9,5 +9,5 @@
 
 ## 2. Verification And Archive
 
-- [ ] 2.1 Run focused UI tests, frontend build, OpenSpec validation, final
+- [x] 2.1 Run focused UI tests, frontend build, OpenSpec validation, final
   review, and archive the completed change.
