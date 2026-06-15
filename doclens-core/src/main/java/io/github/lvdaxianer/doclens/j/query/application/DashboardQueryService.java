@@ -2,9 +2,12 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
@@ -13,6 +16,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Dashboard 控制台读模型查询服务。
@@ -30,6 +34,7 @@ public class DashboardQueryService {
     private final BatchRepository batchRepository;
     private final DocumentJobRepository documentRepository;
     private final OcrEventRepository eventRepository;
+    private final CallbackJobRepository callbackJobRepository;
     private final DashboardRowAssembler rowAssembler;
     private final DashboardStageMetricsAssembler stageMetricsAssembler;
     private final DashboardOcrMetricsProvider ocrMetricsProvider;
@@ -48,7 +53,8 @@ public class DashboardQueryService {
             DocumentJobRepository documentRepository,
             OcrEventRepository eventRepository
     ) {
-        this(batchRepository, documentRepository, eventRepository, new EmptyDashboardOcrMetricsProvider());
+        this(new Dependencies(batchRepository, documentRepository, eventRepository,
+                new EmptyDashboardOcrMetricsProvider(), new EmptyCallbackJobRepository()));
     }
 
     /**
@@ -67,10 +73,24 @@ public class DashboardQueryService {
             OcrEventRepository eventRepository,
             DashboardOcrMetricsProvider ocrMetricsProvider
     ) {
-        this.batchRepository = batchRepository;
-        this.documentRepository = documentRepository;
-        this.eventRepository = eventRepository;
-        this.ocrMetricsProvider = ocrMetricsProvider;
+        this(new Dependencies(batchRepository, documentRepository, eventRepository, ocrMetricsProvider,
+                new EmptyCallbackJobRepository()));
+    }
+
+    /**
+     * 创建 Dashboard 查询服务。
+     *
+     * @param dependencies 查询服务依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    public DashboardQueryService(Dependencies dependencies) {
+        Dependencies safeDependencies = Objects.requireNonNull(dependencies, "dashboard dependencies is required");
+        this.batchRepository = safeDependencies.batchRepository();
+        this.documentRepository = safeDependencies.documentRepository();
+        this.eventRepository = safeDependencies.eventRepository();
+        this.ocrMetricsProvider = safeDependencies.ocrMetricsProvider();
+        this.callbackJobRepository = safeDependencies.callbackJobRepository();
         this.rowAssembler = new DashboardRowAssembler();
         this.stageMetricsAssembler = new DashboardStageMetricsAssembler();
     }
@@ -124,11 +144,13 @@ public class DashboardQueryService {
                 .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         List<OcrEvent> events = eventRepository.listByBatchId(batchId);
+        List<CallbackJob> callbackJobs = callbackJobRepository.listByBatchId(batchId);
         return Map.ofEntries(
                 Map.entry("batch", rowAssembler.batchRow(batch, documents)),
                 Map.entry("documents", rowAssembler.documentRows(documents,
                         ocrMetricsProvider.finalHitNodesByBatch(batchId))),
                 Map.entry("events", rowAssembler.eventRows(events)),
+                Map.entry("callback_jobs", rowAssembler.callbackJobRows(callbackJobs)),
                 Map.entry("ocr_route_policy", rowAssembler.batchRoutePolicy(documents)),
                 Map.entry("batch_dispatch_hit_nodes", ocrMetricsProvider.dispatchHitNodesByBatch(batchId)),
                 Map.entry("failure_summary", rowAssembler.failureSummary(documents))
@@ -217,6 +239,41 @@ public class DashboardQueryService {
     private long durationMillis(DocumentJob document) {
         OffsetDateTime end = document.updatedAt();
         return Duration.between(document.createdAt(), end).toMillis();
+    }
+
+    /**
+     * Dashboard 查询服务依赖集合。
+     *
+     * @param batchRepository 批次仓储
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param ocrMetricsProvider OCR 指标提供器
+     * @param callbackJobRepository 回调任务仓储
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    public record Dependencies(
+            BatchRepository batchRepository,
+            DocumentJobRepository documentRepository,
+            OcrEventRepository eventRepository,
+            DashboardOcrMetricsProvider ocrMetricsProvider,
+            CallbackJobRepository callbackJobRepository
+    ) {
+
+        /**
+         * 创建 Dashboard 查询服务依赖集合。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-15
+         */
+        public Dependencies {
+            batchRepository = Objects.requireNonNull(batchRepository, "batch repository is required");
+            documentRepository = Objects.requireNonNull(documentRepository, "document repository is required");
+            eventRepository = Objects.requireNonNull(eventRepository, "event repository is required");
+            ocrMetricsProvider = Objects.requireNonNull(ocrMetricsProvider, "ocr metrics provider is required");
+            callbackJobRepository = Objects.requireNonNull(callbackJobRepository,
+                    "callback job repository is required");
+        }
     }
 
 }

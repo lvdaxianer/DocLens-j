@@ -60,6 +60,19 @@ final class InMemoryCallbackJobRepository implements CallbackJobRepository {
     }
 
     /**
+     * 根据批次查询回调任务。
+     *
+     * @param batchId 批次 ID
+     * @return 回调任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    @Override
+    public List<CallbackJob> listByBatchId(String batchId) {
+        return jobs.stream().filter(job -> job.batchId().equals(batchId)).toList();
+    }
+
+    /**
      * 标记任务投递成功。
      *
      * @param callbackJobId 回调任务 ID

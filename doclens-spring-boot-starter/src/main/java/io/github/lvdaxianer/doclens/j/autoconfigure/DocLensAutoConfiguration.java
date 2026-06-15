@@ -22,7 +22,9 @@ import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.BatchMapper;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.MybatisPlusBatchRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
@@ -54,8 +56,9 @@ import io.github.lvdaxianer.doclens.j.shared.application.SpringTransactionRunner
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.storage.LocalObjectStorage;
 import java.util.List;
-import org.mybatis.spring.annotation.MapperScan;
 import org.apache.ibatis.annotations.Mapper;
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -281,6 +284,7 @@ public class DocLensAutoConfiguration {
      * @param batchRepository 批次仓储
      * @param documentRepository 文档仓储
      * @param eventRepository 事件仓储
+     * @param callbackJobRepository callback 仓储提供器
      * @return Dashboard 查询服务
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -291,9 +295,13 @@ public class DocLensAutoConfiguration {
             BatchRepository batchRepository,
             DocumentJobRepository documentRepository,
             OcrEventRepository eventRepository,
-            DashboardOcrMetricsProvider ocrMetricsProvider
+            DashboardOcrMetricsProvider ocrMetricsProvider,
+            ObjectProvider<CallbackJobRepository> callbackJobRepository
     ) {
-        return new DashboardQueryService(batchRepository, documentRepository, eventRepository, ocrMetricsProvider);
+        CallbackJobRepository safeCallbackJobRepository = callbackJobRepository
+                .getIfAvailable(EmptyCallbackJobRepository::new);
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(batchRepository, documentRepository,
+                eventRepository, ocrMetricsProvider, safeCallbackJobRepository));
     }
 
     /**

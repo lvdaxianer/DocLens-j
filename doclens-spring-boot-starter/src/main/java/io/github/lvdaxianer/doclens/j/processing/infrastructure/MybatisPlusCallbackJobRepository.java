@@ -115,6 +115,23 @@ public class MybatisPlusCallbackJobRepository
     }
 
     /**
+     * 根据批次查询回调任务。
+     *
+     * @param batchId 批次 ID
+     * @return 回调任务集合
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    @Override
+    public List<CallbackJob> listByBatchId(String batchId) {
+        LambdaQueryWrapper<CallbackJobEntity> wrapper = new LambdaQueryWrapper<CallbackJobEntity>()
+                .eq(CallbackJobEntity::getBatchId, batchId)
+                .orderByAsc(CallbackJobEntity::getCreatedAt)
+                .orderByAsc(CallbackJobEntity::getCallbackJobId);
+        return list(wrapper).stream().map(this::toDomain).toList();
+    }
+
+    /**
      * 查询必须存在的回调任务。
      *
      * @param callbackJobId 回调任务 ID

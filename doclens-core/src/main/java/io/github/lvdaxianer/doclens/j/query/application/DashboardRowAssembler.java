@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -101,6 +102,18 @@ class DashboardRowAssembler {
     }
 
     /**
+     * 创建 callback 作业行集合。
+     *
+     * @param callbackJobs callback 作业集合
+     * @return callback 作业行集合
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    List<Map<String, Object>> callbackJobRows(List<CallbackJob> callbackJobs) {
+        return callbackJobs.stream().map(this::callbackJobRow).toList();
+    }
+
+    /**
      * 创建失败文档行集合。
      *
      * @param documents 文档集合
@@ -188,6 +201,32 @@ class DashboardRowAssembler {
                 Map.entry("status", event.status()),
                 Map.entry("stage", event.stage()),
                 Map.entry("occurred_at", event.occurredAt().toString())
+        );
+    }
+
+    /**
+     * 创建 callback 作业行。
+     *
+     * @param callbackJob callback 作业
+     * @return callback 作业行
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    private Map<String, Object> callbackJobRow(CallbackJob callbackJob) {
+        return Map.ofEntries(
+                Map.entry("callback_job_id", callbackJob.callbackJobId()),
+                Map.entry("event_id", callbackJob.eventId()),
+                Map.entry("batch_id", callbackJob.batchId()),
+                Map.entry("document_id", callbackJob.documentId().orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("callback_url", callbackJob.callbackUrl()),
+                Map.entry("status", callbackJob.status().name().toLowerCase()),
+                Map.entry("retry_count", callbackJob.retryCount()),
+                Map.entry("next_retry_at", callbackJob.nextRetryAt()
+                        .map(OffsetDateTime::toString).orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("failure_reason", callbackJob.failureReason()
+                        .map(reason -> reason.name().toLowerCase()).orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("failure_detail", callbackJob.failureDetail().orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("updated_at", callbackJob.updatedAt().toString())
         );
     }
 
