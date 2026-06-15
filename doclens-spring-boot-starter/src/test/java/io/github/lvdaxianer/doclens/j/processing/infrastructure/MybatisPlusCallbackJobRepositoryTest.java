@@ -34,6 +34,7 @@ import org.springframework.test.context.DynamicPropertySource;
 class MybatisPlusCallbackJobRepositoryTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-15T10:00:00+08:00");
+    private static final int QUERY_LIMIT = 10;
 
     @Autowired
     private CallbackJobRepository repository;
@@ -76,6 +77,23 @@ class MybatisPlusCallbackJobRepositoryTest {
             assertThat(saved.failureReason()).contains(CallbackFailureReason.HTTP_STATUS);
             assertThat(saved.failureDetail()).contains("HTTP 503");
         });
+    }
+
+    /**
+     * 仓储应返回待投递任务和已到期重试任务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    @Test
+    void repositoryListsPendingAndDueRetryJobs() {
+        repository.save(CallbackJob.create(createRequest("callback-3")));
+        repository.save(CallbackJob.create(createRequest("callback-4")));
+        repository.markFailed(dueRetryRequest("callback-4"));
+
+        assertThat(repository.listPending(QUERY_LIMIT))
+                .extracting(CallbackJob::callbackJobId)
+                .contains("callback-3", "callback-4");
     }
 
     /**
@@ -125,6 +143,19 @@ class MybatisPlusCallbackJobRepositoryTest {
     private CallbackJobFailureRequest failureRequest() {
         return new CallbackJobFailureRequest("callback-1", CallbackFailureReason.HTTP_STATUS, "HTTP 503",
                 1, BASE_TIME.plusSeconds(30), BASE_TIME.plusSeconds(1));
+    }
+
+    /**
+     * 创建到期重试状态测试请求。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @return 回调任务失败请求
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    private CallbackJobFailureRequest dueRetryRequest(String callbackJobId) {
+        return new CallbackJobFailureRequest(callbackJobId, CallbackFailureReason.HTTP_STATUS, "HTTP 503",
+                1, BASE_TIME.minusSeconds(1), BASE_TIME.plusSeconds(1));
     }
 
     /**

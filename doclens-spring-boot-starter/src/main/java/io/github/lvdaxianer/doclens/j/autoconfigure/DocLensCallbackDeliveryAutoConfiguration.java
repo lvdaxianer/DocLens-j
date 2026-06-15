@@ -36,6 +36,7 @@ public class DocLensCallbackDeliveryAutoConfiguration {
 
     private static final int CALLBACK_DISPATCH_INTERVAL_MILLIS = 1000;
     private static final int CALLBACK_DISPATCH_BATCH_SIZE = 100;
+    private static final int CALLBACK_RETRY_BACKOFF_SECONDS = 30;
 
     /**
      * 创建回调投递 worker。
@@ -55,7 +56,8 @@ public class DocLensCallbackDeliveryAutoConfiguration {
             DocLensSpringProperties properties
     ) {
         return new CallbackDeliveryWorker(dependencies,
-                new Options(Duration.ofSeconds(properties.callback().timeoutSeconds()), CALLBACK_DISPATCH_BATCH_SIZE));
+                new Options(Duration.ofSeconds(properties.callback().timeoutSeconds()), CALLBACK_DISPATCH_BATCH_SIZE,
+                        properties.callback().maxRetries(), Duration.ofSeconds(CALLBACK_RETRY_BACKOFF_SECONDS)));
     }
 
     /**

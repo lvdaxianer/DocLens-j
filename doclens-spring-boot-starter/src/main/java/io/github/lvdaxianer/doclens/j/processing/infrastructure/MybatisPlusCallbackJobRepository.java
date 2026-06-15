@@ -85,7 +85,12 @@ public class MybatisPlusCallbackJobRepository
     @Override
     public void markFailed(CallbackJobFailureRequest request) {
         CallbackJob current = requiredJob(request.callbackJobId());
-        updateById(toEntity(request.nextRetryAt() == null ? current.markFailed(request) : current.markRetrying(request)));
+        // 未到达重试上限时保留重试状态，否则直接落终态失败。
+        if (request.nextRetryAt() == null) {
+            updateById(toEntity(current.markFailed(request)));
+        } else {
+            updateById(toEntity(current.markRetrying(request)));
+        }
     }
 
     /**
@@ -97,8 +102,12 @@ public class MybatisPlusCallbackJobRepository
      * @date 2026-06-15
      */
     public List<CallbackJob> listPending(int limit) {
+        OffsetDateTime now = OffsetDateTime.now();
         LambdaQueryWrapper<CallbackJobEntity> wrapper = new LambdaQueryWrapper<CallbackJobEntity>()
-                .eq(CallbackJobEntity::getStatus, CallbackJobStatus.PENDING.name().toLowerCase())
+                .and(query -> query.eq(CallbackJobEntity::getStatus, CallbackJobStatus.PENDING.name().toLowerCase())
+                        .or(retrying -> retrying.eq(CallbackJobEntity::getStatus,
+                                        CallbackJobStatus.RETRYING.name().toLowerCase())
+                                .le(CallbackJobEntity::getNextRetryAt, now)))
                 .orderByAsc(CallbackJobEntity::getCreatedAt)
                 .orderByAsc(CallbackJobEntity::getCallbackJobId);
         return page(io.github.lvdaxianer.doclens.j.shared.infrastructure.MybatisPlusPages.limit(limit), wrapper)

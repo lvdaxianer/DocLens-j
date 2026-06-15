@@ -56,7 +56,7 @@ final class InMemoryCallbackJobRepository implements CallbackJobRepository {
      */
     @Override
     public List<CallbackJob> listPending(int limit) {
-        return jobs.stream().filter(job -> job.status() == CallbackJobStatus.PENDING).limit(limit).toList();
+        return jobs.stream().filter(this::isDeliverable).limit(limit).toList();
     }
 
     /**
@@ -82,6 +82,43 @@ final class InMemoryCallbackJobRepository implements CallbackJobRepository {
     @Override
     public void markFailed(CallbackJobFailureRequest request) {
         CallbackJob job = findById(request.callbackJobId()).orElseThrow();
-        jobs.set(jobs.indexOf(job), job.markFailed(request));
+        // 没有下次重试时间时，测试仓储同步进入终态失败。
+        if (request.nextRetryAt() == null) {
+            jobs.set(jobs.indexOf(job), job.markFailed(request));
+        } else {
+            // 存在下次重试时间时，测试仓储保留重试状态。
+            jobs.set(jobs.indexOf(job), job.markRetrying(request));
+        }
+    }
+
+    /**
+     * 判断任务是否可投递。
+     *
+     * @param job 回调任务
+     * @return 是否可投递
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    private boolean isDeliverable(CallbackJob job) {
+        // 待投递任务应立即被 worker 扫描。
+        if (job.status() == CallbackJobStatus.PENDING) {
+            return true;
+        } else {
+            // 非待投递任务只允许已到期的重试任务进入扫描。
+            return isRetryDue(job);
+        }
+    }
+
+    /**
+     * 判断重试任务是否到期。
+     *
+     * @param job 回调任务
+     * @return 是否到期
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    private boolean isRetryDue(CallbackJob job) {
+        return job.status() == CallbackJobStatus.RETRYING
+                && job.nextRetryAt().map(nextRetryAt -> !nextRetryAt.isAfter(OffsetDateTime.now())).orElse(false);
     }
 }

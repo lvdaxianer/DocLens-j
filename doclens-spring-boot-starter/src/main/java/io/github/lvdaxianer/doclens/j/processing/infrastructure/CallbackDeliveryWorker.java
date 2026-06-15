@@ -31,7 +31,7 @@ public class CallbackDeliveryWorker {
         Dependencies safeDependencies = Objects.requireNonNull(dependencies, "callback dependencies is required");
         this.repository = safeDependencies.repository();
         this.processor = new CallbackDeliveryProcessor(safeDependencies.processorDependencies(),
-                safeOptions.timeout());
+                safeOptions.timeout(), safeOptions.maxRetries(), safeOptions.retryBackoff());
         this.batchSize = safeOptions.batchSize();
     }
 
@@ -100,10 +100,27 @@ public class CallbackDeliveryWorker {
      *
      * @param timeout 回调超时时间
      * @param batchSize 单轮扫描数量
+     * @param maxRetries 最大重试次数
+     * @param retryBackoff 重试退避间隔
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
-    public record Options(Duration timeout, int batchSize) {
+    public record Options(Duration timeout, int batchSize, int maxRetries, Duration retryBackoff) {
+
+        private static final int DEFAULT_MAX_RETRIES = 3;
+        private static final int DEFAULT_RETRY_BACKOFF_SECONDS = 30;
+
+        /**
+         * 创建兼容旧调用方的配置。
+         *
+         * @param timeout 回调超时时间
+         * @param batchSize 单轮扫描数量
+         * @author lvdaxianerplus
+         * @date 2026-06-15
+         */
+        public Options(Duration timeout, int batchSize) {
+            this(timeout, batchSize, DEFAULT_MAX_RETRIES, Duration.ofSeconds(DEFAULT_RETRY_BACKOFF_SECONDS));
+        }
 
         /**
          * 创建带安全默认值的配置。
@@ -114,6 +131,8 @@ public class CallbackDeliveryWorker {
         public Options {
             timeout = timeout == null ? Duration.ofSeconds(10) : timeout;
             batchSize = Math.max(1, batchSize);
+            maxRetries = Math.max(0, maxRetries);
+            retryBackoff = retryBackoff == null ? Duration.ofSeconds(DEFAULT_RETRY_BACKOFF_SECONDS) : retryBackoff;
         }
 
         /**
@@ -124,7 +143,8 @@ public class CallbackDeliveryWorker {
          * @date 2026-06-15
          */
         public static Options defaults() {
-            return new Options(Duration.ofSeconds(10), 100);
+            return new Options(Duration.ofSeconds(10), 100, DEFAULT_MAX_RETRIES,
+                    Duration.ofSeconds(DEFAULT_RETRY_BACKOFF_SECONDS));
         }
     }
 }

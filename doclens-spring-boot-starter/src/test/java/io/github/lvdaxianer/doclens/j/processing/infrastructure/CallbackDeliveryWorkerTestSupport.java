@@ -114,6 +114,23 @@ abstract class CallbackDeliveryWorkerTestSupport {
     }
 
     /**
+     * 断言任务已进入重试状态。
+     *
+     * @param repository 内存仓储
+     * @param reason 失败原因
+     * @author lvdaxianerplus
+     * @date 2026-06-15
+     */
+    protected void assertRetrying(InMemoryCallbackJobRepository repository, CallbackFailureReason reason) {
+        assertThat(repository.findById("callback-1")).get().satisfies(job -> {
+            assertThat(job.status()).isEqualTo(CallbackJobStatus.RETRYING);
+            assertThat(job.retryCount()).isEqualTo(1);
+            assertThat(job.failureReason()).contains(reason);
+            assertThat(job.nextRetryAt()).isPresent();
+        });
+    }
+
+    /**
      * 执行一轮 worker 并释放线程池。
      *
      * @param repository 内存仓储

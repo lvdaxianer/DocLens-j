@@ -14,7 +14,7 @@
 
 ## 3. Retry And Visibility
 
-- [ ] 3.1 Add bounded retry handling with backoff and terminal failure marking.
+- [x] 3.1 Add bounded retry handling with backoff and terminal failure marking.
 - [ ] 3.2 Expose callback outcome details through the existing event or query
   path so success and failure can be inspected.
 - [ ] 3.3 Run focused and broader verification, then update the callback
