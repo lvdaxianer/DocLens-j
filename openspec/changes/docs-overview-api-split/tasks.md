@@ -6,5 +6,5 @@
 
 ## 2. Final Review
 
-- [ ] 2.1 Verify documentation links/headings, run the relevant markdown and
+- [x] 2.1 Verify documentation links/headings, run the relevant markdown and
   repository checks, audit the diff against this plan, and archive the change.
