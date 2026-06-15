@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -44,6 +45,31 @@ public class CallbackDeliveryWorker {
      */
     public int runOnce() {
         return deliverBatch(pendingJobs());
+    }
+
+    /**
+     * 立即重试指定回调任务。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @return 成功投递数量
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    public int retryNow(String callbackJobId) {
+        return deliverBatch(List.of(requiredJob(callbackJobId)));
+    }
+
+    /**
+     * 查询必须存在的回调任务。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @return 回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    private CallbackJob requiredJob(String callbackJobId) {
+        return repository.findById(callbackJobId)
+                .orElseThrow(() -> new ResourceNotFoundException("callback job " + callbackJobId + " not found"));
     }
 
     /**

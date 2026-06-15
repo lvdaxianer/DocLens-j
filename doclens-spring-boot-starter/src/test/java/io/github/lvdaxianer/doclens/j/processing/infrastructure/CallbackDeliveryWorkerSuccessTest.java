@@ -39,4 +39,27 @@ class CallbackDeliveryWorkerSuccessTest extends CallbackDeliveryWorkerTestSuppor
         assertRequestBody(requestBody.get());
         assertSucceeded(repository);
     }
+
+    /**
+     * 手动重试应立即投递指定回调任务并标记成功。
+     *
+     * @throws IOException 本地 HTTP 服务启动或 JSON 解析失败
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void retryNowPostsCallbackPayloadAndMarksSuccess() throws IOException {
+        AtomicReference<String> requestBody = new AtomicReference<>();
+        HttpServer server = startServer(exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            writeResponse(exchange, 200, "{\"ok\":true}");
+        });
+
+        InMemoryCallbackJobRepository repository = repositoryWithJob(endpointFor(server).toString());
+        int deliveredCount = retryNow(repository, Options.defaults());
+
+        assertThat(deliveredCount).isEqualTo(1);
+        assertRequestBody(requestBody.get());
+        assertSucceeded(repository);
+    }
 }

@@ -107,6 +107,23 @@ callback inspection. Each item exposes:
 | `failure_detail` | Human-readable failure detail; terminal failures always keep this value |
 | `updated_at` | Last callback job update time |
 
+Failed callback jobs can be replayed from the Dashboard:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/dashboard/callback-jobs/{callbackJobId}/retry
+```
+
+The response body exposes:
+
+| Field | Description |
+| --- | --- |
+| `callback_job_id` | Retried callback job identifier |
+| `delivered_count` | `1` when the retry POST succeeds, otherwise `0` |
+
+If the manual retry fails, DocLens records the latest `failure_reason` and
+`failure_detail` on the same callback job fields returned by the batch detail
+API.
+
 ## OCR Models And Nodes
 
 | Method | Path | Description |

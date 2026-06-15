@@ -1,9 +1,11 @@
 package io.github.lvdaxianer.doclens.j.dashboard.interfaces;
 
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryWorker;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
 
     private final DashboardQueryService dashboardQueryService;
+    private final CallbackDeliveryWorker callbackDeliveryWorker;
 
     /**
      * 创建 Dashboard 控制器。
@@ -26,8 +29,9 @@ public class DashboardController {
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
-    public DashboardController(DashboardQueryService dashboardQueryService) {
+    public DashboardController(DashboardQueryService dashboardQueryService, CallbackDeliveryWorker callbackDeliveryWorker) {
         this.dashboardQueryService = dashboardQueryService;
+        this.callbackDeliveryWorker = callbackDeliveryWorker;
     }
 
     /**
@@ -65,6 +69,20 @@ public class DashboardController {
     @GetMapping("/batches/{batchId}")
     public Map<String, Object> batchDetail(@PathVariable String batchId) {
         return dashboardQueryService.batchDetail(batchId);
+    }
+
+    /**
+     * 立即重试指定回调任务。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @return 回调重试结果
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @PostMapping("/callback-jobs/{callbackJobId}/retry")
+    public Map<String, Object> retryCallbackJob(@PathVariable String callbackJobId) {
+        int deliveredCount = callbackDeliveryWorker.retryNow(callbackJobId);
+        return Map.of("callback_job_id", callbackJobId, "delivered_count", deliveredCount);
     }
 
     /**

@@ -43,6 +43,24 @@ class CallbackDeliveryWorkerFailureTest extends CallbackDeliveryWorkerTestSuppor
     }
 
     /**
+     * 手动重试失败时应记录最新 HTTP 失败原因。
+     *
+     * @throws IOException 本地 HTTP 服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void retryNowRecordsHttpFailureReasonWhenCallbackReturnsNonSuccessStatus() throws IOException {
+        HttpServer server = startServer(exchange -> writeResponse(exchange, HTTP_BAD_GATEWAY, "{\"ok\":false}"));
+        InMemoryCallbackJobRepository repository = repositoryWithJob(endpointFor(server).toString());
+
+        int deliveredCount = retryNow(repository, terminalFailureOptions());
+
+        assertThat(deliveredCount).isZero();
+        assertFailed(repository, CallbackFailureReason.HTTP_STATUS, "HTTP 502");
+    }
+
+    /**
      * worker 应在未达到上限时调度下一次重试。
      *
      * @throws IOException 本地 HTTP 服务启动失败

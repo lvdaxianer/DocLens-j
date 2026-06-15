@@ -149,6 +149,24 @@ abstract class CallbackDeliveryWorkerTestSupport {
     }
 
     /**
+     * 手动重试指定回调任务并释放线程池。
+     *
+     * @param repository 内存仓储
+     * @param options worker 配置
+     * @return 成功投递数量
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    protected int retryNow(InMemoryCallbackJobRepository repository, CallbackDeliveryWorker.Options options) {
+        ExecutorService callbackExecutor = callbackExecutor();
+        try {
+            return worker(repository, callbackExecutor, options).retryNow("callback-1");
+        } finally {
+            callbackExecutor.shutdownNow();
+        }
+    }
+
+    /**
      * 创建回调投递 worker。
      *
      * @param repository 内存仓储

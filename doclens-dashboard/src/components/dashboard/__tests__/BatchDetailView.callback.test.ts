@@ -1,7 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { NConfigProvider } from 'naive-ui'
+
+const { retryCallbackJob } = vi.hoisted(() => ({
+  retryCallbackJob: vi.fn(() => Promise.resolve())
+}))
+
+const loadBatchDetail = vi.fn(() => Promise.resolve())
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { batchId: 'batch-test' } }),
@@ -60,7 +66,7 @@ vi.mock('pinia', () => ({
 
 vi.mock('@/stores/dashboard', () => ({
   useDashboardStore: () => ({
-    loadBatchDetail: vi.fn(() => Promise.resolve())
+    loadBatchDetail
   })
 }))
 
@@ -80,6 +86,14 @@ vi.mock('@/composables/useDocumentResultDrawer', () => ({
   })
 }))
 
+vi.mock('@/api/dashboard', async () => {
+  const actual = await vi.importActual<typeof import('@/api/dashboard')>('@/api/dashboard')
+  return {
+    ...actual,
+    retryCallbackJob
+  }
+})
+
 import BatchDetailView from '@/views/BatchDetailView.vue'
 
 const MountHost = defineComponent({
@@ -92,6 +106,11 @@ const MountHost = defineComponent({
 })
 
 describe('BatchDetailView callback visibility', () => {
+  beforeEach(() => {
+    loadBatchDetail.mockClear()
+    retryCallbackJob.mockClear()
+  })
+
   it('shows callback status and failure detail on the batch detail page', () => {
     const wrapper = mount(MountHost, {
       global: {
@@ -112,5 +131,29 @@ describe('BatchDetailView callback visibility', () => {
     expect(wrapper.text()).toContain('失败')
     expect(wrapper.text()).toContain('http_status')
     expect(wrapper.text()).toContain('HTTP 503')
+  })
+
+  it('retries failed callback job and refreshes batch detail', async () => {
+    const wrapper = mount(MountHost, {
+      global: {
+        stubs: {
+          NAlert: true,
+          NButton: false,
+          NProgress: true,
+          NDataTable: true,
+          BatchOcrRoutePanel: true,
+          DocumentResultDrawer: true,
+          DocumentTrackCards: true,
+          StatusTag: true
+        }
+      }
+    })
+
+    const retryButton = wrapper.findAll('button').find((candidate) => candidate.text() === '重试回调')
+
+    expect(retryButton).toBeDefined()
+    await retryButton?.trigger('click')
+    expect(retryCallbackJob).toHaveBeenCalledWith('callback-1')
+    expect(loadBatchDetail).toHaveBeenCalledWith('batch-test')
   })
 })

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { NAlert } from 'naive-ui'
 
-import { deleteDocument, retryDocument } from '@/api/dashboard'
+import { deleteDocument, retryCallbackJob, retryDocument } from '@/api/dashboard'
 import BatchCallbackJobsPanel from '@/components/dashboard/BatchCallbackJobsPanel.vue'
 import BatchDocumentTable from '@/components/dashboard/BatchDocumentTable.vue'
 import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
@@ -45,6 +45,8 @@ const batchId = computed(() => String(route.params.batchId ?? ''))
 const retryingDocumentId = ref('')
 // 删除 loading 独立于重试 loading，支持用户区分当前动作。
 const deletingDocumentId = ref('')
+// 回调重试 loading 使用 callback job ID，避免多个任务状态互相覆盖。
+const retryingCallbackJobId = ref('')
 // OCR 路由面板优先展示正在处理文档，其次展示已有最终命中节点的文档。
 const currentRouteDocument = computed(() => {
   // 当前正在处理的文档最能代表路由中的实时命中状态。
@@ -119,6 +121,26 @@ async function handleDeleteDocument(documentId: string): Promise<void> {
 }
 
 /**
+ * 执行回调任务重试并刷新当前批次详情。
+ *
+ * @param callbackJobId 回调任务 ID
+ * @returns 重试完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+async function handleRetryCallbackJob(callbackJobId: string): Promise<void> {
+  retryingCallbackJobId.value = callbackJobId
+  try {
+    // 重试后刷新详情，确保最新成功状态或失败原因回到页面。
+    await retryCallbackJob(callbackJobId)
+    await refresh()
+  } finally {
+    // 请求失败也释放按钮 loading，让用户可以看到错误后再次操作。
+    retryingCallbackJobId.value = ''
+  }
+}
+
+/**
  * 打开指定文档的 OCR 结果抽屉。
  *
  * @param document 文档行
@@ -188,6 +210,8 @@ useAutoRefresh(refresh)
     <BatchCallbackJobsPanel
       v-if="selectedBatch"
       :callback-jobs="selectedBatch.callback_jobs ?? []"
+      :retrying-callback-job-id="retryingCallbackJobId"
+      @retry-callback-job="handleRetryCallbackJob"
     />
 
     <!-- 文档轨道区域由轨道卡片、文档表格和结果抽屉三个独立子组件组成。 -->

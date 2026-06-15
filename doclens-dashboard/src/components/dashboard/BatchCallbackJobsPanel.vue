@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NTag } from 'naive-ui'
+import { NButton, NTag } from 'naive-ui'
 
 import type { CallbackJobRow } from '@/types/dashboard'
 import { formatDateTime } from '@/utils/formatters'
@@ -22,7 +22,13 @@ const CALLBACK_STATUS_TAG_TYPES: Record<string, CallbackStatusTagType> = {
 }
 
 const props = defineProps<{
+  retryingCallbackJobId: string
   callbackJobs: CallbackJobRow[]
+}>()
+
+const emit = defineEmits<{
+  /** 请求父级立即重试指定回调任务。 */
+  retryCallbackJob: [callbackJobId: string]
 }>()
 
 const totalJobs = computed(() => props.callbackJobs.length)
@@ -78,6 +84,30 @@ function callbackStatusType(status: string): CallbackStatusTagType {
 function displayValue(value: string | undefined): string {
   return value && value.trim().length > 0 ? value : EMPTY_DISPLAY_VALUE
 }
+
+/**
+ * 判断回调任务是否允许手动重试。
+ *
+ * @param callbackJob 回调任务行
+ * @returns 是否允许重试
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+function canRetryCallback(callbackJob: CallbackJobRow): boolean {
+  return callbackJob.status.toLowerCase() === 'failed'
+}
+
+/**
+ * 透传回调重试事件，保持父组件拥有远程请求副作用。
+ *
+ * @param callbackJobId 回调任务 ID
+ * @returns 事件发送结果
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+function handleRetryCallback(callbackJobId: string): void {
+  emit('retryCallbackJob', callbackJobId)
+}
 </script>
 
 <template>
@@ -126,6 +156,17 @@ function displayValue(value: string | undefined): string {
             <dd>{{ displayValue(callbackJob.failure_detail) }}</dd>
           </div>
         </dl>
+
+        <div v-if="canRetryCallback(callbackJob)" class="callback-panel__actions">
+          <NButton
+            size="small"
+            secondary
+            :loading="retryingCallbackJobId === callbackJob.callback_job_id"
+            @click="handleRetryCallback(callbackJob.callback_job_id)"
+          >
+            重试回调
+          </NButton>
+        </div>
       </article>
     </div>
 
@@ -193,6 +234,11 @@ function displayValue(value: string | undefined): string {
   display: grid;
   min-width: 0;
   gap: 3px;
+}
+
+.callback-panel__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .callback-panel__empty {

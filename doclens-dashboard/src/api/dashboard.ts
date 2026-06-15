@@ -235,6 +235,21 @@ export function retryDocument(documentId: string): Promise<{ document_id: string
 }
 
 /**
+ * 立即重试单个失败回调任务。
+ *
+ * @param callbackJobId - 回调任务 ID
+ * @returns 回调重试结果
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+export function retryCallbackJob(callbackJobId: string): Promise<{ callback_job_id: string; delivered_count: number }> {
+  return requestJson<{ callback_job_id: string; delivered_count: number }>(
+    `/api/v1/dashboard/callback-jobs/${encodeURIComponent(callbackJobId)}/retry`,
+    HTTP_POST_METHOD
+  )
+}
+
+/**
  * 删除单个已完成、失败或卡死文档。
  *
  * @param documentId - 文档 ID
