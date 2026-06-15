@@ -29,12 +29,10 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
-import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentPageResultMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentPageTaskMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownConfigMapper;
-import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentPageTaskRepository;
@@ -47,13 +45,13 @@ import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
-import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGeneratorOcrCallIdGenerator;
-import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.config.MybatisPlusConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.config.WorkerConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.application.SpringTransactionRunner;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.storage.LocalObjectStorage;
 import java.util.List;
 import org.mybatis.spring.annotation.MapperScan;
@@ -75,7 +73,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableConfigurationProperties(DocLensSpringProperties.class)
 @MapperScan(basePackageClasses = {
         BatchMapper.class,
-        CallbackJobMapper.class,
         DocumentJobMapper.class,
         DocumentPageResultMapper.class,
         DocumentPageTaskMapper.class,
@@ -90,7 +87,6 @@ import org.springframework.transaction.support.TransactionTemplate;
         MybatisPlusConfiguration.class,
         WorkerConfiguration.class,
         StubOcrAdapter.class,
-        MybatisPlusCallbackJobRepository.class,
         MybatisPlusBatchRepository.class,
         MybatisPlusDocumentJobRepository.class,
         MybatisPlusDocumentPageResultRepository.class,
@@ -131,38 +127,7 @@ public class DocLensAutoConfiguration {
                         properties.pdfRender().imageFormat()),
                 new DocLensProperties.WordConversionProperties(properties.wordConversion().command(),
                         properties.wordConversion().timeoutSeconds()),
-                threadPools(properties.threadPools()));
-    }
-
-    /**
-     * 将 Spring 线程池属性转换为 core 线程池属性。
-     *
-     * @param properties Spring 线程池属性
-     * @return core 线程池属性
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocLensProperties.ThreadPoolsProperties threadPools(
-            DocLensSpringProperties.ThreadPoolsProperties properties
-    ) {
-        return new DocLensProperties.ThreadPoolsProperties(
-                threadPool(properties.documentProcessingThreadPool()),
-                threadPool(properties.ocrRequestThreadPool()),
-                threadPool(properties.ocrHealthThreadPool()),
-                threadPool(properties.callbackThreadPool()));
-    }
-
-    /**
-     * 将 Spring 单线程池属性转换为 core 单线程池属性。
-     *
-     * @param properties Spring 单线程池属性
-     * @return core 单线程池属性
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private DocLensProperties.ThreadPoolProperties threadPool(DocLensSpringProperties.ThreadPoolProperties properties) {
-        return new DocLensProperties.ThreadPoolProperties(properties.coreSize(), properties.maxSize(),
-                properties.queueCapacity(), properties.keepAliveSeconds(), properties.threadNamePrefix());
+                DocLensConfigurationSupport.threadPools(properties.threadPools()));
     }
 
     /**
