@@ -43,3 +43,5 @@ if ! rg -n "./scripts/dev-up.sh|./scripts/dev-down.sh|./scripts/dev-restart.sh|.
   echo "documentation missing helper scripts" >&2
   exit 1
 fi
+
+"${ROOT_DIR}/scripts/check-docs.sh"

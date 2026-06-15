@@ -1,14 +1,10 @@
-## 1. Plan And Verification Harness
+## 1. Documentation Split And Verification
 
-- [ ] 1.1 Add a focused documentation verification check that fails until the
-  planned documentation files and key headings exist.
+- [x] 1.1 Rewrite the bilingual README entry points, add the API, SDK,
+  configuration, and development documents with cross-links, and add a focused
+  documentation verification check.
 
-## 2. Documentation Split
+## 2. Final Review
 
-- [ ] 2.1 Rewrite the bilingual README entry points and add the API, SDK,
-  configuration, and development documents with cross-links.
-
-## 3. Final Review
-
-- [ ] 3.1 Verify documentation links/headings, run the relevant markdown and
+- [ ] 2.1 Verify documentation links/headings, run the relevant markdown and
   repository checks, audit the diff against this plan, and archive the change.

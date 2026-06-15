@@ -1,0 +1,135 @@
+# HTTP API Reference
+
+DocLens Server exposes native OCR APIs under `/api/v1/**` and integration APIs
+under `/api/v1/integrations/**`. The native APIs are intended for first-party
+clients and the dashboard. OpenWebUI should use the dedicated integration
+prefix because it has separate authorization and metadata rules.
+
+## Health
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | Basic DocLens service health check |
+| `GET` | `/api/v1/heartbeat` | Service heartbeat response |
+| `HEAD` | `/api/v1/heartbeat` | Lightweight heartbeat compatibility check |
+| `GET` | `/actuator/health` | Spring Boot Actuator health endpoint |
+
+## OCR Batch Upload And Query
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/v1/batches` | Create an OCR batch from multipart files |
+| `GET` | `/api/v1/batches/{batchId}` | Query batch status and document summaries |
+| `GET` | `/api/v1/batches/by-idempotency-key/{idempotencyKey}` | Query a batch by idempotency key |
+| `GET` | `/api/v1/batches/{batchId}/events` | Query batch processing events |
+| `DELETE` | `/api/v1/batches/{batchId}` | Delete an OCR batch and related documents |
+
+Batch upload uses `multipart/form-data`:
+
+```bash
+curl -X POST http://localhost:10003/api/v1/batches \
+  -F 'files=@demo.pdf' \
+  -F 'metadata={"bizId":"A-1001","source":"curl"}' \
+  -F 'idempotency_key=idem-demo-001' \
+  -F 'callback_url=http://localhost:9000/callback' \
+  -F 'pdf_mode=page_image_fallback'
+```
+
+Common fields:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `files` | Yes | One or more uploaded files |
+| `metadata` | No | JSON object string stored with the batch |
+| `idempotency_key` | No | Client-provided key for duplicate submission protection |
+| `callback_url` | No | Callback URL for completion notification |
+| `pdf_mode` | No | PDF handling mode, commonly `page_image_fallback` |
+
+## OCR Documents And Results
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/documents/{documentId}` | Query document status |
+| `GET` | `/api/v1/documents/{documentId}/result` | Query OCR or Markdown result |
+| `POST` | `/api/v1/documents/{documentId}/retry` | Retry a failed document |
+| `DELETE` | `/api/v1/documents/{documentId}` | Delete a document |
+
+## Adapter Capabilities
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/adapters` | List available OCR adapter capabilities |
+
+## Dashboard Support APIs
+
+The Vue dashboard uses these endpoints to display summary, batch details, and
+OCR health information.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/dashboard/summary` | Dashboard summary counters |
+| `GET` | `/api/v1/dashboard/batches` | Dashboard batch list |
+| `GET` | `/api/v1/dashboard/batches/{batchId}` | Dashboard batch details |
+| `GET` | `/api/v1/dashboard/ocr-health` | OCR node and model health summary |
+
+## OCR Models And Nodes
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/ocr-models` | List OCR models |
+| `GET` | `/api/v1/ocr-models/{modelKey}/nodes` | List nodes for one OCR model |
+| `POST` | `/api/v1/ocr-models/{modelKey}/nodes` | Create an OCR node |
+| `GET` | `/api/v1/ocr-nodes/{nodeId}/calls` | Query OCR node call history |
+| `PUT` | `/api/v1/ocr-nodes/{nodeId}` | Update an OCR node |
+| `PATCH` | `/api/v1/ocr-nodes/{nodeId}/enabled` | Enable or disable an OCR node |
+| `DELETE` | `/api/v1/ocr-nodes/{nodeId}` | Delete an OCR node |
+| `POST` | `/api/v1/ocr-nodes/{nodeId}/test` | Test an OCR node |
+| `POST` | `/api/v1/ocr-nodes/{nodeId}/reconnect` | Manually reconnect or recover an OCR node |
+
+## OCR Governance
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/ocr-governance-config` | Read routing and health governance settings |
+| `PUT` | `/api/v1/ocr-governance-config` | Update routing and health governance settings |
+
+## LLM Markdown Configuration
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/llm-markdown-config` | List or read LLM Markdown configurations |
+| `POST` | `/api/v1/llm-markdown-config` | Create an LLM Markdown configuration |
+| `PUT` | `/api/v1/llm-markdown-config` | Update the legacy/default LLM Markdown configuration |
+| `PUT` | `/api/v1/llm-markdown-config/{id}` | Update one LLM Markdown configuration |
+| `DELETE` | `/api/v1/llm-markdown-config/{id}` | Delete one LLM Markdown configuration |
+| `PATCH` | `/api/v1/llm-markdown-config/{id}/enabled` | Enable or disable one configuration |
+| `PATCH` | `/api/v1/llm-markdown-config/{id}/default` | Mark one configuration as default |
+| `POST` | `/api/v1/llm-markdown-config/test` | Test an LLM Markdown configuration |
+
+LLM and online OCR credentials are stored as environment variable names in
+DocLens configuration records. Set the real secret in the process environment
+before starting the service.
+
+## OpenWebUI OCR Integration
+
+OpenWebUI callers should use:
+
+```text
+/api/v1/integrations/open-webui/ocr
+```
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/v1/integrations/open-webui/ocr/batches` | Create an OCR batch for OpenWebUI |
+| `GET` | `/api/v1/integrations/open-webui/ocr/batches/{batchId}` | Query integration batch status |
+| `GET` | `/api/v1/integrations/open-webui/ocr/batches/{batchId}/events` | Query integration batch events |
+| `GET` | `/api/v1/integrations/open-webui/ocr/documents/{documentId}` | Query integration document status |
+| `GET` | `/api/v1/integrations/open-webui/ocr/documents/{documentId}/result` | Query integration OCR result |
+| `POST` | `/api/v1/integrations/open-webui/ocr/documents/{documentId}/retry` | Retry an integration document |
+| `GET` | `/api/v1/integrations/open-webui/ocr/health` | Integration health check |
+
+These endpoints require the internal bearer token configured by
+`doclens.integrations.open-webui.internal-token`.
+
+See [OpenWebUI OCR Contract](integrations/open-webui-ocr-contract.md) for the
+full request/response contract and metadata conventions.
