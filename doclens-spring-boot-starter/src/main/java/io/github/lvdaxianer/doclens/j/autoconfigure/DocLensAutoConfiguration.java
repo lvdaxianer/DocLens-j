@@ -29,10 +29,12 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentJobMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentPageResultMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DocumentPageTaskMapper;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownConfigMapper;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusDocumentPageTaskRepository;
@@ -73,6 +75,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableConfigurationProperties(DocLensSpringProperties.class)
 @MapperScan(basePackageClasses = {
         BatchMapper.class,
+        CallbackJobMapper.class,
         DocumentJobMapper.class,
         DocumentPageResultMapper.class,
         DocumentPageTaskMapper.class,
@@ -87,6 +90,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         MybatisPlusConfiguration.class,
         WorkerConfiguration.class,
         StubOcrAdapter.class,
+        MybatisPlusCallbackJobRepository.class,
         MybatisPlusBatchRepository.class,
         MybatisPlusDocumentJobRepository.class,
         MybatisPlusDocumentPageResultRepository.class,

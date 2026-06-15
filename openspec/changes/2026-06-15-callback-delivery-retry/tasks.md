@@ -1,6 +1,6 @@
 ## 1. Callback Job Model
 
-- [ ] 1.1 Add callback job domain/persistence support with status, retry count,
+- [x] 1.1 Add callback job domain/persistence support with status, retry count,
   failure reason, failure detail, and payload fields.
 - [ ] 1.2 Add repository tests covering job creation, status transitions, and
   failure field persistence.
