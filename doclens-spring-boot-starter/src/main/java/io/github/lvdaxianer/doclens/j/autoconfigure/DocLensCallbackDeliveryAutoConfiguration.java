@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackJobMapper;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryScheduler;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryScheduler.Dependencies;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryWorker;
@@ -74,7 +75,8 @@ public class DocLensCallbackDeliveryAutoConfiguration {
             JsonCodec jsonCodec,
             @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor
     ) {
-        return new CallbackDeliveryWorker.Dependencies(callbackJobRepository, jsonCodec, callbackExecutor);
+        return new CallbackDeliveryWorker.Dependencies(callbackJobRepository,
+                new CallbackDeliveryProcessor.Dependencies(callbackJobRepository, jsonCodec, callbackExecutor));
     }
 
     /**

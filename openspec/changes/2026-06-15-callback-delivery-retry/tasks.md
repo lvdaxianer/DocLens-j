@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add a callback delivery worker that sends the stored payload to the
   configured `callback_url`.
-- [ ] 2.2 Add focused tests for success, HTTP failure, timeout/network failure,
+- [x] 2.2 Add focused tests for success, HTTP failure, timeout/network failure,
   and failure reason capture.
 
 ## 3. Retry And Visibility
