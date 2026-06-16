@@ -73,7 +73,9 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     @Override
     public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
         LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
-                .eq(BatchEntity::getIdempotencyKey, idempotencyKey);
+                .eq(BatchEntity::getIdempotencyKey, idempotencyKey)
+                .orderByDesc(BatchEntity::getUpdatedAt)
+                .orderByDesc(BatchEntity::getBatchId);
         return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
     }
 
