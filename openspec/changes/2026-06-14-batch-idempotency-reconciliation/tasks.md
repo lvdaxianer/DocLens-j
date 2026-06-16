@@ -25,4 +25,4 @@
 - [x] 4.3 Make idempotency-key reconciliation lookup stable under duplicates by returning the latest matching batch.
 - [x] 4.4 Update Dashboard/API/OpenWebUI docs and specs so `idempotency_key` is described as a third-party
   pass-through/correlation value, not DocLens duplicate protection.
-- [ ] 4.5 Run focused tests, broader backend/dashboard verification, OpenSpec validation, and final diff check.
+- [x] 4.5 Run focused tests, broader backend/dashboard verification, OpenSpec validation, and final diff check.
