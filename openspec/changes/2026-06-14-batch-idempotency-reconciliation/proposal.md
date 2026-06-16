@@ -1,26 +1,35 @@
 ## Why
 
-OpenWebUI（也就是你这里说的 KnowSpace）需要按上传时传入的 `idempotency_key`
-主动回查 DocLens-j 的批次和文档状态，避免回调丢失、任务卡死或服务
-重启后文件一直停留在处理中。
+OpenWebUI（也就是你这里说的 KnowSpace）会在上传时传入 `idempotency_key`，
+但这个字段属于第三方系统自己的幂等判断依据。DocLens-j 只负责保存并在
+OCR 完成回调中原样透传，不能因为同一个 `idempotency_key` 已经出现过就拒绝
+新的上传。
+
+当前实现同时在应用层和数据库层把 `idempotency_key` 当成唯一键，重复上传会
+返回 `409 duplicate idempotency key`。这会阻断第三方系统自己的幂等处理，
+也会让用户误以为 OCR 上传失败。
 
 ## What Changes
 
-在现有 OCR 查询层新增 `GET /api/v1/batches/by-idempotency-key/{idempotencyKey}`，
-复用 `BatchRepository.findByIdempotencyKey(...)` 和 `DocumentJobRepository.listByBatchId(...)`
-返回一份可直接用于对账的批次快照。
+调整 `idempotency_key` 的产品语义：
 
-该接口只读，不修改任何任务状态；找不到批次时返回稳定的 404 载荷。
+- 上传创建批次时允许重复的 `idempotency_key`。
+- DocLens-j 保存收到的 `idempotency_key`，并在完成回调 payload 里原样透传。
+- 移除数据库对 `ocr_batches.idempotency_key` 的唯一约束。
+- 现有 `GET /api/v1/batches/by-idempotency-key/{idempotencyKey}` 只作为兼容性
+  回查接口保留；如果存在多条匹配记录，返回最新一条批次快照，不再表示该键唯一。
 
 ## Capabilities
 
 ### New Capabilities
-- `batch-idempotency-reconciliation`: provides a batch snapshot lookup by `idempotency_key`.
+- `batch-idempotency-reconciliation`: provides a best-effort batch snapshot lookup by `idempotency_key`.
 
 ### Modified Capabilities
-- `service-heartbeat`: remains the liveness probe already implemented.
+- `callback-delivery`: callback payloads preserve the uploaded `idempotency_key`.
+- `dashboard-upload-errors`: structured upload errors remain visible, but duplicate
+  `idempotency_key` is no longer a DocLens-j upload conflict.
 
 ## Impact
 
-Backend query controller/service code, contract tests, and API documentation for
-batch reconciliation.
+Backend ingestion, persistence migration, query compatibility behavior, callback
+payload assertions, dashboard copy/tests, and API/integration documentation.
