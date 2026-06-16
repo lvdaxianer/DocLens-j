@@ -1,10 +1,12 @@
 # dashboard-upload-errors Specification
 
 ## Purpose
-TBD - created by archiving change 2026-06-16-upload-error-detail. Update Purpose after archive.
+Define how the Dashboard upload page presents structured backend upload errors
+and HTTP fallback messages.
 ## Requirements
 ### Requirement: Upload failures show backend detail
-The Dashboard upload page MUST show the backend error detail when a batch upload request fails with a structured error body containing `detail`.
+The Dashboard upload page MUST show the backend error detail when a batch upload
+request fails with a structured error body containing `detail`.
 
 #### Scenario: Backend detail is shown
 - **WHEN** the upload API returns a non-2xx response

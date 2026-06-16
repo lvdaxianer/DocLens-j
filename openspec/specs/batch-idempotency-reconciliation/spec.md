@@ -1,5 +1,10 @@
-## ADDED Requirements
+# batch-idempotency-reconciliation Specification
 
+## Purpose
+Define how DocLens exposes batch reconciliation by uploaded `idempotency_key`
+while treating that value as a third-party pass-through correlation key rather
+than a DocLens-owned uniqueness guarantee.
+## Requirements
 ### Requirement: Batch reconciliation by idempotency key
 DocLens-j MUST expose a batch reconciliation endpoint that allows callers to look
 up a batch by an uploaded `idempotency_key`. Because DocLens-j treats this field
@@ -53,8 +58,6 @@ original upload order.
 - **WHEN** a caller reconciles a batch that only contains one document
 - **THEN** the response still includes `documents` as an array
 - **AND** that array contains exactly one document snapshot
-
-## MODIFIED Requirements
 
 ### Requirement: Idempotency key pass-through
 DocLens-j MUST treat uploaded `idempotency_key` values as third-party
