@@ -1,0 +1,50 @@
+package io.github.lvdaxianer.doclens.j.autoconfigure;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import org.junit.jupiter.api.Test;
+
+/**
+ * 回调投递线程池自动配置测试。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
+
+    private static final int EXPECTED_CALLBACK_CORE_SIZE = 3;
+
+    /**
+     * 回调投递线程池应使用 3 个核心线程并支持延迟调度。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void callbackExecutorUsesThreeCoreScheduledPool() {
+        ExecutorService executor = new DocLensOcrThreadPoolAutoConfiguration()
+                .doclensCallbackExecutor(defaultProperties());
+
+        try {
+            assertThat(executor).isInstanceOf(ScheduledThreadPoolExecutor.class);
+            assertThat(((ScheduledThreadPoolExecutor) executor).getCorePoolSize())
+                    .isEqualTo(EXPECTED_CALLBACK_CORE_SIZE);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /**
+     * 创建默认 DocLens Spring 配置。
+     *
+     * @return 默认 DocLens Spring 配置
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    private DocLensSpringProperties defaultProperties() {
+        return new DocLensSpringProperties(null, true, null, null, null, null, null, null,
+                null, null, null, null, null);
+    }
+}

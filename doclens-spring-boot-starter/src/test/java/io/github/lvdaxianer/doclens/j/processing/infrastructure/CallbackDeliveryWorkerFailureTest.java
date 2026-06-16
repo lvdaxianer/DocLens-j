@@ -22,7 +22,7 @@ class CallbackDeliveryWorkerFailureTest extends CallbackDeliveryWorkerTestSuppor
     private static final int REQUEST_TIMEOUT_MILLIS = 100;
     private static final int NO_RETRY_LIMIT = 0;
     private static final int TEST_BATCH_SIZE = 10;
-    private static final int SINGLE_RETRY_LIMIT = 1;
+    private static final int THREE_ATTEMPT_LIMIT = 2;
 
     /**
      * worker 应记录 HTTP 非 2xx 失败原因。
@@ -128,11 +128,34 @@ class CallbackDeliveryWorkerFailureTest extends CallbackDeliveryWorkerTestSuppor
         HttpServer server = startServer(exchange -> writeResponse(exchange, HTTP_BAD_GATEWAY, "{\"ok\":false}"));
         InMemoryCallbackJobRepository repository = repositoryWithJob(endpointFor(server).toString());
 
-        runWorker(repository, singleRetryOptions());
-        int deliveredCount = runWorker(repository, singleRetryOptions());
+        runWorker(repository, threeAttemptOptions());
+        runWorker(repository, threeAttemptOptions());
+        int deliveredCount = runWorker(repository, threeAttemptOptions());
 
         assertThat(deliveredCount).isZero();
         assertFailed(repository, CallbackFailureReason.HTTP_STATUS, "HTTP 502");
+    }
+
+    /**
+     * 手动重试终态失败任务时，应重新开始一轮三次投递。
+     *
+     * @throws IOException 本地 HTTP 服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void retryNowRestartsAttemptsWhenCallbackAlreadyReachedTerminalFailure() throws IOException {
+        HttpServer server = startServer(exchange -> writeResponse(exchange, HTTP_BAD_GATEWAY, "{\"ok\":false}"));
+        InMemoryCallbackJobRepository repository = repositoryWithJob(endpointFor(server).toString());
+
+        runWorker(repository, threeAttemptOptions());
+        runWorker(repository, threeAttemptOptions());
+        runWorker(repository, threeAttemptOptions());
+
+        int deliveredCount = retryNow(repository, threeAttemptOptions());
+
+        assertThat(deliveredCount).isZero();
+        assertRetrying(repository, CallbackFailureReason.HTTP_STATUS);
     }
 
     /**
@@ -165,7 +188,7 @@ class CallbackDeliveryWorkerFailureTest extends CallbackDeliveryWorkerTestSuppor
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
-    private Options singleRetryOptions() {
-        return new Options(Duration.ofSeconds(10), TEST_BATCH_SIZE, SINGLE_RETRY_LIMIT, Duration.ZERO);
+    private Options threeAttemptOptions() {
+        return new Options(Duration.ofSeconds(10), TEST_BATCH_SIZE, THREE_ATTEMPT_LIMIT, Duration.ZERO);
     }
 }
