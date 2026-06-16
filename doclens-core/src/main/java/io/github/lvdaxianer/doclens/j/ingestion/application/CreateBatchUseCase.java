@@ -14,7 +14,6 @@ import io.github.lvdaxianer.doclens.j.processing.domain.PdfMode;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
-import io.github.lvdaxianer.doclens.j.shared.domain.DuplicateResourceException;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
@@ -86,7 +85,6 @@ public class CreateBatchUseCase {
      * @date 2026-06-07
      */
     public Map<String, Object> createBatchRecords(CreateBatchCommand command) {
-        checkIdempotency(command);
         OffsetDateTime now = OffsetDateTime.now();
         String batchId = idGenerator.newBatchId();
         JsonPayload metadata = new JsonPayload(command.metadata());
@@ -119,15 +117,6 @@ public class CreateBatchUseCase {
                     // 文件载荷已存在。
                 }
             });
-        }
-    }
-
-    private void checkIdempotency(CreateBatchCommand command) {
-        if (command.idempotencyKey() != null && !command.idempotencyKey().isBlank()
-                && batchRepository.findByIdempotencyKey(command.idempotencyKey()).isPresent()) {
-            throw new DuplicateResourceException("duplicate idempotency key");
-        } else {
-            // 空幂等键表示按普通非幂等流程创建。
         }
     }
 
