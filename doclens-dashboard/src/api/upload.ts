@@ -9,6 +9,8 @@ const OCR_ROUTING_MODE_FIELD = 'ocrRoutingMode'
 const OCR_MODEL_KEY_FIELD = 'ocrModelKey'
 const OCR_NODE_ID_FIELD = 'ocrNodeId'
 const OCR_LOAD_BALANCE_STRATEGY_FIELD = 'ocrLoadBalanceStrategy'
+const DEFAULT_UPLOAD_ERROR_MESSAGE = '上传失败'
+const DETAIL_FIELD = 'detail'
 
 /**
  * 追加非空 multipart 字段。
@@ -54,6 +56,50 @@ function createUploadFormData(options: UploadBatchOptions): FormData {
 }
 
 /**
+ * 从上传失败响应中解析展示文案。
+ *
+ * @param response - 上传失败响应
+ * @returns 错误展示文案
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+async function uploadErrorMessage(response: Response): Promise<string> {
+  const responseBody = await response.text()
+  const detail = responseDetail(responseBody)
+  if (detail) {
+    // 后端结构化 detail 是最准确的失败原因，优先展示给用户。
+    return detail
+  } else {
+    // 无结构化失败原因时保留 HTTP 状态兜底。
+    return `${DEFAULT_UPLOAD_ERROR_MESSAGE}：${response.status} ${response.statusText}`
+  }
+}
+
+/**
+ * 解析响应体中的 detail 字段。
+ *
+ * @param responseBody - 响应体文本
+ * @returns 可展示失败详情
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+function responseDetail(responseBody: string): string {
+  try {
+    const parsed = JSON.parse(responseBody) as Record<string, unknown>
+    const detail = parsed[DETAIL_FIELD]
+    if (typeof detail === 'string' && detail.trim()) {
+      // detail 存在且非空时返回去空格后的失败原因。
+      return detail.trim()
+    } else {
+      // detail 缺失或不是字符串时交由 HTTP 状态兜底。
+      return ''
+    }
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 提交上传批次。
  *
  * @param options - 上传批次参数
@@ -71,6 +117,6 @@ export async function uploadBatch(options: UploadBatchOptions): Promise<UploadBa
     return response.json() as Promise<UploadBatchResponse>
   } else {
     // 上传失败时抛出明确错误给页面展示。
-    throw new Error(`上传失败：${response.status} ${response.statusText}`)
+    throw new Error(await uploadErrorMessage(response))
   }
 }
