@@ -20,7 +20,7 @@ prefix because it has separate authorization and metadata rules.
 | --- | --- | --- |
 | `POST` | `/api/v1/batches` | Create an OCR batch from multipart files |
 | `GET` | `/api/v1/batches/{batchId}` | Query batch status and document summaries |
-| `GET` | `/api/v1/batches/by-idempotency-key/{idempotencyKey}` | Query a batch by idempotency key |
+| `GET` | `/api/v1/batches/by-idempotency-key/{idempotencyKey}` | Query the latest matching batch by idempotency key |
 | `GET` | `/api/v1/batches/{batchId}/events` | Query batch processing events |
 | `DELETE` | `/api/v1/batches/{batchId}` | Delete an OCR batch and related documents |
 
@@ -41,7 +41,7 @@ Common fields:
 | --- | --- | --- |
 | `files` | Yes | One or more uploaded files |
 | `metadata` | No | JSON object string stored with the batch |
-| `idempotency_key` | No | Client-provided key for duplicate submission protection |
+| `idempotency_key` | No | Client-provided third-party correlation key; DocLens stores and forwards it without duplicate rejection |
 | `callback_url` | No | Callback URL for completion notification |
 | `pdf_mode` | No | PDF handling mode, commonly `page_image_fallback` |
 
@@ -62,6 +62,11 @@ responses, timeouts, network failures, and unexpected delivery exceptions are
 recorded with a machine-readable `failure_reason` and a readable
 `failure_detail`. Failed jobs are retried with bounded backoff until the retry
 limit is reached.
+
+`idempotency_key` is not a DocLens-side uniqueness key. If the same value is
+uploaded more than once, DocLens creates separate batches and forwards the
+stored value in each callback. The callback receiver owns any duplicate or
+idempotency decision.
 
 ## OCR Documents And Results
 

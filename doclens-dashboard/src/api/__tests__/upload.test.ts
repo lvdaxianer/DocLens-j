@@ -28,13 +28,13 @@ describe('uploadBatch errors', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows backend detail for duplicate idempotency key', async () => {
+  it('shows backend detail for structured upload failures', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
-      JSON.stringify({ detail: 'duplicate idempotency key' }),
-      { status: 409, statusText: 'Conflict', headers: { 'content-type': 'application/json' } }
+      JSON.stringify({ detail: 'file type is not supported' }),
+      { status: 400, statusText: 'Bad Request', headers: { 'content-type': 'application/json' } }
     ))
 
-    await expect(uploadBatch(uploadOptions())).rejects.toThrow('duplicate idempotency key')
+    await expect(uploadBatch(uploadOptions())).rejects.toThrow('file type is not supported')
   })
 
   it('falls back to status text when detail is missing', async () => {

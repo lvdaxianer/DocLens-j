@@ -316,7 +316,9 @@ DocLens-j 使用这些字段做归属记录和排障定位。
 
 ### 2.3 idempotency_key 规则
 
-DocLens-j 使用 `idempotency_key` 区分同一个 Open WebUI 文件的重复提交。
+`idempotency_key` 是 Open WebUI 自己使用的幂等/关联键。DocLens-j 只校验
+Open WebUI adapter 要求的格式，随后保存该值并在 OCR 完成回调中原样透传；
+DocLens-j 不使用该字段拒绝重复上传。
 
 格式：
 
@@ -330,14 +332,15 @@ openwebui:file:<openwebui_file_id>:hash:<sha256>
 openwebui:file:file_abc123:hash:9f86d081...
 ```
 
-当 Open WebUI 需要对账某个文件时，可以直接通过该幂等键回查批次：
+当 Open WebUI 需要对账某个文件时，可以通过该透传键回查最近一个匹配批次：
 
 ```http
 GET /api/v1/batches/by-idempotency-key/{idempotencyKey}
 ```
 
-该查询接口只读，返回的 batch snapshot 会包含 `documents` 数组，便于 Open WebUI
-在回调丢失、重启恢复或人工重试时继续对账。
+该查询接口只读。若同一个 `idempotency_key` 被多次上传，接口返回更新时间最新
+的匹配批次；Open WebUI 负责自行处理幂等和关联判断。返回的 batch snapshot
+会包含 `documents` 数组，便于 Open WebUI 在回调丢失、重启恢复或人工重试时继续对账。
 
 ### 2.4 查询归属
 

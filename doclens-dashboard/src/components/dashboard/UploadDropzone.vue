@@ -143,7 +143,7 @@ function resetForm(): void {
   form.metadata = EMPTY_UPLOAD_OPTIONS.metadata
   // 高级参数恢复默认回调地址。
   form.callbackUrl = EMPTY_UPLOAD_OPTIONS.callbackUrl
-  // 高级参数恢复默认幂等键。
+  // 高级参数恢复默认第三方透传键。
   form.idempotencyKey = EMPTY_UPLOAD_OPTIONS.idempotencyKey
   // OCR 路由选择器拥有自己的内部校验状态，需要委托子组件重置。
   ocrRoutingSelector.value?.reset()

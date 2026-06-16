@@ -28,15 +28,15 @@ const formRules = computed(createUploadAdvancedOptionsRules)
       <ul class="upload-advanced-options__contract-list">
         <li><code>meta</code> 为上传元数据</li>
         <li><code>text</code> {{ callbackHints.textSourceHint }}</li>
-        <li><code>idempotency_key</code> 为上传时传入的幂等键</li>
+        <li><code>idempotency_key</code> 为第三方系统使用的透传键，DocLens 不做重复拦截</li>
       </ul>
     </div>
     <div class="upload-advanced-options__grid">
       <NFormItem label="回调地址" path="callbackUrl">
         <NInput v-model:value="model.callbackUrl" placeholder="callback_url，可选" />
       </NFormItem>
-      <NFormItem label="幂等键" path="idempotencyKey">
-        <NInput v-model:value="model.idempotencyKey" placeholder="idempotency_key，可选" />
+      <NFormItem label="第三方透传键" path="idempotencyKey">
+        <NInput v-model:value="model.idempotencyKey" placeholder="idempotency_key，可选，原样进入回调" />
       </NFormItem>
     </div>
   </NForm>
