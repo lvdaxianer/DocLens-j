@@ -21,7 +21,7 @@
 ## 4. Pass-through Idempotency Semantics
 
 - [x] 4.1 Accept duplicate `idempotency_key` uploads in the create-batch flow with RED/GREEN coverage.
-- [ ] 4.2 Remove database uniqueness for `ocr_batches.idempotency_key` in fresh schema and migration path.
+- [x] 4.2 Remove database uniqueness for `ocr_batches.idempotency_key` in fresh schema and migration path.
 - [ ] 4.3 Make idempotency-key reconciliation lookup stable under duplicates by returning the latest matching batch.
 - [ ] 4.4 Update Dashboard/API/OpenWebUI docs and specs so `idempotency_key` is described as a third-party
   pass-through/correlation value, not DocLens duplicate protection.

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS ocr_batches (
     current_stage VARCHAR(80),
     metadata TEXT NOT NULL,
     callback_url VARCHAR(2048),
-    idempotency_key VARCHAR(256) UNIQUE,
+    idempotency_key VARCHAR(256),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
