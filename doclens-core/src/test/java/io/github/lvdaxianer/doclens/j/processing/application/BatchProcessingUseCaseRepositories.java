@@ -3,6 +3,9 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCaseTestSupport.CONCURRENT_TEST_TIMEOUT_SECONDS;
 import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCaseTestSupport.TEST_DOCUMENT_CAPACITY;
 
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobFailureRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
@@ -224,5 +227,93 @@ class InMemoryOcrResultRepository implements OcrResultRepository {
      */
     private void signalResult(String documentId) {
         resultSignals.computeIfAbsent(documentId, ignored -> new CountDownLatch(1)).countDown();
+    }
+}
+
+/**
+ * 内存回调任务仓储。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-16
+ */
+class InMemoryCallbackJobRepository implements CallbackJobRepository {
+
+    private final Map<String, CallbackJob> jobs = new ConcurrentHashMap<>(TEST_DOCUMENT_CAPACITY);
+
+    /**
+     * 保存回调任务。
+     *
+     * @param job 回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public void save(CallbackJob job) {
+        jobs.put(job.callbackJobId(), job);
+    }
+
+    /**
+     * 根据 ID 查询回调任务。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @return 回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public Optional<CallbackJob> findById(String callbackJobId) {
+        return Optional.ofNullable(jobs.get(callbackJobId));
+    }
+
+    /**
+     * 查询待投递回调任务。
+     *
+     * @param limit 最大返回数量
+     * @return 待投递回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public List<CallbackJob> listPending(int limit) {
+        return jobs.values().stream().limit(limit).toList();
+    }
+
+    /**
+     * 根据批次查询回调任务。
+     *
+     * @param batchId 批次 ID
+     * @return 回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public List<CallbackJob> listByBatchId(String batchId) {
+        return jobs.values().stream()
+                .filter(job -> batchId.equals(job.batchId()))
+                .toList();
+    }
+
+    /**
+     * 标记回调成功。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public void markSucceeded(String callbackJobId) {
+        throw new UnsupportedOperationException("not required by batch processing tests");
+    }
+
+    /**
+     * 标记回调失败。
+     *
+     * @param request 失败更新请求
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public void markFailed(CallbackJobFailureRequest request) {
+        throw new UnsupportedOperationException("not required by batch processing tests");
     }
 }

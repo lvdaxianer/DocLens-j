@@ -80,6 +80,17 @@ public class IdGenerator {
         return prefixedId("page_task");
     }
 
+    /**
+     * 创建回调任务标识。
+     *
+     * @return 回调任务 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    public String newCallbackJobId() {
+        return prefixedId("callback");
+    }
+
     private String prefixedId(String prefix) {
         byte[] bytes = new byte[RANDOM_BYTES];
         random.nextBytes(bytes);

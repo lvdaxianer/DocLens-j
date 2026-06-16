@@ -2,9 +2,11 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
@@ -83,7 +85,7 @@ final class BatchProcessingUseCaseTestSupport {
                 config.resultRepository(), config.eventRepository(), config.batchRepository(), new DefaultAdapterRegistry(
                 List.of(new StubAdapter())), new InMemoryObjectStorage(), config.extractor(), new IdGenerator(),
                 new OcrEventFactory(new IdGenerator()), config.markdownPostProcessor(), config.documentExecutor(),
-                pageTaskPreparationService(config.documentRepository()));
+                pageTaskPreparationService(config.documentRepository()), config.callbackJobRepository());
         return new BatchProcessingUseCase(dependencies, new InlineTransactionRunner());
     }
 
@@ -173,7 +175,8 @@ record BatchProcessingUseCaseConfig(
         InMemoryBatchRepository batchRepository,
         DocumentTextExtractor extractor,
         MarkdownPostProcessor markdownPostProcessor,
-        ExecutorService documentExecutor
+        ExecutorService documentExecutor,
+        CallbackJobRepository callbackJobRepository
 ) {
 
     /**
@@ -193,7 +196,7 @@ record BatchProcessingUseCaseConfig(
     ) {
         return new BatchProcessingUseCaseConfig(documentRepository, new InMemoryOcrResultRepository(),
                 new InMemoryOcrEventRepository(), new InMemoryBatchRepository(), extractor, MarkdownPostProcessor.noop(),
-                documentExecutor);
+                documentExecutor, new EmptyCallbackJobRepository());
     }
 
     /**
@@ -214,7 +217,8 @@ record BatchProcessingUseCaseConfig(
             ExecutorService documentExecutor
     ) {
         return new BatchProcessingUseCaseConfig(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
-                new InMemoryBatchRepository(), extractor, MarkdownPostProcessor.noop(), documentExecutor);
+                new InMemoryBatchRepository(), extractor, MarkdownPostProcessor.noop(), documentExecutor,
+                new EmptyCallbackJobRepository());
     }
 
     /**
@@ -235,7 +239,8 @@ record BatchProcessingUseCaseConfig(
             MarkdownPostProcessor markdownPostProcessor
     ) {
         return new BatchProcessingUseCaseConfig(documentRepository, resultRepository, new InMemoryOcrEventRepository(),
-                new InMemoryBatchRepository(), extractor, markdownPostProcessor, new InlineExecutorService());
+                new InMemoryBatchRepository(), extractor, markdownPostProcessor, new InlineExecutorService(),
+                new EmptyCallbackJobRepository());
     }
 
     /**
@@ -249,7 +254,7 @@ record BatchProcessingUseCaseConfig(
     static BatchProcessingUseCaseConfig of(BatchProcessingUseCaseMarkdownConfig config) {
         return new BatchProcessingUseCaseConfig(config.documentRepository(), config.resultRepository(),
                 config.eventRepository(), new InMemoryBatchRepository(), config.extractor(),
-                config.markdownPostProcessor(), new InlineExecutorService());
+                config.markdownPostProcessor(), new InlineExecutorService(), new EmptyCallbackJobRepository());
     }
 
     /**
@@ -263,7 +268,7 @@ record BatchProcessingUseCaseConfig(
     static BatchProcessingUseCaseConfig of(BatchProcessingUseCaseEventConfig config) {
         return new BatchProcessingUseCaseConfig(config.documentRepository(), new InMemoryOcrResultRepository(),
                 config.eventRepository(), config.batchRepository(), config.extractor(), MarkdownPostProcessor.noop(),
-                new InlineExecutorService());
+                new InlineExecutorService(), config.callbackJobRepository());
     }
 }
 
@@ -292,6 +297,26 @@ record BatchProcessingUseCaseEventConfig(
         InMemoryDocumentJobRepository documentRepository,
         InMemoryOcrEventRepository eventRepository,
         InMemoryBatchRepository batchRepository,
-        DocumentTextExtractor extractor
+        DocumentTextExtractor extractor,
+        CallbackJobRepository callbackJobRepository
 ) {
+
+    /**
+     * 使用默认空回调仓储创建事件测试配置。
+     *
+     * @param documentRepository 文档仓储
+     * @param eventRepository 事件仓储
+     * @param batchRepository 批次仓储
+     * @param extractor 文本提取器
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    BatchProcessingUseCaseEventConfig(
+            InMemoryDocumentJobRepository documentRepository,
+            InMemoryOcrEventRepository eventRepository,
+            InMemoryBatchRepository batchRepository,
+            DocumentTextExtractor extractor
+    ) {
+        this(documentRepository, eventRepository, batchRepository, extractor, new EmptyCallbackJobRepository());
+    }
 }

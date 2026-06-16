@@ -9,9 +9,12 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExe
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionService;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryService;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.PageTaskWorkerScheduler;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.PageTaskWorkerScheduler.PageTaskWorkerSchedulerDependencies;
@@ -120,7 +123,9 @@ public class DocLensPageTaskWorkerAutoConfiguration {
         return new DocumentPageTaskAggregationDependencies(context.getBean(DocumentJobRepository.class),
                 context.getBean(BatchRepository.class), context.getBean(DocumentPageTaskRepository.class),
                 context.getBean(DocumentPageResultRepository.class), context.getBean(OcrResultRepository.class),
-                context.getBean(ObjectStorage.class), context.getBean(IdGenerator.class));
+                context.getBean(ObjectStorage.class), context.getBean(IdGenerator.class),
+                context.getBean(OcrEventRepository.class), context.getBean(CallbackJobRepository.class),
+                context.getBean(OcrEventFactory.class));
     }
 
     /**

@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
  * @date 2026-06-11
  */
 public class DocumentPageTaskAggregationService {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentPageTaskAggregationService.class);
     private static final String PAGE_NO_FIELD = "pageNo";
     private static final String TEXT_FIELD = "text";
@@ -48,8 +47,8 @@ public class DocumentPageTaskAggregationService {
     private final OcrResultRepository resultRepository;
     private final ObjectStorage objectStorage;
     private final IdGenerator idGenerator;
+    private final DocumentCompletionCallbackRecorder completionCallbackRecorder;
     private final TransactionRunner transactionRunner;
-
     /**
      * 创建文档页任务聚合服务。
      *
@@ -58,10 +57,8 @@ public class DocumentPageTaskAggregationService {
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    public DocumentPageTaskAggregationService(
-            DocumentPageTaskAggregationDependencies dependencies,
-            TransactionRunner transactionRunner
-    ) {
+    public DocumentPageTaskAggregationService(DocumentPageTaskAggregationDependencies dependencies,
+            TransactionRunner transactionRunner) {
         this.documentRepository = dependencies.documentRepository();
         this.batchRepository = dependencies.batchRepository();
         this.pageTaskRepository = dependencies.pageTaskRepository();
@@ -69,6 +66,7 @@ public class DocumentPageTaskAggregationService {
         this.resultRepository = dependencies.resultRepository();
         this.objectStorage = dependencies.objectStorage();
         this.idGenerator = dependencies.idGenerator();
+        this.completionCallbackRecorder = new DocumentCompletionCallbackRecorder(dependencies);
         this.transactionRunner = transactionRunner;
     }
 
@@ -162,6 +160,7 @@ public class DocumentPageTaskAggregationService {
         DocumentJob completed = document.advanceStage(ProcessingStage.SAVE_TEXT, pages.size(),
                 document.totalPages(), OffsetDateTime.now()).complete(result.resultId(), OffsetDateTime.now());
         documentRepository.update(completed);
+        completionCallbackRecorder.record(completed, result);
         refreshBatchSummary(completed.batchId());
     }
 

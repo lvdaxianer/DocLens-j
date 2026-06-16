@@ -17,9 +17,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
@@ -46,6 +44,7 @@ public class BatchProcessingUseCase {
     private final DocumentOcrResultBuilder resultBuilder;
     private final DocumentProcessingEventBuilder eventBuilder;
     private final DocumentPageTaskPreparationService pageTaskPreparationService;
+    private final CallbackJobCreationService callbackJobCreationService;
     private final TransactionRunner transactionRunner;
     private final ExecutorService documentProcessingExecutor;
 
@@ -69,6 +68,8 @@ public class BatchProcessingUseCase {
         this.eventBuilder = new DocumentProcessingEventBuilder(dependencies.eventFactory());
         this.documentProcessingExecutor = dependencies.documentProcessingExecutor();
         this.pageTaskPreparationService = dependencies.pageTaskPreparationService();
+        this.callbackJobCreationService = new CallbackJobCreationService(dependencies.callbackJobRepository(),
+                dependencies.idGenerator());
         this.transactionRunner = transactionRunner;
     }
 
@@ -103,12 +104,12 @@ public class BatchProcessingUseCase {
     private DocumentProcessingTaskBatch submitDocumentTasks(List<DocumentJob> documents, Optional<Batch> batch) {
         CompletionService<DocumentProcessingResult> completionService =
                 new ExecutorCompletionService<>(documentProcessingExecutor);
-        Map<Future<DocumentProcessingResult>, DocumentJob> documentsByFuture = new LinkedHashMap<>(documents.size());
+        DocumentProcessingTaskBatch tasks = new DocumentProcessingTaskBatch(completionService, documents.size());
         for (DocumentJob document : documents) {
             Future<DocumentProcessingResult> future = completionService.submit(() -> processDocument(document, batch));
-            documentsByFuture.put(future, document);
+            tasks.add(future, document);
         }
-        return new DocumentProcessingTaskBatch(completionService, documentsByFuture);
+        return tasks;
     }
 
     /**
@@ -269,44 +270,6 @@ public class BatchProcessingUseCase {
     }
 
     /**
-     * 文档线程池任务批次。
-     *
-     * @param completionService 文档完成服务
-     * @param documentsByFuture Future 与文档映射
-     * @author lvdaxianerplus
-     * @date 2026-06-11
-     */
-    private record DocumentProcessingTaskBatch(
-            CompletionService<DocumentProcessingResult> completionService,
-            Map<Future<DocumentProcessingResult>, DocumentJob> documentsByFuture
-    ) {
-
-        /**
-         * 获取提交的文档任务数量。
-         *
-         * @return 文档任务数量
-         * @author lvdaxianerplus
-         * @date 2026-06-11
-         */
-        private int size() {
-            return documentsByFuture.size();
-        }
-
-        /**
-         * 移除并获取指定 Future 对应文档。
-         *
-         * @param completedFuture 已完成 Future
-         * @return Future 对应文档
-         * @author lvdaxianerplus
-         * @date 2026-06-11
-         */
-        private DocumentJob removeDocumentOf(Future<DocumentProcessingResult> completedFuture) {
-            return Optional.ofNullable(documentsByFuture.remove(completedFuture))
-                    .orElseThrow(() -> new IllegalStateException("document task not found"));
-        }
-    }
-
-    /**
      * 读取批次内仍需执行的排队文档。
      *
      * @param batchId 批次 ID
@@ -331,6 +294,10 @@ public class BatchProcessingUseCase {
         documentRepository.updateAll(List.of(result.document()));
         resultRepository.saveAll(result.result().stream().toList());
         eventRepository.saveAll(result.events());
+        batchRepository.findById(result.document().batchId())
+                .flatMap(Batch::callbackUrl)
+                .ifPresent(callbackUrl -> callbackJobCreationService.saveForCompletedEvents(result.events(),
+                        callbackUrl));
     }
 
     /**

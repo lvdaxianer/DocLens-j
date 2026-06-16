@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -26,6 +27,7 @@ import java.util.concurrent.ExecutorService;
  * @param markdownPostProcessor Markdown 后处理器
  * @param documentProcessingExecutor 文档处理线程池
  * @param pageTaskPreparationService 页任务预处理服务
+ * @param callbackJobRepository 回调任务仓储
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -41,6 +43,7 @@ public record BatchProcessingDependencies(
         OcrEventFactory eventFactory,
         MarkdownPostProcessor markdownPostProcessor,
         ExecutorService documentProcessingExecutor,
-        DocumentPageTaskPreparationService pageTaskPreparationService
+        DocumentPageTaskPreparationService pageTaskPreparationService,
+        CallbackJobRepository callbackJobRepository
 ) {
 }

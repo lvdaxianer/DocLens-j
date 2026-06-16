@@ -8,6 +8,7 @@ import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcess
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
@@ -253,5 +254,46 @@ class BatchProcessingUseCaseTest {
                 .satisfies(event -> assertThat(event.resultSummary()).containsEntry("callback_body",
                         Map.of("meta", Map.of("source", "upload-form"), "text", "markdown text",
                                 "idempotency_key", "idem-001")));
+    }
+
+    /**
+     * 批次配置回调地址时，文档完成后应创建可投递回调任务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void processBatchCreatesCallbackJobFromCompletedEventWhenCallbackUrlExists() {
+        // 准备带 callbackUrl 的批次和回调任务仓储，覆盖完成事件到投递任务的桥接。
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        InMemoryCallbackJobRepository callbackJobRepository = new InMemoryCallbackJobRepository();
+        documentRepository.save(document("doc-1", 0, new JsonPayload(Map.of("source", "upload-form"))));
+        batchRepository.save(Batch.create("batch-test", 1, new JsonPayload(Map.of("source", "upload-form")),
+                Optional.of("https://callback.example.test/done"), Optional.of("idem-001"), OffsetDateTime.now()));
+        BatchProcessingUseCase batchUseCase = useCase(BatchProcessingUseCaseConfig.of(
+                new BatchProcessingUseCaseEventConfig(documentRepository, eventRepository, batchRepository,
+                        new FixedTextExtractor("markdown text"), callbackJobRepository)));
+
+        // 执行批次后，完成事件应同步生成一条待投递回调任务。
+        batchUseCase.processBatch("batch-test");
+
+        // callback job 是 worker 执行回调的唯一入口，必须携带完成事件和 callback_body。
+        Map<String, Object> expectedPayload = Map.of("meta", Map.of("source", "upload-form"), "text",
+                "markdown text", "idempotency_key", "idem-001");
+        assertThat(callbackJobRepository.listByBatchId("batch-test"))
+                .singleElement()
+                .satisfies(job -> {
+                    assertThat(job.callbackUrl()).isEqualTo("https://callback.example.test/done");
+                    assertThat(job.documentId()).contains("doc-1");
+                    assertThat(job.status()).isEqualTo(CallbackJobStatus.PENDING);
+                    assertThat(job.retryCount()).isZero();
+                    assertThat(job.payload()).isEqualTo(expectedPayload);
+                    assertThat(eventRepository.events()).filteredOn(event -> event.eventId().equals(job.eventId()))
+                            .singleElement()
+                            .extracting(event -> event.resultSummary().get("callback_body"))
+                            .isEqualTo(expectedPayload);
+                });
     }
 }

@@ -102,7 +102,7 @@ class DocumentProcessingEventBuilder {
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private OcrEvent completedEvent(CompletionEventContext context) {
+    OcrEvent completedEvent(CompletionEventContext context) {
         return event(new DocumentEventPlan(context.completed(), DocLensConstants.EVENT_DOCUMENT_COMPLETED,
                 Map.of("percent", DocLensConstants.COMPLETED_PROGRESS_PERCENT),
                 resultSummary(context.completed(), context.result(), context.batch())));

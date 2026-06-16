@@ -12,6 +12,8 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
@@ -124,10 +126,12 @@ class DocumentPageTaskAggregationServiceTest {
         DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository pageResultRepository =
                 new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository();
         InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
         InMemoryObjectStorage objectStorage = new InMemoryObjectStorage();
         DocumentPageTaskAggregationDependencies dependencies = new DocumentPageTaskAggregationDependencies(
                 documentRepository, batchRepository, taskRepository, pageResultRepository, resultRepository,
-                objectStorage, new IdGenerator());
+                objectStorage, new IdGenerator(), eventRepository, new EmptyCallbackJobRepository(),
+                new OcrEventFactory(new IdGenerator()));
         DocumentPageTaskAggregationService service = new DocumentPageTaskAggregationService(dependencies,
                 new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner());
         return new TestContext(documentRepository, batchRepository, taskRepository, pageResultRepository,

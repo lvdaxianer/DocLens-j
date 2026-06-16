@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskPre
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.application.PageImagePreparation;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
@@ -82,7 +83,7 @@ public class DocLensProcessingAutoConfiguration {
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
                 dependencies.eventFactory(), dependencies.markdownPostProcessor(), documentProcessingExecutor,
-                dependencies.pageTaskPreparationService());
+                dependencies.pageTaskPreparationService(), dependencies.callbackJobRepository());
     }
 
     /**
@@ -124,7 +125,7 @@ public class DocLensProcessingAutoConfiguration {
                 dependencies.eventRepository(), dependencies.batchRepository(), dependencies.adapterRegistry(),
                 dependencies.objectStorage(), dependencies.documentTextExtractor(), dependencies.idGenerator(),
                 dependencies.eventFactory(), dependencies.markdownPostProcessor(),
-                dependencies.pageTaskPreparationService());
+                dependencies.pageTaskPreparationService(), dependencies.callbackJobRepository());
     }
 
     /**
@@ -239,7 +240,8 @@ public class DocLensProcessingAutoConfiguration {
                 context.getBean(ObjectStorage.class), context.getBean(DocumentTextExtractor.class),
                 context.getBean(IdGenerator.class), context.getBean(OcrEventFactory.class),
                 context.getBean(MarkdownPostProcessor.class),
-                context.getBean(DocumentPageTaskPreparationService.class));
+                context.getBean(DocumentPageTaskPreparationService.class),
+                context.getBean(CallbackJobRepository.class));
     }
 
     /**
@@ -256,6 +258,7 @@ public class DocLensProcessingAutoConfiguration {
      * @param eventFactory 事件工厂
      * @param markdownPostProcessor Markdown 后处理器
      * @param pageTaskPreparationService 页任务预处理服务
+     * @param callbackJobRepository 回调任务仓储
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -270,7 +273,8 @@ public class DocLensProcessingAutoConfiguration {
             IdGenerator idGenerator,
             OcrEventFactory eventFactory,
             MarkdownPostProcessor markdownPostProcessor,
-            DocumentPageTaskPreparationService pageTaskPreparationService
+            DocumentPageTaskPreparationService pageTaskPreparationService,
+            CallbackJobRepository callbackJobRepository
     ) {
     }
 

@@ -1,9 +1,12 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
@@ -18,6 +21,9 @@ import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
  * @param resultRepository OCR 结果仓储
  * @param objectStorage 对象存储
  * @param idGenerator ID 生成器
+ * @param eventRepository OCR 事件仓储
+ * @param callbackJobRepository 回调任务仓储
+ * @param eventFactory OCR 事件工厂
  * @author lvdaxianerplus
  * @date 2026-06-11
  */
@@ -28,6 +34,9 @@ public record DocumentPageTaskAggregationDependencies(
         DocumentPageResultRepository pageResultRepository,
         OcrResultRepository resultRepository,
         ObjectStorage objectStorage,
-        IdGenerator idGenerator
+        IdGenerator idGenerator,
+        OcrEventRepository eventRepository,
+        CallbackJobRepository callbackJobRepository,
+        OcrEventFactory eventFactory
 ) {
 }
