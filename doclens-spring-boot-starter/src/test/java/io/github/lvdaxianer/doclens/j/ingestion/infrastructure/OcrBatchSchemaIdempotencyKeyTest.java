@@ -5,8 +5,11 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.regex.Pattern;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * OCR 批次 schema 幂等键约束测试。
@@ -18,10 +21,25 @@ class OcrBatchSchemaIdempotencyKeyTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-16T10:00:00+08:00");
     private static final String IDEMPOTENCY_KEY = "idem-pass-through";
+    private static final String V1_MIGRATION = "/db/migration/V1__doclens_ocr_schema.sql";
+    private static final Pattern V1_IDEMPOTENCY_UNIQUE_PATTERN =
+            Pattern.compile("idempotency_key\\s+VARCHAR\\(256\\)\\s+UNIQUE", Pattern.CASE_INSENSITIVE);
     private static final String FRESH_JDBC_URL = "jdbc:h2:mem:fresh_batch_idempotency_schema;"
             + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
     private static final String MIGRATED_JDBC_URL = "jdbc:h2:mem:migrated_batch_idempotency_schema;"
             + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+
+    /**
+     * V1 迁移文件已经发布，必须保持历史唯一约束文本以稳定 Flyway checksum。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Test
+    void v1MigrationKeepsOriginalIdempotencyKeyDefinition() {
+        // V16 负责删除唯一约束，V1 不能再被回改，否则本地既有库会 checksum mismatch。
+        assertThat(readMigration(V1_MIGRATION)).containsPattern(V1_IDEMPOTENCY_UNIQUE_PATTERN);
+    }
 
     /**
      * 数据库 schema 不应把 idempotency_key 作为唯一键。
@@ -133,6 +151,24 @@ class OcrBatchSchemaIdempotencyKeyTest {
             statement.setObject(3, BASE_TIME);
             statement.setObject(4, BASE_TIME);
             statement.executeUpdate();
+        }
+    }
+
+    /**
+     * 读取迁移资源文本。
+     *
+     * @param migrationPath 迁移资源路径
+     * @return 迁移 SQL 文本
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    private String readMigration(String migrationPath) {
+        try (java.io.InputStream stream = getClass().getResourceAsStream(migrationPath)) {
+            // 迁移文件缺失时直接让断言显示明确失败。
+            assertThat(stream).isNotNull();
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("failed to read migration " + migrationPath, exception);
         }
     }
 }
