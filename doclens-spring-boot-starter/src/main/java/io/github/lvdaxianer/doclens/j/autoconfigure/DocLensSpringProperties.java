@@ -45,6 +45,7 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
     private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
     private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 6;
+    private static final int DEFAULT_CALLBACK_DELIVERY_CONCURRENCY = 3;
     private static final int DEFAULT_NODE_WEIGHT = 50;
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
@@ -304,7 +305,8 @@ public record DocLensSpringProperties(
                             DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY, 1000, 60, "doclens-document-processing-"),
                     new ThreadPoolProperties(2, 4, 100, 60, "doclens-ocr-request-"),
                     new ThreadPoolProperties(1, 2, 100, 60, "doclens-ocr-health-"),
-                    new ThreadPoolProperties(1, 2, 100, 60, "doclens-callback-")
+                    new ThreadPoolProperties(DEFAULT_CALLBACK_DELIVERY_CONCURRENCY,
+                            DEFAULT_CALLBACK_DELIVERY_CONCURRENCY, 100, 60, "doclens-callback-")
             );
         }
     }

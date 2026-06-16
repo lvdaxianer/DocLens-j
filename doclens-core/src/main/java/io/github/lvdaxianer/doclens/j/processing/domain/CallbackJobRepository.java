@@ -60,6 +60,15 @@ public interface CallbackJobRepository {
     void markSucceeded(String callbackJobId);
 
     /**
+     * 将回调任务重置为新一轮手动投递。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    void restartAttempts(String callbackJobId);
+
+    /**
      * 记录一次失败回调尝试。
      *
      * @param request 失败更新请求

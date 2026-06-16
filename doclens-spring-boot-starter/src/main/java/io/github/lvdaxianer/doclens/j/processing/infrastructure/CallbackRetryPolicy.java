@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 /**
  * 回调投递重试策略。
@@ -69,17 +70,17 @@ record CallbackRetryPolicy(int maxRetries, Duration retryBackoff) {
      *
      * @param nextRetryCount 下次重试次数
      * @param now 当前时间
-     * @return 下次重试时间或空值
+     * @return 可选下次重试时间
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
-    private OffsetDateTime retryTime(int nextRetryCount, OffsetDateTime now) {
+    private Optional<OffsetDateTime> retryTime(int nextRetryCount, OffsetDateTime now) {
         // 未超过重试上限时，安排下一次重试。
         if (nextRetryCount <= maxRetries) {
-            return now.plus(retryBackoff);
+            return Optional.of(now.plus(retryBackoff));
         } else {
             // 已达到重试上限时，不再安排重试时间。
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -87,10 +88,10 @@ record CallbackRetryPolicy(int maxRetries, Duration retryBackoff) {
      * 回调失败后的重试尝试信息。
      *
      * @param retryCount 重试次数
-     * @param nextRetryAt 下次重试时间
+     * @param nextRetryAt 可选下次重试时间
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
-    record CallbackRetryAttempt(int retryCount, OffsetDateTime nextRetryAt) {
+    record CallbackRetryAttempt(int retryCount, Optional<OffsetDateTime> nextRetryAt) {
     }
 }

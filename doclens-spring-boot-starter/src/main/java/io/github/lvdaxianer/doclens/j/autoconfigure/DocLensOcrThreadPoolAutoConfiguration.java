@@ -3,6 +3,8 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -72,8 +74,8 @@ public class DocLensOcrThreadPoolAutoConfiguration {
      */
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean(name = "doclensCallbackExecutor")
-    ExecutorService doclensCallbackExecutor(DocLensSpringProperties properties) {
-        return executor(properties.threadPools().callbackThreadPool());
+    ScheduledExecutorService doclensCallbackExecutor(DocLensSpringProperties properties) {
+        return scheduledExecutor(properties.threadPools().callbackThreadPool());
     }
 
     /**
@@ -92,6 +94,21 @@ public class DocLensOcrThreadPoolAutoConfiguration {
         return new ThreadPoolExecutor(coreSize, maxSize, keepAliveSeconds, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(queueCapacity), new NamedThreadPoolFactory(properties.threadNamePrefix()),
                 new ThreadPoolExecutor.CallerRunsPolicy());
+    }
+
+    /**
+     * 根据属性创建支持延迟任务的线程池。
+     *
+     * @param properties 线程池属性
+     * @return 支持延迟任务的线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    private ScheduledExecutorService scheduledExecutor(DocLensSpringProperties.ThreadPoolProperties properties) {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(positive(properties.coreSize()),
+                new NamedThreadPoolFactory(properties.threadNamePrefix()), new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
     }
 
     /**

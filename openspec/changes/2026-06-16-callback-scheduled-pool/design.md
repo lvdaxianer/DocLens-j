@@ -7,10 +7,10 @@
 ## Decision
 
 - 使用一个 `ScheduledExecutorService` 管理回调投递，核心线程数固定为 3。
-- 调度器只负责周期扫描到期任务并把每个 job 以延迟任务形式提交到同一个
-  scheduled pool，不再把 worker 提交到回调 HTTP 线程池后再等待子任务。
-- 单个 callback job 的 HTTP POST 在 scheduled pool 的任务中执行；同一轮
-  最多 3 个 job 并发执行，由核心线程数自然限流。
+- 调度器使用同一个 scheduled pool 周期扫描到期任务，不再把 worker 提交到
+  单线程回调池后再等待子任务。
+- callback HTTP 投递复用核心线程数为 3 的 scheduled pool；扫描任务和投递
+  子任务不再受单工作线程互相等待影响。
 - 第一次投递 `PENDING` job 立即执行；`RETRYING` job 只有到达
   `next_retry_at` 后才执行。
 - 每次失败都会保存 `failure_reason`、`failure_detail`、`retry_count` 和
@@ -28,8 +28,8 @@
 
 ## Test Plan
 
-- 新增调度器测试，证明核心线程为 3 的 scheduled pool 能执行待投递任务，
-  且不会因为 worker 嵌套等待而卡住。
+- 新增调度器测试，证明核心线程为 3 的 scheduled pool 能执行嵌套投递任务，
+  且不会因为单工作线程嵌套等待而卡住。
 - 新增/调整 worker 或 processor 测试，覆盖成功一次后不重试、失败后进入
   `RETRYING` 并设置延迟、满 3 次后进入 `FAILED`。
 - 运行回调投递相关 focused tests、starter 模块相关测试、OpenSpec strict

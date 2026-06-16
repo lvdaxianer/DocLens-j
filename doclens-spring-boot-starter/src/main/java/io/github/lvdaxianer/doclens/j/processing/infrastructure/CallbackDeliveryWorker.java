@@ -56,6 +56,8 @@ public class CallbackDeliveryWorker {
      * @date 2026-06-16
      */
     public int retryNow(String callbackJobId) {
+        requiredJob(callbackJobId);
+        repository.restartAttempts(callbackJobId);
         return deliverBatch(List.of(requiredJob(callbackJobId)));
     }
 

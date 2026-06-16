@@ -306,6 +306,18 @@ class InMemoryCallbackJobRepository implements CallbackJobRepository {
     }
 
     /**
+     * 重置回调投递轮次。
+     *
+     * @param callbackJobId 回调任务 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    @Override
+    public void restartAttempts(String callbackJobId) {
+        throw new UnsupportedOperationException("not required by batch processing tests");
+    }
+
+    /**
      * 标记回调失败。
      *
      * @param request 失败更新请求

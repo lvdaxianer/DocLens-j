@@ -9,10 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDelivery
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryWorker.Options;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.MybatisPlusCallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
-import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -37,13 +34,12 @@ public class DocLensCallbackDeliveryAutoConfiguration {
     private static final int CALLBACK_DISPATCH_INTERVAL_MILLIS = 1000;
     private static final int CALLBACK_DISPATCH_BATCH_SIZE = 100;
     private static final int CALLBACK_RETRY_BACKOFF_SECONDS = 30;
+    private static final int FIRST_CALLBACK_ATTEMPT = 1;
 
     /**
      * 创建回调投递 worker。
      *
-     * @param callbackJobRepository 回调任务仓储
-     * @param jsonCodec JSON 编解码器
-     * @param callbackExecutor 回调投递线程池
+     * @param dependencies 回调投递依赖
      * @param properties Spring 配置
      * @return 回调投递 worker
      * @author lvdaxianerplus
@@ -57,7 +53,20 @@ public class DocLensCallbackDeliveryAutoConfiguration {
     ) {
         return new CallbackDeliveryWorker(dependencies,
                 new Options(Duration.ofSeconds(properties.callback().timeoutSeconds()), CALLBACK_DISPATCH_BATCH_SIZE,
-                        properties.callback().maxRetries(), Duration.ofSeconds(CALLBACK_RETRY_BACKOFF_SECONDS)));
+                        retryLimitFromAttempts(properties.callback().maxRetries()),
+                        Duration.ofSeconds(CALLBACK_RETRY_BACKOFF_SECONDS)));
+    }
+
+    /**
+     * 将最大投递次数转换为失败后可安排的重试次数。
+     *
+     * @param maxAttempts 最大投递次数
+     * @return 失败后可重试次数
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    private int retryLimitFromAttempts(int maxAttempts) {
+        return Math.max(0, maxAttempts - FIRST_CALLBACK_ATTEMPT);
     }
 
     /**
@@ -75,30 +84,16 @@ public class DocLensCallbackDeliveryAutoConfiguration {
     CallbackDeliveryWorker.Dependencies callbackDeliveryWorkerDependencies(
             CallbackJobRepository callbackJobRepository,
             JsonCodec jsonCodec,
-            @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor
+            @Qualifier("doclensCallbackExecutor") ScheduledExecutorService callbackExecutor
     ) {
         return new CallbackDeliveryWorker.Dependencies(callbackJobRepository,
                 new CallbackDeliveryProcessor.Dependencies(callbackJobRepository, jsonCodec, callbackExecutor));
     }
 
     /**
-     * 创建回调投递调度线程池。
-     *
-     * @return 回调投递调度线程池
-     * @author lvdaxianerplus
-     * @date 2026-06-15
-     */
-    @Bean(destroyMethod = "shutdown")
-    @ConditionalOnMissingBean(name = "doclensCallbackSchedulerExecutor")
-    ScheduledExecutorService doclensCallbackSchedulerExecutor() {
-        return Executors.newSingleThreadScheduledExecutor(new NamedThreadPoolFactory("doclens-callback-scheduler-"));
-    }
-
-    /**
      * 创建回调投递调度器。
      *
      * @param worker 回调投递 worker
-     * @param schedulerExecutor 调度线程池
      * @param callbackExecutor 回调线程池
      * @return 回调投递调度器
      * @author lvdaxianerplus
@@ -108,10 +103,9 @@ public class DocLensCallbackDeliveryAutoConfiguration {
     @ConditionalOnMissingBean
     CallbackDeliveryScheduler callbackDeliveryScheduler(
             CallbackDeliveryWorker worker,
-            @Qualifier("doclensCallbackSchedulerExecutor") ScheduledExecutorService schedulerExecutor,
-            @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor
+            @Qualifier("doclensCallbackExecutor") ScheduledExecutorService callbackExecutor
     ) {
-        return new CallbackDeliveryScheduler(new Dependencies(worker::runOnce, schedulerExecutor, callbackExecutor),
+        return new CallbackDeliveryScheduler(new Dependencies(worker::runOnce, callbackExecutor),
                 CALLBACK_DISPATCH_INTERVAL_MILLIS);
     }
 

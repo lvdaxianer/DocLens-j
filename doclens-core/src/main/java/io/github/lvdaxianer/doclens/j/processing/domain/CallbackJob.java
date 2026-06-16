@@ -92,6 +92,20 @@ public record CallbackJob(
     }
 
     /**
+     * 重置回调任务为新一轮手动投递。
+     *
+     * @param now 更新时间
+     * @return 待投递的回调任务
+     * @author lvdaxianerplus
+     * @date 2026-06-16
+     */
+    public CallbackJob restartAttempts(OffsetDateTime now) {
+        return new CallbackJob(callbackJobId, eventId, batchId, documentId, callbackUrl,
+                CallbackJobStatus.PENDING, payload, 0, Optional.empty(), Optional.empty(),
+                Optional.empty(), createdAt, now);
+    }
+
+    /**
      * 创建失败状态的回调任务。
      *
      * @param status 目标状态

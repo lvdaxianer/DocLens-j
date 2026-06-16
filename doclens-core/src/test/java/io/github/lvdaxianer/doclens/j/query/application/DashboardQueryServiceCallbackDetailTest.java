@@ -222,6 +222,18 @@ class DashboardQueryServiceCallbackDetailTest {
         }
 
         /**
+         * 重置 callback 作业投递轮次。
+         *
+         * @param callbackJobId callback 作业 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-16
+         */
+        @Override
+        public void restartAttempts(String callbackJobId) {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
          * 标记 callback 作业投递失败。
          *
          * @param request 失败更新请求

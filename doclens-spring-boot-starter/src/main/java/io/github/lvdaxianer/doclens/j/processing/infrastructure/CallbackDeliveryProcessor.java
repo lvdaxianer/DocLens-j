@@ -217,7 +217,7 @@ public class CallbackDeliveryProcessor {
         OffsetDateTime now = OffsetDateTime.now();
         CallbackRetryAttempt attempt = retryPolicy.failureAttempt(job, now);
         repository.markFailed(new CallbackJobFailureRequest(job.callbackJobId(), reason, detail,
-                attempt.retryCount(), attempt.nextRetryAt(), now));
+                attempt.retryCount(), attempt.nextRetryAt().orElse(null), now));
         return 0;
     }
 

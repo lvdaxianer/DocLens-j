@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -76,12 +75,7 @@ public class CallbackDeliveryScheduler {
      * @date 2026-06-15
      */
     private void runSafely() {
-        try {
-            dependencies.callbackExecutor().execute(this::executeWorkerSafely);
-        } catch (RuntimeException ex) {
-            LOGGER.warn("[回调投递] 提交回调扫描失败, error={}", ex.getMessage(), ex);
-            rescheduleIfRunning();
-        }
+        executeWorkerSafely();
     }
 
     /**
@@ -119,14 +113,12 @@ public class CallbackDeliveryScheduler {
      *
      * @param callbackRunner 回调执行器
      * @param schedulerExecutor 调度线程池
-     * @param callbackExecutor 回调线程池
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
     public record Dependencies(
             IntSupplier callbackRunner,
-            ScheduledExecutorService schedulerExecutor,
-            ExecutorService callbackExecutor
+            ScheduledExecutorService schedulerExecutor
     ) {
 
         /**
@@ -138,7 +130,6 @@ public class CallbackDeliveryScheduler {
         public Dependencies {
             callbackRunner = Objects.requireNonNull(callbackRunner, "callback runner is required");
             schedulerExecutor = Objects.requireNonNull(schedulerExecutor, "scheduler executor is required");
-            callbackExecutor = Objects.requireNonNull(callbackExecutor, "callback executor is required");
         }
     }
 }
