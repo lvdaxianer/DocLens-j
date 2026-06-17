@@ -2,7 +2,12 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.BASE_TIME;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_CALLBACK_URL;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_IDEMPOTENCY_KEY;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_METADATA_FILE_ID;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_METADATA_SOURCE;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batchWithIntakeInfo;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.queuedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.stagedDocument;
@@ -45,6 +50,28 @@ class DashboardQueryServiceBatchDetailTest {
                 .containsExactly("done", "done", "done", "done", "done", "done", "done", "done");
         assertThat(statesOf((Map<?, ?>) documents.get(0)))
                 .containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "skipped", "done");
+    }
+
+    /**
+     * 批次详情应暴露创建时传入的接入信息。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void batchDetailExposesBatchIntakeInfo() {
+        DashboardQueryService service = new DashboardQueryService(
+                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
+                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text", DocumentType.TEXT, 0))),
+                new InMemoryOcrEventRepository());
+
+        Map<?, ?> batch = batchOf(service.batchDetail("batch-test"));
+        Map<?, ?> metadata = (Map<?, ?>) batch.get("metadata");
+
+        assertThat(batch.get("callback_url")).isEqualTo(TEST_CALLBACK_URL);
+        assertThat(batch.get("idempotency_key")).isEqualTo(TEST_IDEMPOTENCY_KEY);
+        assertThat(metadata.get("source")).isEqualTo(TEST_METADATA_SOURCE);
+        assertThat(metadata.get("openwebui_file_id")).isEqualTo(TEST_METADATA_FILE_ID);
     }
 
     /**
@@ -138,6 +165,18 @@ class DashboardQueryServiceBatchDetailTest {
     private DashboardQueryService serviceWithDocuments(List<DocumentJob> documents) {
         return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
                 new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository());
+    }
+
+    /**
+     * 从详情结果中取出批次对象。
+     *
+     * @param detail 批次详情结果
+     * @return 批次对象
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<?, ?> batchOf(Map<String, Object> detail) {
+        return (Map<?, ?>) detail.get("batch");
     }
 
     /**

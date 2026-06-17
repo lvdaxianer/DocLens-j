@@ -74,7 +74,10 @@ class DashboardBatchRowAssembler {
                 Map.entry("failure_rate", ratio(failedFiles, batch.totalFiles())),
                 Map.entry("average_duration_ms", averageDurationMillis(documents)),
                 Map.entry("created_at", batch.createdAt().toString()),
-                Map.entry("updated_at", batch.updatedAt().toString())
+                Map.entry("updated_at", batch.updatedAt().toString()),
+                Map.entry("callback_url", batch.callbackUrl().orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("idempotency_key", batch.idempotencyKey().orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry("metadata", batch.metadata().values())
         );
     }
 
