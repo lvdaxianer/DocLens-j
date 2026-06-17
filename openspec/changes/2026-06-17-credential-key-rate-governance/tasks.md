@@ -19,7 +19,7 @@
 
 - [x] 3.1 Add failing unit tests for caller + interface-group isolated token
   buckets, including decimal QPS, burst, refill, and independent callers.
-- [ ] 3.2 Implement the minimal in-memory caller rate limiter and policy merge
+- [x] 3.2 Implement the minimal in-memory caller rate limiter and policy merge
   logic needed to pass the focused tests.
 
 ## 4. Server Enforcement
