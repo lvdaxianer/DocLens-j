@@ -15,6 +15,12 @@ import {
 } from 'naive-ui'
 
 import type { DocumentResultResponse, DocumentRow } from '@/types/dashboard'
+import {
+  buildResultDownloadFilename,
+  buildResultDownloadPayload,
+  triggerResultDownload,
+  type ResultDownloadFormat
+} from '@/utils/dashboardResultDownloadRules'
 import { formatNumber, formatPercent } from '@/utils/formatters'
 import {
   extractOcrOriginalText,
@@ -64,6 +70,7 @@ const llmErrorMessage = computed(() => {
   const message = props.result?.result.llm_error_message?.trim() ?? ''
   return message
 })
+const downloadDisabled = computed(() => !props.document || !props.result)
 
 /**
  * 判断当前是否展示主结果文本。
@@ -108,6 +115,24 @@ async function copyContent(content: string, label: string): Promise<void> {
     message.error(`${label}复制失败`)
   }
 }
+
+/**
+ * 下载指定格式的解析结果。
+ *
+ * @param format 下载格式
+ * @author lvdaxianerplus
+ * @date 2026-06-17
+ */
+function downloadResult(format: ResultDownloadFormat): void {
+  if (!props.document || !props.result) {
+    message.warning('暂无可下载结果')
+    return
+  }
+  const payload = buildResultDownloadPayload(props.result, format)
+  const filename = buildResultDownloadFilename(props.document, props.result, format)
+  triggerResultDownload(payload, filename)
+  message.success(`${filename} 已下载`)
+}
 </script>
 
 <template>
@@ -119,9 +144,20 @@ async function copyContent(content: string, label: string): Promise<void> {
             <span>上传文件</span>
             <strong>{{ document?.file_name ?? '-' }}</strong>
           </div>
-          <NTag v-if="document" round>
-            {{ document.file_type.toUpperCase() }}
-          </NTag>
+          <div class="document-result__header-actions">
+            <NButton size="tiny" secondary :disabled="downloadDisabled" @click="downloadResult('markdown')">
+              下载 Markdown
+            </NButton>
+            <NButton size="tiny" secondary :disabled="downloadDisabled" @click="downloadResult('txt')">
+              下载 TXT
+            </NButton>
+            <NButton size="tiny" secondary :disabled="downloadDisabled" @click="downloadResult('json')">
+              下载 JSON
+            </NButton>
+            <NTag v-if="document" round>
+              {{ document.file_type.toUpperCase() }}
+            </NTag>
+          </div>
         </section>
 
         <NAlert v-if="error" type="error" :title="error">
@@ -219,6 +255,13 @@ async function copyContent(content: string, label: string): Promise<void> {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.document-result__header-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .document-result__identity {

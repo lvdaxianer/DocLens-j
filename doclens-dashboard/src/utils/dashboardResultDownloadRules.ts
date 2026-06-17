@@ -61,6 +61,24 @@ export function buildResultDownloadPayload(
 }
 
 /**
+ * 触发浏览器本地文件下载。
+ *
+ * @param payload 下载载荷
+ * @param filename 文件名
+ * @author lvdaxianerplus
+ * @date 2026-06-17
+ */
+export function triggerResultDownload(payload: ResultDownloadPayload, filename: string): void {
+  const blob = new Blob([payload.content], { type: payload.mimeType })
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
+/**
  * 按格式提取下载内容。
  *
  * @param result 文档结果

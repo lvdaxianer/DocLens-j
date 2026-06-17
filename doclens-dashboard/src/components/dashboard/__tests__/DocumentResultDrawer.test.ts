@@ -74,6 +74,28 @@ describe('DocumentResultDrawer', () => {
     expect(wrapper.text()).toContain('原始 OCR 文本')
     expect(wrapper.text()).not.toContain('Markdown 结果')
   })
+
+  /**
+   * 加载结果后应暴露三种下载动作，覆盖用户拿走结果的首个闭环。
+   *
+   * @author lvdaxianerplus
+   * @date 2026-06-17
+   */
+  it('exposes markdown txt and json download actions for loaded result', () => {
+    const wrapper = mount(DocumentResultDrawer, {
+      props: {
+        show: true,
+        document: documentRow(),
+        result: documentResult(),
+        loading: false,
+        error: ''
+      }
+    })
+
+    expect(wrapper.text()).toContain('下载 Markdown')
+    expect(wrapper.text()).toContain('下载 TXT')
+    expect(wrapper.text()).toContain('下载 JSON')
+  })
 })
 
 /**
