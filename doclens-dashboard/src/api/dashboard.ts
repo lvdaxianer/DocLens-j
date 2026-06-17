@@ -5,6 +5,7 @@ import type {
   DocumentResultResponse,
   OcrHealthResponse
 } from '@/types/dashboard'
+import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
 const DASHBOARD_API_BUSINESS = '[Dashboard API]'
@@ -80,9 +81,9 @@ function logRequest(context: DashboardRequestContext): void {
 function fetchDashboardJson(context: DashboardRequestContext): Promise<Response> {
   return fetch(context.path, {
     method: context.method,
-    headers: {
+    headers: withCallerCredentialHeaders({
       Accept: JSON_ACCEPT_HEADER
-    }
+    })
   })
 }
 

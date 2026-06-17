@@ -65,15 +65,20 @@ identity.
 The Dashboard frontend MUST attach the active caller credential to every API
 request it sends.
 
-The Dashboard frontend MUST send the active caller credential with every API
-request.
+The Dashboard frontend MUST read the active caller credential from
+`localStorage` key `X-DocLens-Credential` and send it with every API request.
 
-#### Scenario: Dashboard environment provides API key
+#### Scenario: Dashboard runtime provides API key
 
-- **WHEN** the Dashboard runtime is configured with an API key credential
+- **WHEN** `localStorage` contains `X-DocLens-Credential` with an API key
 - **THEN** each API request sends `X-DocLens-Api-Key`
 
-#### Scenario: Dashboard environment provides Bearer token
+#### Scenario: Dashboard runtime provides Bearer token
 
-- **WHEN** the Dashboard runtime is configured with a Bearer token credential
+- **WHEN** `localStorage` contains `X-DocLens-Credential` with a Bearer token
 - **THEN** each API request sends `Authorization: Bearer <token>`
+
+#### Scenario: Dashboard runtime is missing caller credential
+
+- **WHEN** `localStorage` does not contain `X-DocLens-Credential`
+- **THEN** the Dashboard sends no caller credential header

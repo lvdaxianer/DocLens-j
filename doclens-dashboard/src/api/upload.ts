@@ -1,4 +1,5 @@
 import type { UploadBatchOptions, UploadBatchResponse } from '@/types/upload'
+import { withCallerCredentialHeaders } from '@/api/callerCredential'
 
 const CREATE_BATCH_ENDPOINT = '/api/v1/batches'
 const FILES_FIELD = 'files'
@@ -110,7 +111,8 @@ function responseDetail(responseBody: string): string {
 export async function uploadBatch(options: UploadBatchOptions): Promise<UploadBatchResponse> {
   const response = await fetch(CREATE_BATCH_ENDPOINT, {
     method: 'POST',
-    body: createUploadFormData(options)
+    body: createUploadFormData(options),
+    headers: withCallerCredentialHeaders({})
   })
   if (response.ok) {
     // 上传成功时返回后端批次信息。

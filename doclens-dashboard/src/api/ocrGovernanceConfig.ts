@@ -1,4 +1,5 @@
 import type { OcrGovernanceConfigPayload, OcrGovernanceConfigResponse } from '@/types/ocrGovernanceConfig'
+import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
 const OCR_GOVERNANCE_CONFIG_PATH = '/api/v1/ocr-governance-config'
@@ -162,7 +163,9 @@ async function requestOcrGovernanceConfig<T>(options: OcrGovernanceConfigRequest
   try {
     const response = await fetch(OCR_GOVERNANCE_CONFIG_PATH, {
       method: options.method,
-      headers: options.body ? { 'Content-Type': JSON_CONTENT_TYPE } : undefined,
+      headers: options.body
+        ? withCallerCredentialHeaders({ 'Content-Type': JSON_CONTENT_TYPE })
+        : withCallerCredentialHeaders({}),
       body: options.body ? JSON.stringify(options.body) : undefined
     })
     return await parseResponse<T>(context, response)

@@ -7,6 +7,7 @@ import type {
   OcrNodeReconnectResponse,
   OcrNodeTestResponse
 } from '@/types/ocrResources'
+import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
 const OCR_API_BUSINESS = '[OCR 资源 API]'
@@ -131,7 +132,9 @@ function logRequestError(context: OcrRequestContext, error: unknown): void {
  * @date 2026-06-09
  */
 function fetchOcrResource(context: OcrRequestContext, options: OcrRequestOptions): Promise<Response> {
-  const headers = options.body ? { 'Content-Type': JSON_CONTENT_TYPE } : undefined
+  const headers = options.body
+    ? withCallerCredentialHeaders({ 'Content-Type': JSON_CONTENT_TYPE })
+    : withCallerCredentialHeaders({})
   return fetch(context.path, {
     method: options.method,
     headers,

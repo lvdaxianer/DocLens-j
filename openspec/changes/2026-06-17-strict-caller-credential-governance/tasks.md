@@ -14,12 +14,13 @@
 
 ## 3. Dashboard Client Headers
 
-- [ ] 3.1 Add failing tests for Dashboard API clients that verify the caller
+- [x] 3.1 Add failing tests for Dashboard API clients that verify the caller
   credential header is attached to all requests.
-- [ ] 3.2 Update the frontend request layer to read caller credentials from the
-  dashboard environment and include the correct header on every API call.
+- [x] 3.2 Update the frontend request layer to read `X-DocLens-Credential`
+  from `localStorage` and forward it as the caller credential header on every
+  API call.
 
 ## 4. Verification
 
-- [ ] 4.1 Run the focused backend and frontend tests, the relevant broader
+- [x] 4.1 Run the focused backend and frontend tests, the relevant broader
   verification commands, OpenSpec strict validation, and review the diff.

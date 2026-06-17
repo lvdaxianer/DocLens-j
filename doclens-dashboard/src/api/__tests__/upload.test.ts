@@ -23,11 +23,12 @@ function uploadOptions(): UploadBatchOptions {
   }
 }
 
-describe('uploadBatch errors', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+afterEach(() => {
+  localStorage.clear()
+  vi.restoreAllMocks()
+})
 
+describe('uploadBatch errors', () => {
   it('shows backend detail for structured upload failures', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
       JSON.stringify({ detail: 'file type is not supported' }),
@@ -44,5 +45,19 @@ describe('uploadBatch errors', () => {
     }))
 
     await expect(uploadBatch(uploadOptions())).rejects.toThrow('上传失败：500 Internal Server Error')
+  })
+})
+
+describe('uploadBatch caller credential headers', () => {
+  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential', async () => {
+    localStorage.setItem('X-DocLens-Credential', 'test-api-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
+
+    await uploadBatch(uploadOptions())
+
+    const [, init] = fetchSpy.mock.calls[0] ?? []
+    expect(init?.method).toBe('POST')
+    expect(init?.headers).toEqual({ 'X-DocLens-Api-Key': 'test-api-key' })
+    expect(init?.body).toBeInstanceOf(FormData)
   })
 })
