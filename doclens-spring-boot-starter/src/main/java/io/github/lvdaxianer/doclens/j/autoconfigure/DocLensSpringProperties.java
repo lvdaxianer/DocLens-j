@@ -66,44 +66,6 @@ public record DocLensSpringProperties(
     }
 
     /**
-     * 创建兼容旧参数列表的配置属性。
-     *
-     * @param storageRoot 存储根目录
-     * @param autoProcessOnUpload 自动处理标志
-     * @param workerId Worker 标识
-     * @param callback 回调配置
-     * @param adapter 适配器配置
-     * @param ocr OCR 路由配置
-     * @param paddleOcr PaddleOCR 配置
-     * @param ocrHealth OCR 健康检查配置
-     * @param extraction 提取配置
-     * @param pdfRender PDF 渲染配置
-     * @param wordConversion Word 转 PDF 配置
-     * @param llmMarkdown LLM Markdown 后处理配置
-     * @param threadPools 线程池隔离配置
-     * @author lvdaxianerplus
-     * @date 2026-06-17
-     */
-    public DocLensSpringProperties(
-            String storageRoot,
-            boolean autoProcessOnUpload,
-            String workerId,
-            CallbackProperties callback,
-            AdapterProperties adapter,
-            OcrProperties ocr,
-            PaddleOcrProperties paddleOcr,
-            OcrHealthProperties ocrHealth,
-            ExtractionProperties extraction,
-            PdfRenderProperties pdfRender,
-            WordConversionProperties wordConversion,
-            LlmMarkdownProperties llmMarkdown,
-            ThreadPoolsProperties threadPools
-    ) {
-        this(storageRoot, autoProcessOnUpload, workerId, null, callback, adapter, ocr, paddleOcr, ocrHealth,
-                extraction, pdfRender, wordConversion, llmMarkdown, threadPools);
-    }
-
-    /**
      * 创建默认 PaddleOCR 配置。
      *
      * @return PaddleOCR 配置

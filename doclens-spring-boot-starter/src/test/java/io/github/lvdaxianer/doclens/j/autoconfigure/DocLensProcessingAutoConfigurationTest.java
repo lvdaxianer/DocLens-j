@@ -33,7 +33,7 @@ class DocLensProcessingAutoConfigurationTest {
     void createsNoopMarkdownPostProcessorWhenLlmMarkdownIsNotConfigured() {
         MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
-                        null, null, null, null, null, null, null, null));
+                        null, null, null, null, null, null, null, null, null));
 
         assertThat(processor.process(request()).markdown()).isEqualTo("OCR 文本");
     }
@@ -50,7 +50,7 @@ class DocLensProcessingAutoConfigurationTest {
                 new DocLensSpringProperties.LlmMarkdownProperties("http://127.0.0.1:1/v1/chat/completions",
                         "markdown-model", "sk-configured");
         DocLensSpringProperties properties = new DocLensSpringProperties(null, false, null, null, null, null, null,
-                null, null, null, null, llmMarkdown, null);
+                null, null, null, null, null, llmMarkdown, null);
 
         MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
@@ -71,7 +71,7 @@ class DocLensProcessingAutoConfigurationTest {
                         "https://dashscope.aliyuncs.com/compatible-mode/v1",
                         "qwen-vl-ocr-2025-11-20", "sk-configured");
         DocLensSpringProperties properties = new DocLensSpringProperties(null, false, null, null, null, null, null,
-                null, null, null, null, llmMarkdown, null);
+                null, null, null, null, null, llmMarkdown, null);
 
         MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .fallbackMarkdownPostProcessor(new ObjectMapper(), properties);
@@ -93,7 +93,7 @@ class DocLensProcessingAutoConfigurationTest {
 
         MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                 .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
-                        null, null, null, null, null, null, null, null), repository);
+                        null, null, null, null, null, null, null, null, null), repository);
 
         assertThat(processor).isInstanceOf(ConfigurableMarkdownPostProcessor.class);
     }
