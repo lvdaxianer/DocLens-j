@@ -8,4 +8,4 @@
 
 ## 3. Verification And Archive
 
-- [ ] 3.1 Run focused backend/frontend tests plus broader verification for touched modules, then archive the OpenSpec change.
+- [x] 3.1 Run focused backend/frontend tests plus broader verification for touched modules, then archive the OpenSpec change.
