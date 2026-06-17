@@ -5,6 +5,7 @@ import type { BatchRow } from '@/types/dashboard'
 
 const EMPTY_CALLBACK_URL_LABEL = '未提供回调地址'
 const EMPTY_IDEMPOTENCY_KEY_LABEL = '未提供幂等值'
+const EMPTY_TENANT_KEY_LABEL = '未提供租户键'
 const EMPTY_METADATA_LABEL = '无 meta 信息'
 const JSON_INDENT_SIZE = 2
 
@@ -59,11 +60,23 @@ function formattedMetadata(metadata: Record<string, unknown> | undefined): strin
     <div class="panel__header">
       <div>
         <h2 class="panel__title">接入信息</h2>
-        <span class="panel__hint">创建批次时收到的回调地址、幂等值和 meta 信息</span>
+        <span class="panel__hint">创建批次时解析出的接入方、回调地址、幂等值和 meta 信息</span>
       </div>
     </div>
 
     <dl class="batch-intake__facts">
+      <div>
+        <dt>接入方 ID</dt>
+        <dd>{{ displayText(batch.client_id, 'anonymous') }}</dd>
+      </div>
+      <div>
+        <dt>来源应用</dt>
+        <dd>{{ displayText(batch.source_app, 'unknown') }}</dd>
+      </div>
+      <div>
+        <dt>租户键</dt>
+        <dd>{{ displayText(batch.tenant_key, EMPTY_TENANT_KEY_LABEL) }}</dd>
+      </div>
       <div>
         <dt>回调地址</dt>
         <dd>{{ displayText(batch.callback_url, EMPTY_CALLBACK_URL_LABEL) }}</dd>

@@ -17,7 +17,7 @@
 
 ## 4. Dashboard Caller Visibility
 
-- [ ] 4.1 Display caller identity in the Dashboard batch intake panel and cover
+- [x] 4.1 Display caller identity in the Dashboard batch intake panel and cover
   the component behavior with focused frontend tests.
 
 ## 5. Final Verification

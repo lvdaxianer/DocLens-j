@@ -83,6 +83,9 @@ export interface BatchRow {
   updated_at: string
   callback_url?: string
   idempotency_key?: string
+  client_id?: string
+  source_app?: string
+  tenant_key?: string
   metadata?: Record<string, unknown>
 }
 

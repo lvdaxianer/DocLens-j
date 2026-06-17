@@ -18,6 +18,9 @@ const INTAKE_BATCH: BatchRow = {
   updated_at: '2026-06-17T10:05:00+08:00',
   callback_url: 'https://client.example.com/ocr-callback',
   idempotency_key: 'openwebui:file:file-123:hash:abc',
+  client_id: 'rag-flow',
+  source_app: 'knowledge-base',
+  tenant_key: 'tenant-east',
   metadata: {
     source: 'open-webui',
     openwebui_file_id: 'file-123'
@@ -32,12 +35,12 @@ const INTAKE_BATCH: BatchRow = {
  */
 describe('BatchIntakeInfoPanel', () => {
   /**
-   * 应展示回调地址、幂等值和格式化后的 metadata。
+   * 应展示调用方、回调地址、幂等值和格式化后的 metadata。
    *
    * @author lvdaxianerplus
    * @date 2026-06-17
    */
-  it('renders callback url, idempotency key, and formatted metadata', () => {
+  it('renders caller identity, callback url, idempotency key, and formatted metadata', () => {
     const wrapper = mount(BatchIntakeInfoPanel, {
       props: {
         batch: INTAKE_BATCH
@@ -45,6 +48,9 @@ describe('BatchIntakeInfoPanel', () => {
     })
 
     expect(wrapper.text()).toContain('接入信息')
+    expect(wrapper.text()).toContain('rag-flow')
+    expect(wrapper.text()).toContain('knowledge-base')
+    expect(wrapper.text()).toContain('tenant-east')
     expect(wrapper.text()).toContain('https://client.example.com/ocr-callback')
     expect(wrapper.text()).toContain('openwebui:file:file-123:hash:abc')
     expect(wrapper.text()).toContain('"source": "open-webui"')
@@ -64,6 +70,7 @@ describe('BatchIntakeInfoPanel', () => {
           ...INTAKE_BATCH,
           callback_url: '',
           idempotency_key: '',
+          tenant_key: '',
           metadata: {}
         }
       }
@@ -71,6 +78,7 @@ describe('BatchIntakeInfoPanel', () => {
 
     expect(wrapper.text()).toContain('未提供回调地址')
     expect(wrapper.text()).toContain('未提供幂等值')
+    expect(wrapper.text()).toContain('未提供租户键')
     expect(wrapper.text()).toContain('无 meta 信息')
   })
 })
