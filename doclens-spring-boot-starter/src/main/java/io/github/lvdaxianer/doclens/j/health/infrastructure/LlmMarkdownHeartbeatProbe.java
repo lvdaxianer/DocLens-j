@@ -56,8 +56,8 @@ public class LlmMarkdownHeartbeatProbe implements ModelHeartbeatProbe {
     @Override
     public ModelHeartbeatProbeResult probe() {
         Optional<LlmMarkdownConfig> config = configRepository.find();
-        // 当前存在可用 LLM Markdown 配置时执行真实连通性探测。
-        if (config.isPresent() && config.get().enabled()) {
+        // 只有已配置且启用时才执行真实连通性探测。
+        if (config.isPresent() && config.get().isAvailableForPostProcessing()) {
             return probeConfigured(config.get());
         } else {
             // 配置缺失或未启用时无需调用远端，直接返回可持久化的坏响应。

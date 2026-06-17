@@ -64,6 +64,22 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
+     * 根据 caller 和 ID 查找批次。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 可选批次聚合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Override
+    public Optional<Batch> findByIdForCaller(CallerIdentity caller, String batchId) {
+        LambdaQueryWrapper<BatchEntity> wrapper = callerWrapper(caller)
+                .eq(BatchEntity::getBatchId, batchId);
+        return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
+    }
+
+    /**
      * 按幂等键查找批次，并显式限制单行结果。
      *
      * @param idempotencyKey 幂等键
@@ -81,6 +97,24 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     }
 
     /**
+     * 根据 caller 和幂等键查找批次。
+     *
+     * @param caller caller 身份
+     * @param idempotencyKey 幂等键
+     * @return 可选批次聚合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Override
+    public Optional<Batch> findByIdempotencyKeyForCaller(CallerIdentity caller, String idempotencyKey) {
+        LambdaQueryWrapper<BatchEntity> wrapper = callerWrapper(caller)
+                .eq(BatchEntity::getIdempotencyKey, idempotencyKey)
+                .orderByDesc(BatchEntity::getUpdatedAt)
+                .orderByDesc(BatchEntity::getBatchId);
+        return page(MybatisPlusPages.one(), wrapper).getRecords().stream().findFirst().map(this::toDomain);
+    }
+
+    /**
      * 按更新时间倒序列出最近批次。
      *
      * @param limit 最大返回数量
@@ -91,6 +125,23 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     @Override
     public List<Batch> listRecent(int limit) {
         LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
+                .orderByDesc(BatchEntity::getUpdatedAt)
+                .orderByDesc(BatchEntity::getBatchId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+    }
+
+    /**
+     * 按 caller 和更新时间倒序列出最近批次。
+     *
+     * @param caller caller 身份
+     * @param limit 最大返回数量
+     * @return 最近批次集合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Override
+    public List<Batch> listRecentForCaller(CallerIdentity caller, int limit) {
+        LambdaQueryWrapper<BatchEntity> wrapper = callerWrapper(caller)
                 .orderByDesc(BatchEntity::getUpdatedAt)
                 .orderByDesc(BatchEntity::getBatchId);
         return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
@@ -222,5 +273,27 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
     private CallerIdentity callerIdentity(BatchEntity entity) {
         return new CallerIdentity(entity.getClientId(), entity.getSourceApp(),
                 Optional.ofNullable(entity.getTenantKey()));
+    }
+
+    /**
+     * 创建 caller 过滤查询条件。
+     *
+     * @param caller caller 身份
+     * @return caller 查询条件
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private LambdaQueryWrapper<BatchEntity> callerWrapper(CallerIdentity caller) {
+        LambdaQueryWrapper<BatchEntity> wrapper = new LambdaQueryWrapper<BatchEntity>()
+                .eq(BatchEntity::getClientId, caller.clientId())
+                .eq(BatchEntity::getSourceApp, caller.sourceApp());
+        if (caller.tenantKey().isPresent()) {
+            // caller 带租户时必须精确匹配租户键。
+            wrapper.eq(BatchEntity::getTenantKey, caller.tenantKey().orElseThrow());
+        } else {
+            // caller 不带租户时只允许访问未归属租户的数据。
+            wrapper.isNull(BatchEntity::getTenantKey);
+        }
+        return wrapper;
     }
 }

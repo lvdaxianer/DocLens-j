@@ -2,10 +2,12 @@ package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import java.time.OffsetDateTime;
 import org.apache.ibatis.annotations.Mapper;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -133,5 +136,17 @@ class MybatisPlusOcrNodeRepositoryTest {
             MybatisPlusOcrNodeRepository.class
     })
     static class TestApplication {
+
+        /**
+         * 为测试上下文补齐仓储依赖的 JSON 编解码器。
+         *
+         * @return JSON 编解码器
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        @Bean
+        JsonCodec jsonCodec() {
+            return new JsonCodec(new ObjectMapper());
+        }
     }
 }

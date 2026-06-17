@@ -13,7 +13,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CallerCredentialWebMvcConfigurer implements WebMvcConfigurer {
 
+    private final GlobalProtectionInterceptor globalProtectionInterceptor;
     private final CallerCredentialInterceptor callerCredentialInterceptor;
+    private final CallerTrafficInterceptor callerTrafficInterceptor;
 
     /**
      * 创建 Web MVC 配置。
@@ -22,8 +24,14 @@ public class CallerCredentialWebMvcConfigurer implements WebMvcConfigurer {
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
-    public CallerCredentialWebMvcConfigurer(CallerCredentialInterceptor callerCredentialInterceptor) {
+    public CallerCredentialWebMvcConfigurer(
+            GlobalProtectionInterceptor globalProtectionInterceptor,
+            CallerCredentialInterceptor callerCredentialInterceptor,
+            CallerTrafficInterceptor callerTrafficInterceptor
+    ) {
+        this.globalProtectionInterceptor = globalProtectionInterceptor;
         this.callerCredentialInterceptor = callerCredentialInterceptor;
+        this.callerTrafficInterceptor = callerTrafficInterceptor;
     }
 
     /**
@@ -35,6 +43,8 @@ public class CallerCredentialWebMvcConfigurer implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(globalProtectionInterceptor).addPathPatterns("/api/v1/**");
         registry.addInterceptor(callerCredentialInterceptor).addPathPatterns("/api/v1/**");
+        registry.addInterceptor(callerTrafficInterceptor).addPathPatterns("/api/v1/**");
     }
 }

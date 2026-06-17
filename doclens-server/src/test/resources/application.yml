@@ -1,0 +1,16 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 300MB
+      max-request-size: 300MB
+
+doclens:
+  storage-root: ./var/storage
+  auto-process-on-upload: true
+  worker-id: test-worker
+  paddle-ocr:
+    enabled: false
+  traffic:
+    enabled: false
+    global-protection:
+      enabled: false

@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskClaimRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest;
@@ -10,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCreateRe
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
@@ -19,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -307,5 +310,9 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
         /**
          * 测试应用只装配页任务 Mapper 和仓储，避免启动完整 OCR 处理链路。
          */
+        @Bean
+        JsonCodec jsonCodec() {
+            return new JsonCodec(new ObjectMapper());
+        }
     }
 }

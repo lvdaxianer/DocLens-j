@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -83,17 +84,20 @@ public class OcrQueryService {
     public Map<String, Object> getBatch(String batchId) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
-        return Map.ofEntries(
-                Map.entry(BATCH_ID_FIELD, batch.batchId()),
-                Map.entry(STATUS_FIELD, batch.status().name().toLowerCase(Locale.ROOT)),
-                Map.entry(TOTAL_FILES_FIELD, batch.totalFiles()),
-                Map.entry(COMPLETED_FILES_FIELD, batch.completedFiles()),
-                Map.entry(FAILED_FILES_FIELD, batch.failedFiles()),
-                Map.entry(PROGRESS_PERCENT_FIELD, batchProgress(batch)),
-                Map.entry("metadata", batch.metadata().values()),
-                Map.entry(CREATED_AT_FIELD, batch.createdAt().toString()),
-                Map.entry(UPDATED_AT_FIELD, batch.updatedAt().toString())
-        );
+        return batchView(batch);
+    }
+
+    /**
+     * 获取 caller 范围内的批次读模型。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 批次读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> getBatch(CallerIdentity caller, String batchId) {
+        return batchView(findCallerBatch(caller, batchId));
     }
 
     /**
@@ -116,6 +120,26 @@ public class OcrQueryService {
     }
 
     /**
+     * 通过 caller 范围内幂等键获取批次 reconciliation 视图。
+     *
+     * @param caller caller 身份
+     * @param idempotencyKey 幂等键
+     * @return reconciliation 批次视图
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> getBatchByIdempotencyKey(CallerIdentity caller, String idempotencyKey) {
+        Batch batch = batchRepository.findByIdempotencyKeyForCaller(caller, idempotencyKey)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format(BATCH_NOT_FOUND_MESSAGE_TEMPLATE, idempotencyKey)));
+        List<Map<String, Object>> documents = documentRepository.listByBatchId(batch.batchId()).stream()
+                .sorted(Comparator.comparingInt(DocumentJob::sortOrder))
+                .map(this::reconciliationDocumentView)
+                .toList();
+        return reconciliationBatchView(batch, documents);
+    }
+
+    /**
      * 获取文档读模型。
      *
      * @param documentId 文档 ID
@@ -126,6 +150,31 @@ public class OcrQueryService {
     public Map<String, Object> getDocument(String documentId) {
         DocumentJob document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("document " + documentId + " not found"));
+        return documentView(document);
+    }
+
+    /**
+     * 获取 caller 范围内文档读模型。
+     *
+     * @param caller caller 身份
+     * @param documentId 文档 ID
+     * @return 文档读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> getDocument(CallerIdentity caller, String documentId) {
+        return documentView(findCallerDocument(caller, documentId));
+    }
+
+    /**
+     * 构建文档读模型。
+     *
+     * @param document 文档任务
+     * @return 文档读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> documentView(DocumentJob document) {
         return Map.ofEntries(
                 Map.entry("document_id", document.documentId()),
                 Map.entry("batch_id", document.batchId()),
@@ -273,6 +322,35 @@ public class OcrQueryService {
     public Map<String, Object> getDocumentResult(String documentId) {
         OcrResult result = resultRepository.findByDocumentId(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("document result " + documentId + " not found"));
+        return documentResultView(documentId, result);
+    }
+
+    /**
+     * 获取 caller 范围内 OCR 结果读模型。
+     *
+     * @param caller caller 身份
+     * @param documentId 文档 ID
+     * @return 结果读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> getDocumentResult(CallerIdentity caller, String documentId) {
+        findCallerDocument(caller, documentId);
+        OcrResult result = resultRepository.findByDocumentId(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("document result " + documentId + " not found"));
+        return documentResultView(documentId, result);
+    }
+
+    /**
+     * 构建 OCR 结果读模型。
+     *
+     * @param documentId 文档 ID
+     * @param result OCR 结果
+     * @return 结果读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> documentResultView(String documentId, OcrResult result) {
         Map<String, Object> summary = Map.of(
                 "pageCount", result.pageText().size(),
                 "blockCount", result.layoutBlocks().size(),
@@ -341,6 +419,75 @@ public class OcrQueryService {
     public Map<String, Object> getEvents(String batchId) {
         List<Map<String, Object>> events = eventRepository.listByBatchId(batchId).stream().map(this::eventView).toList();
         return Map.of("batch_id", batchId, "events", events);
+    }
+
+    /**
+     * 获取 caller 范围内批次事件时间线。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 事件时间线
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> getEvents(CallerIdentity caller, String batchId) {
+        Batch batch = findCallerBatch(caller, batchId);
+        List<Map<String, Object>> events = eventRepository.listByBatchId(batch.batchId()).stream()
+                .map(this::eventView)
+                .toList();
+        return Map.of("batch_id", batch.batchId(), "events", events);
+    }
+
+    /**
+     * 查找 caller 范围内批次。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 批次聚合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Batch findCallerBatch(CallerIdentity caller, String batchId) {
+        return batchRepository.findByIdForCaller(caller, batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
+    }
+
+    /**
+     * 查找 caller 范围内文档。
+     *
+     * @param caller caller 身份
+     * @param documentId 文档 ID
+     * @return 文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private DocumentJob findCallerDocument(CallerIdentity caller, String documentId) {
+        DocumentJob document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("document " + documentId + " not found"));
+        findCallerBatch(caller, document.batchId());
+        return document;
+    }
+
+    /**
+     * 构建批次读模型。
+     *
+     * @param batch 批次聚合
+     * @return 批次读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> batchView(Batch batch) {
+        return Map.ofEntries(
+                Map.entry(BATCH_ID_FIELD, batch.batchId()),
+                Map.entry(STATUS_FIELD, batch.status().name().toLowerCase(Locale.ROOT)),
+                Map.entry(TOTAL_FILES_FIELD, batch.totalFiles()),
+                Map.entry(COMPLETED_FILES_FIELD, batch.completedFiles()),
+                Map.entry(FAILED_FILES_FIELD, batch.failedFiles()),
+                Map.entry(PROGRESS_PERCENT_FIELD, batchProgress(batch)),
+                Map.entry("metadata", batch.metadata().values()),
+                Map.entry(CREATED_AT_FIELD, batch.createdAt().toString()),
+                Map.entry(UPDATED_AT_FIELD, batch.updatedAt().toString())
+        );
     }
 
     private int batchProgress(Batch batch) {

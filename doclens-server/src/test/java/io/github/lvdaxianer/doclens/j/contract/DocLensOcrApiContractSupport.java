@@ -5,10 +5,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.UUID;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +14,10 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * DocLens OCR API 契约测试共享支持。
@@ -65,6 +65,10 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
         registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
         registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
         registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
+        registry.add("doclens.clients.credentials[1].client-id", () -> FOREIGN_CLIENT_ID);
+        registry.add("doclens.clients.credentials[1].source-app", () -> FOREIGN_SOURCE_APP);
+        registry.add("doclens.clients.credentials[1].tenant-key", () -> FOREIGN_TENANT_KEY);
+        registry.add("doclens.clients.credentials[1].api-key", () -> FOREIGN_API_KEY);
     }
 
     /**
@@ -116,7 +120,7 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
      */
     protected MvcResult uploadBatch() throws Exception {
         MockMultipartFile first = new MockMultipartFile("files", "a.md", "text/markdown", "# A\n正文".getBytes());
-        MockMultipartFile second = new MockMultipartFile("files", "b.png", "image/png", "png-bytes".getBytes());
+        MockMultipartFile second = new MockMultipartFile("files", "b.md", "text/markdown", "# B\n正文".getBytes());
         return mockMvc.perform(authenticatedMultipart("/api/v1/batches")
                         .file(first)
                         .file(second)
@@ -284,10 +288,11 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
         jdbcTemplate.update("""
                 INSERT INTO ocr_batches (
                     batch_id, status, total_files, completed_files, failed_files, current_document_id,
-                    current_document_name, current_stage, metadata, callback_url, idempotency_key, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    current_document_name, current_stage, metadata, callback_url, idempotency_key, created_at, updated_at,
+                    client_id, source_app, tenant_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, batchId, "processing", 1, 0, 0, documentId, "processing.pdf", "ocr_images", "{}",
-                null, null, now, now);
+                null, null, now, now, TEST_CLIENT_ID, TEST_SOURCE_APP, TEST_TENANT_KEY);
     }
 
     /**

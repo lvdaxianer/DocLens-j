@@ -24,20 +24,20 @@ class LlmConfigSelectorTest {
     private static final OffsetDateTime CHECKED_AT = OffsetDateTime.parse("2026-06-12T12:00:00+08:00");
 
     /**
-     * 应优先选择同用途默认且健康的配置。
+     * 首次选择应命中稳定排序池中的第一个健康配置。
      *
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
     @Test
-    void selectsDefaultEnabledHealthyConfig() {
+    void selectsFirstHealthyConfigFromStableRoundRobinPool() {
         LlmConfigSelector selector = new LlmConfigSelector(new InMemoryConfigRepository(List.of(
                 healthyConfig("backup", 1),
                 defaultConfig("default", 20, true))));
 
         Optional<LlmMarkdownConfig> selected = selector.select(LlmUsageType.MARKDOWN_POST_PROCESSING);
 
-        assertThat(selected).get().extracting(LlmMarkdownConfig::id).isEqualTo("default");
+        assertThat(selected).get().extracting(LlmMarkdownConfig::id).isEqualTo("backup");
     }
 
     /**

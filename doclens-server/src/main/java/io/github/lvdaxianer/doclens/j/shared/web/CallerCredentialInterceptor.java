@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.shared.web;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver.ResolvedCallerCredential;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,9 @@ public class CallerCredentialInterceptor implements HandlerInterceptor {
     /** Request attribute 中保存的 caller identity 键。 */
     public static final String CALLER_IDENTITY_ATTRIBUTE = CallerCredentialInterceptor.class.getName()
             + ".callerIdentity";
+    /** Request attribute 中保存的 caller 凭证解析结果键。 */
+    public static final String RESOLVED_CREDENTIAL_ATTRIBUTE = CallerCredentialInterceptor.class.getName()
+            + ".resolvedCredential";
 
     private static final String API_KEY_HEADER = "X-DocLens-Api-Key";
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -48,9 +52,11 @@ public class CallerCredentialInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(API_KEY_HEADER),
-                request.getHeader(AUTHORIZATION_HEADER));
+        ResolvedCallerCredential resolvedCredential = callerCredentialResolver.resolveWithCredential(
+                request.getHeader(API_KEY_HEADER), request.getHeader(AUTHORIZATION_HEADER));
+        CallerIdentity caller = resolvedCredential.callerIdentity();
         request.setAttribute(CALLER_IDENTITY_ATTRIBUTE, caller);
+        request.setAttribute(RESOLVED_CREDENTIAL_ATTRIBUTE, resolvedCredential);
         return true;
     }
 }

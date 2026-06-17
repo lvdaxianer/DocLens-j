@@ -91,6 +91,23 @@ class CallerCredentialResolverTest {
     }
 
     /**
+     * 验证空密钥占位凭证不会阻塞启动，也不会创建可用 caller。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void ignoresCredentialWithoutAnySecret() {
+        CallerCredentialResolver resolver = new CallerCredentialResolver(new ClientsProperties(List.of(
+                new CallerCredentialProperties("local-demo", "dashboard", "local", "", "", Map.of())
+        )));
+
+        assertThatThrownBy(() -> resolver.resolve("", ""))
+                .isInstanceOf(CallerCredentialException.class)
+                .hasMessage("unauthorized caller credential");
+    }
+
+    /**
      * 创建测试解析器。
      *
      * @return 接入方凭证解析器

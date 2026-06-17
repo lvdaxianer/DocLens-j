@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -24,16 +25,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class OcrQueryController {
 
     private final DocLensEngine docLensEngine;
+    private final OcrQueryHttpFacade ocrQueryHttpFacade;
 
     /**
      * 创建 OCR 查询控制器。
      *
      * @param docLensEngine DocLens 引擎
+     * @param ocrQueryHttpFacade OCR 查询 HTTP 门面
      * @author lvdaxianerplus
-     * @date 2026-06-07
+     * @date 2026-06-17
      */
-    public OcrQueryController(DocLensEngine docLensEngine) {
+    public OcrQueryController(
+            DocLensEngine docLensEngine,
+            OcrQueryHttpFacade ocrQueryHttpFacade
+    ) {
         this.docLensEngine = docLensEngine;
+        this.ocrQueryHttpFacade = ocrQueryHttpFacade;
     }
 
     /**
@@ -45,8 +52,8 @@ public class OcrQueryController {
      * @date 2026-06-07
      */
     @GetMapping("/batches/{batchId}")
-    public Map<String, Object> getBatch(@PathVariable String batchId) {
-        return docLensEngine.getBatch(batchId);
+    public Map<String, Object> getBatch(@PathVariable String batchId, HttpServletRequest request) {
+        return ocrQueryHttpFacade.getBatch(request, batchId);
     }
 
     /**
@@ -58,9 +65,12 @@ public class OcrQueryController {
      * @date 2026-06-14
      */
     @GetMapping("/batches/by-idempotency-key/{idempotencyKey}")
-    public ResponseEntity<Map<String, Object>> getBatchByIdempotencyKey(@PathVariable String idempotencyKey) {
+    public ResponseEntity<Map<String, Object>> getBatchByIdempotencyKey(
+            @PathVariable String idempotencyKey,
+            HttpServletRequest request
+    ) {
         try {
-            return ResponseEntity.ok(docLensEngine.getBatchByIdempotencyKey(idempotencyKey));
+            return ResponseEntity.ok(ocrQueryHttpFacade.getBatchByIdempotencyKey(request, idempotencyKey));
         } catch (ResourceNotFoundException ex) {
             Map<String, Object> body = new LinkedHashMap<>(3);
             body.put("code", 404);
@@ -79,8 +89,8 @@ public class OcrQueryController {
      * @date 2026-06-07
      */
     @GetMapping("/documents/{documentId}")
-    public Map<String, Object> getDocument(@PathVariable String documentId) {
-        return docLensEngine.getDocument(documentId);
+    public Map<String, Object> getDocument(@PathVariable String documentId, HttpServletRequest request) {
+        return ocrQueryHttpFacade.getDocument(request, documentId);
     }
 
     /**
@@ -92,8 +102,8 @@ public class OcrQueryController {
      * @date 2026-06-07
      */
     @GetMapping("/documents/{documentId}/result")
-    public Map<String, Object> getDocumentResult(@PathVariable String documentId) {
-        return docLensEngine.getDocumentResult(documentId);
+    public Map<String, Object> getDocumentResult(@PathVariable String documentId, HttpServletRequest request) {
+        return ocrQueryHttpFacade.getDocumentResult(request, documentId);
     }
 
     /**
@@ -105,7 +115,8 @@ public class OcrQueryController {
      * @date 2026-06-10
      */
     @PostMapping("/documents/{documentId}/retry")
-    public Map<String, Object> retryDocument(@PathVariable String documentId) {
+    public Map<String, Object> retryDocument(@PathVariable String documentId, HttpServletRequest request) {
+        ocrQueryHttpFacade.assertDocumentVisible(request, documentId);
         return docLensEngine.retryDocument(documentId);
     }
 
@@ -118,7 +129,8 @@ public class OcrQueryController {
      * @date 2026-06-10
      */
     @DeleteMapping("/documents/{documentId}")
-    public Map<String, Object> deleteDocument(@PathVariable String documentId) {
+    public Map<String, Object> deleteDocument(@PathVariable String documentId, HttpServletRequest request) {
+        ocrQueryHttpFacade.assertDocumentVisible(request, documentId);
         return docLensEngine.deleteDocument(documentId);
     }
 
@@ -131,7 +143,8 @@ public class OcrQueryController {
      * @date 2026-06-11
      */
     @DeleteMapping("/batches/{batchId}")
-    public Map<String, Object> deleteBatch(@PathVariable String batchId) {
+    public Map<String, Object> deleteBatch(@PathVariable String batchId, HttpServletRequest request) {
+        ocrQueryHttpFacade.assertBatchVisible(request, batchId);
         return docLensEngine.deleteBatch(batchId);
     }
 
@@ -144,7 +157,7 @@ public class OcrQueryController {
      * @date 2026-06-07
      */
     @GetMapping("/batches/{batchId}/events")
-    public Map<String, Object> getEvents(@PathVariable String batchId) {
-        return docLensEngine.getEvents(batchId);
+    public Map<String, Object> getEvents(@PathVariable String batchId, HttpServletRequest request) {
+        return ocrQueryHttpFacade.getEvents(request, batchId);
     }
 }

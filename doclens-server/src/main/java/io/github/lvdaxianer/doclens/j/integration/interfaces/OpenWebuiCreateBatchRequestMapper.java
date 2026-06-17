@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.integration.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
+import io.github.lvdaxianer.doclens.j.shared.web.CallerIdentityRequestResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +31,22 @@ public class OpenWebuiCreateBatchRequestMapper {
     private static final String FILES_PARAM = "files";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
+    private final CallerIdentityRequestResolver callerIdentityRequestResolver;
+
+    /**
+     * 将 Open WebUI multipart 请求转换为 DocLens 创建请求。
+     *
+     * @param callerIdentityRequestResolver caller 请求解析器
+     * @param request HTTP 请求
+     * @param metadata Open WebUI metadata
+     * @return DocLens 创建批次请求
+     * @author lvdaxianerplus
+     * @date 2026-06-12
+     */
+    public OpenWebuiCreateBatchRequestMapper(CallerIdentityRequestResolver callerIdentityRequestResolver) {
+        this.callerIdentityRequestResolver = callerIdentityRequestResolver;
+    }
+
     /**
      * 将 Open WebUI multipart 请求转换为 DocLens 创建请求。
      *
@@ -40,9 +58,11 @@ public class OpenWebuiCreateBatchRequestMapper {
      */
     public CreateBatchRequest toRequest(HttpServletRequest request, OpenWebuiMetadata metadata) {
         List<MultipartFile> files = extractFiles(request);
+        CallerIdentity caller = callerIdentityRequestResolver.resolve(request);
         return new CreateBatchRequest(toDocumentInputs(files), metadata.values(), request.getParameter(CALLBACK_URL_PARAM),
                 request.getParameter(IDEMPOTENCY_KEY_PARAM), request.getParameter(ADAPTER_OVERRIDE_PARAM),
-                request.getParameter(PDF_MODE_PARAM));
+                request.getParameter(PDF_MODE_PARAM), null, null, null, null, caller.clientId(),
+                caller.sourceApp(), caller.tenantKey().orElse(""));
     }
 
     /**

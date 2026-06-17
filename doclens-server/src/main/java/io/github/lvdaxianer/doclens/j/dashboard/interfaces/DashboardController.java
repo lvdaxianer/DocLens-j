@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.dashboard.interfaces;
 
-import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryWorker;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,18 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
 
-    private final DashboardQueryService dashboardQueryService;
+    private final DashboardHttpFacade dashboardHttpFacade;
     private final CallbackDeliveryWorker callbackDeliveryWorker;
 
     /**
      * 创建 Dashboard 控制器。
      *
-     * @param dashboardQueryService Dashboard 查询服务
+     * @param dashboardHttpFacade Dashboard HTTP 查询门面
+     * @param callbackDeliveryWorker 回调投递 worker
      * @author lvdaxianerplus
-     * @date 2026-06-08
+     * @date 2026-06-17
      */
-    public DashboardController(DashboardQueryService dashboardQueryService, CallbackDeliveryWorker callbackDeliveryWorker) {
-        this.dashboardQueryService = dashboardQueryService;
+    public DashboardController(
+            DashboardHttpFacade dashboardHttpFacade,
+            CallbackDeliveryWorker callbackDeliveryWorker
+    ) {
+        this.dashboardHttpFacade = dashboardHttpFacade;
         this.callbackDeliveryWorker = callbackDeliveryWorker;
     }
 
@@ -42,8 +46,8 @@ public class DashboardController {
      * @date 2026-06-08
      */
     @GetMapping("/summary")
-    public Map<String, Object> summary() {
-        return dashboardQueryService.summary();
+    public Map<String, Object> summary(HttpServletRequest request) {
+        return dashboardHttpFacade.summary(request);
     }
 
     /**
@@ -54,8 +58,8 @@ public class DashboardController {
      * @date 2026-06-08
      */
     @GetMapping("/batches")
-    public Map<String, Object> batches() {
-        return dashboardQueryService.batches();
+    public Map<String, Object> batches(HttpServletRequest request) {
+        return dashboardHttpFacade.batches(request);
     }
 
     /**
@@ -67,8 +71,8 @@ public class DashboardController {
      * @date 2026-06-08
      */
     @GetMapping("/batches/{batchId}")
-    public Map<String, Object> batchDetail(@PathVariable String batchId) {
-        return dashboardQueryService.batchDetail(batchId);
+    public Map<String, Object> batchDetail(@PathVariable String batchId, HttpServletRequest request) {
+        return dashboardHttpFacade.batchDetail(request, batchId);
     }
 
     /**
@@ -93,7 +97,7 @@ public class DashboardController {
      * @date 2026-06-08
      */
     @GetMapping("/ocr-health")
-    public Map<String, Object> ocrHealth() {
-        return dashboardQueryService.ocrHealth();
+    public Map<String, Object> ocrHealth(HttpServletRequest request) {
+        return dashboardHttpFacade.ocrHealth(request);
     }
 }

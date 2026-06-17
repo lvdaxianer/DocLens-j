@@ -53,6 +53,8 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGeneratorOcrCallId
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
 import io.github.lvdaxianer.doclens.j.shared.config.MybatisPlusConfiguration;
 import io.github.lvdaxianer.doclens.j.shared.config.WorkerConfiguration;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.CallerTrafficLimitPolicy;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.CallerTrafficRateLimiter;
 import io.github.lvdaxianer.doclens.j.shared.application.SpringTransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import io.github.lvdaxianer.doclens.j.storage.LocalObjectStorage;
@@ -146,6 +148,32 @@ public class DocLensAutoConfiguration {
     @ConditionalOnMissingBean
     CallerCredentialResolver callerCredentialResolver(DocLensSpringProperties properties) {
         return new CallerCredentialResolver(properties.clients());
+    }
+
+    /**
+     * 创建调用方流量限额合并策略。
+     *
+     * @return 调用方流量限额合并策略
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    CallerTrafficLimitPolicy callerTrafficLimitPolicy() {
+        return new CallerTrafficLimitPolicy();
+    }
+
+    /**
+     * 创建调用方接口组限流器。
+     *
+     * @return 调用方接口组限流器
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    CallerTrafficRateLimiter callerTrafficRateLimiter() {
+        return new CallerTrafficRateLimiter();
     }
 
     /**

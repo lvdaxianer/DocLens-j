@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.ingestion.domain;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +32,19 @@ public interface BatchRepository {
     Optional<Batch> findById(String batchId);
 
     /**
+     * 根据 caller 和 ID 查找批次。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 可选批次
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    default Optional<Batch> findByIdForCaller(CallerIdentity caller, String batchId) {
+        return findById(batchId).filter(batch -> belongsToCaller(batch, caller));
+    }
+
+    /**
      * 根据幂等键查找批次。
      *
      * @param idempotencyKey 幂等键
@@ -41,6 +55,19 @@ public interface BatchRepository {
     Optional<Batch> findByIdempotencyKey(String idempotencyKey);
 
     /**
+     * 根据 caller 和幂等键查找批次。
+     *
+     * @param caller caller 身份
+     * @param idempotencyKey 幂等键
+     * @return 可选批次
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    default Optional<Batch> findByIdempotencyKeyForCaller(CallerIdentity caller, String idempotencyKey) {
+        return findByIdempotencyKey(idempotencyKey).filter(batch -> belongsToCaller(batch, caller));
+    }
+
+    /**
      * 按更新时间倒序列出最近批次。
      *
      * @param limit 最大返回数量
@@ -49,6 +76,23 @@ public interface BatchRepository {
      * @date 2026-06-08
      */
     List<Batch> listRecent(int limit);
+
+    /**
+     * 按 caller 和更新时间倒序列出最近批次。
+     *
+     * @param caller caller 身份
+     * @param limit 最大返回数量
+     * @return 最近批次集合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    default List<Batch> listRecentForCaller(CallerIdentity caller, int limit) {
+        return listRecent(Math.max(limit, 1)).stream()
+                .filter(batch -> belongsToCaller(batch, caller))
+                .sorted(Comparator.comparing(Batch::updatedAt).reversed())
+                .limit(limit)
+                .toList();
+    }
 
     /**
      * 根据 ID 删除批次。
@@ -92,5 +136,11 @@ public interface BatchRepository {
             BatchStatus status
     ) {
         updateSummary(batchId, completedFiles, failedFiles, status);
+    }
+
+    private boolean belongsToCaller(Batch batch, CallerIdentity caller) {
+        return batch.callerIdentity().clientId().equals(caller.clientId())
+                && batch.callerIdentity().sourceApp().equals(caller.sourceApp())
+                && batch.callerIdentity().tenantKey().equals(caller.tenantKey());
     }
 }

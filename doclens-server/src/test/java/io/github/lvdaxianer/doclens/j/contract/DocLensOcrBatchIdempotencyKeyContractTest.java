@@ -223,10 +223,12 @@ class DocLensOcrBatchIdempotencyKeyContractTest extends DocLensOcrApiContractSup
         jdbcTemplate.update("""
                 INSERT INTO ocr_batches (
                     batch_id, status, total_files, completed_files, failed_files, current_document_id,
-                    current_document_name, current_stage, metadata, callback_url, idempotency_key, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    current_document_name, current_stage, metadata, callback_url, idempotency_key, created_at, updated_at,
+                    client_id, source_app, tenant_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, batchId, batchStatus, totalFiles, completedFiles, failedFiles, currentDocumentId,
-                currentDocumentName, currentStage, "{}", null, idempotencyKey, CREATED_AT, UPDATED_AT);
+                currentDocumentName, currentStage, "{}", null, idempotencyKey, CREATED_AT, UPDATED_AT,
+                TEST_CLIENT_ID, TEST_SOURCE_APP, TEST_TENANT_KEY);
     }
 
     /**

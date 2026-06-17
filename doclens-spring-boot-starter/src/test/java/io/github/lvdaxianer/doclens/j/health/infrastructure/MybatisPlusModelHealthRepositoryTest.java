@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.health.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthCounters;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthFailure;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthRepository;
@@ -10,6 +11,7 @@ import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthStatus;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTargetId;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTargetType;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTimeline;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -228,5 +231,17 @@ class MybatisPlusModelHealthRepositoryTest {
             MybatisPlusModelHealthRepository.class
     })
     static class TestApplication {
+
+        /**
+         * 为测试上下文补齐仓储依赖的 JSON 编解码器。
+         *
+         * @return JSON 编解码器
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        @Bean
+        JsonCodec jsonCodec() {
+            return new JsonCodec(new ObjectMapper());
+        }
     }
 }

@@ -28,6 +28,14 @@ interface CallerCredentialContractSupport {
     String TEST_SOURCE_APP = "knowledge-base";
     /** 测试 caller tenant key。 */
     String TEST_TENANT_KEY = "tenant-east";
+    /** 外部测试 caller API Key。 */
+    String FOREIGN_API_KEY = "foreign-api-key";
+    /** 外部测试 caller client id。 */
+    String FOREIGN_CLIENT_ID = "foreign-flow";
+    /** 外部测试 caller source app。 */
+    String FOREIGN_SOURCE_APP = "foreign-base";
+    /** 外部测试 caller tenant key。 */
+    String FOREIGN_TENANT_KEY = "tenant-west";
 
     /**
      * 创建带 caller 凭证的 multipart 请求。

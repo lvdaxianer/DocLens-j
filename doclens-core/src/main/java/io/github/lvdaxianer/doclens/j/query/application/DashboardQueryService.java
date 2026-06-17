@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -17,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Dashboard 控制台读模型查询服务。
@@ -106,6 +108,35 @@ public class DashboardQueryService {
         List<Batch> batches = batchRepository.listRecent(RECENT_BATCH_LIMIT);
         List<DocumentJob> documents = documentRepository.listRecent(RECENT_DOCUMENT_LIMIT);
         List<OcrEvent> events = eventRepository.listRecent(RECENT_EVENT_LIMIT);
+        return summaryView(batches, documents, events);
+    }
+
+    /**
+     * 获取 caller 范围内 Dashboard 总览。
+     *
+     * @param caller caller 身份
+     * @return Dashboard 总览读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> summary(CallerIdentity caller) {
+        List<Batch> batches = batchRepository.listRecentForCaller(caller, RECENT_BATCH_LIMIT);
+        List<DocumentJob> documents = documentRepository.listByBatchIds(batchIds(batches));
+        List<OcrEvent> events = callerEvents(batches);
+        return summaryView(batches, documents, events);
+    }
+
+    /**
+     * 构建 Dashboard 总览。
+     *
+     * @param batches 批次集合
+     * @param documents 文档集合
+     * @param events 事件集合
+     * @return Dashboard 总览读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> summaryView(List<Batch> batches, List<DocumentJob> documents, List<OcrEvent> events) {
         return Map.ofEntries(
                 Map.entry("overview", overview(batches, documents)),
                 Map.entry("throughput", throughput(documents)),
@@ -132,6 +163,20 @@ public class DashboardQueryService {
     }
 
     /**
+     * 获取 caller 范围内 Dashboard 批次列表。
+     *
+     * @param caller caller 身份
+     * @return 批次列表读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> batches(CallerIdentity caller) {
+        List<Batch> batches = batchRepository.listRecentForCaller(caller, RECENT_BATCH_LIMIT);
+        List<DocumentJob> documents = documentRepository.listByBatchIds(batchIds(batches));
+        return Map.of("items", rowAssembler.batchRows(batches, documents), "total", batches.size());
+    }
+
+    /**
      * 获取 Dashboard 批次详情。
      *
      * @param batchId 批次 ID
@@ -142,6 +187,34 @@ public class DashboardQueryService {
     public Map<String, Object> batchDetail(String batchId) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
+        return batchDetailView(batch);
+    }
+
+    /**
+     * 获取 caller 范围内 Dashboard 批次详情。
+     *
+     * @param caller caller 身份
+     * @param batchId 批次 ID
+     * @return 批次详情读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> batchDetail(CallerIdentity caller, String batchId) {
+        Batch batch = batchRepository.findByIdForCaller(caller, batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("batch " + batchId + " not found"));
+        return batchDetailView(batch);
+    }
+
+    /**
+     * 构建 Dashboard 批次详情。
+     *
+     * @param batch 批次聚合
+     * @return 批次详情读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> batchDetailView(Batch batch) {
+        String batchId = batch.batchId();
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         List<OcrEvent> events = eventRepository.listByBatchId(batchId);
         List<CallbackJob> callbackJobs = callbackJobRepository.listByBatchId(batchId);
@@ -166,6 +239,32 @@ public class DashboardQueryService {
      */
     public Map<String, Object> ocrHealth() {
         List<DocumentJob> documents = documentRepository.listRecent(RECENT_DOCUMENT_LIMIT);
+        return ocrHealthView(documents);
+    }
+
+    /**
+     * 获取 caller 范围内 OCR 健康摘要。
+     *
+     * @param caller caller 身份
+     * @return OCR 健康读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public Map<String, Object> ocrHealth(CallerIdentity caller) {
+        List<Batch> batches = batchRepository.listRecentForCaller(caller, RECENT_BATCH_LIMIT);
+        List<DocumentJob> documents = documentRepository.listByBatchIds(batchIds(batches));
+        return ocrHealthView(documents);
+    }
+
+    /**
+     * 构建 OCR 健康摘要。
+     *
+     * @param documents 文档集合
+     * @return OCR 健康读模型
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> ocrHealthView(List<DocumentJob> documents) {
         return Map.ofEntries(
                 Map.entry("adapter_key", DocLensConstants.DEFAULT_ADAPTER_KEY),
                 Map.entry("success_rate", ratio(completedCount(documents), documents.size())),
@@ -174,6 +273,21 @@ public class DashboardQueryService {
                 Map.entry("ocr_resources", ocrMetricsProvider.ocrResources()),
                 Map.entry("recent_failures", rowAssembler.failureRows(documents))
         );
+    }
+
+    /**
+     * 获取 caller 批次关联事件。
+     *
+     * @param batches caller 批次集合
+     * @return caller 事件集合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private List<OcrEvent> callerEvents(List<Batch> batches) {
+        Set<String> callerBatchIds = Set.copyOf(batchIds(batches));
+        return eventRepository.listRecent(RECENT_EVENT_LIMIT).stream()
+                .filter(event -> callerBatchIds.contains(event.batchId()))
+                .toList();
     }
 
     private Map<String, Object> overview(List<Batch> batches, List<DocumentJob> documents) {

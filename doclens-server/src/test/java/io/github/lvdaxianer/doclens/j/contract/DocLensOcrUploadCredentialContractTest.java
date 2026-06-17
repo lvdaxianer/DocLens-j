@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * DocLens OCR 上传接入方凭证契约测试。
@@ -67,12 +69,15 @@ class DocLensOcrUploadCredentialContractTest extends DocLensOcrApiContractSuppor
      */
     @Test
     void batchUploadRejectsMissingCredentialWhenCredentialsConfigured() throws Exception {
-        mockMvc.perform(multipart("/api/v1/batches")
+        MvcResult result = mockMvc.perform(multipart("/api/v1/batches")
                         .file(uploadFile())
                         .param("metadata", "{\"bizId\":\"CRED-MISSING\"}")
                         .param("idempotency_key", "idem-credential-missing-" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.detail").value("unauthorized caller credential"));
+                .andExpect(jsonPath("$.detail").value("unauthorized caller credential"))
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString()).doesNotContain(API_KEY).doesNotContain(BEARER_TOKEN);
     }
 
     /**
@@ -113,6 +118,27 @@ class DocLensOcrUploadCredentialContractTest extends DocLensOcrApiContractSuppor
                 .andExpect(jsonPath("$.client_id").value(CLIENT_ID))
                 .andExpect(jsonPath("$.source_app").value(SOURCE_APP))
                 .andExpect(jsonPath("$.tenant_key").value(TENANT_KEY));
+    }
+
+    /**
+     * 验证无效凭证会拒绝上传。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void batchUploadRejectsInvalidCredential() throws Exception {
+        MvcResult result = mockMvc.perform(multipart("/api/v1/batches")
+                        .file(uploadFile())
+                        .header(API_KEY_HEADER, "wrong-api-key")
+                        .param("metadata", "{\"bizId\":\"CRED-INVALID\"}")
+                        .param("idempotency_key", "idem-credential-invalid-" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("unauthorized caller credential"))
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString()).doesNotContain("wrong-api-key").doesNotContain(BEARER_TOKEN);
     }
 
     /**

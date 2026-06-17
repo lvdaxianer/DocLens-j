@@ -24,23 +24,23 @@
 
 ## 4. Server Enforcement
 
-- [ ] 4.1 Add failing server contract tests proving `dashboard-read`,
+- [x] 4.1 Add failing server contract tests proving `dashboard-read`,
   `detail-read`, `upload-write`, `ocr-mutation`, `config-mutation`, and
   `admin-health` can have different limits and return `429` independently.
-- [ ] 4.2 Wire traffic group resolution and caller rate limiting into the web
+- [x] 4.2 Wire traffic group resolution and caller rate limiting into the web
   request chain after caller credential resolution, without changing resource
   ownership filtering semantics.
 
 ## 5. Error Semantics and Protection
 
-- [ ] 5.1 Add failing tests for `401` missing/invalid credential, `404`
+- [x] 5.1 Add failing tests for `401` missing/invalid credential, `404`
   cross-caller resource access, `429` caller/group over-limit, and `503`
   global protection.
-- [ ] 5.2 Update exception mapping, response headers, and logging so errors are
+- [x] 5.2 Update exception mapping, response headers, and logging so errors are
   distinguishable while credentials remain redacted.
 
 ## 6. Verification and Planning Commit
 
-- [ ] 6.1 Run focused backend and frontend tests, broader Maven/frontend
+- [x] 6.1 Run focused backend and frontend tests, broader Maven/frontend
   verification, OpenSpec strict validation, and code-review-spec against the
   diff before marking implementation complete.
