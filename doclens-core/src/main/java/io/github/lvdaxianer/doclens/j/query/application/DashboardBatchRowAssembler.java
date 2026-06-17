@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
@@ -77,6 +78,10 @@ class DashboardBatchRowAssembler {
                 Map.entry("updated_at", batch.updatedAt().toString()),
                 Map.entry("callback_url", batch.callbackUrl().orElse(DocLensConstants.EMPTY_VALUE)),
                 Map.entry("idempotency_key", batch.idempotencyKey().orElse(DocLensConstants.EMPTY_VALUE)),
+                Map.entry(CallerIdentity.CLIENT_ID_FIELD, batch.callerIdentity().clientId()),
+                Map.entry(CallerIdentity.SOURCE_APP_FIELD, batch.callerIdentity().sourceApp()),
+                Map.entry(CallerIdentity.TENANT_KEY_FIELD,
+                        batch.callerIdentity().tenantKey().orElse(DocLensConstants.EMPTY_VALUE)),
                 Map.entry("metadata", batch.metadata().values())
         );
     }

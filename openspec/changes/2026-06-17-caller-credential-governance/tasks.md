@@ -1,6 +1,6 @@
 ## 1. Caller Attribution Storage
 
-- [ ] 1.1 Add the caller identity domain/API/application model, persist it on
+- [x] 1.1 Add the caller identity domain/API/application model, persist it on
   batches, expose it in upload responses and Dashboard batch read models, and
   cover the behavior with focused core tests plus a migration test.
 

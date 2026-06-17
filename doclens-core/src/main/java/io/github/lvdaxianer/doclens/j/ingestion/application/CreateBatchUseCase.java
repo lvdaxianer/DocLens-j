@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.ingestion.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -89,13 +90,13 @@ public class CreateBatchUseCase {
         String batchId = idGenerator.newBatchId();
         JsonPayload metadata = new JsonPayload(command.metadata());
         Batch batch = Batch.create(batchId, command.files().size(), metadata, optionalText(command.callbackUrl()),
-                optionalText(command.idempotencyKey()), now);
+                optionalText(command.idempotencyKey()), now, command.callerIdentity());
         batchRepository.save(batch);
         BatchDocumentPlan plan = new BatchDocumentPlan(command, batchId, metadata, now);
         List<DocumentJob> documents = createDocuments(plan);
         documentRepository.saveAll(documents);
         eventRepository.saveAll(initialEvents(plan, documents));
-        return uploadResponse(batchId, documents);
+        return uploadResponse(batch, documents);
     }
 
     private void triggerProcessing(String batchId) {
@@ -202,10 +203,18 @@ public class CreateBatchUseCase {
         return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
-    private Map<String, Object> uploadResponse(String batchId, List<DocumentJob> documents) {
+    private Map<String, Object> uploadResponse(Batch batch, List<DocumentJob> documents) {
         List<Map<String, Object>> summaries = documents.stream().map(this::documentSummary).toList();
-        return Map.of("batch_id", batchId, "status", DocLensConstants.STAGE_QUEUED,
-                "total_files", summaries.size(), "documents", summaries);
+        CallerIdentity callerIdentity = batch.callerIdentity();
+        return Map.ofEntries(
+                Map.entry("batch_id", batch.batchId()),
+                Map.entry("status", DocLensConstants.STAGE_QUEUED),
+                Map.entry("total_files", summaries.size()),
+                Map.entry("documents", summaries),
+                Map.entry(CallerIdentity.CLIENT_ID_FIELD, callerIdentity.clientId()),
+                Map.entry(CallerIdentity.SOURCE_APP_FIELD, callerIdentity.sourceApp()),
+                Map.entry(CallerIdentity.TENANT_KEY_FIELD, callerIdentity.tenantKey().orElse(""))
+        );
     }
 
     private Map<String, Object> documentSummary(DocumentJob document) {

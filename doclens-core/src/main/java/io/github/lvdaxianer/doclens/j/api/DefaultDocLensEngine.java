@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchCommand;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.application.UploadFileCommand;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
@@ -13,6 +14,7 @@ import io.github.lvdaxianer.doclens.j.query.application.OcrQueryService;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -116,7 +118,20 @@ public class DefaultDocLensEngine implements DocLensEngine {
 
     private CreateBatchCommand toCommand(CreateBatchRequest request) {
         return new CreateBatchCommand(toUploadFiles(request.files()), request.metadata(), request.callbackUrl(),
-                request.idempotencyKey(), request.adapterOverride(), request.pdfMode(), toOcrRoutePolicy(request));
+                request.idempotencyKey(), request.adapterOverride(), request.pdfMode(), toOcrRoutePolicy(request),
+                callerIdentity(request));
+    }
+
+    /**
+     * 将 API 请求字段转换为可信调用方身份。
+     *
+     * @param request 创建批次请求
+     * @return 调用方身份
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private CallerIdentity callerIdentity(CreateBatchRequest request) {
+        return new CallerIdentity(request.clientId(), request.sourceApp(), Optional.ofNullable(request.tenantKey()));
     }
 
     /**

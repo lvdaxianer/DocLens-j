@@ -24,6 +24,9 @@ class OcrBatchSchemaIdempotencyKeyTest {
     private static final String V1_MIGRATION = "/db/migration/V1__doclens_ocr_schema.sql";
     private static final Pattern V1_IDEMPOTENCY_UNIQUE_PATTERN =
             Pattern.compile("idempotency_key\\s+VARCHAR\\(256\\)\\s+UNIQUE", Pattern.CASE_INSENSITIVE);
+    private static final String CALLER_CLIENT_ID_COLUMN = "CLIENT_ID";
+    private static final String CALLER_SOURCE_APP_COLUMN = "SOURCE_APP";
+    private static final String CALLER_TENANT_KEY_COLUMN = "TENANT_KEY";
     private static final String FRESH_JDBC_URL = "jdbc:h2:mem:fresh_batch_idempotency_schema;"
             + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
     private static final String MIGRATED_JDBC_URL = "jdbc:h2:mem:migrated_batch_idempotency_schema;"
@@ -53,6 +56,21 @@ class OcrBatchSchemaIdempotencyKeyTest {
         try (Connection connection = DriverManager.getConnection(FRESH_JDBC_URL, "sa", "")) {
             insertBatch(connection, "batch-1");
             insertBatch(connection, "batch-2");
+        }
+    }
+
+    /**
+     * 数据库 schema 应为批次保存调用方归因字段。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void schemaAddsCallerAttributionColumnsToBatches() throws SQLException {
+        migrateFreshSchema();
+        try (Connection connection = DriverManager.getConnection(FRESH_JDBC_URL, "sa", "")) {
+            assertThat(batchColumnNames(connection))
+                    .contains(CALLER_CLIENT_ID_COLUMN, CALLER_SOURCE_APP_COLUMN, CALLER_TENANT_KEY_COLUMN);
         }
     }
 
@@ -152,6 +170,24 @@ class OcrBatchSchemaIdempotencyKeyTest {
             statement.setObject(4, BASE_TIME);
             statement.executeUpdate();
         }
+    }
+
+    /**
+     * 查询批次表字段名称。
+     *
+     * @param connection 数据库连接
+     * @return 字段名称集合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private java.util.List<String> batchColumnNames(Connection connection) throws SQLException {
+        java.util.List<String> columnNames = new java.util.ArrayList<>(16);
+        try (java.sql.ResultSet columns = connection.getMetaData().getColumns(null, null, "ocr_batches", null)) {
+            while (columns.next()) {
+                columnNames.add(columns.getString("COLUMN_NAME").toUpperCase(java.util.Locale.ROOT));
+            }
+        }
+        return columnNames;
     }
 
     /**

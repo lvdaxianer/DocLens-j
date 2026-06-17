@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
@@ -184,6 +185,9 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
         entity.setMetadata(jsonCodec.toJson(batch.metadata().values()));
         entity.setCallbackUrl(batch.callbackUrl().orElse(null));
         entity.setIdempotencyKey(batch.idempotencyKey().orElse(null));
+        entity.setClientId(batch.callerIdentity().clientId());
+        entity.setSourceApp(batch.callerIdentity().sourceApp());
+        entity.setTenantKey(batch.callerIdentity().tenantKey().orElse(null));
         entity.setCreatedAt(batch.createdAt());
         entity.setUpdatedAt(batch.updatedAt());
         return entity;
@@ -204,6 +208,19 @@ public class MybatisPlusBatchRepository extends ServiceImpl<BatchMapper, BatchEn
                 Optional.ofNullable(entity.getCurrentDocumentName()).filter(value -> !value.isBlank()),
                 entity.getCurrentStage(), new JsonPayload(jsonCodec.parseObject(entity.getMetadata())),
                 Optional.ofNullable(entity.getCallbackUrl()), Optional.ofNullable(entity.getIdempotencyKey()),
-                entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getCreatedAt(), entity.getUpdatedAt(), callerIdentity(entity));
+    }
+
+    /**
+     * 从实体字段创建调用方身份。
+     *
+     * @param entity 批次持久化实体
+     * @return 调用方身份
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private CallerIdentity callerIdentity(BatchEntity entity) {
+        return new CallerIdentity(entity.getClientId(), entity.getSourceApp(),
+                Optional.ofNullable(entity.getTenantKey()));
     }
 }

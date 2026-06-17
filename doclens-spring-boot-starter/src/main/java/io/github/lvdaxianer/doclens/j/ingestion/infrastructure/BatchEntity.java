@@ -29,6 +29,9 @@ public class BatchEntity {
     private String metadata;
     private String callbackUrl;
     private String idempotencyKey;
+    private String clientId;
+    private String sourceApp;
+    private String tenantKey;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

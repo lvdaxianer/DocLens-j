@@ -9,6 +9,7 @@ import static io.github.lvdaxianer.doclens.j.query.application.DashboardQuerySer
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
@@ -33,6 +34,9 @@ class DashboardQueryServiceBatchDetailTest {
     private static final String TEST_IDEMPOTENCY_KEY = "openwebui:file:file-123:hash:abc";
     private static final String TEST_METADATA_FILE_ID = "file-123";
     private static final String TEST_METADATA_SOURCE = "open-webui";
+    private static final String TEST_CLIENT_ID = "openwebui-prod";
+    private static final String TEST_SOURCE_APP = "open-webui";
+    private static final String TEST_TENANT_KEY = "knowledge-team";
 
     /**
      * 批次详情应按上传顺序返回文档，并包含文件类型对应的处理轨道。
@@ -76,6 +80,26 @@ class DashboardQueryServiceBatchDetailTest {
         assertThat(batch.get("idempotency_key")).isEqualTo(TEST_IDEMPOTENCY_KEY);
         assertThat(metadata.get("source")).isEqualTo(TEST_METADATA_SOURCE);
         assertThat(metadata.get("openwebui_file_id")).isEqualTo(TEST_METADATA_FILE_ID);
+    }
+
+    /**
+     * 批次详情应暴露可信调用方身份，便于按接入系统排查。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void batchDetailExposesCallerIdentity() {
+        DashboardQueryService service = new DashboardQueryService(
+                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
+                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text", DocumentType.TEXT, 0))),
+                new InMemoryOcrEventRepository());
+
+        Map<?, ?> batch = batchOf(service.batchDetail("batch-test"));
+
+        assertThat(batch.get("client_id")).isEqualTo(TEST_CLIENT_ID);
+        assertThat(batch.get("source_app")).isEqualTo(TEST_SOURCE_APP);
+        assertThat(batch.get("tenant_key")).isEqualTo(TEST_TENANT_KEY);
     }
 
     /**
@@ -183,7 +207,8 @@ class DashboardQueryServiceBatchDetailTest {
                 TEST_METADATA_FILE_ID);
         return new Batch("batch-test", BatchStatus.COMPLETED, 1, 1, 0, Optional.empty(), Optional.empty(),
                 "completed", new JsonPayload(metadata), Optional.of(TEST_CALLBACK_URL),
-                Optional.of(TEST_IDEMPOTENCY_KEY), BASE_TIME, BASE_TIME.plusMinutes(5));
+                Optional.of(TEST_IDEMPOTENCY_KEY), BASE_TIME, BASE_TIME.plusMinutes(5),
+                new CallerIdentity(TEST_CLIENT_ID, TEST_SOURCE_APP, Optional.of(TEST_TENANT_KEY)));
     }
 
     /**

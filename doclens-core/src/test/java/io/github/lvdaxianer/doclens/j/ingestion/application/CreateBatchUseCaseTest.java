@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -34,7 +35,11 @@ class CreateBatchUseCaseTest {
     private static final int TEST_DOCUMENT_CAPACITY = 4;
     private static final int TEST_EVENT_CAPACITY = 8;
     private static final int TEST_OBJECT_CAPACITY = 4;
+    private static final String TEST_CLIENT_ID = "rag-flow";
+    private static final String TEST_SOURCE_APP = "knowledge-base";
+    private static final String TEST_TENANT_KEY = "tenant-east";
 
+    private InMemoryBatchRepository lastBatchRepository;
     private InMemoryDocumentJobRepository lastDocumentRepository;
 
     /**
@@ -80,6 +85,30 @@ class CreateBatchUseCaseTest {
     }
 
     /**
+     * 创建批次应保存可信调用方归因，并在上传响应中返回调用方字段。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void createPersistsCallerIdentityAndReturnsIt() {
+        RecordingBatchProcessingScheduler scheduler = new RecordingBatchProcessingScheduler();
+        CreateBatchUseCase useCase = createUseCase(scheduler, false);
+        CreateBatchCommand command = callerAttributedCommand();
+
+        Map<String, Object> response = useCase.create(command);
+        String batchId = String.valueOf(response.get("batch_id"));
+
+        assertThat(lastBatchRepository.batches.get(batchId).callerIdentity().clientId()).isEqualTo(TEST_CLIENT_ID);
+        assertThat(lastBatchRepository.batches.get(batchId).callerIdentity().sourceApp()).isEqualTo(TEST_SOURCE_APP);
+        assertThat(lastBatchRepository.batches.get(batchId).callerIdentity().tenantKey()).contains(TEST_TENANT_KEY);
+        assertThat(response)
+                .containsEntry("client_id", TEST_CLIENT_ID)
+                .containsEntry("source_app", TEST_SOURCE_APP)
+                .containsEntry("tenant_key", TEST_TENANT_KEY);
+    }
+
+    /**
      * 创建批次测试用例。
      *
      * @param scheduler 批次处理调度器
@@ -94,6 +123,7 @@ class CreateBatchUseCaseTest {
     ) {
         InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        lastBatchRepository = batchRepository;
         lastDocumentRepository = documentRepository;
         InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
         CreateBatchDependencies dependencies = new CreateBatchDependencies(batchRepository, documentRepository,
@@ -126,6 +156,20 @@ class CreateBatchUseCaseTest {
         OcrRoutePolicy routePolicy = OcrRoutePolicy.modelLoadBalance("paddle_ocr", "least-inflight");
         return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null,
                 "idem-route-test", null, null, routePolicy);
+    }
+
+    /**
+     * 创建带调用方归因的测试命令。
+     *
+     * @return 创建批次命令
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private CreateBatchCommand callerAttributedCommand() {
+        UploadFileCommand file = new UploadFileCommand("caller.txt", "hello".getBytes());
+        CallerIdentity caller = new CallerIdentity(TEST_CLIENT_ID, TEST_SOURCE_APP, Optional.of(TEST_TENANT_KEY));
+        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null,
+                "idem-caller-test", null, null, OcrRoutePolicy.defaultPolicy(), caller);
     }
 
     /**
