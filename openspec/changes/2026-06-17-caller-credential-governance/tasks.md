@@ -11,7 +11,7 @@
 
 ## 3. Native Upload Credentials
 
-- [ ] 3.1 Add Spring caller credential configuration and HTTP request
+- [x] 3.1 Add Spring caller credential configuration and HTTP request
   resolution for `X-DocLens-Api-Key` and `Authorization: Bearer` uploads,
   rejecting unauthorized requests only when credentials are configured.
 

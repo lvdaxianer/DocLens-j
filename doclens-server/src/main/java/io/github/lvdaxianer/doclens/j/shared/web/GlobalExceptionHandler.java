@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.shared.web;
 
 import io.github.lvdaxianer.doclens.j.shared.domain.DuplicateResourceException;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,19 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<Map<String, String>> handleBadRequest(Exception ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("detail", ex.getMessage()));
+    }
+
+    /**
+     * 处理接入方凭证失败。
+     *
+     * @param ex 接入方凭证异常
+     * @return 错误响应
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @ExceptionHandler(CallerCredentialException.class)
+    public ResponseEntity<Map<String, String>> handleUnauthorized(CallerCredentialException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
     }
 
     /**

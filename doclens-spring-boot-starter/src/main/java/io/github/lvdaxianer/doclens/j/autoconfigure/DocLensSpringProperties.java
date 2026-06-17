@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param storageRoot 存储根目录
  * @param autoProcessOnUpload 自动处理标志
  * @param workerId Worker 标识
+ * @param clients 接入方配置
  * @param callback 回调配置
  * @param adapter 适配器配置
  * @param ocr OCR 路由配置
@@ -30,6 +31,7 @@ public record DocLensSpringProperties(
         String storageRoot,
         boolean autoProcessOnUpload,
         String workerId,
+        ClientsProperties clients,
         CallbackProperties callback,
         AdapterProperties adapter,
         OcrProperties ocr,
@@ -50,6 +52,7 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
     public DocLensSpringProperties {
+        clients = clients == null ? new ClientsProperties(List.of()) : clients;
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
         adapter = adapter == null ? new AdapterProperties("paddle_ocr") : adapter;
         ocr = ocr == null ? defaultOcrProperties() : ocr;
@@ -60,6 +63,44 @@ public record DocLensSpringProperties(
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
         llmMarkdown = llmMarkdown == null ? new LlmMarkdownProperties("", "", "") : llmMarkdown;
         threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
+    }
+
+    /**
+     * 创建兼容旧参数列表的配置属性。
+     *
+     * @param storageRoot 存储根目录
+     * @param autoProcessOnUpload 自动处理标志
+     * @param workerId Worker 标识
+     * @param callback 回调配置
+     * @param adapter 适配器配置
+     * @param ocr OCR 路由配置
+     * @param paddleOcr PaddleOCR 配置
+     * @param ocrHealth OCR 健康检查配置
+     * @param extraction 提取配置
+     * @param pdfRender PDF 渲染配置
+     * @param wordConversion Word 转 PDF 配置
+     * @param llmMarkdown LLM Markdown 后处理配置
+     * @param threadPools 线程池隔离配置
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public DocLensSpringProperties(
+            String storageRoot,
+            boolean autoProcessOnUpload,
+            String workerId,
+            CallbackProperties callback,
+            AdapterProperties adapter,
+            OcrProperties ocr,
+            PaddleOcrProperties paddleOcr,
+            OcrHealthProperties ocrHealth,
+            ExtractionProperties extraction,
+            PdfRenderProperties pdfRender,
+            WordConversionProperties wordConversion,
+            LlmMarkdownProperties llmMarkdown,
+            ThreadPoolsProperties threadPools
+    ) {
+        this(storageRoot, autoProcessOnUpload, workerId, null, callback, adapter, ocr, paddleOcr, ocrHealth,
+                extraction, pdfRender, wordConversion, llmMarkdown, threadPools);
     }
 
     /**
@@ -113,6 +154,46 @@ public record DocLensSpringProperties(
     static PaddleOcrNodeProperties defaultPaddleNode() {
         return new PaddleOcrNodeProperties("paddle-215", "10.100.30.215", 8080, true, true, DEFAULT_NODE_WEIGHT,
                 DEFAULT_NODE_MAX_CONCURRENCY);
+    }
+
+    /**
+     * 接入方配置属性。
+     *
+     * @param credentials 接入方凭证集合
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public record ClientsProperties(List<CallerCredentialProperties> credentials) {
+
+        /**
+         * 创建接入方配置属性。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        public ClientsProperties {
+            credentials = credentials == null ? List.of() : List.copyOf(credentials);
+        }
+    }
+
+    /**
+     * 单个接入方凭证属性。
+     *
+     * @param clientId 接入方标识
+     * @param sourceApp 来源应用
+     * @param tenantKey 租户或业务分区键
+     * @param apiKey API Key
+     * @param bearerToken Bearer Token
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public record CallerCredentialProperties(
+            String clientId,
+            String sourceApp,
+            String tenantKey,
+            String apiKey,
+            String bearerToken
+    ) {
     }
 
     /**

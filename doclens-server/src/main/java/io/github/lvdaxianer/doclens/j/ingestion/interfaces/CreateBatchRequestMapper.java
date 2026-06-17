@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.ingestion.interfaces;
 
 import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -32,19 +34,24 @@ public class CreateBatchRequestMapper {
     private static final String OCR_MODEL_KEY_SNAKE_PARAM = "ocr_model_key";
     private static final String OCR_NODE_ID_SNAKE_PARAM = "ocr_node_id";
     private static final String OCR_LOAD_BALANCE_STRATEGY_SNAKE_PARAM = "ocr_load_balance_strategy";
+    private static final String API_KEY_HEADER = "X-DocLens-Api-Key";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
     private final JsonCodec jsonCodec;
+    private final CallerCredentialResolver callerCredentialResolver;
 
     /**
      * 创建请求映射器。
      *
      * @param jsonCodec JSON 编解码器
+     * @param callerCredentialResolver 接入方凭证解析器
      * @author lvdaxianerplus
-     * @date 2026-06-07
+     * @date 2026-06-17
      */
-    public CreateBatchRequestMapper(JsonCodec jsonCodec) {
+    public CreateBatchRequestMapper(JsonCodec jsonCodec, CallerCredentialResolver callerCredentialResolver) {
         this.jsonCodec = jsonCodec;
+        this.callerCredentialResolver = callerCredentialResolver;
     }
 
     /**
@@ -62,9 +69,12 @@ public class CreateBatchRequestMapper {
         List<DocumentInput> uploadFiles = form.files().stream()
                 .map(this::toDocumentInput)
                 .toList();
+        CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(API_KEY_HEADER),
+                request.getHeader(AUTHORIZATION_HEADER));
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
                 form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.ocrRoutingMode(),
-                form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy());
+                form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(), caller.clientId(),
+                caller.sourceApp(), caller.tenantKey().orElse(""));
     }
 
     private CreateBatchForm toForm(List<MultipartFile> files, HttpServletRequest request) {

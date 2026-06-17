@@ -21,6 +21,7 @@ import io.github.lvdaxianer.doclens.j.api.NoopDocLensEventSink;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.BatchMapper;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.MybatisPlusBatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -131,6 +132,20 @@ public class DocLensAutoConfiguration {
                 new DocLensProperties.WordConversionProperties(properties.wordConversion().command(),
                         properties.wordConversion().timeoutSeconds()),
                 DocLensConfigurationSupport.threadPools(properties.threadPools()));
+    }
+
+    /**
+     * 创建原生上传接入方凭证解析器。
+     *
+     * @param properties 绑定到 Spring 的属性
+     * @return 接入方凭证解析器
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    CallerCredentialResolver callerCredentialResolver(DocLensSpringProperties properties) {
+        return new CallerCredentialResolver(properties.clients());
     }
 
     /**
