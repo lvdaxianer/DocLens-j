@@ -14,5 +14,5 @@
 
 ## 3. Final Verification
 
-- [ ] 3.1 Run frontend and documentation verification, audit the OpenSpec
+- [x] 3.1 Run frontend and documentation verification, audit the OpenSpec
   acceptance criteria, and archive the completed change.
