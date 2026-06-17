@@ -22,5 +22,5 @@
 
 ## 5. Final Verification
 
-- [ ] 5.1 Run backend, frontend, documentation, OpenSpec validation, audit the
+- [x] 5.1 Run backend, frontend, documentation, OpenSpec validation, audit the
   acceptance criteria, and archive the completed change.
