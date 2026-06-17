@@ -50,9 +50,20 @@ function openLatestBatch(): void {
           <h2 class="panel__title">上传文件</h2>
           <span class="panel__hint">创建批次后自动进入解析队列</span>
         </div>
-        <NTag type="info" round>
-          multipart
-        </NTag>
+        <div class="upload-view__header-actions">
+          <NButton
+            text
+            tag="a"
+            href="/docs/quick-trial.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            5 分钟跑通
+          </NButton>
+          <NTag type="info" round>
+            multipart
+          </NTag>
+        </div>
       </div>
       <NAlert v-if="uploadState.error" type="error" :title="uploadState.error" />
       <UploadDropzone ref="uploadDropzone" :loading="uploadState.loading" @submit="handleSubmit" />
@@ -93,6 +104,14 @@ function openLatestBatch(): void {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.upload-view__header-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .upload-view__side {

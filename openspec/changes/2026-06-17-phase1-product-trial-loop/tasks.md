@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add `docs/quick-trial.md` with the local startup-to-result-download
   trial path.
-- [ ] 2.2 Add a visible upload-page link to the trial guide and verify the
+- [x] 2.2 Add a visible upload-page link to the trial guide and verify the
   focused component behavior.
 
 ## 3. Final Verification
