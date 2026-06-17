@@ -38,10 +38,6 @@ final class DashboardQueryServiceFixtures {
      */
 
     static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T12:00:00+08:00");
-    static final String TEST_CALLBACK_URL = "https://client.example.com/ocr-callback";
-    static final String TEST_IDEMPOTENCY_KEY = "openwebui:file:file-123:hash:abc";
-    static final String TEST_METADATA_FILE_ID = "file-123";
-    static final String TEST_METADATA_SOURCE = "open-webui";
     private static final int TEST_BATCH_CAPACITY = 4;
     private static final int TEST_DOCUMENT_CAPACITY = 8;
 
@@ -59,21 +55,6 @@ final class DashboardQueryServiceFixtures {
         return new Batch("batch-test", BatchStatus.COMPLETED, 3, 1, 1, Optional.empty(), Optional.empty(),
                 "completed", JsonPayload.empty(), Optional.empty(), Optional.empty(), BASE_TIME,
                 BASE_TIME.plusMinutes(5));
-    }
-
-    /**
-     * 创建带接入信息的测试批次。
-     *
-     * @return 带接入信息的测试批次
-     * @author lvdaxianerplus
-     * @date 2026-06-17
-     */
-    static Batch batchWithIntakeInfo() {
-        Map<String, Object> metadata = Map.of("source", TEST_METADATA_SOURCE, "openwebui_file_id",
-                TEST_METADATA_FILE_ID);
-        return new Batch("batch-test", BatchStatus.COMPLETED, 1, 1, 0, Optional.empty(), Optional.empty(),
-                "completed", new JsonPayload(metadata), Optional.of(TEST_CALLBACK_URL),
-                Optional.of(TEST_IDEMPOTENCY_KEY), BASE_TIME, BASE_TIME.plusMinutes(5));
     }
 
     /**

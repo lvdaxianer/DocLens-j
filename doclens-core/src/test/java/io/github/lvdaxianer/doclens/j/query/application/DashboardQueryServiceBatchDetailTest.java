@@ -2,24 +2,23 @@ package io.github.lvdaxianer.doclens.j.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.BASE_TIME;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_CALLBACK_URL;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_IDEMPOTENCY_KEY;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_METADATA_FILE_ID;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.TEST_METADATA_SOURCE;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
-import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batchWithIntakeInfo;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.queuedDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.stagedDocument;
 
+import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
+import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -29,6 +28,11 @@ import org.junit.jupiter.api.Test;
  * @date 2026-06-11
  */
 class DashboardQueryServiceBatchDetailTest {
+
+    private static final String TEST_CALLBACK_URL = "https://client.example.com/ocr-callback";
+    private static final String TEST_IDEMPOTENCY_KEY = "openwebui:file:file-123:hash:abc";
+    private static final String TEST_METADATA_FILE_ID = "file-123";
+    private static final String TEST_METADATA_SOURCE = "open-webui";
 
     /**
      * 批次详情应按上传顺序返回文档，并包含文件类型对应的处理轨道。
@@ -165,6 +169,21 @@ class DashboardQueryServiceBatchDetailTest {
     private DashboardQueryService serviceWithDocuments(List<DocumentJob> documents) {
         return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
                 new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository());
+    }
+
+    /**
+     * 创建带接入信息的测试批次。
+     *
+     * @return 带接入信息的测试批次
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Batch batchWithIntakeInfo() {
+        Map<String, Object> metadata = Map.of("source", TEST_METADATA_SOURCE, "openwebui_file_id",
+                TEST_METADATA_FILE_ID);
+        return new Batch("batch-test", BatchStatus.COMPLETED, 1, 1, 0, Optional.empty(), Optional.empty(),
+                "completed", new JsonPayload(metadata), Optional.of(TEST_CALLBACK_URL),
+                Optional.of(TEST_IDEMPOTENCY_KEY), BASE_TIME, BASE_TIME.plusMinutes(5));
     }
 
     /**
