@@ -4,7 +4,7 @@
   `localStorage` key `X-DocLens-Credential-Key`, attach it as
   `X-DocLens-Api-Key` or `Authorization`, and ignore the old
   `X-DocLens-Credential` key.
-- [ ] 1.2 Update the Dashboard request helper and API tests to use
+- [x] 1.2 Update the Dashboard request helper and API tests to use
   `X-DocLens-Credential-Key` consistently, then run focused frontend tests.
 
 ## 2. Traffic Configuration
