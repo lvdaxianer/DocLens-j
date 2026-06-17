@@ -7,7 +7,7 @@
 
 ## 2. Five-Minute Trial Guide
 
-- [ ] 2.1 Add `docs/quick-trial.md` with the local startup-to-result-download
+- [x] 2.1 Add `docs/quick-trial.md` with the local startup-to-result-download
   trial path.
 - [ ] 2.2 Add a visible upload-page link to the trial guide and verify the
   focused component behavior.
