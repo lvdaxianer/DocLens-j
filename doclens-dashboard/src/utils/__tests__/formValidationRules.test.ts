@@ -36,7 +36,7 @@ test('ocr node form rules expose conditional offline and online requirements', (
   form.deploymentType = 'ONLINE'
   const onlineRules = createOcrNodeFormRules(form)
   assert.equal(Array.isArray(onlineRules.providerModel), true)
-  assert.equal(Array.isArray(onlineRules.apiKey), true)
+  assert.equal(Array.isArray(onlineRules.credentialEnvVar), true)
 })
 
 test('upload advanced options rules validate metadata json before submit', () => {

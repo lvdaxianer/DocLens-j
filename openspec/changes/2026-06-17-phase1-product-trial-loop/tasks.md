@@ -1,6 +1,6 @@
 ## 1. Result Download Loop
 
-- [ ] 1.1 Add tested frontend utilities for result download filenames and
+- [x] 1.1 Add tested frontend utilities for result download filenames and
   Markdown, TXT, JSON payload construction.
 - [ ] 1.2 Add Markdown, TXT, and JSON download actions to the document result
   drawer and verify the focused component behavior.
