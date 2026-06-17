@@ -81,6 +81,9 @@ export interface BatchRow {
   average_duration_ms: number
   created_at: string
   updated_at: string
+  callback_url?: string
+  idempotency_key?: string
+  metadata?: Record<string, unknown>
 }
 
 export interface ProcessingTrackNode {

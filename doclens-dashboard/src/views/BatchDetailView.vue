@@ -7,6 +7,7 @@ import { NAlert } from 'naive-ui'
 import { deleteDocument, retryCallbackJob, retryDocument } from '@/api/dashboard'
 import BatchCallbackJobsPanel from '@/components/dashboard/BatchCallbackJobsPanel.vue'
 import BatchDocumentTable from '@/components/dashboard/BatchDocumentTable.vue'
+import BatchIntakeInfoPanel from '@/components/dashboard/BatchIntakeInfoPanel.vue'
 import BatchOcrRoutePanel from '@/components/dashboard/BatchOcrRoutePanel.vue'
 import BatchSummaryStrip from '@/components/dashboard/BatchSummaryStrip.vue'
 import DocumentResultDrawer from '@/components/dashboard/DocumentResultDrawer.vue'
@@ -193,6 +194,12 @@ useAutoRefresh(refresh)
       :loading="detailState.loading"
       :refresh-interval-seconds="DEFAULT_REFRESH_INTERVAL_SECONDS"
       @refresh="refresh"
+    />
+
+    <!-- 接入信息用于排查第三方上传、幂等透传和 callback_url 回调链路。 -->
+    <BatchIntakeInfoPanel
+      v-if="selectedBatch"
+      :batch="selectedBatch.batch"
     />
 
     <!-- OCR 路由面板展示当前命中的节点，命中文档由父级 computed 保持稳定。 -->

@@ -28,7 +28,13 @@ vi.mock('pinia', () => ({
         failure_rate: 0,
         average_duration_ms: 1000,
         created_at: '2026-06-16T10:00:00+08:00',
-        updated_at: '2026-06-16T10:05:00+08:00'
+        updated_at: '2026-06-16T10:05:00+08:00',
+        callback_url: 'https://client.example.com/ocr-callback',
+        idempotency_key: 'openwebui:file:file-123:hash:abc',
+        metadata: {
+          source: 'open-webui',
+          openwebui_file_id: 'file-123'
+        }
       },
       documents: [],
       events: [],
@@ -131,6 +137,28 @@ describe('BatchDetailView callback visibility', () => {
     expect(wrapper.text()).toContain('失败')
     expect(wrapper.text()).toContain('http_status')
     expect(wrapper.text()).toContain('HTTP 503')
+  })
+
+  it('shows batch intake information on the batch detail page', () => {
+    const wrapper = mount(MountHost, {
+      global: {
+        stubs: {
+          NAlert: true,
+          NButton: true,
+          NProgress: true,
+          NDataTable: true,
+          BatchOcrRoutePanel: true,
+          DocumentResultDrawer: true,
+          DocumentTrackCards: true,
+          StatusTag: true
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('接入信息')
+    expect(wrapper.text()).toContain('https://client.example.com/ocr-callback')
+    expect(wrapper.text()).toContain('openwebui:file:file-123:hash:abc')
+    expect(wrapper.text()).toContain('"source": "open-webui"')
   })
 
   it('retries failed callback job and refreshes batch detail', async () => {

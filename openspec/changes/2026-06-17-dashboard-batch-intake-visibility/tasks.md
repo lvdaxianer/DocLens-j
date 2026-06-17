@@ -4,7 +4,7 @@
 
 ## 2. Dashboard Detail UI
 
-- [ ] 2.1 Add a focused Vue component test and batch intake information panel for callback URL, idempotency key, formatted metadata, and empty placeholders.
+- [x] 2.1 Add a focused Vue component test and batch intake information panel for callback URL, idempotency key, formatted metadata, and empty placeholders.
 
 ## 3. Verification And Archive
 

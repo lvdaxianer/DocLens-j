@@ -15,6 +15,7 @@ const CODE_REVIEW_SPEC_FILE_LINE_LIMIT = 350
 const STRUCTURE_CHECKED_FILES = [
   'views/BatchDetailView.vue',
   'components/dashboard/BatchSummaryStrip.vue',
+  'components/dashboard/BatchIntakeInfoPanel.vue',
   'components/dashboard/BatchCallbackJobsPanel.vue',
   'components/dashboard/BatchDocumentTable.vue',
   'components/dashboard/batchDocumentTableColumns.ts',
