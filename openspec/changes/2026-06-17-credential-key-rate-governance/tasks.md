@@ -12,7 +12,7 @@
 - [x] 2.1 Add failing Spring property binding tests for
   `doclens.traffic.default-limits`, `doclens.traffic.global-protection`, and
   per credential `rate-limits`.
-- [ ] 2.2 Extend `DocLensSpringProperties` and `application.yml` with the
+- [x] 2.2 Extend `DocLensSpringProperties` and `application.yml` with the
   traffic governance configuration and conservative local defaults.
 
 ## 3. Caller Rate Limiter Core

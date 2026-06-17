@@ -70,3 +70,53 @@ doclens:
   callback:
     max-retries: 3
     timeout-seconds: 10
+  clients:
+    credentials:
+      - client-id: local-demo
+        source-app: dashboard
+        tenant-key: local
+        api-key: ${DOCLENS_LOCAL_CREDENTIAL_KEY:}
+        rate-limits:
+          dashboard-read:
+            qps: 20
+            burst: 40
+          detail-read:
+            qps: 10
+            burst: 20
+          upload-write:
+            qps: 1
+            burst: 3
+          ocr-mutation:
+            qps: 0.5
+            burst: 2
+          config-mutation:
+            qps: 0.2
+            burst: 1
+          admin-health:
+            qps: 5
+            burst: 10
+  traffic:
+    enabled: true
+    anonymous-enabled: false
+    default-limits:
+      dashboard-read:
+        qps: 10
+        burst: 20
+      detail-read:
+        qps: 5
+        burst: 10
+      upload-write:
+        qps: 0.5
+        burst: 2
+      ocr-mutation:
+        qps: 0.2
+        burst: 1
+      config-mutation:
+        qps: 0.1
+        burst: 1
+      admin-health:
+        qps: 2
+        burst: 5
+    global-protection:
+      enabled: true
+      max-in-flight: 100
