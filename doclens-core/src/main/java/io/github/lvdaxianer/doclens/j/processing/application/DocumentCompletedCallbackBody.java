@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import java.util.Collections;
@@ -13,17 +14,20 @@ import java.util.Map;
  * @param meta 上传元数据
  * @param text 解析结果文本
  * @param idempotencyKey 上传幂等键
+ * @param caller 调用方身份
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
 public record DocumentCompletedCallbackBody(
         Map<String, Object> meta,
         String text,
-        String idempotencyKey
+        String idempotencyKey,
+        CallerIdentity caller
 ) {
     private static final String META_FIELD = "meta";
     private static final String TEXT_FIELD = "text";
     private static final String IDEMPOTENCY_KEY_FIELD = "idempotency_key";
+    private static final String CALLER_FIELD = "caller";
 
     /**
      * 创建带安全默认值的回调 body。
@@ -35,6 +39,20 @@ public record DocumentCompletedCallbackBody(
         meta = meta == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(meta));
         text = text == null ? "" : text;
         idempotencyKey = idempotencyKey == null ? "" : idempotencyKey;
+        caller = caller == null ? CallerIdentity.anonymous() : caller;
+    }
+
+    /**
+     * 创建匿名调用方回调 body。
+     *
+     * @param meta 上传元数据
+     * @param text 解析结果文本
+     * @param idempotencyKey 上传幂等键
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public DocumentCompletedCallbackBody(Map<String, Object> meta, String text, String idempotencyKey) {
+        this(meta, text, idempotencyKey, CallerIdentity.anonymous());
     }
 
     /**
@@ -49,7 +67,7 @@ public record DocumentCompletedCallbackBody(
      */
     public static DocumentCompletedCallbackBody from(Batch batch, DocumentJob document, OcrResult result) {
         return new DocumentCompletedCallbackBody(document.metadata().values(), result.finalText(),
-                batch.idempotencyKey().orElse(""));
+                batch.idempotencyKey().orElse(""), batch.callerIdentity());
     }
 
     /**
@@ -60,6 +78,7 @@ public record DocumentCompletedCallbackBody(
      * @date 2026-06-09
      */
     public Map<String, Object> toMap() {
-        return Map.of(META_FIELD, meta, TEXT_FIELD, text, IDEMPOTENCY_KEY_FIELD, idempotencyKey);
+        return Map.of(META_FIELD, meta, TEXT_FIELD, text, IDEMPOTENCY_KEY_FIELD, idempotencyKey,
+                CALLER_FIELD, caller.toMap());
     }
 }

@@ -4,6 +4,7 @@ import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcess
 import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcessingUseCaseTestSupport.useCase;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.util.Map;
@@ -20,6 +21,7 @@ class BatchProcessingUseCaseLlmMarkdownTest {
     private static final int TEST_CHUNK_COUNT = 2;
     private static final int TEST_MAX_CONTEXT_TOKENS = 2000;
     private static final int TEST_ESTIMATED_OCR_TOKENS = 3600;
+    private static final String CALLER_FIELD = "caller";
 
     /*
      * 本类只覆盖 LLM Markdown 后处理结果写入语义：
@@ -79,7 +81,18 @@ class BatchProcessingUseCaseLlmMarkdownTest {
                 .singleElement()
                 .satisfies(event -> assertThat(event.resultSummary()).extracting("callback_body")
                         .isEqualTo(Map.of("meta", Map.of("kind", "invoice"), "text", "# 发票\n\n原始 OCR 文本",
-                                "idempotency_key", "")));
+                                "idempotency_key", "", CALLER_FIELD, anonymousCaller())));
+    }
+
+    /**
+     * 创建匿名调用方回调载荷。
+     *
+     * @return 匿名调用方载荷
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> anonymousCaller() {
+        return CallerIdentity.anonymous().toMap();
     }
 
     /**

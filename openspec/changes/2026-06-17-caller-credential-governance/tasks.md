@@ -6,7 +6,7 @@
 
 ## 2. Callback Attribution
 
-- [ ] 2.1 Add caller identity to completed-document callback payloads and cover
+- [x] 2.1 Add caller identity to completed-document callback payloads and cover
   the behavior with focused callback tests.
 
 ## 3. Native Upload Credentials

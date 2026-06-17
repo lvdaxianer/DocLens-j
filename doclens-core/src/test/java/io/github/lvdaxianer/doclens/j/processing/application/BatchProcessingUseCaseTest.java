@@ -8,6 +8,7 @@ import static io.github.lvdaxianer.doclens.j.processing.application.BatchProcess
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
@@ -29,6 +30,8 @@ import org.junit.jupiter.api.Test;
  * @date 2026-06-08
  */
 class BatchProcessingUseCaseTest {
+
+    private static final String CALLER_FIELD = "caller";
 
     /*
      * 本类只覆盖批次处理编排语义：
@@ -253,7 +256,7 @@ class BatchProcessingUseCaseTest {
                 .singleElement()
                 .satisfies(event -> assertThat(event.resultSummary()).containsEntry("callback_body",
                         Map.of("meta", Map.of("source", "upload-form"), "text", "markdown text",
-                                "idempotency_key", "idem-001")));
+                                "idempotency_key", "idem-001", CALLER_FIELD, anonymousCaller())));
     }
 
     /**
@@ -281,7 +284,7 @@ class BatchProcessingUseCaseTest {
 
         // callback job 是 worker 执行回调的唯一入口，必须携带完成事件和 callback_body。
         Map<String, Object> expectedPayload = Map.of("meta", Map.of("source", "upload-form"), "text",
-                "markdown text", "idempotency_key", "idem-001");
+                "markdown text", "idempotency_key", "idem-001", CALLER_FIELD, anonymousCaller());
         assertThat(callbackJobRepository.listByBatchId("batch-test"))
                 .singleElement()
                 .satisfies(job -> {
@@ -295,5 +298,16 @@ class BatchProcessingUseCaseTest {
                             .extracting(event -> event.resultSummary().get("callback_body"))
                             .isEqualTo(expectedPayload);
                 });
+    }
+
+    /**
+     * 创建匿名调用方回调载荷。
+     *
+     * @return 匿名调用方载荷
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> anonymousCaller() {
+        return CallerIdentity.anonymous().toMap();
     }
 }

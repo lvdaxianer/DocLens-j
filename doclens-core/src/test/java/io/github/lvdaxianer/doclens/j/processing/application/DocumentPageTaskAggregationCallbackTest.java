@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
@@ -30,6 +31,10 @@ import org.junit.jupiter.api.Test;
  */
 class DocumentPageTaskAggregationCallbackTest {
 
+    private static final String TEST_CLIENT_ID = "rag-flow";
+    private static final String TEST_SOURCE_APP = "knowledge-base";
+    private static final String TEST_TENANT_KEY = "tenant-east";
+
     /**
      * 页级 OCR 文档完成时应创建完成事件和可投递回调任务。
      *
@@ -46,8 +51,11 @@ class DocumentPageTaskAggregationCallbackTest {
 
         context.service.recordSuccess(completedTask("task-1", 1));
 
-        Map<String, Object> expectedPayload = Map.of("meta", Map.of("source", "page-upload"), "text",
-                "page text", "idempotency_key", "idem-page-001");
+        Map<String, Object> expectedPayload = Map.of(
+                "meta", Map.of("source", "page-upload"),
+                "text", "page text",
+                "idempotency_key", "idem-page-001",
+                "caller", expectedCaller());
         assertThat(context.eventRepository.events())
                 .filteredOn(event -> DocLensConstants.EVENT_DOCUMENT_COMPLETED.equals(event.eventType()))
                 .singleElement()
@@ -114,7 +122,22 @@ class DocumentPageTaskAggregationCallbackTest {
         return new Batch("batch-1", BatchStatus.PROCESSING, 1, 0, 0, Optional.empty(), Optional.empty(),
                 "ocr_queued", new JsonPayload(Map.of("source", "page-upload")),
                 Optional.of("https://callback.example.test/page"), Optional.of("idem-page-001"),
-                OffsetDateTime.now(), OffsetDateTime.now());
+                OffsetDateTime.now(), OffsetDateTime.now(), new CallerIdentity(TEST_CLIENT_ID, TEST_SOURCE_APP,
+                Optional.of(TEST_TENANT_KEY)));
+    }
+
+    /**
+     * 创建预期回调调用方载荷。
+     *
+     * @return 调用方载荷
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private Map<String, Object> expectedCaller() {
+        return Map.of(
+                CallerIdentity.CLIENT_ID_FIELD, TEST_CLIENT_ID,
+                CallerIdentity.SOURCE_APP_FIELD, TEST_SOURCE_APP,
+                CallerIdentity.TENANT_KEY_FIELD, TEST_TENANT_KEY);
     }
 
     /**
