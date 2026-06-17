@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,7 +70,7 @@ class DocLensOcrApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertDocumentProgress(String documentId) throws Exception {
-        mockMvc.perform(get("/api/v1/documents/{documentId}", documentId))
+        mockMvc.perform(authenticatedGet("/api/v1/documents/{documentId}", documentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.document_id").value(documentId))
                 .andExpect(jsonPath("$.progress_percent").value(100));
@@ -86,7 +85,7 @@ class DocLensOcrApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertDocumentResult(String documentId) throws Exception {
-        mockMvc.perform(get("/api/v1/documents/{documentId}/result", documentId))
+        mockMvc.perform(authenticatedGet("/api/v1/documents/{documentId}/result", documentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.summary.pageCount").value(1))
                 .andExpect(jsonPath("$.result.finalText").value("# A\n正文"))
@@ -104,7 +103,7 @@ class DocLensOcrApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertBatchEvents(String batchId) throws Exception {
-        mockMvc.perform(get("/api/v1/batches/{batchId}/events", batchId))
+        mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}/events", batchId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.batch_id").value(batchId))
                 .andExpect(jsonPath("$.events").isArray());
@@ -118,11 +117,11 @@ class DocLensOcrApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertAdaptersAndHealth() throws Exception {
-        mockMvc.perform(get("/api/v1/adapters"))
+        mockMvc.perform(authenticatedGet("/api/v1/adapters"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.adapters[0].adapterKey").value("stub_ocr"));
 
-        mockMvc.perform(get("/api/v1/health"))
+        mockMvc.perform(authenticatedGet("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ok"));
     }

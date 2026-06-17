@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -153,7 +152,7 @@ class DocLensOcrBatchIdempotencyKeyContractTest extends DocLensOcrApiContractSup
      */
     private org.springframework.test.web.servlet.ResultActions performLookup(String idempotencyKey)
             throws Exception {
-        return mockMvc.perform(get(BATCH_PATH, idempotencyKey));
+        return mockMvc.perform(authenticatedGet(BATCH_PATH, idempotencyKey));
     }
 
     /**

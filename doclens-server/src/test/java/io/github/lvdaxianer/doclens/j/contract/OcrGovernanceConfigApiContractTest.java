@@ -1,7 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-class OcrGovernanceConfigApiContractTest {
+class OcrGovernanceConfigApiContractTest implements CallerCredentialContractSupport {
 
     @TempDir
     static java.nio.file.Path tempDir;
@@ -51,6 +49,10 @@ class OcrGovernanceConfigApiContractTest {
                         + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+        registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
+        registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
+        registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
+        registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
     }
 
     /**
@@ -73,7 +75,7 @@ class OcrGovernanceConfigApiContractTest {
      */
     @Test
     void getConfigReturnsCurrentDefaultGovernanceValues() throws Exception {
-        mockMvc.perform(get("/api/v1/ocr-governance-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/ocr-governance-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.failure_threshold").value(OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD))
                 .andExpect(jsonPath("$.probe_interval_seconds")
@@ -94,7 +96,7 @@ class OcrGovernanceConfigApiContractTest {
      */
     @Test
     void updateConfigPersistsNewGovernanceValues() throws Exception {
-        mockMvc.perform(put("/api/v1/ocr-governance-config")
+        mockMvc.perform(authenticatedPut("/api/v1/ocr-governance-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -112,7 +114,7 @@ class OcrGovernanceConfigApiContractTest {
                 .andExpect(jsonPath("$.recovery_success_threshold").value(2))
                 .andExpect(jsonPath("$.manual_recovery_attempts").value(4));
 
-        mockMvc.perform(get("/api/v1/ocr-governance-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/ocr-governance-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.failure_threshold").value(5))
                 .andExpect(jsonPath("$.probe_interval_seconds").value(30))
@@ -120,4 +122,5 @@ class OcrGovernanceConfigApiContractTest {
                 .andExpect(jsonPath("$.recovery_success_threshold").value(2))
                 .andExpect(jsonPath("$.manual_recovery_attempts").value(4));
     }
+
 }

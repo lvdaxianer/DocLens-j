@@ -1,8 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,7 +76,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
     void completedBatchCanBeDeletedByBatchEndpoint() throws Exception {
         UploadedBatch batch = uploadCompletedBatch();
 
-        mockMvc.perform(delete("/api/v1/batches/{batchId}", batch.batchId()))
+        mockMvc.perform(authenticatedDelete("/api/v1/batches/{batchId}", batch.batchId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.batch_id").value(batch.batchId()))
                 .andExpect(jsonPath("$.status").value("deleted"))
@@ -102,7 +100,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
         String documentId = "doc-processing-delete";
         insertProcessingDocument(batchId, documentId);
 
-        mockMvc.perform(delete("/api/v1/documents/{documentId}", documentId))
+        mockMvc.perform(authenticatedDelete("/api/v1/documents/{documentId}", documentId))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not deletable")))
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("processing")));
@@ -166,7 +164,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void deleteDocument(String documentId) throws Exception {
-        mockMvc.perform(delete("/api/v1/documents/{documentId}", documentId))
+        mockMvc.perform(authenticatedDelete("/api/v1/documents/{documentId}", documentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.document_id").value(documentId))
                 .andExpect(jsonPath("$.status").value("deleted"));
@@ -181,7 +179,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertBatchSummaryAfterSingleDelete(String batchId) throws Exception {
-        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+        mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_files").value(1))
                 .andExpect(jsonPath("$.completed_files").value(1))
@@ -199,7 +197,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      */
     private void assertDocumentNotFound(String documentId) throws Exception {
         assertOnlyDocumentNotFound(documentId);
-        mockMvc.perform(get("/api/v1/documents/{documentId}/result", documentId))
+        mockMvc.perform(authenticatedGet("/api/v1/documents/{documentId}/result", documentId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
     }
@@ -213,7 +211,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertOnlyDocumentNotFound(String documentId) throws Exception {
-        mockMvc.perform(get("/api/v1/documents/{documentId}", documentId))
+        mockMvc.perform(authenticatedGet("/api/v1/documents/{documentId}", documentId))
                 .andExpect(status().isNotFound());
     }
 
@@ -226,7 +224,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertBatchNotFound(String batchId) throws Exception {
-        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+        mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not found")));
     }
@@ -240,7 +238,7 @@ class DocLensOcrDeleteApiContractTest extends DocLensOcrApiContractSupport {
      * @date 2026-06-11
      */
     private void assertDashboardDoesNotContainBatch(String batchId) throws Exception {
-        MvcResult summaryResult = mockMvc.perform(get("/api/v1/dashboard/summary"))
+        MvcResult summaryResult = mockMvc.perform(authenticatedGet("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode summary = objectMapper.readTree(summaryResult.getResponse().getContentAsString());

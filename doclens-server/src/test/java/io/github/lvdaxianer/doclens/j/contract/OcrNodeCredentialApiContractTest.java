@@ -1,8 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,7 +44,7 @@ class OcrNodeCredentialApiContractTest extends OcrNodeApiContractSupport {
     @Test
     void createOnlineDashScopeNodeReturnsCredentialEnvVarWithoutApiKey() throws Exception {
         // 创建在线节点时发送环境变量名，响应体不能出现 api_key 字段。
-        String response = mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(onlineNodeJson("dashscope-main", "qwen-vl-ocr-2025-11-20",
                                 CREATE_CREDENTIAL_ENV_VAR)))
@@ -77,7 +75,7 @@ class OcrNodeCredentialApiContractTest extends OcrNodeApiContractSupport {
         String nodeId = createOnlineNode("dashscope-edit", "qwen-vl-ocr-2025-11-20", EXISTING_CREDENTIAL_ENV_VAR);
 
         // 更新请求只修改名称，凭证字段提交空字符串。
-        String response = mockMvc.perform(put("/api/v1/ocr-nodes/{nodeId}", nodeId)
+        String response = mockMvc.perform(authenticatedPut("/api/v1/ocr-nodes/{nodeId}", nodeId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(onlineNodeJson("dashscope-edit-renamed", "qwen-vl-ocr-2025-11-20", "")))
                 .andExpect(status().isOk())
@@ -105,7 +103,7 @@ class OcrNodeCredentialApiContractTest extends OcrNodeApiContractSupport {
         // 离线节点没有历史在线凭证，切换为在线时必须显式提供环境变量名。
         String nodeId = createNode("paddle-to-online", "10.100.30.220", 8080);
 
-        mockMvc.perform(put("/api/v1/ocr-nodes/{nodeId}", nodeId)
+        mockMvc.perform(authenticatedPut("/api/v1/ocr-nodes/{nodeId}", nodeId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(onlineNodeJson("paddle-to-online", "qwen-vl-ocr-2025-11-20", "")))
                 .andExpect(status().isBadRequest())

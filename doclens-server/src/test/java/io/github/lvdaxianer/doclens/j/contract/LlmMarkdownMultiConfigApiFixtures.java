@@ -1,6 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
@@ -14,7 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * @author lvdaxianerplus
  * @date 2026-06-12
  */
-final class LlmMarkdownMultiConfigApiFixtures {
+final class LlmMarkdownMultiConfigApiFixtures implements CallerCredentialContractSupport {
 
     /** 默认 OpenAI 兼容接口地址。 */
     private static final String DEFAULT_LLM_URL = "https://llm.example.com/v1/chat/completions";
@@ -124,7 +123,7 @@ final class LlmMarkdownMultiConfigApiFixtures {
      * @date 2026-06-12
      */
     private String createManagedConfig(String json) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/llm-markdown-config")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())

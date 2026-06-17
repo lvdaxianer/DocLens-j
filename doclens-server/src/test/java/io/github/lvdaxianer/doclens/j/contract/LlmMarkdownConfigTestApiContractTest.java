@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -48,7 +47,7 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
          */
         given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
 
-        String response = mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/llm-markdown-config/test")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -78,7 +77,7 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
         given(configTester.test(any())).willReturn(
                 LlmMarkdownConfigTestResponse.unreachable("LLM Markdown returned HTTP 401: invalid api key"));
 
-        mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+        mockMvc.perform(authenticatedPost("/api/v1/llm-markdown-config/test")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -103,7 +102,7 @@ class LlmMarkdownConfigTestApiContractTest extends LlmMarkdownConfigApiContractS
         saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
         given(configTester.test(any())).willReturn(LlmMarkdownConfigTestResponse.reachable());
 
-        mockMvc.perform(post("/api/v1/llm-markdown-config/test")
+        mockMvc.perform(authenticatedPost("/api/v1/llm-markdown-config/test")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", "")))
                 .andExpect(status().isOk())

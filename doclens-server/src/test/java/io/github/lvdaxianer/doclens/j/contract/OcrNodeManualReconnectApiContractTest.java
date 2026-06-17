@@ -1,10 +1,8 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
@@ -35,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-class OcrNodeManualReconnectApiContractTest {
+class OcrNodeManualReconnectApiContractTest implements CallerCredentialContractSupport {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-10T10:00:00+08:00");
 
@@ -67,6 +65,10 @@ class OcrNodeManualReconnectApiContractTest {
                 + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+        registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
+        registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
+        registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
+        registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
     }
 
     /**
@@ -79,10 +81,10 @@ class OcrNodeManualReconnectApiContractTest {
     @Test
     void manualReconnectRunsBoundedRecoveryAttemptsAndReturnsUpdatedState() throws Exception {
         Mockito.when(healthClient.isHealthy(Mockito.any())).thenReturn(true);
-        String nodeId = createOnlineNode("dashscope-reconnect", "qwen-vl-ocr-2025-11-20", "sk-secret-reconnect");
+        String nodeId = createOnlineNode("dashscope-reconnect", "qwen-vl-ocr-2025-11-20", "DASHSCOPE_API_KEY");
         markNodeDownWithOpenCircuit(nodeId);
 
-        mockMvc.perform(post("/api/v1/ocr-nodes/{nodeId}/reconnect", nodeId))
+        mockMvc.perform(authenticatedPost("/api/v1/ocr-nodes/{nodeId}/reconnect", nodeId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attempts").value(3))
                 .andExpect(jsonPath("$.healthy").value(true))
@@ -95,16 +97,16 @@ class OcrNodeManualReconnectApiContractTest {
      *
      * @param name 节点名称
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线凭证环境变量名
      * @return 节点 ID
      * @throws Exception 请求执行失败时抛出
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private String createOnlineNode(String name, String providerModel, String apiKey) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
+    private String createOnlineNode(String name, String providerModel, String credentialEnvVar) throws Exception {
+        String response = mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(onlineNodeJson(name, providerModel, apiKey)))
+                        .content(onlineNodeJson(name, providerModel, credentialEnvVar)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isString())
                 .andReturn()
@@ -136,25 +138,25 @@ class OcrNodeManualReconnectApiContractTest {
      *
      * @param name 节点名称
      * @param providerModel 在线模型名称
-     * @param apiKey 在线 API Key
+     * @param credentialEnvVar 在线凭证环境变量名
      * @return 请求 JSON
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private String onlineNodeJson(String name, String providerModel, String apiKey) {
+    private String onlineNodeJson(String name, String providerModel, String credentialEnvVar) {
         return """
                 {
                   "deployment_type": "ONLINE",
                   "name": "%s",
                   "channel_key": "aliyun_bailian_dashscope",
                   "provider_model": "%s",
-                  "api_key": "%s",
+                  "credential_env_var": "%s",
                   "enabled": true,
                   "participate_global": true,
                   "weight": 50,
                   "max_concurrency": 10
                 }
-                """.formatted(name, providerModel, apiKey);
+                """.formatted(name, providerModel, credentialEnvVar);
     }
 
     /**

@@ -1,9 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,7 +33,7 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
      */
     @Test
     void listSupportedModelsReturnsPaddleOcr() throws Exception {
-        String response = mockMvc.perform(get("/api/v1/ocr-models"))
+        String response = mockMvc.perform(authenticatedGet("/api/v1/ocr-models"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -102,7 +99,7 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
      */
     @Test
     void createRejectsUnknownModelKey() throws Exception {
-        mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "unknown_ocr")
+        mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "unknown_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(nodeJson("bad-node", "10.100.30.216", 8080)))
                 .andExpect(status().isBadRequest())
@@ -121,7 +118,7 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
         // 同模型同地址先创建成功，第二次创建应由唯一性规则拒绝。
         createNode("paddle-api-dup-1", "10.100.30.217", 8080);
 
-        mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
+        mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(nodeJson("paddle-api-dup-2", "10.100.30.217", 8080)))
                 .andExpect(status().isConflict())
@@ -139,7 +136,7 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
     void updateNodeEnabledState() throws Exception {
         String nodeId = createNode("paddle-api-toggle", "10.100.30.218", 8080);
 
-        mockMvc.perform(patch("/api/v1/ocr-nodes/{nodeId}/enabled", nodeId)
+        mockMvc.perform(authenticatedPatch("/api/v1/ocr-nodes/{nodeId}/enabled", nodeId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":false}"))
                 .andExpect(status().isOk())
@@ -158,7 +155,7 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
     void testNodeReturnsHealthResult() throws Exception {
         String nodeId = createNode("paddle-api-test", "10.100.30.219", 8080);
 
-        mockMvc.perform(post("/api/v1/ocr-nodes/{nodeId}/test", nodeId))
+        mockMvc.perform(authenticatedPost("/api/v1/ocr-nodes/{nodeId}/test", nodeId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthy").value(false))
                 .andExpect(jsonPath("$.message").isString());

@@ -1,6 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,7 +29,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRequiresUrlAndModelTogether() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "", "")))
                 .andExpect(status().isBadRequest())
@@ -46,7 +45,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRejectsNonHttpUrl() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson("file:///tmp/llm.sock", "markdown-model", "")))
                 .andExpect(status().isBadRequest())
@@ -62,7 +61,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRejectsMalformedUrl() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson("http:// bad-url", "markdown-model", "")))
                 .andExpect(status().isBadRequest())
@@ -78,7 +77,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRejectsHttpUrlWithoutHost() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson("http:foo", "markdown-model", "")))
                 .andExpect(status().isBadRequest())
@@ -94,7 +93,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRejectsSmallMaxContextTokens() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -120,7 +119,7 @@ class LlmMarkdownConfigValidationApiContractTest extends LlmMarkdownConfigApiCon
      */
     @Test
     void updateConfigRejectsInvalidCredentialEnvVarName() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", "bad-name")))
                 .andExpect(status().isBadRequest())

@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,7 +42,7 @@ class DocLensOcrUploadApiContractTest extends DocLensOcrApiContractSupport {
      */
     @Test
     void batchUploadRejectsInvalidMetadataJson() throws Exception {
-        mockMvc.perform(multipart("/api/v1/batches")
+        mockMvc.perform(authenticatedMultipart("/api/v1/batches")
                         .file(invalidMetadataFile())
                         .param("metadata", BROKEN_METADATA_JSON))
                 .andExpect(status().isBadRequest())

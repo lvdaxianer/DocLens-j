@@ -1,7 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,13 +27,12 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-abstract class DocLensOcrApiContractSupport {
+abstract class DocLensOcrApiContractSupport implements CallerCredentialContractSupport {
 
     /** 后台处理等待次数。 */
     private static final int PROCESSING_WAIT_ATTEMPTS = 20;
     /** 后台处理单次等待毫秒数。 */
     private static final int PROCESSING_WAIT_MILLIS = 100;
-
     /** 临时目录用于隔离数据库和对象存储。 */
     @TempDir
     static java.nio.file.Path tempDir;
@@ -64,6 +61,10 @@ abstract class DocLensOcrApiContractSupport {
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.adapter.default-key", () -> "stub_ocr");
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+        registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
+        registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
+        registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
+        registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
     }
 
     /**
@@ -89,7 +90,7 @@ abstract class DocLensOcrApiContractSupport {
      */
     protected void waitForBatchCompleted(String batchId, String expectedBizId) throws Exception {
         for (int attempt = 0; attempt < PROCESSING_WAIT_ATTEMPTS; attempt++) {
-            MvcResult result = mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+            MvcResult result = mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.metadata.bizId").value(expectedBizId))
                     .andReturn();
@@ -100,7 +101,7 @@ abstract class DocLensOcrApiContractSupport {
                 sleepBeforeNextAttempt();
             }
         }
-        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+        mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.progress_percent").value(100));
     }
@@ -116,7 +117,7 @@ abstract class DocLensOcrApiContractSupport {
     protected MvcResult uploadBatch() throws Exception {
         MockMultipartFile first = new MockMultipartFile("files", "a.md", "text/markdown", "# A\n正文".getBytes());
         MockMultipartFile second = new MockMultipartFile("files", "b.png", "image/png", "png-bytes".getBytes());
-        return mockMvc.perform(multipart("/api/v1/batches")
+        return mockMvc.perform(authenticatedMultipart("/api/v1/batches")
                         .file(first)
                         .file(second)
                         .param("metadata", "{\"bizId\":\"A-1001\",\"source\":\"frontend-upload\",\"operator\":\"u123\"}")
@@ -138,7 +139,7 @@ abstract class DocLensOcrApiContractSupport {
      */
     protected MvcResult uploadSingleFileBatch() throws Exception {
         MockMultipartFile file = new MockMultipartFile("files", "single.md", "text/markdown", "# Single\n正文".getBytes());
-        return mockMvc.perform(multipart("/api/v1/batches")
+        return mockMvc.perform(authenticatedMultipart("/api/v1/batches")
                         .file(file)
                         .param("metadata", "{\"bizId\":\"A-EMPTY-1\",\"source\":\"frontend-upload\"}")
                         .param("idempotency_key", "idem-doclens-single-" + UUID.randomUUID()))
@@ -157,7 +158,7 @@ abstract class DocLensOcrApiContractSupport {
      */
     protected MvcResult uploadBatchWithOcrRoutePolicy() throws Exception {
         MockMultipartFile file = new MockMultipartFile("files", "route.png", "image/png", "png-bytes".getBytes());
-        return mockMvc.perform(multipart("/api/v1/batches")
+        return mockMvc.perform(authenticatedMultipart("/api/v1/batches")
                         .file(file)
                         .param("metadata", "{\"bizId\":\"OCR-ROUTE\"}")
                         .param("idempotency_key", "idem-ocr-route-" + UUID.randomUUID())

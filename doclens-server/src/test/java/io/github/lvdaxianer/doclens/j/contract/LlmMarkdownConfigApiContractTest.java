@@ -1,8 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,7 +25,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
      */
     @Test
     void getConfigReturnsEmptyListWithoutApiKey() throws Exception {
-        String response = mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        String response = mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty())
@@ -47,7 +45,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
      */
     @Test
     void updateConfigReturnsCredentialEnvVarWithoutApiKey() throws Exception {
-        String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
+        String response = mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -78,7 +76,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
     void updateConfigKeepsCredentialEnvVarWhenBlank() throws Exception {
         saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
 
-        String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
+        String response = mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model-v2", "")))
                 .andExpect(status().isOk())
@@ -104,7 +102,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
     void updateConfigOverwritesCredentialEnvVarWhenProvided() throws Exception {
         saveConfig(DEFAULT_LLM_URL, "markdown-model", OLD_TEST_CREDENTIAL_ENV_VAR);
 
-        String response = mockMvc.perform(put("/api/v1/llm-markdown-config")
+        String response = mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DEFAULT_LLM_URL, "markdown-model", NEW_TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -129,7 +127,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
      */
     @Test
     void updateConfigKeepsOpenAiCompatibleUrlUnchanged() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(DASHSCOPE_COMPATIBLE_URL, "qwen-vl-ocr-2025-11-20", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -147,7 +145,7 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
      */
     @Test
     void updateConfigKeepsAnthropicUrlUnchanged() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(anthropicConfigJson(ANTHROPIC_URL, "MiniMax-M3", TEST_CREDENTIAL_ENV_VAR)))
                 .andExpect(status().isOk())
@@ -166,13 +164,13 @@ class LlmMarkdownConfigApiContractTest extends LlmMarkdownConfigApiContractSuppo
      */
     @Test
     void updateConfigPersistsEnabledFlag() throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(disabledOpenAiConfigJson()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(false));
 
-        mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].enabled").value(false))
                 .andExpect(jsonPath("$[0].max_context_tokens").value(16000))

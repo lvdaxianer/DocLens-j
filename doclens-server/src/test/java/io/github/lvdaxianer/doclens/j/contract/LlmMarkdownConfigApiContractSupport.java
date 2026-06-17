@@ -1,6 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
@@ -24,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-abstract class LlmMarkdownConfigApiContractSupport {
+abstract class LlmMarkdownConfigApiContractSupport implements CallerCredentialContractSupport {
 
     /** 默认 LLM 配置地址。 */
     protected static final String DEFAULT_LLM_URL = "https://llm.example.com/v1/chat/completions";
@@ -38,7 +37,6 @@ abstract class LlmMarkdownConfigApiContractSupport {
     protected static final String OLD_TEST_CREDENTIAL_ENV_VAR = "OLD_MINIMAX_API_KEY";
     /** 测试专用新凭证环境变量名。 */
     protected static final String NEW_TEST_CREDENTIAL_ENV_VAR = "NEW_MINIMAX_API_KEY";
-
     /** 临时目录用于隔离测试数据库和存储。 */
     @TempDir
     static java.nio.file.Path tempDir;
@@ -68,6 +66,10 @@ abstract class LlmMarkdownConfigApiContractSupport {
                 () -> "jdbc:h2:file:" + tempDir.resolve("llm-config-api") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+        registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
+        registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
+        registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
+        registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
     }
 
     /**
@@ -92,7 +94,7 @@ abstract class LlmMarkdownConfigApiContractSupport {
      * @date 2026-06-09
      */
     protected void saveConfig(String url, String model, String credentialEnvVar) throws Exception {
-        mockMvc.perform(put("/api/v1/llm-markdown-config")
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(configJson(url, model, credentialEnvVar)))
                 .andExpect(status().isOk());

@@ -1,7 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -62,7 +61,7 @@ class OcrNodeGovernanceApiContractTest extends OcrNodeApiContractSupport {
         saveCall(successCall(nodeId));
         saveCall(failedCall(nodeId));
 
-        mockMvc.perform(get("/api/v1/ocr-nodes/{nodeId}/calls", nodeId))
+        mockMvc.perform(authenticatedGet("/api/v1/ocr-nodes/{nodeId}/calls", nodeId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].document_id").value("doc_call_2"))
                 .andExpect(jsonPath("$.items[0].image_index").value(2))

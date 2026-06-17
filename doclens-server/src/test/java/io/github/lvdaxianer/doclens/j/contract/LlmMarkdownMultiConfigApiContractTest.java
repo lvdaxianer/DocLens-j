@@ -1,11 +1,6 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,7 +25,7 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
      */
     @Test
     void createConfigReturnsManagedConfig() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/llm-markdown-config")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/llm-markdown-config")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(minimalOpenAiJson("主配置")))
                 .andExpect(status().isOk())
@@ -61,7 +56,7 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
         createDefaultOpenAiConfig("主配置");
         createBackupAnthropicConfig("备用配置");
 
-        String response = mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        String response = mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("备用配置"))
                 .andExpect(jsonPath("$[0].priority").value(10))
@@ -90,7 +85,7 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
         String targetId = createDefaultOpenAiConfig("主配置");
         createBackupAnthropicConfig("备用配置");
 
-        mockMvc.perform(put("/api/v1/llm-markdown-config/{id}", targetId)
+        mockMvc.perform(authenticatedPut("/api/v1/llm-markdown-config/{id}", targetId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updatedOpenAiJson("主配置 v2")))
                 .andExpect(status().isOk())
@@ -100,7 +95,7 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
                 .andExpect(jsonPath("$.priority").value(5))
                 .andExpect(jsonPath("$.credential_configured").value(true));
 
-        mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(targetId))
                 .andExpect(jsonPath("$[1].name").value("备用配置"));
@@ -118,14 +113,14 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
         String targetId = createDefaultOpenAiConfig("主配置");
         String backupId = createBackupAnthropicConfig("备用配置");
 
-        mockMvc.perform(patch("/api/v1/llm-markdown-config/{id}/enabled", targetId)
+        mockMvc.perform(authenticatedPatch("/api/v1/llm-markdown-config/{id}/enabled", targetId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(enabledJson(false)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(targetId))
                 .andExpect(jsonPath("$.enabled").value(false));
 
-        mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(backupId))
                 .andExpect(jsonPath("$[0].enabled").value(true))
@@ -145,12 +140,12 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
         String firstId = createDefaultOpenAiConfig("主配置");
         String secondId = createBackupAnthropicConfig("备用配置");
 
-        mockMvc.perform(patch("/api/v1/llm-markdown-config/{id}/default", secondId))
+        mockMvc.perform(authenticatedPatch("/api/v1/llm-markdown-config/{id}/default", secondId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(secondId))
                 .andExpect(jsonPath("$.is_default").value(true));
 
-        mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(secondId))
                 .andExpect(jsonPath("$[0].is_default").value(true))
@@ -170,10 +165,10 @@ class LlmMarkdownMultiConfigApiContractTest extends LlmMarkdownConfigApiContract
         String targetId = createDefaultOpenAiConfig("主配置");
         String backupId = createBackupAnthropicConfig("备用配置");
 
-        mockMvc.perform(delete("/api/v1/llm-markdown-config/{id}", targetId))
+        mockMvc.perform(authenticatedDelete("/api/v1/llm-markdown-config/{id}", targetId))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/llm-markdown-config"))
+        mockMvc.perform(authenticatedGet("/api/v1/llm-markdown-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(backupId))
                 .andExpect(jsonPath("$[1]").doesNotExist());

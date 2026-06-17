@@ -1,7 +1,5 @@
 package io.github.lvdaxianer.doclens.j.contract;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-abstract class OcrNodeApiContractSupport {
+abstract class OcrNodeApiContractSupport implements CallerCredentialContractSupport {
 
     /** 契约测试基准时间。 */
     protected static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
@@ -73,6 +71,10 @@ abstract class OcrNodeApiContractSupport {
                 () -> "jdbc:h2:file:" + tempDir.resolve("ocr-node-api") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
+        registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
+        registry.add("doclens.clients.credentials[0].source-app", () -> TEST_SOURCE_APP);
+        registry.add("doclens.clients.credentials[0].tenant-key", () -> TEST_TENANT_KEY);
+        registry.add("doclens.clients.credentials[0].api-key", () -> TEST_API_KEY);
     }
 
     /**
@@ -87,7 +89,7 @@ abstract class OcrNodeApiContractSupport {
      * @date 2026-06-09
      */
     protected String createNode(String name, String host, int port) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(nodeJson(name, host, port)))
                 .andExpect(status().isCreated())
@@ -110,7 +112,7 @@ abstract class OcrNodeApiContractSupport {
      * @date 2026-06-09
      */
     protected String createOnlineNode(String name, String providerModel, String credentialEnvVar) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
+        String response = mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(onlineNodeJson(name, providerModel, credentialEnvVar)))
                 .andExpect(status().isCreated())
@@ -194,7 +196,7 @@ abstract class OcrNodeApiContractSupport {
      * @date 2026-06-10
      */
     protected JsonNode listNodeItems() throws Exception {
-        String response = mockMvc.perform(get("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr"))
+        String response = mockMvc.perform(authenticatedGet("/api/v1/ocr-models/{modelKey}/nodes", "paddle_ocr"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

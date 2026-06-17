@@ -84,6 +84,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
     protected org.springframework.test.web.servlet.ResultActions createOpenwebuiBatch(MockMultipartFile file)
             throws Exception {
         return mockMvc.perform(multipart(OPENWEBUI_BATCHES_PATH).file(file)
+                        .header(API_KEY_HEADER, TEST_API_KEY)
                         .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                         .header("X-OpenWebUI-User-Id", "user_123")
                         .header("X-OpenWebUI-User-Email", "user@example.com")
@@ -141,7 +142,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
                 Thread.sleep(OPENWEBUI_WAIT_MILLIS);
             }
         }
-        mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+        mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.progress_percent").value(100));
     }
@@ -156,7 +157,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @date 2026-06-12
      */
     private boolean isOpenwebuiBatchCompleted(String batchId) throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/v1/batches/{batchId}", batchId))
+        MvcResult result = mockMvc.perform(authenticatedGet("/api/v1/batches/{batchId}", batchId))
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -241,11 +242,12 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    protected org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedGet(
+    public org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedGet(
             String uriTemplate,
             Object... uriVars
     ) {
         return get(uriTemplate, uriVars)
+                .header(API_KEY_HEADER, TEST_API_KEY)
                 .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                 .header("X-OpenWebUI-User-Id", "user_123")
                 .header("X-OpenWebUI-Request-Id", "req_123");
@@ -260,11 +262,12 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    protected org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedPost(
+    public org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder authenticatedPost(
             String uriTemplate,
             Object... uriVars
     ) {
         return post(uriTemplate, uriVars)
+                .header(API_KEY_HEADER, TEST_API_KEY)
                 .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                 .header("X-OpenWebUI-User-Id", "user_123")
                 .header("X-OpenWebUI-Request-Id", "req_123");
