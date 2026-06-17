@@ -1,4 +1,4 @@
-const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
+const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
 const CALLER_API_KEY_HEADER = 'X-DocLens-Api-Key'
 const AUTHORIZATION_HEADER = 'Authorization'
 const BEARER_PREFIX = 'Bearer '

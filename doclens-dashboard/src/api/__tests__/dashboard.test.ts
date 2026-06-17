@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fetchDashboardSummary } from '@/api/dashboard'
 
-const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
+const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
+const LEGACY_CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
 const CALLER_API_KEY_HEADER = 'X-DocLens-Api-Key'
 const AUTHORIZATION_HEADER = 'Authorization'
 const BEARER_PREFIX = 'Bearer '
@@ -28,7 +29,7 @@ describe('dashboard caller credential headers', () => {
     vi.restoreAllMocks()
   })
 
-  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential', async () => {
+  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential-Key', async () => {
     localStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
@@ -43,7 +44,7 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('omits caller credential headers when localStorage does not provide X-DocLens-Credential', async () => {
+  it('omits caller credential headers when localStorage does not provide X-DocLens-Credential-Key', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()
@@ -67,6 +68,20 @@ describe('dashboard caller credential headers', () => {
       headers: {
         Accept: JSON_CONTENT_TYPE,
         [AUTHORIZATION_HEADER]: `${BEARER_PREFIX}test-bearer-token`
+      }
+    })
+  })
+
+  it('ignores legacy X-DocLens-Credential localStorage key', async () => {
+    localStorage.setItem(LEGACY_CALLER_CREDENTIAL_STORAGE_KEY, 'legacy-api-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
+
+    await fetchDashboardSummary()
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/dashboard/summary', {
+      method: 'GET',
+      headers: {
+        Accept: JSON_CONTENT_TYPE
       }
     })
   })

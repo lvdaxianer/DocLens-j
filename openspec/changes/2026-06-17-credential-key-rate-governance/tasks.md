@@ -1,6 +1,6 @@
 ## 1. Credential Key Naming
 
-- [ ] 1.1 Add failing Dashboard API tests proving requests read
+- [x] 1.1 Add failing Dashboard API tests proving requests read
   `localStorage` key `X-DocLens-Credential-Key`, attach it as
   `X-DocLens-Api-Key` or `Authorization`, and ignore the old
   `X-DocLens-Credential` key.

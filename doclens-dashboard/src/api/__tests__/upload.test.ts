@@ -49,8 +49,8 @@ describe('uploadBatch errors', () => {
 })
 
 describe('uploadBatch caller credential headers', () => {
-  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential', async () => {
-    localStorage.setItem('X-DocLens-Credential', 'test-api-key')
+  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential-Key', async () => {
+    localStorage.setItem('X-DocLens-Credential-Key', 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
 
     await uploadBatch(uploadOptions())
@@ -59,5 +59,15 @@ describe('uploadBatch caller credential headers', () => {
     expect(init?.method).toBe('POST')
     expect(init?.headers).toEqual({ 'X-DocLens-Api-Key': 'test-api-key' })
     expect(init?.body).toBeInstanceOf(FormData)
+  })
+
+  it('ignores legacy X-DocLens-Credential localStorage key', async () => {
+    localStorage.setItem('X-DocLens-Credential', 'legacy-api-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
+
+    await uploadBatch(uploadOptions())
+
+    const [, init] = fetchSpy.mock.calls[0] ?? []
+    expect(init?.headers).toEqual({})
   })
 })
