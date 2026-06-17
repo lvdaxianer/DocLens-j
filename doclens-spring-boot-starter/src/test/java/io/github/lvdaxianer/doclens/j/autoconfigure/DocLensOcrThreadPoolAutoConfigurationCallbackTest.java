@@ -45,6 +45,6 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
      */
     private DocLensSpringProperties defaultProperties() {
         return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 }

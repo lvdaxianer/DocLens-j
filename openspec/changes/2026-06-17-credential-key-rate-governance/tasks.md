@@ -9,7 +9,7 @@
 
 ## 2. Traffic Configuration
 
-- [ ] 2.1 Add failing Spring property binding tests for
+- [x] 2.1 Add failing Spring property binding tests for
   `doclens.traffic.default-limits`, `doclens.traffic.global-protection`, and
   per credential `rate-limits`.
 - [ ] 2.2 Extend `DocLensSpringProperties` and `application.yml` with the

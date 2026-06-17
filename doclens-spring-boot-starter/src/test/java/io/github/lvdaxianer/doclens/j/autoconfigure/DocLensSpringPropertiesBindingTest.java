@@ -38,6 +38,50 @@ class DocLensSpringPropertiesBindingTest {
     }
 
     /**
+     * 绑定调用方凭证与默认接口组限流配置。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    @Test
+    void bindsCallerTrafficGovernanceConfiguration() {
+        contextRunner
+                .withPropertyValues(
+                        "doclens.clients.credentials[0].client-id=local-demo",
+                        "doclens.clients.credentials[0].source-app=dashboard",
+                        "doclens.clients.credentials[0].tenant-key=local",
+                        "doclens.clients.credentials[0].api-key=local-key",
+                        "doclens.clients.credentials[0].rate-limits.[dashboard-read].qps=20",
+                        "doclens.clients.credentials[0].rate-limits.[dashboard-read].burst=40",
+                        "doclens.traffic.enabled=true",
+                        "doclens.traffic.anonymous-enabled=false",
+                        "doclens.traffic.default-limits.[upload-write].qps=0.5",
+                        "doclens.traffic.default-limits.[upload-write].burst=2",
+                        "doclens.traffic.global-protection.enabled=true",
+                        "doclens.traffic.global-protection.max-in-flight=100")
+                .run(context -> {
+                    DocLensSpringProperties properties = context.getBean(DocLensSpringProperties.class);
+                    DocLensSpringProperties.CallerCredentialProperties credential =
+                            properties.clients().credentials().getFirst();
+
+                    assertThat(properties.traffic().enabled()).isTrue();
+                    assertThat(properties.traffic().anonymousEnabled()).isFalse();
+                    assertThat(credential.rateLimit("dashboard-read"))
+                            .get()
+                            .extracting(DocLensSpringProperties.RateLimitProperties::qps,
+                                    DocLensSpringProperties.RateLimitProperties::burst)
+                            .containsExactly(20.0D, 40);
+                    assertThat(properties.traffic().defaultLimit("upload-write"))
+                            .get()
+                            .extracting(DocLensSpringProperties.RateLimitProperties::qps,
+                                    DocLensSpringProperties.RateLimitProperties::burst)
+                            .containsExactly(0.5D, 2);
+                    assertThat(properties.traffic().globalProtection().enabled()).isTrue();
+                    assertThat(properties.traffic().globalProtection().maxInFlight()).isEqualTo(100);
+                });
+    }
+
+    /**
      * 配置属性绑定测试配置。
      *
      * @author lvdaxianerplus

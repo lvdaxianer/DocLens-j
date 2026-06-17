@@ -4,7 +4,11 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServicePrope
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
  * 绑定到 Spring 的 DocLens 配置属性。
@@ -23,6 +27,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param wordConversion Word 转 PDF 配置
  * @param llmMarkdown LLM Markdown 后处理配置
  * @param threadPools 线程池隔离配置
+ * @param traffic 调用方流量治理配置
  * @author lvdaxianerplus
  * @date 2026-06-07
  */
@@ -41,7 +46,8 @@ public record DocLensSpringProperties(
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion,
         LlmMarkdownProperties llmMarkdown,
-        ThreadPoolsProperties threadPools
+        ThreadPoolsProperties threadPools,
+        TrafficProperties traffic
 ) {
     private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
     private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
@@ -51,6 +57,7 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_NODE_WEIGHT = 50;
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
 
+    @ConstructorBinding
     public DocLensSpringProperties {
         clients = clients == null ? new ClientsProperties(List.of()) : clients;
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
@@ -63,6 +70,7 @@ public record DocLensSpringProperties(
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
         llmMarkdown = llmMarkdown == null ? new LlmMarkdownProperties("", "", "") : llmMarkdown;
         threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
+        traffic = traffic == null ? TrafficProperties.defaults() : traffic;
     }
 
     /**
@@ -146,6 +154,7 @@ public record DocLensSpringProperties(
      * @param tenantKey 租户或业务分区键
      * @param apiKey API Key
      * @param bearerToken Bearer Token
+     * @param rateLimits 调用方接口组限流覆盖
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
@@ -154,8 +163,104 @@ public record DocLensSpringProperties(
             String sourceApp,
             String tenantKey,
             String apiKey,
-            String bearerToken
+            String bearerToken,
+            Map<String, RateLimitProperties> rateLimits
     ) {
+        /**
+         * 按接口组名称读取调用方限流覆盖。
+         *
+         * @param groupName 接口组名称
+         * @return 调用方限流覆盖
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        public Optional<RateLimitProperties> rateLimit(String groupName) {
+            return findRateLimit(rateLimits, groupName);
+        }
+
+        public CallerCredentialProperties {
+            rateLimits = rateLimits == null ? Map.of() : Map.copyOf(rateLimits);
+        }
+    }
+
+    /**
+     * DocLens 调用方流量治理属性。
+     *
+     * @param enabled 是否启用调用方限流
+     * @param anonymousEnabled 是否允许匿名调用方
+     * @param defaultLimits 默认接口组限流
+     * @param globalProtection 全局保护配置
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public record TrafficProperties(
+            boolean enabled,
+            boolean anonymousEnabled,
+            Map<String, RateLimitProperties> defaultLimits,
+            GlobalProtectionProperties globalProtection
+    ) {
+
+        /**
+         * 创建默认调用方流量治理属性。
+         *
+         * @return 默认调用方流量治理属性
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        public static TrafficProperties defaults() {
+            return new TrafficProperties(true, false, Map.of(), GlobalProtectionProperties.defaults());
+        }
+
+        /**
+         * 按接口组名称读取默认限流配置。
+         *
+         * @param groupName 接口组名称
+         * @return 默认限流配置
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        public Optional<RateLimitProperties> defaultLimit(String groupName) {
+            return findRateLimit(defaultLimits, groupName);
+        }
+
+        @ConstructorBinding
+        public TrafficProperties {
+            defaultLimits = defaultLimits == null ? Map.of() : Map.copyOf(defaultLimits);
+            globalProtection = globalProtection == null ? GlobalProtectionProperties.defaults() : globalProtection;
+        }
+    }
+
+    /**
+     * 单个接口组限流属性。
+     *
+     * @param qps 每秒令牌补充数量
+     * @param burst 最大突发令牌数
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public record RateLimitProperties(double qps, int burst) {
+    }
+
+    /**
+     * 全局并发保护属性。
+     *
+     * @param enabled 是否启用全局保护
+     * @param maxInFlight 最大进行中请求数
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    public record GlobalProtectionProperties(boolean enabled, int maxInFlight) {
+
+        /**
+         * 创建默认全局保护属性。
+         *
+         * @return 默认全局保护属性
+         * @author lvdaxianerplus
+         * @date 2026-06-17
+         */
+        public static GlobalProtectionProperties defaults() {
+            return new GlobalProtectionProperties(true, 100);
+        }
     }
 
     /**
@@ -372,5 +477,43 @@ public record DocLensSpringProperties(
             int keepAliveSeconds,
             String threadNamePrefix
     ) {
+    }
+
+    /**
+     * 按规范化后的接口组名称查找限流配置。
+     *
+     * @param rateLimits 限流配置集合
+     * @param groupName 接口组名称
+     * @return 匹配到的限流配置
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private static Optional<RateLimitProperties> findRateLimit(Map<String, RateLimitProperties> rateLimits,
+                                                               String groupName) {
+        RateLimitProperties directMatch = rateLimits.get(groupName);
+        if (directMatch != null) {
+            return Optional.of(directMatch);
+        } else {
+            String normalizedGroupName = normalizeTrafficGroupName(groupName);
+            for (Map.Entry<String, RateLimitProperties> entry : rateLimits.entrySet()) {
+                if (normalizeTrafficGroupName(entry.getKey()).equals(normalizedGroupName)) {
+                    return Optional.of(entry.getValue());
+                }
+            }
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 统一接口组名称的比较口径，兼容 Spring 配置绑定对分隔符的规范化。
+     *
+     * @param groupName 原始接口组名称
+     * @return 规范化后的接口组名称
+     * @author lvdaxianerplus
+     * @date 2026-06-17
+     */
+    private static String normalizeTrafficGroupName(String groupName) {
+        return groupName == null ? "" : groupName.replace("-", "").replace("_", "").replace(".", "")
+                .toLowerCase(Locale.ROOT);
     }
 }

@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.Call
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.ClientsProperties;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -98,7 +99,7 @@ class CallerCredentialResolverTest {
      */
     private CallerCredentialResolver resolver() {
         return new CallerCredentialResolver(new ClientsProperties(List.of(
-                new CallerCredentialProperties(CLIENT_ID, SOURCE_APP, TENANT_KEY, API_KEY, BEARER_TOKEN)
+                new CallerCredentialProperties(CLIENT_ID, SOURCE_APP, TENANT_KEY, API_KEY, BEARER_TOKEN, Map.of())
         )));
     }
 }
