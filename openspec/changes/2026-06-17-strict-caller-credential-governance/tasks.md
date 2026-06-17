@@ -1,6 +1,6 @@
 ## 1. Credential Enforcement
 
-- [ ] 1.1 Add failing tests that prove missing caller credentials are rejected and
+- [x] 1.1 Add failing tests that prove missing caller credentials are rejected and
   anonymous fallback no longer exists.
 - [ ] 1.2 Update caller credential resolution and request mapping so uploads and
   Dashboard/LLM endpoints require a matched configured caller.

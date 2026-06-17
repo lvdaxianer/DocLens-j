@@ -31,17 +31,17 @@ class CallerCredentialResolverTest {
     private static final String AUTHORIZATION = "Bearer " + BEARER_TOKEN;
 
     /**
-     * 验证未配置凭证时返回匿名调用方。
+     * 验证未配置凭证时会拒绝访问，而不是回退到匿名调用方。
      *
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
     @Test
-    void resolvesAnonymousCallerWhenNoCredentialsConfigured() {
-        CallerIdentity caller = new CallerCredentialResolver(new ClientsProperties(List.of()))
-                .resolve("", "");
-
-        assertThat(caller).isEqualTo(CallerIdentity.anonymous());
+    void rejectsMissingCredentialWhenNoCredentialsConfigured() {
+        assertThatThrownBy(() -> new CallerCredentialResolver(new ClientsProperties(List.of()))
+                .resolve("", ""))
+                .isInstanceOf(CallerCredentialException.class)
+                .hasMessage("unauthorized caller credential");
     }
 
     /**

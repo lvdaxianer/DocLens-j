@@ -42,13 +42,9 @@ public class CallerCredentialResolver {
      * @date 2026-06-17
      */
     public CallerIdentity resolve(String apiKey, String authorization) {
-        if (credentials.isEmpty()) {
-            return CallerIdentity.anonymous();
-        } else {
-            return matchCredential(apiKey, authorization)
-                    .map(this::toCallerIdentity)
-                    .orElseThrow(() -> new CallerCredentialException(UNAUTHORIZED_MESSAGE));
-        }
+        return matchCredential(apiKey, authorization)
+                .map(this::toCallerIdentity)
+                .orElseThrow(() -> new CallerCredentialException(UNAUTHORIZED_MESSAGE));
     }
 
     /**
