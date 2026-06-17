@@ -11,4 +11,4 @@
 - [x] 1.4 Re-run the focused properties tests and the broader starter test set
   that touches `DocLensSpringProperties` instantiation, then package and start
   the backend with `./scripts/dev-restart.sh`.
-- [ ] 1.5 Validate the change with `openspec validate 2026-06-17-doclens-backend-startup-fix --strict`, review the diff, and commit the fix.
+- [x] 1.5 Validate the change with `openspec validate 2026-06-17-doclens-backend-startup-fix --strict`, review the diff, and commit the fix.
