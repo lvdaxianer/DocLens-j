@@ -28,7 +28,7 @@
   “不存在” 处理，避免暴露别的 caller 的资源存在性。
 - Dashboard 前端从环境变量读取当前 caller 凭证，并在所有 API 请求里
   自动附加对应请求头。
-- `scripts/run-backend-dev.sh` 在本地开发启动时为
+- `scripts/dev-restart.sh` 在本地开发重启入口为
   `DOCLENS_LOCAL_CREDENTIAL_KEY` 提供一个默认复杂 key，但使用
   shell 的 `${VAR:-default}` 形式保留外部覆盖能力。
 

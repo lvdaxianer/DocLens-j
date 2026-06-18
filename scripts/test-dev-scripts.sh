@@ -31,12 +31,13 @@ assert_help "scripts/dev-down.sh" "停止前后端开发服务"
 assert_help "scripts/dev-restart.sh" "强制重启前后端开发服务"
 assert_help "scripts/dev-status.sh" "查看前后端开发服务状态"
 
-backend_runner="${ROOT_DIR}/scripts/run-backend-dev.sh"
+backend_restart="${ROOT_DIR}/scripts/dev-restart.sh"
 if ! rg -n "DOCLENS_LOCAL_CREDENTIAL_KEY=.*:-dlk_EUhMBpKkk6UGX3smR-8DkMmF-nlBtzAniXQLAGkutKc" \
-  "${backend_runner}" >/dev/null; then
-  echo "backend runner missing default local caller credential key" >&2
+  "${backend_restart}" >/dev/null; then
+  echo "dev restart missing default local caller credential key" >&2
   exit 1
 fi
+backend_runner="${ROOT_DIR}/scripts/run-backend-dev.sh"
 if ! rg -n -- "--no-stdin" "${backend_runner}" >/dev/null; then
   echo "backend runner must keep nodemon alive when started by nohup" >&2
   exit 1

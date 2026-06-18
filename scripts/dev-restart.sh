@@ -11,6 +11,7 @@ if [[ "${1:-}" == "--help" ]]; then
 fi
 
 require_commands bash curl lsof mvn node npm nodemon
+export DOCLENS_LOCAL_CREDENTIAL_KEY="${DOCLENS_LOCAL_CREDENTIAL_KEY:-dlk_EUhMBpKkk6UGX3smR-8DkMmF-nlBtzAniXQLAGkutKc}"
 
 echo "stopping old frontend and backend processes..."
 stop_service "${BACKEND_PID_FILE}"
