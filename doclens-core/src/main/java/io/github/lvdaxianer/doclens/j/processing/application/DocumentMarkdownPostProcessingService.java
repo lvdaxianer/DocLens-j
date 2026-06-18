@@ -142,8 +142,59 @@ class DocumentMarkdownPostProcessingService {
         LOGGER.warn("[LLM后处理] Markdown 后处理重试耗尽并回退 OCR 原文 documentId={}, attempts={}, errorType={}",
                 document.documentId(), LLM_MARKDOWN_MAX_ATTEMPTS, errorType(lastFailure));
         return new DocumentPostProcessedText(extracted.finalText(), failedWarnings(extracted.warnings()), false,
-                Optional.ofNullable(lastFailure).map(RuntimeException::getMessage).filter(message -> !message.isBlank()),
+                Optional.ofNullable(failureMessage(lastFailure)).filter(message -> !message.isBlank()),
                 Map.of());
+    }
+
+    /**
+     * 提取 Markdown 后处理失败的最深层可读消息。
+     *
+     * @param failure 失败异常
+     * @return 最深层可读消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String failureMessage(RuntimeException failure) {
+        if (failure == null) {
+            // 没有失败异常时返回空串，沿用现有兜底行为。
+            return "";
+        } else {
+            // 优先选择最深层的非空消息，保留真正的根因。
+            return deepestMessage(failure);
+        }
+    }
+
+    /**
+     * 查找异常链中最深层的非空消息。
+     *
+     * @param failure 失败异常
+     * @return 最深层可读消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String deepestMessage(Throwable failure) {
+        String message = "";
+        Throwable current = failure;
+        while (current != null) {
+            String currentMessage = normalizeMessage(current.getMessage());
+            if (!currentMessage.isBlank()) {
+                message = currentMessage;
+            }
+            current = current.getCause();
+        }
+        return message.isBlank() ? failure.getClass().getSimpleName() : message;
+    }
+
+    /**
+     * 规整异常消息文本。
+     *
+     * @param value 原始消息
+     * @return 规整后的消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String normalizeMessage(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**

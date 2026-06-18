@@ -121,6 +121,58 @@ class HttpMarkdownPostProcessorTest {
     }
 
     /**
+     * HTTP 超时类失败应保留可读的根因消息，避免只剩泛化包装信息。
+     *
+     * @throws IOException 本地 HTTP 服务启动失败
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void preservesTimeoutCauseMessageWhenRequestTimesOut() throws IOException {
+        HttpServer server = slowResponseServer();
+
+        try {
+            assertThatThrownBy(() -> timeoutProcessor(server, Duration.ofMillis(50)).process(request()))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("timed out");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
+     * 创建响应慢于超时阈值的 HTTP 服务。
+     *
+     * @return 响应缓慢的本地 HTTP 测试服务
+     * @throws IOException 本地端口监听失败
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private HttpServer slowResponseServer() throws IOException {
+        return startServer(exchange -> {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            writeResponse(exchange, 200, "{\"choices\":[{\"message\":{\"content\":\"Markdown\"}}]}");
+        });
+    }
+
+    /**
+     * 创建指定超时时间的 HTTP Markdown 后处理器。
+     *
+     * @param server 本地 HTTP 测试服务
+     * @param timeout HTTP 超时时间
+     * @return HTTP Markdown 后处理器
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private HttpMarkdownPostProcessor timeoutProcessor(HttpServer server, Duration timeout) {
+        return new HttpMarkdownPostProcessor(objectMapper,
+                new HttpMarkdownPostProcessorOptions(endpointFor(server), "markdown-model", API_KEY, timeout));
+    }
+
+    /**
      * 创建被测后处理器。
      *
      * @param endpoint LLM endpoint
