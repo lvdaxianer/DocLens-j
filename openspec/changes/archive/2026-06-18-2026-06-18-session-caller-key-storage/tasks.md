@@ -11,5 +11,5 @@
 
 ## 2. OpenSpec Archive
 
-- [ ] 2.1 Archive this completed OpenSpec change after implementation and final
+- [x] 2.1 Archive this completed OpenSpec change after implementation and final
   audit, then commit the archive/update separately.

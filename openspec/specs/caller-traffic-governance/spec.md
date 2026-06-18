@@ -8,13 +8,16 @@ limits without introducing personal login or RBAC.
 ### Requirement: Dashboard MUST use X-DocLens-Credential-Key as the local credential key
 
 The Dashboard frontend MUST read the active caller credential from
-`localStorage` key `X-DocLens-Credential-Key`.
+`sessionStorage` key `X-DocLens-Credential-Key`.
+
+The Dashboard frontend MUST NOT read `localStorage` key
+`X-DocLens-Credential-Key`.
 
 The Dashboard frontend MUST NOT read `X-DocLens-Credential` after this change.
 
 #### Scenario: Dashboard runtime provides API key credential
 
-- **WHEN** `localStorage` contains `X-DocLens-Credential-Key` with value
+- **WHEN** `sessionStorage` contains `X-DocLens-Credential-Key` with value
   `local-api-key`
 - **AND** the value does not start with `Bearer `
 - **THEN** every Dashboard API request sends `X-DocLens-Api-Key:
@@ -24,16 +27,23 @@ The Dashboard frontend MUST NOT read `X-DocLens-Credential` after this change.
 
 #### Scenario: Dashboard runtime provides Bearer credential
 
-- **WHEN** `localStorage` contains `X-DocLens-Credential-Key` with value
+- **WHEN** `sessionStorage` contains `X-DocLens-Credential-Key` with value
   `Bearer local-token`
 - **THEN** every Dashboard API request sends `Authorization:
   Bearer local-token`
 - **AND** the request does not send `X-DocLens-Api-Key` for that credential
 
+#### Scenario: Dashboard runtime only provides the same key in localStorage
+
+- **WHEN** `localStorage` contains `X-DocLens-Credential-Key`
+- **AND** `sessionStorage` does not contain `X-DocLens-Credential-Key`
+- **THEN** Dashboard API requests send no caller credential header
+
 #### Scenario: Dashboard runtime only provides the old key
 
-- **WHEN** `localStorage` contains `X-DocLens-Credential`
-- **AND** `localStorage` does not contain `X-DocLens-Credential-Key`
+- **WHEN** `localStorage` or `sessionStorage` contains
+  `X-DocLens-Credential`
+- **AND** `sessionStorage` does not contain `X-DocLens-Credential-Key`
 - **THEN** Dashboard API requests send no caller credential header
 
 ### Requirement: Caller traffic limits MUST be configurable in application.yml
@@ -93,6 +103,9 @@ Interface groups MUST include `dashboard-read`, `detail-read`, `upload-write`,
 DocLens-j MUST return distinct HTTP status codes for credential failures,
 cross-caller resource access, caller/group limit failures, and global
 protection failures.
+
+Backend credential failures MUST be based on the configured credential
+allowlist, not on the presence of any arbitrary caller key value.
 
 #### Scenario: Request is missing or has invalid credential
 
