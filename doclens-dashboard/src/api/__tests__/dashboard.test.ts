@@ -26,11 +26,12 @@ function mockDashboardResponse(): Response {
 describe('dashboard caller credential headers', () => {
   afterEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
     vi.restoreAllMocks()
   })
 
-  it('attaches X-DocLens-Api-Key when localStorage provides X-DocLens-Credential-Key', async () => {
-    localStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
+  it('attaches X-DocLens-Api-Key when sessionStorage provides X-DocLens-Credential-Key', async () => {
+    sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()
@@ -44,7 +45,7 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('omits caller credential headers when localStorage does not provide X-DocLens-Credential-Key', async () => {
+  it('omits caller credential headers when sessionStorage does not provide X-DocLens-Credential-Key', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()
@@ -57,8 +58,8 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('attaches Authorization when localStorage provides a Bearer token', async () => {
-    localStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, `${BEARER_PREFIX}test-bearer-token`)
+  it('attaches Authorization when sessionStorage provides a Bearer token', async () => {
+    sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, `${BEARER_PREFIX}test-bearer-token`)
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()
@@ -74,6 +75,20 @@ describe('dashboard caller credential headers', () => {
 
   it('ignores legacy X-DocLens-Credential localStorage key', async () => {
     localStorage.setItem(LEGACY_CALLER_CREDENTIAL_STORAGE_KEY, 'legacy-api-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
+
+    await fetchDashboardSummary()
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/dashboard/summary', {
+      method: 'GET',
+      headers: {
+        Accept: JSON_CONTENT_TYPE
+      }
+    })
+  })
+
+  it('ignores X-DocLens-Credential-Key when it only exists in localStorage', async () => {
+    localStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'persistent-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()

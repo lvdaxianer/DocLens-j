@@ -12,7 +12,7 @@ const BEARER_PREFIX = 'Bearer '
  */
 function readCallerCredential(): string {
   try {
-    const credential = globalThis.localStorage?.getItem(CALLER_CREDENTIAL_STORAGE_KEY)
+    const credential = globalThis.sessionStorage?.getItem(CALLER_CREDENTIAL_STORAGE_KEY)
     return credential?.trim() ?? ''
   } catch {
     return ''
