@@ -46,7 +46,7 @@ class ProcessingTrackAssembler {
                 node(document, ProcessingTrackStep.RENDERING, profile.hasPageRendering()),
                 node(document, ProcessingTrackStep.OCR, profile.hasOcr()),
                 node(document, ProcessingTrackStep.MERGE, profile.hasMerge()),
-                node(document, ProcessingTrackStep.LLM_MARKDOWN, profile.hasMerge()),
+                node(document, ProcessingTrackStep.LLM_MARKDOWN, true),
                 node(document, ProcessingTrackStep.SAVE, true)
         );
     }

@@ -57,7 +57,7 @@ class DashboardQueryServiceBatchDetailTest {
         assertThat(statesOf((Map<?, ?>) documents.get(1)))
                 .containsExactly("done", "done", "done", "done", "done", "done", "done", "done");
         assertThat(statesOf((Map<?, ?>) documents.get(0)))
-                .containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "skipped", "done");
+                .containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "done", "done");
     }
 
     /**
@@ -180,6 +180,24 @@ class DashboardQueryServiceBatchDetailTest {
                 .containsExactly("上传", "类型识别", "转换", "渲染页图", "OCR", "合并文本", "LLM 排版", "入库/落盘");
         assertThat(statesOf((Map<?, ?>) documents.getFirst()))
                 .containsExactly("done", "done", "done", "done", "done", "done", "current", "pending");
+    }
+
+    /**
+     * 完成的 Markdown 文档应将 LLM Markdown 视为独立处理步骤，而不是文件类型跳过步骤。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-18
+     */
+    @Test
+    void batchDetailShowsLlmMarkdownForCompletedMarkdownDocument() {
+        DashboardQueryService service = serviceWithDocuments(List.of(
+                completedDocument("doc-markdown", DocumentType.MARKDOWN, 0)
+        ));
+
+        List<?> documents = documentsOf(service.batchDetail("batch-test"));
+
+        assertThat(statesOf((Map<?, ?>) documents.getFirst()))
+                .containsExactly("done", "done", "skipped", "skipped", "skipped", "skipped", "done", "done");
     }
 
     /**
