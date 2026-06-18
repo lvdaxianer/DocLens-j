@@ -56,6 +56,38 @@ test('ollama offline node form requires provider model and submits generate chan
   })
 })
 
+/**
+ * 真实 Ollama 家族 key 也应支持自由输入模型名称。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-18
+ */
+test('ollama family node keeps provider model editable for real family keys', () => {
+  const form = createDefaultOcrNodeForm('ollama_deepseek_ocr')
+
+  form.name = '内网 Ollama 节点'
+  form.host = '10.100.30.215'
+  form.port = 11434
+
+  assert.equal(isOcrNodeFormSubmittable(form), false)
+
+  form.providerModel = 'deepseek-ocr:latest'
+
+  assert.equal(isOcrNodeFormSubmittable(form), true)
+  assert.deepEqual(createOcrNodePayload(form).node, {
+    deployment_type: 'OFFLINE',
+    name: '内网 Ollama 节点',
+    host: '10.100.30.215',
+    port: 11434,
+    channel_key: 'ollama',
+    provider_model: 'deepseek-ocr:latest',
+    enabled: true,
+    participate_global: true,
+    weight: 50,
+    max_concurrency: 10
+  })
+})
+
 test('online node form submits channel model and credential env var without endpoint fields', () => {
   const form = createDefaultOcrNodeForm('paddle_ocr')
 

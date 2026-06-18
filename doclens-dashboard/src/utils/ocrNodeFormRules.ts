@@ -13,7 +13,7 @@ const DEFAULT_WEIGHT = 50
 const DEFAULT_MAX_CONCURRENCY = 10
 const COMPATIBLE_ONLINE_MODEL_KEY = 'paddle_ocr'
 const ONLINE_OCR_MODEL_KEY = 'online_ocr'
-export const OLLAMA_MODEL_KEY = 'ollama'
+export const OLLAMA_MODEL_FAMILY_PREFIX = 'ollama'
 export const OLLAMA_CHANNEL_KEY = 'ollama'
 export const DASHSCOPE_CHANNEL_KEY: OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
 
@@ -294,7 +294,7 @@ function onlineChannel(channelKey: string): OcrOnlineChannelKey {
  * @date 2026-06-13
  */
 export function isOllamaModel(modelKey: string): boolean {
-  return modelKey.trim() === OLLAMA_MODEL_KEY
+  return modelKey.trim().startsWith(OLLAMA_MODEL_FAMILY_PREFIX)
 }
 
 /**
