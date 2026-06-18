@@ -188,7 +188,7 @@ class PaddleOcrNodeImageExecutorTest {
      * @date 2026-06-12
      */
     private OcrNode ollamaNode() {
-        return OcrNode.create(new OcrNodeCreateRequest("node-ollama", "ollama_deepseek_ocr",
+        return OcrNode.create(new OcrNodeCreateRequest("node-ollama", "ollama",
                 OcrNodeDeploymentType.OFFLINE, "Ollama OCR", "127.0.0.1", 11434, "ollama",
                 "deepseek-ocr:latest", "", false, true, true, 100, 4, BASE_TIME));
     }

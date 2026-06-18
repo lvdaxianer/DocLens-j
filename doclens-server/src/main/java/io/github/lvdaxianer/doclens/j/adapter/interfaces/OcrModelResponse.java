@@ -62,6 +62,7 @@ public class OcrModelResponse {
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
+    @JsonProperty("name")
     public String name() {
         return definition.name();
     }

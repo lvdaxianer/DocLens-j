@@ -29,7 +29,7 @@ class OllamaOcrHealthClientTest {
     private static final int HTTP_OK_STATUS = 200;
     private static final int DEFAULT_WEIGHT = 100;
     private static final int DEFAULT_MAX_CONCURRENCY = 4;
-    private static final String OLLAMA_MODEL_KEY = "ollama_deepseek_ocr";
+    private static final String OLLAMA_MODEL_KEY = "ollama";
     private static final String OLLAMA_CHANNEL_KEY = "ollama";
     private static final String OLLAMA_PROVIDER_MODEL = "deepseek-ocr:latest";
     private static final String HEALTH_CHECK_IMAGE_BASE64 =

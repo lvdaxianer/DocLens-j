@@ -15,7 +15,7 @@ vi.mock('naive-ui', () => ({
   NInputNumber: passthrough('input', 'n-input-number'),
   NRadioButton: passthrough('button', 'n-radio-button'),
   NRadioGroup: passthrough('div', 'n-radio-group'),
-  NSelect: passthrough('div', 'n-select'),
+  NSelect: selectStub(),
   NSwitch: passthrough('button', 'n-switch')
 }))
 
@@ -36,12 +36,13 @@ describe('OcrNodeFormDrawer', () => {
     const wrapper = mount(OcrNodeFormDrawer, {
       props: {
         visible: true,
-        selectedModelKey: 'ollama_deepseek_ocr',
-        models: [model('ollama_deepseek_ocr'), model('paddle_ocr')],
+        selectedModelKey: 'ollama',
+        models: [model('ollama', 'Ollama'), model('paddle_ocr', 'PaddleOCR')],
         loading: false
       }
     })
 
+    expect(wrapper.text()).toContain('Ollama · ollama')
     expect(wrapper.text()).toContain('Ollama family 节点可自由填写真实 provider model')
     expect(wrapper.text()).toContain('deepseek-ocr:latest')
   })
@@ -57,7 +58,7 @@ describe('OcrNodeFormDrawer', () => {
       props: {
         visible: true,
         selectedModelKey: 'paddle_ocr',
-        models: [model('paddle_ocr')],
+        models: [model('paddle_ocr', 'PaddleOCR')],
         loading: false
       }
     })
@@ -74,10 +75,10 @@ describe('OcrNodeFormDrawer', () => {
  * @author lvdaxianerplus
  * @date 2026-06-18
  */
-function model(modelKey: string): OcrModel {
+function model(modelKey: string, name: string = modelKey): OcrModel {
   return {
     model_key: modelKey,
-    name: modelKey,
+    name,
     description: '',
     supported_inputs: ['image'],
     ocr_path: '/ocr',
@@ -101,6 +102,33 @@ function passthrough(tag: string, className: string) {
   return defineComponent({
     setup(_, { slots, attrs }) {
       return () => h(tag, { ...attrs, class: className }, slots.default?.())
+    }
+  })
+}
+
+/**
+ * 创建展示选项文本的下拉测试组件。
+ *
+ * @returns Vue 测试组件
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+function selectStub() {
+  return defineComponent({
+    props: {
+      options: {
+        type: Array,
+        default: () => []
+      }
+    },
+    setup(props, { slots, attrs }) {
+      return () => h('div', { ...attrs, class: 'n-select' }, [
+        h('span', { class: 'n-select__options' }, props.options.map((option: any) =>
+          typeof option?.label === 'string' ? option.label : ''
+        ).filter(Boolean).join(' '))
+          ,
+        slots.default?.()
+      ])
     }
   })
 }
