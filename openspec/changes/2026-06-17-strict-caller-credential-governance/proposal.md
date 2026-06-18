@@ -18,6 +18,8 @@ DocLens-j 现在仍然允许无 caller 凭证访问部分接口，导致同一�
 - Dashboard 读模型、批次详情、文档结果、回调重试和删除类接口都按
   caller 过滤，只返回所属凭证的数据。
 - Dashboard 前端从本地环境读取 caller 凭证并随每个请求发送。
+- 本地后端开发 runner 也会注入一个默认 caller 凭证，方便
+  `./scripts/dev-restart.sh` 开箱启动；外部环境变量仍可覆盖该默认值。
 
 ## Impact
 

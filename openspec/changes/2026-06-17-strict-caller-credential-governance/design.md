@@ -28,6 +28,9 @@
   “不存在” 处理，避免暴露别的 caller 的资源存在性。
 - Dashboard 前端从环境变量读取当前 caller 凭证，并在所有 API 请求里
   自动附加对应请求头。
+- `scripts/run-backend-dev.sh` 在本地开发启动时为
+  `DOCLENS_LOCAL_CREDENTIAL_KEY` 提供一个默认复杂 key，但使用
+  shell 的 `${VAR:-default}` 形式保留外部覆盖能力。
 
 ## Data Flow
 
@@ -38,8 +41,8 @@
 
 ## Risks / Trade-offs
 
-- 这会让未配置凭证的本地环境全部返回 401，需要在本地启动说明里
-  明确配置方式。
+- 这会让未配置凭证的本地环境全部返回 401，因此本地 runner 需要
+  提供默认 key，避免普通 `./scripts/dev-restart.sh` 直接进入 401。
 - 目前没有做凭证输入 UI，所以前端凭证仍依赖环境变量注入。
 - 对外观测上会更安静，但也会让越权访问看起来像“资源不存在”。
 

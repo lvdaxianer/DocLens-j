@@ -24,3 +24,6 @@
 
 - [x] 4.1 Run the focused backend and frontend tests, the relevant broader
   verification commands, OpenSpec strict validation, and review the diff.
+- [x] 4.2 Add a local dev runner default for `DOCLENS_LOCAL_CREDENTIAL_KEY`
+  and verify the script tests cover the default while preserving external
+  environment overrides.

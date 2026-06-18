@@ -3,11 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export DOCLENS_INTEGRATIONS_OPEN_WEBUI_INTERNAL_TOKEN="${DOCLENS_INTEGRATIONS_OPEN_WEBUI_INTERNAL_TOKEN:-7d3079585812617132d4b29611eb5dbb524475b1462a93413c49fb08102899ea}"
+export DOCLENS_LOCAL_CREDENTIAL_KEY="${DOCLENS_LOCAL_CREDENTIAL_KEY:-dlk_EUhMBpKkk6UGX3smR-8DkMmF-nlBtzAniXQLAGkutKc}"
 # export MINIMAX_API_KEY=replace-with-real-secret
 # export DASHSCOPE_API_KEY=replace-with-real-secret
 
 cd "${ROOT_DIR}"
 exec nodemon \
+  --no-stdin \
   --watch "${ROOT_DIR}/doclens-server/src/main" \
   --watch "${ROOT_DIR}/doclens-core/src/main" \
   --watch "${ROOT_DIR}/doclens-api/src/main" \
