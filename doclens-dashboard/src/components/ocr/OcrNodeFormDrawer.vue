@@ -56,6 +56,7 @@ const channelOptions = [
 ]
 const canSubmit = computed(() => isOcrNodeFormSubmittable(form))
 const hasOllamaProviderModel = computed(() => form.deploymentType === 'OFFLINE' && isOllamaModel(form.modelKey))
+const ollamaProviderModelHint = 'Ollama family 节点可自由填写真实 provider model，例如 deepseek-ocr:latest'
 
 /**
  * 将节点配置写入本地表单。
@@ -153,6 +154,9 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
           </NFormItem>
           <NFormItem v-if="hasOllamaProviderModel" label="模型名称">
             <NInput v-model:value="form.providerModel" placeholder="例如 deepseek-ocr:latest" />
+            <div class="ocr-node-form__hint">
+              {{ ollamaProviderModelHint }}
+            </div>
           </NFormItem>
         </template>
         <template v-else>
@@ -217,6 +221,13 @@ watch(() => [props.visible, props.node, props.selectedModelKey, props.models.len
 
 .ocr-node-form__number {
   width: 100%;
+}
+
+.ocr-node-form__hint {
+  margin-top: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .ocr-node-form__actions {
