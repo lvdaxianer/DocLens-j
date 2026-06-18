@@ -77,9 +77,9 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
             return parseResponse(response);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("LLM Markdown request interrupted", ex);
+            throw new IllegalStateException(buildFailureMessage("LLM Markdown request interrupted", ex), ex);
         } catch (IOException ex) {
-            throw new IllegalStateException("LLM Markdown request failed", ex);
+            throw new IllegalStateException(buildFailureMessage("LLM Markdown request failed", ex), ex);
         }
     }
 
@@ -225,6 +225,59 @@ public class HttpMarkdownPostProcessor implements MarkdownPostProcessor {
      */
     private String buildErrorMessage(HttpResponse<String> response) {
         return "LLM Markdown returned HTTP " + response.statusCode() + ": " + summarizeBody(response.body());
+    }
+
+    /**
+     * 构建请求失败消息，保留最深层的根因摘要。
+     *
+     * @param prefix 外层失败前缀
+     * @param failure 失败异常
+     * @return 请求失败消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String buildFailureMessage(String prefix, Throwable failure) {
+        String detail = rootCauseMessage(failure);
+        if (detail.isBlank()) {
+            // 根因没有可读消息时保留原有前缀，避免返回空提示。
+            return prefix;
+        } else {
+            // 根因有可读消息时把它拼入外层消息，便于上层直接展示和排查。
+            return prefix + ": " + detail;
+        }
+    }
+
+    /**
+     * 提取异常链中最深层的可读消息。
+     *
+     * @param failure 失败异常
+     * @return 根因消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String rootCauseMessage(Throwable failure) {
+        String message = "";
+        Throwable current = failure;
+        while (current != null) {
+            String currentMessage = normalizeMessage(current.getMessage());
+            if (!currentMessage.isBlank()) {
+                message = currentMessage;
+            }
+            current = current.getCause();
+        }
+        return message;
+    }
+
+    /**
+     * 规整异常消息文本。
+     *
+     * @param value 原始消息
+     * @return 规整后的消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String normalizeMessage(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**

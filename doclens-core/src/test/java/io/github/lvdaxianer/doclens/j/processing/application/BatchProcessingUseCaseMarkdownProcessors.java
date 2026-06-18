@@ -200,3 +200,41 @@ class CountingFailingMarkdownPostProcessor implements MarkdownPostProcessor {
         return attempts;
     }
 }
+
+/**
+ * 始终失败并保留 cause 的 LLM 后处理器。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+class WrappedFailingMarkdownPostProcessor implements MarkdownPostProcessor {
+
+    private final String message;
+    private final String causeMessage;
+
+    /**
+     * 创建带 cause 的失败后处理器。
+     *
+     * @param message 外层失败消息
+     * @param causeMessage 根因消息
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    WrappedFailingMarkdownPostProcessor(String message, String causeMessage) {
+        this.message = message;
+        this.causeMessage = causeMessage;
+    }
+
+    /**
+     * 执行一次总是失败的 Markdown 后处理尝试。
+     *
+     * @param request Markdown 后处理请求
+     * @return 不会返回成功结果
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Override
+    public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+        throw new IllegalStateException(message, new RuntimeException(causeMessage));
+    }
+}
