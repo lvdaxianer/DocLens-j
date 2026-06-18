@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
  */
 public class OcrModelRegistry {
 
+    private static final String OLLAMA_MODEL_KEY = "ollama";
+    private static final String OLLAMA_LEGACY_MODEL_KEY = "ollama_deepseek_ocr";
     private final Map<String, OcrModelDefinition> definitions;
 
     /**
@@ -50,7 +52,7 @@ public class OcrModelRegistry {
      * @date 2026-06-08
      */
     public Optional<OcrModelDefinition> find(String modelKey) {
-        return Optional.ofNullable(definitions.get(modelKey));
+        return Optional.ofNullable(definitions.get(normalizeModelKey(modelKey)));
     }
 
     /**
@@ -63,6 +65,22 @@ public class OcrModelRegistry {
      */
     public OcrModelDefinition requireSupported(String modelKey) {
         return find(modelKey).orElseThrow(() -> new IllegalArgumentException("unsupported ocr model key"));
+    }
+
+    /**
+     * 标准化 OCR 模型标识。
+     *
+     * @param modelKey OCR 模型标识
+     * @return 标准化后的模型标识
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String normalizeModelKey(String modelKey) {
+        if (OLLAMA_LEGACY_MODEL_KEY.equals(modelKey)) {
+            return OLLAMA_MODEL_KEY;
+        } else {
+            return modelKey;
+        }
     }
 
     /**

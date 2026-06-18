@@ -32,19 +32,37 @@ class OcrNodeApiContractTest extends OcrNodeApiContractSupport {
      * @date 2026-06-09
      */
     @Test
-    void listSupportedModelsReturnsPaddleOcr() throws Exception {
+    void listSupportedModelsReturnsCanonicalOllama() throws Exception {
         String response = mockMvc.perform(authenticatedGet("/api/v1/ocr-models"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode paddleModel = findModelByKey(response, "paddle_ocr");
-        JsonNode ollamaModel = findModelByKey(response, "ollama_deepseek_ocr");
+        JsonNode ollamaModel = findModelByKey(response, "ollama");
 
         assertThat(paddleModel.get("ocr_path").asText()).isEqualTo("/ocr");
         assertThat(paddleModel.get("health_path").asText()).isEqualTo("/ocr");
+        assertThat(ollamaModel.get("name").asText()).isEqualTo("Ollama");
         assertThat(ollamaModel.get("default_port").asInt()).isEqualTo(11434);
         assertThat(ollamaModel.get("provider_model").asText()).isEqualTo("deepseek-ocr:latest");
         assertThat(ollamaModel.get("channel_key").asText()).isEqualTo("ollama");
+    }
+
+    /**
+     * 旧 Ollama 模型 key 仍应可作为兼容别名创建节点。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void createNodeCanonicalizesLegacyOllamaModelKey() throws Exception {
+        mockMvc.perform(authenticatedPost("/api/v1/ocr-models/{modelKey}/nodes", "ollama_deepseek_ocr")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(nodeJson("ollama-legacy-node", "10.100.30.221", 11434)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.model_key").value("ollama"))
+                .andExpect(jsonPath("$.name").value("ollama-legacy-node"));
     }
 
     /**

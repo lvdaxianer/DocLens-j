@@ -82,9 +82,9 @@ public class OcrNodeManagementService {
      * @date 2026-06-09
      */
     public OcrNode createNode(String modelKey, OcrNodeSettings settings) {
-        modelRegistry.requireSupported(modelKey);
-        ensureUnique(modelKey, settings, "");
-        OcrNode node = OcrNode.create(requestFactory.createRequest(newNodeId(), modelKey, settings));
+        OcrModelDefinition definition = modelRegistry.requireSupported(modelKey);
+        ensureUnique(definition.modelKey(), settings, "");
+        OcrNode node = OcrNode.create(requestFactory.createRequest(newNodeId(), definition.modelKey(), settings));
         nodeRepository.save(node);
         refreshNodePool();
         return node;

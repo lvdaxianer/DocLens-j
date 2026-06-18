@@ -23,6 +23,9 @@ public class MybatisPlusOcrNodeRepository
         extends ServiceImpl<OcrNodeMapper, OcrNodeEntity>
         implements OcrNodeRepository {
 
+    private static final String OLLAMA_MODEL_KEY = "ollama";
+    private static final String OLLAMA_LEGACY_MODEL_KEY = "ollama_deepseek_ocr";
+
     /**
      * 保存 OCR 节点。
      *
@@ -82,7 +85,10 @@ public class MybatisPlusOcrNodeRepository
      */
     @Override
     public List<OcrNode> listByModelKey(String modelKey) {
-        LambdaQueryWrapper<OcrNodeEntity> wrapper = orderedWrapper().eq(OcrNodeEntity::getModelKey, modelKey);
+        LambdaQueryWrapper<OcrNodeEntity> wrapper = orderedWrapper().and(query -> query
+                .eq(OcrNodeEntity::getModelKey, normalizeModelKey(modelKey))
+                .or()
+                .eq(OcrNodeEntity::getModelKey, legacyModelKey(modelKey)));
         return page(MybatisPlusPages.listLimit(), wrapper).getRecords().stream().map(this::toDomain).toList();
     }
 
@@ -124,7 +130,9 @@ public class MybatisPlusOcrNodeRepository
     @Override
     public Optional<OcrNode> findByModelHostPort(String modelKey, String host, int port) {
         LambdaQueryWrapper<OcrNodeEntity> wrapper = new LambdaQueryWrapper<OcrNodeEntity>()
-                .eq(OcrNodeEntity::getModelKey, modelKey)
+                .and(query -> query.eq(OcrNodeEntity::getModelKey, normalizeModelKey(modelKey))
+                        .or()
+                        .eq(OcrNodeEntity::getModelKey, legacyModelKey(modelKey)))
                 .eq(OcrNodeEntity::getHost, host)
                 .eq(OcrNodeEntity::getPort, port);
         return page(MybatisPlusPages.limit(1), wrapper).getRecords().stream().findFirst().map(this::toDomain);
@@ -166,7 +174,7 @@ public class MybatisPlusOcrNodeRepository
     private OcrNodeEntity toEntity(OcrNode node) {
         OcrNodeEntity entity = new OcrNodeEntity();
         entity.setId(node.id());
-        entity.setModelKey(node.modelKey());
+        entity.setModelKey(normalizeModelKey(node.modelKey()));
         entity.setDeploymentType(node.deploymentType().name());
         entity.setName(node.name());
         entity.setHost(node.host());
@@ -199,6 +207,38 @@ public class MybatisPlusOcrNodeRepository
     }
 
     /**
+     * 标准化 OCR 模型标识。
+     *
+     * @param modelKey OCR 模型标识
+     * @return 标准化后的模型标识
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String normalizeModelKey(String modelKey) {
+        if (OLLAMA_LEGACY_MODEL_KEY.equals(modelKey)) {
+            return OLLAMA_MODEL_KEY;
+        } else {
+            return modelKey;
+        }
+    }
+
+    /**
+     * 返回兼容旧数据的模型标识。
+     *
+     * @param modelKey OCR 模型标识
+     * @return 兼容旧数据的模型标识
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String legacyModelKey(String modelKey) {
+        if (OLLAMA_MODEL_KEY.equals(modelKey)) {
+            return OLLAMA_LEGACY_MODEL_KEY;
+        } else {
+            return modelKey;
+        }
+    }
+
+    /**
      * 将持久化实体转换为领域 OCR 节点。
      *
      * @param entity OCR 节点实体
@@ -207,7 +247,8 @@ public class MybatisPlusOcrNodeRepository
      * @date 2026-06-08
      */
     private OcrNode toDomain(OcrNodeEntity entity) {
-        return new OcrNode(entity.getId(), entity.getModelKey(), deploymentType(entity), entity.getName(),
+        return new OcrNode(entity.getId(), normalizeModelKey(entity.getModelKey()), deploymentType(entity),
+                entity.getName(),
                 entity.getHost(), entity.getPort(), Optional.ofNullable(entity.getChannelKey()),
                 Optional.ofNullable(entity.getProviderModel()), Optional.ofNullable(entity.getCredentialRef()),
                 entity.isCredentialConfigured(), entity.isEnabled(), entity.isParticipateGlobal(),

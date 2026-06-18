@@ -28,9 +28,9 @@ public class DocLensOcrNodeManagementAutoConfiguration {
     private static final String PADDLE_MODEL_DESCRIPTION = "PaddleOCR native-compatible HTTP API";
     private static final String PADDLE_OCR_PATH = "/ocr";
     private static final String PADDLE_HEALTH_PATH = "/ocr";
-    private static final String OLLAMA_MODEL_KEY = "ollama_deepseek_ocr";
-    private static final String OLLAMA_MODEL_NAME = "Ollama DeepSeek OCR";
-    private static final String OLLAMA_MODEL_DESCRIPTION = "Ollama DeepSeek-OCR markdown API";
+    private static final String OLLAMA_MODEL_KEY = "ollama";
+    private static final String OLLAMA_MODEL_NAME = "Ollama";
+    private static final String OLLAMA_MODEL_DESCRIPTION = "Ollama OCR markdown API";
     private static final String OLLAMA_GENERATE_PATH = "/api/generate";
     private static final String OLLAMA_CHANNEL_KEY = "ollama";
     private static final String OLLAMA_PROVIDER_MODEL = "deepseek-ocr:latest";

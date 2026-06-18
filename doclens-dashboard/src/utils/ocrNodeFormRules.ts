@@ -294,7 +294,9 @@ function onlineChannel(channelKey: string): OcrOnlineChannelKey {
  * @date 2026-06-13
  */
 export function isOllamaModel(modelKey: string): boolean {
-  return modelKey.trim().startsWith(OLLAMA_MODEL_FAMILY_PREFIX)
+  const normalizedModelKey = modelKey.trim()
+  return normalizedModelKey === OLLAMA_CHANNEL_KEY
+    || normalizedModelKey.startsWith(OLLAMA_MODEL_FAMILY_PREFIX)
 }
 
 /**

@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
- * Ollama DeepSeek-OCR 客户端测试。
+ * Ollama OCR 客户端测试。
  *
  * @author lvdaxianerplus
  * @date 2026-06-12
@@ -36,7 +36,7 @@ class OllamaOcrClientTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * DeepSeek-OCR 请求必须使用固定 Markdown prompt，避免 prompt 换行和标点导致模型行为漂移。
+     * Ollama 请求必须使用固定 Markdown prompt，避免 prompt 换行和标点导致模型行为漂移。
      *
      * @throws IOException 本地测试服务启动失败
      * @author lvdaxianerplus
@@ -120,8 +120,8 @@ class OllamaOcrClientTest {
      * @date 2026-06-12
      */
     private OcrNode ollamaNode(String nodeId, String host, int port) {
-        return OcrNode.create(new OcrNodeCreateRequest(nodeId, "ollama_deepseek_ocr",
-                OcrNodeDeploymentType.OFFLINE, "Ollama DeepSeek OCR", host, port, "ollama",
+        return OcrNode.create(new OcrNodeCreateRequest(nodeId, "ollama",
+                OcrNodeDeploymentType.OFFLINE, "Ollama", host, port, "ollama",
                 "deepseek-ocr:latest", "", false, true, true, 100, 4, BASE_TIME));
     }
 
