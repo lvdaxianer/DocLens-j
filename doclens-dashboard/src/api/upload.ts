@@ -6,6 +6,7 @@ const FILES_FIELD = 'files'
 const METADATA_FIELD = 'metadata'
 const CALLBACK_URL_FIELD = 'callback_url'
 const IDEMPOTENCY_KEY_FIELD = 'idempotency_key'
+const CHUNK_STRATEGY_FIELD = 'chunkStrategy'
 const OCR_ROUTING_MODE_FIELD = 'ocrRoutingMode'
 const OCR_MODEL_KEY_FIELD = 'ocrModelKey'
 const OCR_NODE_ID_FIELD = 'ocrNodeId'
@@ -41,7 +42,7 @@ function appendOptional(formData: FormData, fieldName: string, value: string): v
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
-function createUploadFormData(options: UploadBatchOptions): FormData {
+export function createUploadFormData(options: UploadBatchOptions): FormData {
   const formData = new FormData()
   options.files.forEach((file) => {
     formData.append(FILES_FIELD, file)
@@ -49,6 +50,7 @@ function createUploadFormData(options: UploadBatchOptions): FormData {
   appendOptional(formData, METADATA_FIELD, options.metadata)
   appendOptional(formData, CALLBACK_URL_FIELD, options.callbackUrl)
   appendOptional(formData, IDEMPOTENCY_KEY_FIELD, options.idempotencyKey)
+  appendOptional(formData, CHUNK_STRATEGY_FIELD, options.chunkStrategy)
   appendOptional(formData, OCR_ROUTING_MODE_FIELD, options.ocrRoutingMode)
   appendOptional(formData, OCR_MODEL_KEY_FIELD, options.ocrModelKey)
   appendOptional(formData, OCR_NODE_ID_FIELD, options.ocrNodeId)

@@ -221,7 +221,7 @@ class DocumentPageTaskExecutionServiceTest {
     private DocumentJob document(String documentId) {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
                 documentId + ".png", DocumentType.IMAGE, 5, 1, "local://" + documentId, "stub_ocr",
-                Optional.empty(), JsonPayload.empty(), 0, OffsetDateTime.now());
+                Optional.empty(), JsonPayload.empty(), 0, OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request).markOcrQueued(2, OffsetDateTime.now());
     }
 

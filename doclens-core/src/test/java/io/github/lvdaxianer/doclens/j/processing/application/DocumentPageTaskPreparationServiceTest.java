@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import java.time.OffsetDateTime;
@@ -92,7 +93,8 @@ class DocumentPageTaskPreparationServiceTest {
     private DocumentJob document(String documentId) {
         return DocumentJob.create(new DocumentJobCreateRequest(documentId, "batch-1", documentId + ".pdf",
                 DocumentType.PDF, 128L, 3, "storage://" + documentId, "stub_ocr", Optional.empty(),
-                JsonPayload.empty(), 0, OffsetDateTime.parse("2026-06-10T10:00:00+08:00")));
+                JsonPayload.empty(), 0, OffsetDateTime.parse("2026-06-10T10:00:00+08:00"),
+                ChunkStrategy.general()));
     }
 
     /**

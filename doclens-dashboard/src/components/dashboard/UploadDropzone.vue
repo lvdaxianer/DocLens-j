@@ -3,12 +3,19 @@ import { computed, reactive, shallowRef, useTemplateRef } from 'vue'
 import { NButton, useMessage } from 'naive-ui'
 
 import UploadAdvancedOptions from '@/components/upload/UploadAdvancedOptions.vue'
+import UploadChunkStrategySelector from '@/components/upload/UploadChunkStrategySelector.vue'
 import OcrRoutingSelector from '@/components/upload/OcrRoutingSelector.vue'
 import UploadFileList from '@/components/dashboard/UploadFileList.vue'
 import UploadFilePicker from '@/components/dashboard/UploadFilePicker.vue'
-import type { UploadAdvancedOptionsValue, UploadBatchOptions, UploadOcrRoutingOptions } from '@/types/upload'
+import type {
+  UploadAdvancedOptionsValue,
+  UploadBatchOptions,
+  UploadChunkStrategyOptions,
+  UploadOcrRoutingOptions
+} from '@/types/upload'
 import {
   createDefaultUploadAdvancedOptions,
+  createDefaultUploadChunkStrategy,
   createDefaultUploadOcrRouting,
   validateMetadataJson
 } from '@/utils/uploadFormRules'
@@ -59,12 +66,14 @@ import {
 // - 只有跨多个子组件的最终校验才放回 submitUpload。
 // - 这个组件的目标是“组装上传请求”，不是“画完整上传 UI”。
 const DEFAULT_ADVANCED_OPTIONS = createDefaultUploadAdvancedOptions()
+const DEFAULT_CHUNK_STRATEGY = createDefaultUploadChunkStrategy()
 const DEFAULT_OCR_ROUTING = createDefaultUploadOcrRouting()
 const EMPTY_UPLOAD_OPTIONS: UploadBatchOptions = {
   files: [],
   metadata: DEFAULT_ADVANCED_OPTIONS.metadata,
   callbackUrl: DEFAULT_ADVANCED_OPTIONS.callbackUrl,
   idempotencyKey: DEFAULT_ADVANCED_OPTIONS.idempotencyKey,
+  chunkStrategy: DEFAULT_CHUNK_STRATEGY.chunkStrategy,
   ocrRoutingMode: DEFAULT_OCR_ROUTING.ocrRoutingMode,
   ocrModelKey: DEFAULT_OCR_ROUTING.ocrModelKey,
   ocrNodeId: DEFAULT_OCR_ROUTING.ocrNodeId,
@@ -83,13 +92,16 @@ const filePicker = useTemplateRef<InstanceType<typeof UploadFilePicker>>('filePi
 const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
 const message = useMessage()
 const selectedFiles = shallowRef<File[]>([])
-let form = reactive<UploadAdvancedOptionsValue>({
+const form = reactive<UploadAdvancedOptionsValue>({
   metadata: EMPTY_UPLOAD_OPTIONS.metadata,
   callbackUrl: EMPTY_UPLOAD_OPTIONS.callbackUrl,
   idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey
 })
 
 const hasFiles = computed(() => selectedFiles.value.length > 0)
+const chunkStrategy = reactive<UploadChunkStrategyOptions>({
+  chunkStrategy: EMPTY_UPLOAD_OPTIONS.chunkStrategy
+})
 const ocrRouting = reactive<UploadOcrRoutingOptions>({
   ocrRoutingMode: EMPTY_UPLOAD_OPTIONS.ocrRoutingMode,
   ocrModelKey: EMPTY_UPLOAD_OPTIONS.ocrModelKey,
@@ -139,6 +151,8 @@ function removeFile(fileName: string): void {
 function resetForm(): void {
   // 清空文件数组，确保列表组件立即回到空态。
   selectedFiles.value = []
+  // 分块策略恢复默认 preset。
+  chunkStrategy.chunkStrategy = EMPTY_UPLOAD_OPTIONS.chunkStrategy
   // 高级参数恢复默认 metadata。
   form.metadata = EMPTY_UPLOAD_OPTIONS.metadata
   // 高级参数恢复默认回调地址。
@@ -171,6 +185,18 @@ function updateOcrRouting(value: UploadOcrRoutingOptions): void {
 }
 
 /**
+ * 同步分块策略选择器值。
+ *
+ * @param value - 分块策略参数
+ * @returns 同步完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+function updateChunkStrategy(value: UploadChunkStrategyOptions): void {
+  chunkStrategy.chunkStrategy = value.chunkStrategy
+}
+
+/**
  * 提交上传表单。
  *
  * @returns 提交完成信号
@@ -195,6 +221,7 @@ function submitUpload(): void {
       metadata: form.metadata,
       callbackUrl: form.callbackUrl,
       idempotencyKey: form.idempotencyKey,
+      chunkStrategy: chunkStrategy.chunkStrategy,
       ocrRoutingMode: ocrRouting.ocrRoutingMode,
       ocrModelKey: ocrRouting.ocrModelKey,
       ocrNodeId: ocrRouting.ocrNodeId,
@@ -217,6 +244,9 @@ defineExpose({ resetForm })
 
     <!-- 高级参数通过 v-model 直接同步到 form。 -->
     <UploadAdvancedOptions v-model="form" />
+
+    <!-- 分块策略和高级参数同级展示，避免用户把它误认为内部技术字段。 -->
+    <UploadChunkStrategySelector v-model="chunkStrategy" />
 
     <!-- OCR 路由选择器负责展示和校验路由相关字段。 -->
     <OcrRoutingSelector ref="ocrRoutingSelector" @change="updateOcrRouting" />

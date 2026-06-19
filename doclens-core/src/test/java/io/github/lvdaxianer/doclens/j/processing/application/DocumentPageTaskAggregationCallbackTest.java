@@ -13,6 +13,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
@@ -107,7 +108,7 @@ class DocumentPageTaskAggregationCallbackTest {
     private DocumentJob document() {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-1", "batch-1", "demo.png",
                 DocumentType.IMAGE, 5, 1, "local://doc-1", "stub_ocr", Optional.empty(),
-                new JsonPayload(Map.of("source", "page-upload")), 0, OffsetDateTime.now());
+                new JsonPayload(Map.of("source", "page-upload")), 0, OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request).markOcrQueued(1, OffsetDateTime.now());
     }
 

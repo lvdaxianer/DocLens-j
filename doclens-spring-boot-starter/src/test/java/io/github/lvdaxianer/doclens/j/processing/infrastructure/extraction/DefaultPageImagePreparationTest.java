@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.PageImageRef;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.time.OffsetDateTime;
@@ -47,7 +48,7 @@ class DefaultPageImagePreparationTest {
     private DocumentJob document() {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-image", "batch-test", "image.png",
                 DocumentType.IMAGE, 1, 1, "local://doc-image", "stub_ocr", Optional.empty(), JsonPayload.empty(), 0,
-                OffsetDateTime.now());
+                OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request);
     }
 

@@ -1,0 +1,2 @@
+ALTER TABLE ocr_documents
+    ADD COLUMN IF NOT EXISTS chunk_strategy VARCHAR(32) NOT NULL DEFAULT 'GENERAL';

@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -72,8 +73,9 @@ public class CreateBatchRequestMapper {
         CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(API_KEY_HEADER),
                 request.getHeader(AUTHORIZATION_HEADER));
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
-                form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.ocrRoutingMode(),
-                form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(), caller.clientId(),
+                form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.chunkStrategy(),
+                form.ocrRoutingMode(), form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(),
+                caller.clientId(),
                 caller.sourceApp(), caller.tenantKey().orElse(""));
     }
 
@@ -81,6 +83,7 @@ public class CreateBatchRequestMapper {
         return new CreateBatchForm(files, request.getParameter(METADATA_PARAM),
                 request.getParameter(CALLBACK_URL_PARAM), request.getParameter(IDEMPOTENCY_KEY_PARAM),
                 request.getParameter(ADAPTER_OVERRIDE_PARAM), request.getParameter(PDF_MODE_PARAM),
+                parameter(request, "chunkStrategy", "chunk_strategy"),
                 parameter(request, OCR_ROUTING_MODE_PARAM, OCR_ROUTING_MODE_SNAKE_PARAM),
                 parameter(request, OCR_MODEL_KEY_PARAM, OCR_MODEL_KEY_SNAKE_PARAM),
                 parameter(request, OCR_NODE_ID_PARAM, OCR_NODE_ID_SNAKE_PARAM),

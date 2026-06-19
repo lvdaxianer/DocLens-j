@@ -14,6 +14,7 @@ public final class MarkdownChunker {
     private static final double CONTENT_BUDGET_RATIO = 0.8D;
     private static final double OVERLAP_RATIO = 0.1D;
     private static final int MIN_OVERLAP_TOKENS = 1;
+    private static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
     private static final String[] BOUNDARIES = {"\n\f\n", "\f", "\n---\n", "\n# ", "\n## ", "\n\n", "\n"};
 
     private final TokenEstimator tokenEstimator;
@@ -40,9 +41,25 @@ public final class MarkdownChunker {
      */
     public MarkdownChunkPlan plan(String text, int maxContextTokens) {
         String safeText = text == null ? "" : text;
-        int contentBudgetTokens = contentBudgetTokens(maxContextTokens);
+        return plan(safeText, maxContextTokens, ChunkStrategy.general());
+    }
+
+    /**
+     * 生成 Markdown 分片计划。
+     *
+     * @param text OCR 合并文本
+     * @param maxContextTokens LLM 最大上下文 Token 数
+     * @param chunkStrategy 滑动窗口分块策略
+     * @return 分片计划
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    public MarkdownChunkPlan plan(String text, int maxContextTokens, ChunkStrategy chunkStrategy) {
+        String safeText = text == null ? "" : text;
+        ChunkStrategy safeStrategy = chunkStrategy == null ? ChunkStrategy.general() : chunkStrategy;
+        int contentBudgetTokens = contentBudgetTokens(maxContextTokens, safeStrategy);
         int estimatedInputTokens = tokenEstimator.estimate(safeText);
-        int overlapTokens = Math.max(MIN_OVERLAP_TOKENS, (int) Math.floor(contentBudgetTokens * OVERLAP_RATIO));
+        int overlapTokens = Math.max(MIN_OVERLAP_TOKENS, safeStrategy.overlapSize());
         ChunkPlanContext context = new ChunkPlanContext(safeText, estimatedInputTokens, contentBudgetTokens,
                 overlapTokens);
         if (estimatedInputTokens <= contentBudgetTokens) {
@@ -147,13 +164,13 @@ public final class MarkdownChunker {
      * @author lvdaxianerplus
      * @date 2026-06-13
      */
-    private int contentBudgetTokens(int maxContextTokens) {
+    private int contentBudgetTokens(int maxContextTokens, ChunkStrategy chunkStrategy) {
         if (maxContextTokens <= 0) {
             // 最大上下文必须为正数，否则无法安全分片。
             throw new IllegalArgumentException("llm markdown max context tokens must be greater than 0");
         } else {
-            // 仅使用 80% 上下文作为主内容预算，预留提示词和响应空间。
-            return Math.max(1, (int) Math.floor(maxContextTokens * CONTENT_BUDGET_RATIO));
+            // 使用预设窗口大小；若运行时上下文更小，则保留安全下限。
+            return Math.max(1, Math.min(chunkStrategy.chunkSize(), maxContextTokens));
         }
     }
 

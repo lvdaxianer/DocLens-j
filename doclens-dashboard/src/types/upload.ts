@@ -1,4 +1,5 @@
 export type OcrRoutingMode = 'DEFAULT' | 'GLOBAL_LOAD_BALANCE' | 'MODEL_LOAD_BALANCE' | 'SPECIFIC_NODE'
+export type UploadChunkStrategy = 'GENERAL' | 'NEWS' | 'TECHNICAL' | 'ACADEMIC'
 
 export interface UploadOcrRoutingOptions {
   ocrRoutingMode: OcrRoutingMode
@@ -13,6 +14,10 @@ export interface UploadAdvancedOptionsValue {
   idempotencyKey: string
 }
 
+export interface UploadChunkStrategyOptions {
+  chunkStrategy: UploadChunkStrategy
+}
+
 export interface UploadBatchOptions {
   files: File[]
   metadata: string
@@ -22,6 +27,7 @@ export interface UploadBatchOptions {
   ocrModelKey: string
   ocrNodeId: string
   ocrLoadBalanceStrategy: string
+  chunkStrategy: UploadChunkStrategy
 }
 
 export interface UploadDocumentSummary {

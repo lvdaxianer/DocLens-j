@@ -50,4 +50,24 @@ class MarkdownChunkerTest {
         assertThat(plan.chunks()).extracting(MarkdownChunk::chunkIndex)
                 .containsExactlyElementsOf(IntStream.range(0, plan.chunks().size()).boxed().toList());
     }
+
+    /**
+     * 不同分块策略应产出不同的窗口预算。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void appliesDifferentWindowBudgetsForDifferentStrategies() {
+        MarkdownChunker chunker = new MarkdownChunker(new ApproximateTokenEstimator());
+        String text = "技术内容".repeat(2000);
+
+        MarkdownChunkPlan general = chunker.plan(text, 16000, ChunkStrategy.GENERAL);
+        MarkdownChunkPlan academic = chunker.plan(text, 16000, ChunkStrategy.ACADEMIC);
+
+        assertThat(general.contentBudgetTokens()).isEqualTo(400);
+        assertThat(general.overlapTokens()).isEqualTo(80);
+        assertThat(academic.contentBudgetTokens()).isEqualTo(800);
+        assertThat(academic.overlapTokens()).isEqualTo(150);
+    }
 }

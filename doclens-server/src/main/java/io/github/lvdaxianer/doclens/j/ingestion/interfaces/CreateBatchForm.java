@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
  * @param idempotencyKey 幂等键
  * @param adapterOverride 适配器覆盖值
  * @param pdfMode PDF 模式
+ * @param chunkStrategy 分块策略
  * @param ocrRoutingMode OCR 路由模式
  * @param ocrModelKey OCR 模型标识
  * @param ocrNodeId OCR 节点标识
@@ -26,6 +27,7 @@ public record CreateBatchForm(
         String idempotencyKey,
         String adapterOverride,
         String pdfMode,
+        String chunkStrategy,
         String ocrRoutingMode,
         String ocrModelKey,
         String ocrNodeId,

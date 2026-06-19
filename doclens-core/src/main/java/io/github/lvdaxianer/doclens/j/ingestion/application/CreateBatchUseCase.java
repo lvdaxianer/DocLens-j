@@ -137,7 +137,7 @@ public class CreateBatchUseCase {
         return DocumentJob.create(new DocumentJobCreateRequest(documentId, plan.batchId(), file.fileName(),
                 fileType, file.content().length, DocLensConstants.DEFAULT_PAGE_COUNT, storageUri,
                 resolveAdapter(plan.command()), resolvePdfMode(plan.command(), fileType),
-                plan.command().ocrRoutePolicy(), plan.metadata(), index, plan.now()));
+                plan.command().ocrRoutePolicy(), plan.metadata(), index, plan.now(), plan.command().chunkStrategy()));
     }
 
     private List<OcrEvent> initialEvents(BatchDocumentPlan plan, List<DocumentJob> documents) {

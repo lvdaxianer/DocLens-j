@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.time.OffsetDateTime;
@@ -46,7 +47,7 @@ class DocumentJobProgressTest {
     private DocumentJob document(int pageCount) {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-progress", "batch-progress",
                 "progress.pdf", DocumentType.PDF, 1, pageCount, "local://progress.pdf", "stub_ocr",
-                Optional.empty(), JsonPayload.empty(), 0, OffsetDateTime.now());
+                Optional.empty(), JsonPayload.empty(), 0, OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request);
     }
 }

@@ -17,6 +17,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
@@ -148,7 +149,7 @@ class DocumentPageTaskAggregationServiceTest {
     private DocumentJob document() {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-1", "batch-1", "demo.png",
                 DocumentType.IMAGE, 5, TWO_PAGES, "local://doc-1", "stub_ocr", Optional.empty(),
-                JsonPayload.empty(), 0, OffsetDateTime.now());
+                JsonPayload.empty(), 0, OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request).markOcrQueued(TWO_PAGES, OffsetDateTime.now());
     }
 
@@ -162,7 +163,7 @@ class DocumentPageTaskAggregationServiceTest {
     private DocumentJob completedMarkdownDocument() {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-2", "batch-1", "demo.md",
                 DocumentType.MARKDOWN, 5, 1, "local://doc-2", "stub_ocr", Optional.empty(),
-                JsonPayload.empty(), 1, OffsetDateTime.now());
+                JsonPayload.empty(), 1, OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request).startProcessing(OffsetDateTime.now())
                 .complete("result-doc-2", OffsetDateTime.now());
     }

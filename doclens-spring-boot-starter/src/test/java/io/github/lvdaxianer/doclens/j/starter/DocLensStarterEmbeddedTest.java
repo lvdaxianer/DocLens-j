@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -122,7 +123,8 @@ class DocLensStarterEmbeddedTest {
                 "",
                 "idem-starter-" + UUID.randomUUID(),
                 "",
-                "page_image_fallback"
+                "page_image_fallback",
+                ChunkStrategy.GENERAL.name()
         );
     }
 

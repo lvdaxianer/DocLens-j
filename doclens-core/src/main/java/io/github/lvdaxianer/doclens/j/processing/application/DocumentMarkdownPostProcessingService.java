@@ -208,7 +208,7 @@ class DocumentMarkdownPostProcessingService {
      */
     private MarkdownPostProcessingRequest markdownRequest(DocumentJob document, DocumentTextExtractionResult extracted) {
         return new MarkdownPostProcessingRequest(document.documentId(), document.fileName(),
-                document.metadata().values(), extracted.finalText());
+                document.metadata().values(), extracted.finalText(), document.chunkStrategy());
     }
 
     /**

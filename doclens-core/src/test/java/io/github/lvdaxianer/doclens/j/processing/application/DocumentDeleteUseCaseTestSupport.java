@@ -5,6 +5,7 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.InlineTransactionRunner;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingObjectStorage;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
@@ -97,7 +98,7 @@ final class DocumentDeleteUseCaseTestSupport {
     static DocumentJob document(String documentId, int sortOrder) {
         return DocumentJob.create(new DocumentJobCreateRequest(documentId, BATCH_ID, documentId + ".txt",
                 DocumentType.TEXT, DOCUMENT_SIZE_BYTES, DOCUMENT_PAGE_COUNT, "local://" + documentId, OCR_ENGINE,
-                Optional.empty(), JsonPayload.empty(), sortOrder, OffsetDateTime.now()));
+                Optional.empty(), JsonPayload.empty(), sortOrder, OffsetDateTime.now(), ChunkStrategy.general()));
     }
 
     /**
@@ -114,8 +115,9 @@ final class DocumentDeleteUseCaseTestSupport {
         return new DocumentJob(documentId, BATCH_ID, documentId + ".txt", DocumentType.TEXT, DOCUMENT_SIZE_BYTES,
                 DOCUMENT_PAGE_COUNT, "local://" + documentId, DocumentStatus.STALLED, ProcessingStage.OCR_IMAGES,
                 STALLED_PROGRESS_PERCENT, DOCUMENT_PAGE_COUNT, DOCUMENT_PAGE_COUNT, OCR_ENGINE,
-                Optional.<PdfMode>empty(), OcrRoutePolicy.defaultPolicy(), JsonPayload.empty(), Optional.empty(),
-                Optional.of("STALE_DOCUMENT"), Optional.of("stalled"), sortOrder, now, now.plusSeconds(10));
+                Optional.<PdfMode>empty(), ChunkStrategy.general(), OcrRoutePolicy.defaultPolicy(), JsonPayload.empty(),
+                Optional.empty(), Optional.of("STALE_DOCUMENT"), Optional.of("stalled"), sortOrder, now,
+                now.plusSeconds(10));
     }
 
     /**

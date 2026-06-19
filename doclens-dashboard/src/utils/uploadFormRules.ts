@@ -1,8 +1,9 @@
-import type { UploadAdvancedOptionsValue, UploadOcrRoutingOptions } from '@/types/upload'
+import type { UploadAdvancedOptionsValue, UploadChunkStrategyOptions, UploadOcrRoutingOptions } from '@/types/upload'
 import type { FormRules } from 'naive-ui'
 
 export const DEFAULT_UPLOAD_METADATA_JSON = '{}'
 export const DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY = 'weighted-idle'
+export const DEFAULT_UPLOAD_CHUNK_STRATEGY = 'GENERAL'
 const CALLBACK_TEXT_SOURCE_HINT = '若启用且成功执行 LLM Markdown 后处理则返回 Markdown，否则返回 OCR 合并纯文本'
 
 export interface UploadCallbackContractHints {
@@ -60,6 +61,19 @@ export function createDefaultUploadOcrRouting(): UploadOcrRoutingOptions {
     ocrModelKey: '',
     ocrNodeId: '',
     ocrLoadBalanceStrategy: DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY
+  }
+}
+
+/**
+ * 创建上传页默认分块策略。
+ *
+ * @returns 上传页默认分块策略
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+export function createDefaultUploadChunkStrategy(): UploadChunkStrategyOptions {
+  return {
+    chunkStrategy: DEFAULT_UPLOAD_CHUNK_STRATEGY
   }
 }
 

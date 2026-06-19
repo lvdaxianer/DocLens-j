@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -168,7 +169,7 @@ final class DashboardQueryServiceFixtures {
                 ? Optional.of(PdfMode.PAGE_IMAGE_FALLBACK) : Optional.empty();
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
                 documentId + ".dat", fileType, 10, 1, "local://" + documentId, "stub_ocr", pdfMode,
-                JsonPayload.empty(), sortOrder, BASE_TIME);
+                JsonPayload.empty(), sortOrder, BASE_TIME, ChunkStrategy.general());
         return DocumentJob.create(request);
     }
 
@@ -183,7 +184,8 @@ final class DashboardQueryServiceFixtures {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-routed", "batch-test",
                 "doc-routed.pdf", DocumentType.PDF, 10, 2, "local://doc-routed", "stub_ocr",
                 Optional.of(PdfMode.PAGE_IMAGE_FALLBACK),
-                OcrRoutePolicy.modelLoadBalance("paddle_ocr", "least-inflight"), JsonPayload.empty(), 0, BASE_TIME);
+                OcrRoutePolicy.modelLoadBalance("paddle_ocr", "least-inflight"), JsonPayload.empty(), 0, BASE_TIME,
+                ChunkStrategy.general());
         return DocumentJob.create(request);
     }
 

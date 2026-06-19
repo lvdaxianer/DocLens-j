@@ -74,7 +74,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      */
     @Override
     public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
-        MarkdownChunkPlan plan = chunker.plan(request.ocrText(), maxContextTokens);
+        MarkdownChunkPlan plan = chunker.plan(request.ocrText(), maxContextTokens, request.chunkStrategy());
         if (plan.chunked()) {
             // 大文本走分片处理，避免单次 LLM 请求超过上下文窗口。
             return processChunks(request, plan);
@@ -285,7 +285,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             throws IOException {
         String chunkPrompt = MarkdownPrompt.chunkUserPrompt(objectMapper, request, chunk);
         return new MarkdownPostProcessingRequest(request.documentId(), request.fileName(), request.metadata(),
-                chunkPrompt);
+                chunkPrompt, request.chunkStrategy());
     }
 
     /**

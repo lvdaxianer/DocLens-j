@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.PdfMode;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
@@ -234,6 +235,7 @@ public class MybatisPlusDocumentJobRepository
         entity.setTotalPages(document.totalPages());
         entity.setAdapterName(document.adapterName());
         entity.setPdfMode(document.pdfMode().map(mode -> mode.name().toLowerCase()).orElse(null));
+        entity.setChunkStrategy(document.chunkStrategy().name());
         entity.setOcrRoutingMode(document.ocrRoutePolicy().routingMode().name());
         entity.setOcrModelKey(document.ocrRoutePolicy().modelKey().orElse(null));
         entity.setOcrNodeId(document.ocrRoutePolicy().nodeId().orElse(null));
@@ -264,6 +266,7 @@ public class MybatisPlusDocumentJobRepository
                 ProcessingStage.valueOf(entity.getStage().toUpperCase()), entity.getProgressPercent(),
                 entity.getCurrentPage(), entity.getTotalPages(), entity.getAdapterName(),
                 Optional.ofNullable(pdfMode).map(value -> PdfMode.valueOf(value.toUpperCase())),
+                ChunkStrategy.from(entity.getChunkStrategy()),
                 toOcrRoutePolicy(entity),
                 new JsonPayload(jsonCodec.parseObject(entity.getMetadata())), Optional.ofNullable(entity.getResultId()),
                 Optional.ofNullable(entity.getErrorCode()), Optional.ofNullable(entity.getErrorMessage()),

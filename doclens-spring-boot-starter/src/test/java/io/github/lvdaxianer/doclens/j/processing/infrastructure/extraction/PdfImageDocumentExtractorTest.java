@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.extraction.Document
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.PdfPageImageRenderer;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.conversion.RenderedPageImage;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
@@ -70,7 +71,7 @@ class PdfImageDocumentExtractorTest {
     private DocumentJob document() {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest("doc-test", "batch-test", "demo.pdf",
                 DocumentType.PDF, 3, 2, "local://demo.pdf", "stub_ocr", Optional.empty(), JsonPayload.empty(), 0,
-                OffsetDateTime.now());
+                OffsetDateTime.now(), ChunkStrategy.general());
         return DocumentJob.create(request);
     }
 

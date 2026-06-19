@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.domain;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import java.time.OffsetDateTime;
@@ -25,10 +26,11 @@ public record DocumentJob(
         int progressPercent,
         int currentPage,
         int totalPages,
-        String adapterName,
-        Optional<PdfMode> pdfMode,
-        OcrRoutePolicy ocrRoutePolicy,
-        JsonPayload metadata,
+    String adapterName,
+    Optional<PdfMode> pdfMode,
+    ChunkStrategy chunkStrategy,
+    OcrRoutePolicy ocrRoutePolicy,
+    JsonPayload metadata,
         Optional<String> resultId,
         Optional<String> errorCode,
         Optional<String> errorMessage,
@@ -56,6 +58,7 @@ public record DocumentJob(
      * @param totalPages 总页数
      * @param adapterName 适配器键
      * @param pdfMode 可选 PDF 模式
+     * @param chunkStrategy 分块策略
      * @param ocrRoutePolicy OCR 路由策略快照
      * @param metadata 元数据载荷
      * @param resultId 可选结果 ID
@@ -81,6 +84,63 @@ public record DocumentJob(
     }
 
     /**
+     * 创建兼容旧调用方式的文档任务。
+     *
+     * @param documentId 文档 ID
+     * @param batchId 批次 ID
+     * @param fileName 文件名
+     * @param fileType 文件类型
+     * @param fileSize 文件大小
+     * @param pageCount 页数
+     * @param storageUri 存储 URI
+     * @param status 文档状态
+     * @param stage 处理阶段
+     * @param progressPercent 进度百分比
+     * @param currentPage 当前页
+     * @param totalPages 总页数
+     * @param adapterName 适配器键
+     * @param pdfMode 可选 PDF 模式
+     * @param ocrRoutePolicy OCR 路由策略快照
+     * @param metadata 元数据载荷
+     * @param resultId 可选结果 ID
+     * @param errorCode 可选错误码
+     * @param errorMessage 可选错误消息
+     * @param sortOrder 上传顺序
+     * @param createdAt 创建时间
+     * @param updatedAt 更新时间
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    public DocumentJob(
+            String documentId,
+            String batchId,
+            String fileName,
+            DocumentType fileType,
+            long fileSize,
+            int pageCount,
+            String storageUri,
+            DocumentStatus status,
+            ProcessingStage stage,
+            int progressPercent,
+            int currentPage,
+            int totalPages,
+            String adapterName,
+            Optional<PdfMode> pdfMode,
+            OcrRoutePolicy ocrRoutePolicy,
+            JsonPayload metadata,
+            Optional<String> resultId,
+            Optional<String> errorCode,
+            Optional<String> errorMessage,
+            int sortOrder,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt
+    ) {
+        this(documentId, batchId, fileName, fileType, fileSize, pageCount, storageUri, status, stage, progressPercent,
+                currentPage, totalPages, adapterName, pdfMode, ChunkStrategy.general(), ocrRoutePolicy, metadata,
+                resultId, errorCode, errorMessage, sortOrder, createdAt, updatedAt);
+    }
+
+    /**
      * 创建排队中的文档任务。
      *
      * @param request 文档创建请求
@@ -92,9 +152,9 @@ public record DocumentJob(
         return new DocumentJob(
                 request.documentId(), request.batchId(), request.fileName(), request.fileType(), request.fileSize(),
                 request.pageCount(), request.storageUri(), DocumentStatus.QUEUED, ProcessingStage.QUEUED, 0, 0,
-                request.pageCount(), request.adapterName(), request.pdfMode(), request.ocrRoutePolicy(),
-                request.metadata(), Optional.empty(), Optional.empty(), Optional.empty(), request.sortOrder(),
-                request.now(), request.now()
+                request.pageCount(), request.adapterName(), request.pdfMode(), request.chunkStrategy(),
+                request.ocrRoutePolicy(), request.metadata(), Optional.empty(), Optional.empty(), Optional.empty(),
+                request.sortOrder(), request.now(), request.now()
         );
     }
 
@@ -270,7 +330,7 @@ public record DocumentJob(
             OffsetDateTime now
     ) {
         return new DocumentJob(documentId, batchId, fileName, fileType, fileSize, pageCount, storageUri, nextStatus,
-                nextStage, nextProgress, nextCurrentPage, nextTotalPages, adapterName, pdfMode, ocrRoutePolicy,
-                metadata, nextResultId, nextErrorCode, nextErrorMessage, sortOrder, createdAt, now);
+                nextStage, nextProgress, nextCurrentPage, nextTotalPages, adapterName, pdfMode, chunkStrategy,
+                ocrRoutePolicy, metadata, nextResultId, nextErrorCode, nextErrorMessage, sortOrder, createdAt, now);
     }
 }

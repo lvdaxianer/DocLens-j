@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -87,7 +88,7 @@ class OcrQueryServiceIdempotencyKeyTest {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, batchId, documentId + ".pdf",
                 DocumentType.PDF, 10L, 2, "local://uploads/" + documentId + ".pdf", "stub_ocr",
                 Optional.of(PdfMode.PAGE_IMAGE_FALLBACK), OcrRoutePolicy.defaultPolicy(), JsonPayload.empty(),
-                sortOrder, NOW);
+                sortOrder, NOW, ChunkStrategy.general());
         return DocumentJob.create(request).startProcessing(NOW).advanceStage(ProcessingStage.OCR_IMAGES, 1, 2, NOW);
     }
 

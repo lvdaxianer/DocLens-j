@@ -61,7 +61,7 @@ public class OpenWebuiCreateBatchRequestMapper {
         CallerIdentity caller = callerIdentityRequestResolver.resolve(request);
         return new CreateBatchRequest(toDocumentInputs(files), metadata.values(), request.getParameter(CALLBACK_URL_PARAM),
                 request.getParameter(IDEMPOTENCY_KEY_PARAM), request.getParameter(ADAPTER_OVERRIDE_PARAM),
-                request.getParameter(PDF_MODE_PARAM), null, null, null, null, caller.clientId(),
+                request.getParameter(PDF_MODE_PARAM), null, null, null, null, null, caller.clientId(),
                 caller.sourceApp(), caller.tenantKey().orElse(""));
     }
 

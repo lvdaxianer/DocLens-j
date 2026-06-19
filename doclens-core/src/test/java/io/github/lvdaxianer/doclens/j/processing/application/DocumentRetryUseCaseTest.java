@@ -92,8 +92,9 @@ class DocumentRetryUseCaseTest {
         OffsetDateTime now = OffsetDateTime.now();
         DocumentJob stalledDocument = new DocumentJob("doc-stalled", "batch-test", "doc-stalled.txt", DocumentType.TEXT,
                 5, 1, "local://doc-stalled", DocumentStatus.STALLED, ProcessingStage.OCR_IMAGES, 50, 2, 5,
-                "stub_ocr", Optional.<PdfMode>empty(), io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy.defaultPolicy(),
-                JsonPayload.empty(), Optional.empty(), Optional.of("STALE_DOCUMENT"),
+                "stub_ocr", Optional.<PdfMode>empty(), ChunkStrategy.general(),
+                io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy.defaultPolicy(), JsonPayload.empty(),
+                Optional.empty(), Optional.of("STALE_DOCUMENT"),
                 Optional.of("stalled"), 0, now, now.plusSeconds(10));
         documentRepository.save(stalledDocument);
         batchRepository.save(batch());
@@ -165,7 +166,7 @@ class DocumentRetryUseCaseTest {
     private DocumentJob document(String documentId, int sortOrder) {
         return DocumentJob.create(new DocumentJobCreateRequest(documentId, "batch-test", documentId + ".txt",
                 DocumentType.TEXT, 5, 1, "local://" + documentId, "stub_ocr", Optional.empty(),
-                JsonPayload.empty(), sortOrder, OffsetDateTime.now()));
+                JsonPayload.empty(), sortOrder, OffsetDateTime.now(), ChunkStrategy.general()));
     }
 
     /**

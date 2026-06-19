@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -141,7 +142,8 @@ class CreateBatchUseCaseTest {
      */
     private CreateBatchCommand commandWithTextFile() {
         UploadFileCommand file = new UploadFileCommand("hello.txt", "hello".getBytes());
-        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null, "idem-test", null, null);
+        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null, "idem-test", null, null,
+                ChunkStrategy.GENERAL);
     }
 
     /**
@@ -155,7 +157,7 @@ class CreateBatchUseCaseTest {
         UploadFileCommand file = new UploadFileCommand("hello.png", "image".getBytes());
         OcrRoutePolicy routePolicy = OcrRoutePolicy.modelLoadBalance("paddle_ocr", "least-inflight");
         return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null,
-                "idem-route-test", null, null, routePolicy);
+                "idem-route-test", null, null, ChunkStrategy.TECHNICAL, routePolicy);
     }
 
     /**
@@ -169,7 +171,7 @@ class CreateBatchUseCaseTest {
         UploadFileCommand file = new UploadFileCommand("caller.txt", "hello".getBytes());
         CallerIdentity caller = new CallerIdentity(TEST_CLIENT_ID, TEST_SOURCE_APP, Optional.of(TEST_TENANT_KEY));
         return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null,
-                "idem-caller-test", null, null, OcrRoutePolicy.defaultPolicy(), caller);
+                "idem-caller-test", null, null, ChunkStrategy.GENERAL, OcrRoutePolicy.defaultPolicy(), caller);
     }
 
     /**

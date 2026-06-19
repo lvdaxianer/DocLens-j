@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -80,7 +81,8 @@ class CreateBatchUseCaseIdempotencyPassThroughTest {
      */
     private CreateBatchCommand commandWithTextFile() {
         UploadFileCommand file = new UploadFileCommand(FILE_NAME, FILE_CONTENT.getBytes());
-        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null, IDEMPOTENCY_KEY, null, null);
+        return new CreateBatchCommand(List.of(file), Map.of("source", "test"), null, IDEMPOTENCY_KEY, null, null,
+                ChunkStrategy.GENERAL);
     }
 
     /**

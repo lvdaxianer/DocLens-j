@@ -29,6 +29,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.api.AdapterCapability;
+import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractionResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -152,7 +153,8 @@ class ImageDocumentExtractorTest {
     private DocumentJob document() {
         return DocumentJob.create(new DocumentJobCreateRequest("doc-1", "batch-1", "route.png",
                 DocumentType.IMAGE, 5, 1, "memory://route.png", ADAPTER_KEY, Optional.empty(),
-                OcrRoutePolicy.specificNode(MODEL_KEY, NODE_ID), JsonPayload.empty(), 0, OffsetDateTime.now()));
+                OcrRoutePolicy.specificNode(MODEL_KEY, NODE_ID), JsonPayload.empty(), 0, OffsetDateTime.now(),
+                ChunkStrategy.general()));
     }
 
     /**

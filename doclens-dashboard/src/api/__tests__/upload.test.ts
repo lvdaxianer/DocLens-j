@@ -20,6 +20,7 @@ function uploadOptions(): UploadBatchOptions {
     metadata: '{}',
     callbackUrl: '',
     idempotencyKey: '1001',
+    chunkStrategy: 'GENERAL',
     ocrRoutingMode: 'GLOBAL_LOAD_BALANCE',
     ocrModelKey: '',
     ocrNodeId: '',
@@ -54,6 +55,19 @@ describe('uploadBatch errors', () => {
 })
 
 describe('uploadBatch caller credential headers', () => {
+  it('posts chunk strategy as multipart field', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
+
+    await uploadBatch({
+      ...uploadOptions(),
+      chunkStrategy: 'TECHNICAL'
+    })
+
+    const [, init] = fetchSpy.mock.calls[0] ?? []
+    const formData = init?.body as FormData
+    expect(formData.get('chunkStrategy')).toBe('TECHNICAL')
+  })
+
   it('attaches X-DocLens-Api-Key when sessionStorage provides X-DocLens-Credential-Key', async () => {
     sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
