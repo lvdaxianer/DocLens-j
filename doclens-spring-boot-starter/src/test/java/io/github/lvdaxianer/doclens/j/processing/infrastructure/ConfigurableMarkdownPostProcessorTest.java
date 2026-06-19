@@ -19,6 +19,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -49,7 +51,7 @@ class ConfigurableMarkdownPostProcessorTest {
                     .updateHealth(true, "", CHECKED_AT);
             ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
                     new FixedConfigRepository(config), new FallbackProcessor("fallback text"),
-                    Map.of(RUNTIME_API_KEY_ENV_VAR, RUNTIME_API_KEY));
+                    Map.of(RUNTIME_API_KEY_ENV_VAR, RUNTIME_API_KEY), Executors.newSingleThreadExecutor());
 
             MarkdownPostProcessingResult result = processor.process(request());
 
@@ -68,7 +70,8 @@ class ConfigurableMarkdownPostProcessorTest {
     @Test
     void returnsOriginalOcrTextWhenRuntimeConfigIsAbsent() {
         ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
-                new FixedConfigRepository(null), new FallbackProcessor("fallback text"));
+                new FixedConfigRepository(null), new FallbackProcessor("fallback text"),
+                Executors.newSingleThreadExecutor());
 
         MarkdownPostProcessingResult result = processor.process(request());
 
@@ -90,7 +93,8 @@ class ConfigurableMarkdownPostProcessorTest {
                 RUNTIME_API_KEY_ENV_VAR)
                 .withEnabled(false);
         ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
-                new FixedConfigRepository(disabledConfig), new FallbackProcessor("fallback text"));
+                new FixedConfigRepository(disabledConfig), new FallbackProcessor("fallback text"),
+                Executors.newSingleThreadExecutor());
 
         MarkdownPostProcessingResult result = processor.process(request());
 

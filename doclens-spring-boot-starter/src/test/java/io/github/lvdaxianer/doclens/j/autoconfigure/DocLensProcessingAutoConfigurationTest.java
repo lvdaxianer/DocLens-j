@@ -13,6 +13,8 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -90,12 +92,17 @@ class DocLensProcessingAutoConfigurationTest {
     @Test
     void createsConfigurableMarkdownPostProcessor() {
         LlmMarkdownConfigRepository repository = new EmptyConfigRepository();
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor();
 
-        MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
-                .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
-                        null, null, null, null, null, null, null, null, null, null), repository);
+        try {
+            MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
+                    .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
+                            null, null, null, null, null, null, null, null, null, null), repository, chunkExecutor);
 
-        assertThat(processor).isInstanceOf(ConfigurableMarkdownPostProcessor.class);
+            assertThat(processor).isInstanceOf(ConfigurableMarkdownPostProcessor.class);
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
     }
 
     /**
