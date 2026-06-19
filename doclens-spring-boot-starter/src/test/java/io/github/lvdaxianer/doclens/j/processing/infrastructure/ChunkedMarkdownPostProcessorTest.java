@@ -3,6 +3,8 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.processing.application.ApproximateTokenEstimator;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkPlan;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingResult;
@@ -10,6 +12,14 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcess
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,8 +32,7 @@ class ChunkedMarkdownPostProcessorTest {
 
     private static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
     private static final int SMALL_CHUNK_MAX_CONTEXT_TOKENS = 2000;
-    private static final int LARGE_DOCUMENT_REPEAT_COUNT = 5000;
-    private static final int SECOND_REQUEST_INDEX = 1;
+    private static final String LARGE_DOCUMENT = "段落内容\n\n".repeat(5000);
 
     /**
      * 小文档应只调用一次下游处理器。
@@ -34,13 +43,18 @@ class ChunkedMarkdownPostProcessorTest {
     @Test
     void processesSmallDocumentOnce() {
         RecordingProcessor delegate = new RecordingProcessor(List.of(MarkdownPostProcessingResult.markdown("整理后")));
-        ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
-                new MarkdownChunker(new ApproximateTokenEstimator()), DEFAULT_MAX_CONTEXT_TOKENS);
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
+                    new MarkdownChunker(new ApproximateTokenEstimator()), DEFAULT_MAX_CONTEXT_TOKENS, chunkExecutor);
 
-        MarkdownPostProcessingResult result = processor.process(request("短文档"));
+            MarkdownPostProcessingResult result = processor.process(request("短文档"));
 
-        assertThat(result.markdown()).isEqualTo("整理后");
-        assertThat(delegate.requests()).hasSize(1);
+            assertThat(result.markdown()).isEqualTo("整理后");
+            assertThat(delegate.requests()).hasSize(1);
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
     }
 
     /**
@@ -56,36 +70,94 @@ class ChunkedMarkdownPostProcessorTest {
                 MarkdownPostProcessingResult.markdown("第二段"),
                 MarkdownPostProcessingResult.markdown("第三段"),
                 MarkdownPostProcessingResult.markdown("第四段")));
-        ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
-                new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS);
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
+                    new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS, chunkExecutor);
 
-        MarkdownPostProcessingResult result = processor.process(request("段落内容\n\n".repeat(LARGE_DOCUMENT_REPEAT_COUNT)));
+            MarkdownPostProcessingResult result = processor.process(request(LARGE_DOCUMENT));
 
-        assertThat(result.markdown()).startsWith("第一段\n\n第二段");
-        assertThat(delegate.requests()).hasSizeGreaterThan(1);
-        assertThat(delegate.requests().get(SECOND_REQUEST_INDEX).ocrText()).contains("previous_context");
+            assertThat(result.markdown()).startsWith("第一段\n\n第二段");
+            assertThat(delegate.requests()).hasSizeGreaterThan(1);
+            assertThat(delegate.requests().get(1).ocrText()).contains("previous_context");
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
     }
 
     /**
-     * 任一分片失败时应回退原始 OCR 文本。
+     * 大文档分片应并发进入共享执行器，并按原始顺序合并结果。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-13
+     * @date 2026-06-19
      */
     @Test
-    void fallsBackToOriginalTextWhenAnyChunkFails() {
-        RecordingProcessor delegate = new RecordingProcessor(List.of(
-                MarkdownPostProcessingResult.markdown("第一段"),
-                MarkdownPostProcessingResult.passthrough("原文", "LLM failed")));
-        String original = "段落内容\n\n".repeat(LARGE_DOCUMENT_REPEAT_COUNT);
-        ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
-                new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS);
+    void processesChunksInParallelAcrossASharedExecutorAndMergesByChunkOrder() throws Exception {
+        ParallelChunkRecordingProcessor delegate = new ParallelChunkRecordingProcessor();
+        MarkdownChunkPlan plan = plan();
+        ExecutorService chunkExecutor = chunkExecutor(plan);
+        ExecutorService callerExecutor = callerExecutor();
+        try {
+            MarkdownPostProcessingResult result = processAsync(delegate, chunkExecutor, callerExecutor);
+            assertThat(result.markdown()).isEqualTo(orderedChunkMarkdown(plan));
+        } finally {
+            callerExecutor.shutdownNow();
+            chunkExecutor.shutdownNow();
+        }
+    }
 
-        MarkdownPostProcessingResult result = processor.process(request(original));
+    /**
+     * 两个文档应共享同一个 chunk 执行器并同时开始分片工作。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void processesTwoDocumentsWithTheSameChunkExecutorWithoutSerializingThem() throws Exception {
+        SharedExecutorRecordingProcessor delegate = new SharedExecutorRecordingProcessor();
+        MarkdownChunkPlan plan = plan();
+        ExecutorService chunkExecutor = chunkExecutor(plan);
+        ExecutorService callerExecutor = Executors.newFixedThreadPool(2);
+        try {
+            ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
+                    new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS, chunkExecutor);
+            CompletableFuture<MarkdownPostProcessingResult> first = submit(processor, callerExecutor, "doc-a");
+            CompletableFuture<MarkdownPostProcessingResult> second = submit(processor, callerExecutor, "doc-b");
+            assertThat(delegate.awaitStartedCount(2)).isTrue();
+            assertThat(delegate.awaitStartedDocuments("doc-a", "doc-b")).isTrue();
+            delegate.release();
+            assertThat(first.get(5, TimeUnit.SECONDS).markdown()).isEqualTo(orderedChunkMarkdown(plan));
+            assertThat(second.get(5, TimeUnit.SECONDS).markdown()).isEqualTo(orderedChunkMarkdown(plan));
+        } finally {
+            callerExecutor.shutdownNow();
+            chunkExecutor.shutdownNow();
+        }
+    }
 
-        assertThat(result.markdown()).isEqualTo(original);
-        assertThat(result.markdownApplied()).isFalse();
-        assertThat(result.warnings()).anyMatch(warning -> warning.contains("chunk"));
+    /**
+     * 单个分片重试耗尽后应回退该分片原文，其他分片继续合并。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void fallsBackOnlyTheFailedChunkWhenRetriesAreExhausted() {
+        MarkdownChunkPlan plan = plan();
+        FailingChunkRecordingProcessor delegate = new FailingChunkRecordingProcessor(1);
+        ExecutorService chunkExecutor = Executors.newFixedThreadPool(3);
+        try {
+            delegate.prepare(plan.chunks());
+            ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
+                    new MarkdownChunker(new ApproximateTokenEstimator()),
+                    SMALL_CHUNK_MAX_CONTEXT_TOKENS, chunkExecutor);
+
+            MarkdownPostProcessingResult result = processor.process(request(LARGE_DOCUMENT));
+
+            assertThat(result.markdown()).isEqualTo(fallbackChunkMarkdown(plan));
+            assertThat(result.markdownApplied()).isTrue();
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
     }
 
     /**
@@ -97,7 +169,153 @@ class ChunkedMarkdownPostProcessorTest {
      * @date 2026-06-13
      */
     private MarkdownPostProcessingRequest request(String text) {
-        return new MarkdownPostProcessingRequest("doc-1", "demo.txt", Map.of("source", "test"), text);
+        return request("doc-1", text);
+    }
+
+    /**
+     * 创建 Markdown 后处理请求。
+     *
+     * @param documentId 文档 ID
+     * @param text OCR 文本
+     * @return Markdown 后处理请求
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private MarkdownPostProcessingRequest request(String documentId, String text) {
+        return new MarkdownPostProcessingRequest(documentId, "demo.txt", Map.of("source", "test"), text);
+    }
+
+    /**
+     * 生成大文档分片计划。
+     *
+     * @return 分片计划
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private MarkdownChunkPlan plan() {
+        return new MarkdownChunker(new ApproximateTokenEstimator()).plan(LARGE_DOCUMENT,
+                SMALL_CHUNK_MAX_CONTEXT_TOKENS);
+    }
+
+    /**
+     * 创建共享分片执行器。
+     *
+     * @param plan 分片计划
+     * @return 共享分片执行器
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private ExecutorService chunkExecutor(MarkdownChunkPlan plan) {
+        return Executors.newFixedThreadPool(plan.chunks().size());
+    }
+
+    /**
+     * 创建调用执行器。
+     *
+     * @return 调用执行器
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private ExecutorService callerExecutor() {
+        return Executors.newSingleThreadExecutor();
+    }
+
+    /**
+     * 提交单个文档的分片处理任务。
+     *
+     * @param processor 分片处理器
+     * @param callerExecutor 调用执行器
+     * @param documentId 文档 ID
+     * @return 分片结果 future
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private CompletableFuture<MarkdownPostProcessingResult> submit(
+            ChunkedMarkdownPostProcessor processor,
+            ExecutorService callerExecutor,
+            String documentId
+    ) {
+        return CompletableFuture.supplyAsync(() -> processor.process(request(documentId, LARGE_DOCUMENT)),
+                callerExecutor);
+    }
+
+    /**
+     * 等待指定分片数进入处理区。
+     *
+     * @param delegate 并发记录器
+     * @param expectedStarted 预期已开始数量
+     * @return 是否满足预期
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private boolean awaitStartedCount(ParallelChunkRecordingProcessor delegate, int expectedStarted) {
+        return delegate.awaitStartedCount(expectedStarted);
+    }
+
+    /**
+     * 生成按 chunk 索引顺序的结果。
+     *
+     * @param plan 分片计划
+     * @return 结果字符串
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String orderedChunkMarkdown(MarkdownChunkPlan plan) {
+        return joinChunkMarkdown(plan, chunk -> "chunk-" + chunk.chunkIndex());
+    }
+
+    /**
+     * 生成带失败回退的分片结果。
+     *
+     * @param plan 分片计划
+     * @return 结果字符串
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String fallbackChunkMarkdown(MarkdownChunkPlan plan) {
+        return joinChunkMarkdown(plan, chunk -> chunk.chunkIndex() == 1 ? chunk.mainContent()
+                : "chunk-" + chunk.chunkIndex());
+    }
+
+    /**
+     * 处理单个文档并等待共享分片结果。
+     *
+     * @param delegate 记录器
+     * @param chunkExecutor 分片执行器
+     * @param callerExecutor 调用执行器
+     * @return 分片结果
+     * @throws Exception 异常
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private MarkdownPostProcessingResult processAsync(
+            ParallelChunkRecordingProcessor delegate,
+            ExecutorService chunkExecutor,
+            ExecutorService callerExecutor
+    ) throws Exception {
+        MarkdownChunkPlan plan = plan();
+        delegate.prepare(plan.chunks());
+        ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(delegate,
+                new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS, chunkExecutor);
+        CompletableFuture<MarkdownPostProcessingResult> future = CompletableFuture.supplyAsync(
+                () -> processor.process(request(LARGE_DOCUMENT)), callerExecutor);
+        assertThat(awaitStartedCount(delegate, 2)).isTrue();
+        delegate.release();
+        assertThat(delegate.maxInFlight()).isGreaterThan(1);
+        return future.get(5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 将分片结果按顺序拼接为 Markdown。
+     *
+     * @param plan 分片计划
+     * @param mapper 分片到结果的映射
+     * @return 拼接后的 Markdown
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String joinChunkMarkdown(MarkdownChunkPlan plan, java.util.function.Function<MarkdownChunk, String> mapper) {
+        return plan.chunks().stream().map(mapper).collect(Collectors.joining("\n\n"));
     }
 
     /**
@@ -107,7 +325,7 @@ class ChunkedMarkdownPostProcessorTest {
      * @author lvdaxianerplus
      * @date 2026-06-13
      */
-    private static final class RecordingProcessor implements MarkdownPostProcessor {
+    private static class RecordingProcessor implements MarkdownPostProcessor {
 
         private final List<MarkdownPostProcessingResult> responses;
         private final List<MarkdownPostProcessingRequest> requests = new ArrayList<>();
@@ -149,4 +367,332 @@ class ChunkedMarkdownPostProcessorTest {
             return List.copyOf(requests);
         }
     }
+
+    /**
+     * 并发分片处理器记录器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class ParallelChunkRecordingProcessor implements MarkdownPostProcessor {
+
+        private final CountDownLatch releaseLatch = new CountDownLatch(1);
+        private final List<MarkdownChunk> chunks = new ArrayList<>();
+        private final List<String> seenChunkTexts = new ArrayList<>();
+        private int inFlight;
+        private volatile int maxInFlight;
+
+        /**
+         * 预置分片列表。
+         *
+         * @param plannedChunks 计划分片
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized void prepare(List<MarkdownChunk> plannedChunks) {
+            chunks.clear();
+            chunks.addAll(plannedChunks);
+        }
+
+        /**
+         * 放行全部请求。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        void release() {
+            releaseLatch.countDown();
+        }
+
+        /**
+         * 等待全部分片进入处理区。
+         *
+         * @return 是否全部进入处理区
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized boolean awaitStartedCount(int expectedStarted) {
+            long deadline = System.currentTimeMillis() + 2000;
+            while (seenChunkTexts.size() < expectedStarted && System.currentTimeMillis() < deadline) {
+                try {
+                    wait(10L);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(ex);
+                }
+            }
+            return seenChunkTexts.size() >= expectedStarted;
+        }
+
+        /**
+         * 获取最大并发数。
+         *
+         * @return 最大并发数
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        int maxInFlight() {
+            return maxInFlight;
+        }
+
+        /**
+         * 处理请求并记录并发情况。
+         *
+         * @param request Markdown 后处理请求
+         * @return Markdown 后处理结果
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            synchronized (this) {
+                seenChunkTexts.add(request.ocrText());
+                inFlight++;
+                maxInFlight = Math.max(maxInFlight, inFlight);
+                notifyAll();
+            }
+            awaitRelease();
+            synchronized (this) {
+                inFlight--;
+            }
+            int chunkIndex = chunkIndex(request);
+            return MarkdownPostProcessingResult.markdown("chunk-" + chunkIndex);
+        }
+
+        /**
+         * 根据请求匹配 chunk 序号。
+         *
+         * @param request Markdown 后处理请求
+         * @return 分片序号
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        private synchronized int chunkIndex(MarkdownPostProcessingRequest request) {
+            return extractChunkIndex(request.ocrText());
+        }
+
+        /**
+         * 等待测试释放并发结果。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        private void awaitRelease() {
+            try {
+                releaseLatch.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    /**
+     * 共享执行器文档记录器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class SharedExecutorRecordingProcessor implements MarkdownPostProcessor {
+
+        private final CountDownLatch releaseLatch = new CountDownLatch(1);
+        private final List<MarkdownChunk> chunks = new ArrayList<>();
+        private final List<String> seenDocuments = new ArrayList<>();
+        private int inFlight;
+        private volatile int maxInFlight;
+
+        /**
+         * 预置分片列表。
+         *
+         * @param plannedChunks 计划分片
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized void prepare(List<MarkdownChunk> plannedChunks) {
+            chunks.clear();
+            chunks.addAll(plannedChunks);
+        }
+
+        /**
+         * 放行全部请求。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        void release() {
+            releaseLatch.countDown();
+        }
+
+        /**
+         * 处理请求并记录并发情况。
+         *
+         * @param request Markdown 后处理请求
+         * @return Markdown 后处理结果
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            synchronized (this) {
+                seenDocuments.add(request.documentId());
+                inFlight++;
+                maxInFlight = Math.max(maxInFlight, inFlight);
+                notifyAll();
+            }
+            awaitRelease();
+            synchronized (this) {
+                inFlight--;
+            }
+            return MarkdownPostProcessingResult.markdown("chunk-" + extractChunkIndex(request.ocrText()));
+        }
+
+        /**
+         * 等待指定数量的分片开始处理。
+         *
+         * @param expectedStarted 预期开始数
+         * @return 是否满足预期
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized boolean awaitStartedCount(int expectedStarted) {
+            long deadline = System.currentTimeMillis() + 2000;
+            while (seenDocuments.size() < expectedStarted && System.currentTimeMillis() < deadline) {
+                try {
+                    wait(10L);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(ex);
+                }
+            }
+            return seenDocuments.size() >= expectedStarted;
+        }
+
+        /**
+         * 等待指定文档都开始处理。
+         *
+         * @param documentIds 预期文档 ID
+         * @return 是否都已开始
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized boolean awaitStartedDocuments(String... documentIds) {
+            long deadline = System.currentTimeMillis() + 2000;
+            while (!seenDocuments.containsAll(List.of(documentIds)) && System.currentTimeMillis() < deadline) {
+                try {
+                    wait(10L);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(ex);
+                }
+            }
+            return seenDocuments.containsAll(List.of(documentIds));
+        }
+
+        /**
+         * 获取最大并发数。
+         *
+         * @return 最大并发数
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        int maxInFlight() {
+            return maxInFlight;
+        }
+
+        /**
+         * 获取已开始处理的文档 ID。
+         *
+         * @return 已开始处理的文档 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized List<String> seenDocuments() {
+            return List.copyOf(seenDocuments);
+        }
+
+        /**
+         * 等待测试释放并发结果。
+         *
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        private void awaitRelease() {
+            try {
+                releaseLatch.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    /**
+     * 指定 chunk 失败的记录器。
+     *
+     * @param failingChunkIndex 失败的 chunk 序号
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class FailingChunkRecordingProcessor extends RecordingProcessor {
+
+        private final int failingChunkIndex;
+        private final List<MarkdownChunk> chunks = new ArrayList<>();
+        /**
+         * 创建指定 chunk 失败的记录器。
+         *
+         * @param failingChunkIndex 失败的 chunk 序号
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        private FailingChunkRecordingProcessor(int failingChunkIndex) {
+            super(List.of());
+            this.failingChunkIndex = failingChunkIndex;
+        }
+
+        /**
+         * 预置分片列表。
+         *
+         * @param plannedChunks 计划分片
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        synchronized void prepare(List<MarkdownChunk> plannedChunks) {
+            chunks.clear();
+            chunks.addAll(plannedChunks);
+        }
+
+        /**
+         * 处理请求，针对指定 chunk 抛出异常。
+         *
+         * @param request Markdown 后处理请求
+         * @return Markdown 后处理结果
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            int chunkIndex = extractChunkIndex(request.ocrText());
+            if (chunkIndex == failingChunkIndex) {
+                throw new IllegalStateException("forced failure");
+            }
+            return MarkdownPostProcessingResult.markdown("chunk-" + chunkIndex);
+        }
+    }
+
+    /**
+     * 从分片提示词中提取 chunk_index。
+     *
+     * @param prompt 分片提示词
+     * @return chunk 序号
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static int extractChunkIndex(String prompt) {
+        Matcher matcher = Pattern.compile("(?s).*?chunk_index:\\s*(\\d+).*").matcher(prompt);
+        if (matcher.matches()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        throw new IllegalStateException("missing chunk_index");
+    }
+
 }

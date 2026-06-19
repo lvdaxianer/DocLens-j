@@ -50,6 +50,7 @@ final class MarkdownPrompt {
             请将下面的 OCR 分片主内容转换为 Markdown。
 
             分片规则：
+            - chunk_index 和 total_chunks 用于理解当前分片在整体中的位置。
             - previous_context 和 next_context 只用于理解上下文连续性。
             - 只输出 main_content 对应的 Markdown 内容。
             - 不要重复 previous_context 或 next_context。
@@ -58,6 +59,12 @@ final class MarkdownPrompt {
 
             元数据：
             %s
+
+            chunk_index:
+            %d
+
+            total_chunks:
+            %d
 
             previous_context:
             %s
@@ -115,6 +122,7 @@ final class MarkdownPrompt {
             MarkdownChunk chunk
     ) throws IOException {
         return CHUNK_USER_PROMPT_TEMPLATE.formatted(objectMapper.writeValueAsString(request.metadata()),
-                chunk.previousContext(), chunk.mainContent(), chunk.nextContext());
+                chunk.chunkIndex(), chunk.totalChunks(), chunk.previousContext(), chunk.mainContent(),
+                chunk.nextContext());
     }
 }

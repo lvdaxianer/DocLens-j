@@ -36,6 +36,7 @@ public class DocLensLlmMarkdownAutoConfiguration {
 
     private static final int LLM_MARKDOWN_TIMEOUT_SECONDS = 60;
     private static final int LLM_MARKDOWN_HEALTH_INTERVAL_SECONDS = 5;
+    private static final int LLM_MARKDOWN_CHUNK_WORKER_THREADS = 20;
 
     /**
      * 创建 LLM Markdown 配置服务。
@@ -114,6 +115,20 @@ public class DocLensLlmMarkdownAutoConfiguration {
     }
 
     /**
+     * 创建 LLM Markdown 分片共享工作线程池。
+     *
+     * @return LLM Markdown 分片共享工作线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "doclensLlmMarkdownChunkExecutor")
+    ExecutorService doclensLlmMarkdownChunkExecutor() {
+        return Executors.newFixedThreadPool(LLM_MARKDOWN_CHUNK_WORKER_THREADS,
+                new NamedThreadPoolFactory("doclens-llm-markdown-chunk-"));
+    }
+
+    /**
      * 创建 LLM Markdown 健康检查周期调度器。
      *
      * @param healthChecker LLM Markdown 健康检查器
@@ -163,10 +178,11 @@ public class DocLensLlmMarkdownAutoConfiguration {
     MarkdownPostProcessor markdownPostProcessor(
             ObjectMapper objectMapper,
             DocLensSpringProperties properties,
-            LlmMarkdownConfigRepository configRepository
+            LlmMarkdownConfigRepository configRepository,
+            @Qualifier("doclensLlmMarkdownChunkExecutor") ExecutorService chunkExecutor
     ) {
         MarkdownPostProcessor fallbackProcessor = fallbackMarkdownPostProcessor(objectMapper, properties);
-        return new ConfigurableMarkdownPostProcessor(objectMapper, configRepository, fallbackProcessor);
+        return new ConfigurableMarkdownPostProcessor(objectMapper, configRepository, fallbackProcessor, chunkExecutor);
     }
 
     /**
