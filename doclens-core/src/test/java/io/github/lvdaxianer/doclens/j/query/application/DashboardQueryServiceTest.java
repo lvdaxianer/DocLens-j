@@ -14,6 +14,8 @@ import static io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetri
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
@@ -89,6 +91,24 @@ class DashboardQueryServiceTest {
     }
 
     /**
+     * 总览应暴露 LLM Markdown 分片线程池指标，便于观察 chunk 执行负载。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void summaryExposesLlmMarkdownChunkThreadPoolMetrics() {
+        DashboardQueryService service = dashboardServiceWithOcrMetrics();
+
+        Map<String, Object> summary = service.summary();
+
+        assertThat(summary.get("ocr_resources")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .extractingByKey("thread_pools")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsKey("llm_markdown_chunk");
+    }
+
+    /**
      * 最近批次应使用文档实时状态修正展示状态和进度。
      *
      * @author lvdaxianerplus
@@ -115,8 +135,11 @@ class DashboardQueryServiceTest {
     void summaryDoesNotExposeBatchWithoutDocuments() {
         InMemoryBatchRepository batchRepository = new InMemoryBatchRepository(List.of(emptyBatch()));
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository(List.of());
-        DashboardQueryService service = new DashboardQueryService(batchRepository, documentRepository,
-                new InMemoryOcrEventRepository());
+        DashboardQueryService service = new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(batchRepository, documentRepository,
+                        new InMemoryOcrEventRepository(), new EmptyOcrResultRepository()),
+                new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                        new EmptyCallbackJobRepository())));
 
         Map<String, Object> summary = service.summary();
 
@@ -133,8 +156,12 @@ class DashboardQueryServiceTest {
      * @date 2026-06-11
      */
     private DashboardQueryService serviceWithDocuments(List<DocumentJob> documents) {
-        return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
-                new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository());
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(new InMemoryBatchRepository(List.of(batch())),
+                        new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository(),
+                        new EmptyOcrResultRepository()),
+                new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                        new EmptyCallbackJobRepository())));
     }
 
     /**
@@ -146,8 +173,12 @@ class DashboardQueryServiceTest {
      * @date 2026-06-11
      */
     private DashboardQueryService serviceWithQueuedBatchDocuments(List<DocumentJob> documents) {
-        return new DashboardQueryService(new InMemoryBatchRepository(List.of(queuedBatch())),
-                new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository());
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(new InMemoryBatchRepository(List.of(queuedBatch())),
+                        new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository(),
+                        new EmptyOcrResultRepository()),
+                new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                        new EmptyCallbackJobRepository())));
     }
 
     /**

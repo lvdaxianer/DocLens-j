@@ -94,6 +94,7 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @param ocrRequestExecutor OCR 请求线程池
      * @param ocrHealthExecutor OCR 健康检查线程池
      * @param callbackExecutor 回调线程池
+     * @param llmMarkdownChunkExecutor LLM Markdown 分块线程池
      * @return Dashboard 线程池集合
      * @author lvdaxianerplus
      * @date 2026-06-09
@@ -104,9 +105,10 @@ public class DocLensDashboardMetricsAutoConfiguration {
             @Qualifier("doclensDocumentProcessingExecutor") ExecutorService documentProcessingExecutor,
             @Qualifier("doclensOcrRequestExecutor") ExecutorService ocrRequestExecutor,
             @Qualifier("doclensOcrHealthExecutor") ExecutorService ocrHealthExecutor,
-            @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor
+            @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor,
+            @Qualifier("doclensLlmMarkdownChunkExecutor") ExecutorService llmMarkdownChunkExecutor
     ) {
         return new DashboardThreadPools(documentProcessingExecutor, ocrRequestExecutor, ocrHealthExecutor,
-                callbackExecutor);
+                callbackExecutor, llmMarkdownChunkExecutor);
     }
 }

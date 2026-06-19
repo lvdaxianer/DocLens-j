@@ -53,6 +53,7 @@ export interface DashboardOcrResources {
     ocr_request?: DashboardThreadPoolMetrics
     ocr_health?: DashboardThreadPoolMetrics
     callback?: DashboardThreadPoolMetrics
+    llm_markdown_chunk?: DashboardThreadPoolMetrics
   }
 }
 
@@ -107,6 +108,7 @@ export interface DocumentRow {
   current_page: number
   total_pages: number
   duration_ms: number
+  llm_chunk_count: number
   track: ProcessingTrackNode[]
   ocr_final_hit_nodes: BatchOcrHitNode[]
   error_code: string

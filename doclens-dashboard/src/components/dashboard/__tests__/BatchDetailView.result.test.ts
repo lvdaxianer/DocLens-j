@@ -38,6 +38,7 @@ vi.mock('pinia', () => ({
           current_page: 2,
           total_pages: 2,
           duration_ms: 1000,
+          llm_chunk_count: 4,
           track: [],
           ocr_final_hit_nodes: [],
           error_code: '',
@@ -147,5 +148,24 @@ describe('BatchDetailView document result drawer', () => {
     expect(openDocumentResult).toHaveBeenCalledWith(expect.objectContaining({
       document_id: 'doc-completed'
     }))
+  })
+
+  it('shows document chunk count in the batch detail track summary', () => {
+    const wrapper = mount(MountHost, {
+      global: {
+        stubs: {
+          NAlert: true,
+          NButton: true,
+          NProgress: true,
+          NDataTable: DataTableStub,
+          BatchOcrRoutePanel: true,
+          DocumentResultDrawer: true,
+          DocumentTrackCards: false,
+          StatusTag: true
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('分块：4 个')
   })
 })

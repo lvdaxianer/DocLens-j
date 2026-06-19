@@ -53,6 +53,7 @@ defineProps<{
             {{ formatPercent(document.progress_percent) }}
           </NProgress>
         </div>
+        <span>分块：{{ document.llm_chunk_count > 0 ? `${document.llm_chunk_count} 个` : '-' }}</span>
         <span>
           图片：{{ hasImageProgressStage(document.stage)
             ? formatImageProgress(document.current_page, document.total_pages)

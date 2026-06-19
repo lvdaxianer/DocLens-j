@@ -13,6 +13,7 @@ import {
   formatDateTime,
   formatDuration,
   formatImageProgress,
+  formatNumber,
   formatPercent,
   hasImageProgressStage,
   stageLabel
@@ -23,6 +24,7 @@ const FAILED_STATUS = 'failed'
 const PROGRESS_BAR_HEIGHT = 8
 const FILE_NAME_COLUMN_CLASS = 'document-name'
 const STAGE_LABEL_COLUMN_CLASS = 'stage-label'
+const CHUNK_COUNT_COLUMN_CLASS = 'chunk-count'
 
 /**
  * 文档表格动作配置，统一承接父组件传入的加载态与事件回调。
@@ -48,6 +50,7 @@ export function createBatchDocumentColumns(
     createTypeColumn(),
     createStatusColumn(),
     createStageColumn(),
+    createChunkCountColumn(),
     createImageProgressColumn(),
     createProgressColumn(),
     createDurationColumn(),
@@ -111,6 +114,22 @@ function createStageColumn(): DataTableColumns<DocumentRow>[number] {
 }
 
 /**
+ * 构建 chunk 数列，帮助排查分块文档的实际切分数量。
+ *
+ * @returns 分块数量列配置
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+function createChunkCountColumn(): DataTableColumns<DocumentRow>[number] {
+  return {
+    title: '分块',
+    key: 'llm_chunk_count',
+    width: 90,
+    render: (row) => h('span', { class: CHUNK_COUNT_COLUMN_CLASS }, formatChunkCount(row.llm_chunk_count))
+  }
+}
+
+/**
  * 构建图片进度列，仅在图片阶段展示页进度。
  *
  * @returns 图片进度列配置
@@ -162,6 +181,18 @@ function createDurationColumn(): DataTableColumns<DocumentRow>[number] {
  */
 function createUpdatedAtColumn(): DataTableColumns<DocumentRow>[number] {
   return { title: '更新时间', key: 'updated_at', width: 150, render: (row) => formatDateTime(row.updated_at) }
+}
+
+/**
+ * 格式化 chunk 数展示。
+ *
+ * @param chunkCount chunk 数
+ * @returns 展示文本
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+function formatChunkCount(chunkCount: number): string {
+  return chunkCount > 0 ? `${formatNumber(chunkCount)} 个` : '-'
 }
 
 /**

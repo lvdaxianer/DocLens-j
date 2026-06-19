@@ -275,7 +275,8 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
                 Map.entry("document_processing", threadPoolMetricsReader.read(threadPools.documentProcessing())),
                 Map.entry("ocr_request", threadPoolMetricsReader.read(threadPools.ocrRequest())),
                 Map.entry("ocr_health", threadPoolMetricsReader.read(threadPools.ocrHealth())),
-                Map.entry("callback", threadPoolMetricsReader.read(threadPools.callback()))
+                Map.entry("callback", threadPoolMetricsReader.read(threadPools.callback())),
+                Map.entry("llm_markdown_chunk", threadPoolMetricsReader.read(threadPools.llmMarkdownChunk()))
         );
     }
 
@@ -340,7 +341,8 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
             ExecutorService documentProcessing,
             ExecutorService ocrRequest,
             ExecutorService ocrHealth,
-            ExecutorService callback
+            ExecutorService callback,
+            ExecutorService llmMarkdownChunk
     ) {
     }
 

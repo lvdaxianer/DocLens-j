@@ -69,7 +69,7 @@ class DashboardRowAssembler {
      * @date 2026-06-09
      */
     List<Map<String, Object>> documentRows(List<DocumentJob> documents) {
-        return documents.stream().map(document -> documentRow(document, List.of())).toList();
+        return documentRows(documents, Map.of(), Map.of());
     }
 
     /**
@@ -77,16 +77,19 @@ class DashboardRowAssembler {
      *
      * @param documents 文档集合
      * @param finalHitNodesByDocument 文档级最终分配映射
+     * @param chunkCounts 文档级 chunk 数映射
      * @return 文档行集合
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
     List<Map<String, Object>> documentRows(
             List<DocumentJob> documents,
-            Map<String, List<Map<String, Object>>> finalHitNodesByDocument
+            Map<String, List<Map<String, Object>>> finalHitNodesByDocument,
+            Map<String, Integer> chunkCounts
     ) {
         return documents.stream().map(document -> documentRow(document,
-                finalHitNodesByDocument.getOrDefault(document.documentId(), List.of()))).toList();
+                finalHitNodesByDocument.getOrDefault(document.documentId(), List.of()),
+                chunkCounts.getOrDefault(document.documentId(), 0))).toList();
     }
 
     /**
@@ -123,7 +126,7 @@ class DashboardRowAssembler {
      */
     List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status().isFailureLike())
-                .map(document -> documentRow(document, List.of())).toList();
+                .map(document -> documentRow(document, List.of(), 0)).toList();
     }
 
     /**
@@ -164,7 +167,11 @@ class DashboardRowAssembler {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> documentRow(DocumentJob document, List<Map<String, Object>> finalHitNodes) {
+    private Map<String, Object> documentRow(
+            DocumentJob document,
+            List<Map<String, Object>> finalHitNodes,
+            int chunkCount
+    ) {
         return Map.ofEntries(
                 Map.entry("document_id", document.documentId()),
                 Map.entry("batch_id", document.batchId()),
@@ -176,6 +183,7 @@ class DashboardRowAssembler {
                 Map.entry("current_page", document.currentPage()),
                 Map.entry("total_pages", document.totalPages()),
                 Map.entry("duration_ms", durationMillis(document)),
+                Map.entry("llm_chunk_count", chunkCount),
                 Map.entry("track", processingTrackAssembler.assemble(document)),
                 Map.entry("ocr_final_hit_nodes", finalHitNodes),
                 Map.entry("error_code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE)),

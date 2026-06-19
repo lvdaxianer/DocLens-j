@@ -20,14 +20,27 @@ vi.mock('naive-ui', async () => {
 
 vi.mock('pinia', () => ({
   storeToRefs: () => ({
-    summary: ref({
-      overview: null,
-      stage_status_counts: [],
-      image_progress: null,
-      ocr_resources: null,
-      recent_batches: [
-        {
-          batch_id: 'batch-test',
+      summary: ref({
+        overview: null,
+        stage_status_counts: [],
+        image_progress: null,
+        ocr_resources: {
+          healthy_node_count: 2,
+          down_node_count: 0,
+          recovering_node_count: 0,
+          global_inflight_images: 1,
+          nodes: [],
+          busiest_node: {},
+          thread_pools: {
+            ocr_request: { active_count: 0, queue_size: 0 },
+            ocr_health: { active_count: 0, queue_size: 0 },
+            callback: { active_count: 0, queue_size: 0 },
+            llm_markdown_chunk: { active_count: 3, queue_size: 5 }
+          }
+        },
+        recent_batches: [
+          {
+            batch_id: 'batch-test',
           status: 'queued',
           total_files: 2,
           completed_files: 0,

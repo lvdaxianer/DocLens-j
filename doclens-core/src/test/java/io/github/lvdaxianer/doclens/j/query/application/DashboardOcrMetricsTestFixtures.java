@@ -5,6 +5,8 @@ import static io.github.lvdaxianer.doclens.j.query.application.DashboardQuerySer
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyOcrResultRepository;
 import java.util.List;
 import java.util.Map;
 
@@ -33,9 +35,12 @@ final class DashboardOcrMetricsTestFixtures {
      * @date 2026-06-11
      */
     static DashboardQueryService dashboardServiceWithOcrMetrics() {
-        return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
-                new InMemoryDocumentJobRepository(List.of()), new InMemoryOcrEventRepository(),
-                new TestDashboardOcrMetricsProvider());
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(new InMemoryBatchRepository(List.of(batch())),
+                        new InMemoryDocumentJobRepository(List.of()), new InMemoryOcrEventRepository(),
+                        new EmptyOcrResultRepository()),
+                new DashboardQueryService.Dependencies.Services(new TestDashboardOcrMetricsProvider(),
+                        new EmptyCallbackJobRepository())));
     }
 
     /**
@@ -62,7 +67,8 @@ final class DashboardOcrMetricsTestFixtures {
                     Map.entry("busiest_node", Map.of("node_id", "node-1", "inflight_images", 5L)),
                     Map.entry("thread_pools", Map.of(
                             "ocr_request", Map.of("active_count", 2, "queue_size", 3),
-                            "ocr_health", Map.of("active_count", 1, "queue_size", 0)))
+                            "ocr_health", Map.of("active_count", 1, "queue_size", 0),
+                            "llm_markdown_chunk", Map.of("active_count", 4, "queue_size", 6)))
             );
         }
 
@@ -85,4 +91,5 @@ final class DashboardOcrMetricsTestFixtures {
                     List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L)));
         }
     }
+
 }

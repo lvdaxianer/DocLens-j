@@ -338,13 +338,16 @@ public class DocLensAutoConfiguration {
             BatchRepository batchRepository,
             DocumentJobRepository documentRepository,
             OcrEventRepository eventRepository,
+            OcrResultRepository resultRepository,
             DashboardOcrMetricsProvider ocrMetricsProvider,
             ObjectProvider<CallbackJobRepository> callbackJobRepository
     ) {
         CallbackJobRepository safeCallbackJobRepository = callbackJobRepository
                 .getIfAvailable(EmptyCallbackJobRepository::new);
-        return new DashboardQueryService(new DashboardQueryService.Dependencies(batchRepository, documentRepository,
-                eventRepository, ocrMetricsProvider, safeCallbackJobRepository));
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(batchRepository, documentRepository, eventRepository,
+                        resultRepository),
+                new DashboardQueryService.Dependencies.Services(ocrMetricsProvider, safeCallbackJobRepository)));
     }
 
     /**

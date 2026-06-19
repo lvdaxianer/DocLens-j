@@ -134,6 +134,7 @@ function documentRow(): DocumentRow {
     current_page: 1,
     total_pages: 1,
     duration_ms: 1000,
+    llm_chunk_count: 0,
     track: [],
     ocr_final_hit_nodes: [],
     error_code: '',

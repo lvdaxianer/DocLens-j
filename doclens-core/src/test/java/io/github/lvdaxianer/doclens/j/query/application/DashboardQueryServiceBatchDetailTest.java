@@ -13,8 +13,12 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import java.util.List;
@@ -69,9 +73,15 @@ class DashboardQueryServiceBatchDetailTest {
     @Test
     void batchDetailExposesBatchIntakeInfo() {
         DashboardQueryService service = new DashboardQueryService(
-                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
-                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text", DocumentType.TEXT, 0))),
-                new InMemoryOcrEventRepository());
+                new DashboardQueryService.Dependencies(
+                        new DashboardQueryService.Dependencies.Repositories(
+                                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
+                                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text",
+                                        DocumentType.TEXT, 0))),
+                                new InMemoryOcrEventRepository(),
+                                new EmptyOcrResultRepository()),
+                        new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                                new EmptyCallbackJobRepository())));
 
         Map<?, ?> batch = batchOf(service.batchDetail("batch-test"));
         Map<?, ?> metadata = (Map<?, ?>) batch.get("metadata");
@@ -91,15 +101,39 @@ class DashboardQueryServiceBatchDetailTest {
     @Test
     void batchDetailExposesCallerIdentity() {
         DashboardQueryService service = new DashboardQueryService(
-                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
-                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text", DocumentType.TEXT, 0))),
-                new InMemoryOcrEventRepository());
+                new DashboardQueryService.Dependencies(
+                        new DashboardQueryService.Dependencies.Repositories(
+                                new InMemoryBatchRepository(List.of(batchWithIntakeInfo())),
+                                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-text",
+                                        DocumentType.TEXT, 0))),
+                                new InMemoryOcrEventRepository(),
+                                new EmptyOcrResultRepository()),
+                        new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                                new EmptyCallbackJobRepository())));
 
         Map<?, ?> batch = batchOf(service.batchDetail("batch-test"));
 
         assertThat(batch.get("client_id")).isEqualTo(TEST_CLIENT_ID);
         assertThat(batch.get("source_app")).isEqualTo(TEST_SOURCE_APP);
         assertThat(batch.get("tenant_key")).isEqualTo(TEST_TENANT_KEY);
+    }
+
+    /**
+     * 批次详情应暴露 Markdown 分块数量，便于判断大文档是否真的被切分。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void batchDetailExposesLlmChunkCount() {
+        DashboardQueryService service = serviceWithDocuments(List.of(
+                completedDocument("doc-markdown", DocumentType.MARKDOWN, 0)
+        ));
+
+        List<?> documents = documentsOf(service.batchDetail("batch-test"));
+        Map<?, ?> document = (Map<?, ?>) documents.getFirst();
+
+        assertThat(document.get("llm_chunk_count")).isEqualTo(4);
     }
 
     /**
@@ -209,8 +243,14 @@ class DashboardQueryServiceBatchDetailTest {
      * @date 2026-06-11
      */
     private DashboardQueryService serviceWithDocuments(List<DocumentJob> documents) {
-        return new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
-                new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository());
+        return new DashboardQueryService(new DashboardQueryService.Dependencies(
+                new DashboardQueryService.Dependencies.Repositories(new InMemoryBatchRepository(List.of(batch())),
+                        new InMemoryDocumentJobRepository(documents), new InMemoryOcrEventRepository(),
+                        new FixedOcrResultRepository(List.of(new OcrResult("result-doc-markdown", "doc-markdown",
+                                "markdown", "local://results/doc-markdown.md", Map.of("llm_chunk_count", 4),
+                                Map.of(), List.of(), List.of(), List.of(), List.of(), 1.0D, List.of(), BASE_TIME)))),
+                new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                        new EmptyCallbackJobRepository())));
     }
 
     /**
@@ -299,6 +339,41 @@ class DashboardQueryServiceBatchDetailTest {
      */
     private List<?> trackOf(Map<?, ?> document) {
         return (List<?>) document.get("track");
+    }
+
+    /**
+     * 固定 OCR 结果仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class FixedOcrResultRepository implements OcrResultRepository {
+
+        private final List<OcrResult> results;
+
+        private FixedOcrResultRepository(List<OcrResult> results) {
+            this.results = results;
+        }
+
+        @Override
+        public void save(OcrResult result) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void saveAll(List<OcrResult> results) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Optional<OcrResult> findByDocumentId(String documentId) {
+            return results.stream().filter(result -> result.documentId().equals(documentId)).findFirst();
+        }
+
+        @Override
+        public List<OcrResult> findByDocumentIds(List<String> documentIds) {
+            return results.stream().filter(result -> documentIds.contains(result.documentId())).toList();
+        }
     }
 
 }

@@ -51,6 +51,14 @@ const cards = computed(() => [
     note: `${formatNumber(props.metrics?.thread_pools.ocr_health?.active_count)} 个活跃检查`,
     icon: Clock3,
     tone: 'neutral'
+  },
+  {
+    key: 'llm-chunk-queue',
+    label: 'LLM 分块队列',
+    value: formatNumber(props.metrics?.thread_pools.llm_markdown_chunk?.queue_size),
+    note: `${formatNumber(props.metrics?.thread_pools.llm_markdown_chunk?.active_count)} 个活跃分块`,
+    icon: Activity,
+    tone: 'latency'
   }
 ])
 

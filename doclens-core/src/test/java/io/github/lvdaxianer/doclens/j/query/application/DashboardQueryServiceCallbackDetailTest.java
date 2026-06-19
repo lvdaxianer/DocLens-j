@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobFailureReques
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackFailureReason;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryBatchRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryDocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.InMemoryOcrEventRepository;
@@ -49,9 +50,11 @@ class DashboardQueryServiceCallbackDetailTest {
                 failedCallbackJob()
         ));
         DashboardQueryService service = new DashboardQueryService(new DashboardQueryService.Dependencies(
-                new InMemoryBatchRepository(List.of(batch())),
-                new InMemoryDocumentJobRepository(List.of(completedDocument("doc-1", DocumentType.PDF, 0))),
-                new InMemoryOcrEventRepository(), new EmptyDashboardOcrMetricsProvider(), callbackJobRepository));
+                new DashboardQueryService.Dependencies.Repositories(new InMemoryBatchRepository(List.of(batch())),
+                        new InMemoryDocumentJobRepository(List.of(completedDocument("doc-1", DocumentType.PDF, 0))),
+                        new InMemoryOcrEventRepository(), new EmptyOcrResultRepository()),
+                new DashboardQueryService.Dependencies.Services(new EmptyDashboardOcrMetricsProvider(),
+                        callbackJobRepository)));
 
         Map<String, Object> detail = service.batchDetail("batch-test");
 
@@ -245,4 +248,5 @@ class DashboardQueryServiceCallbackDetailTest {
             throw new UnsupportedOperationException();
         }
     }
+
 }

@@ -9,8 +9,11 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.EmptyCallbackJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.EmptyOcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.domain.DocLensConstants;
 import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import java.time.Duration;
@@ -32,10 +35,12 @@ public class DashboardQueryService {
     private static final int RECENT_DOCUMENT_LIMIT = 100;
     private static final int RECENT_EVENT_LIMIT = 50;
     private static final int MILLIS_PER_SECOND = 1000;
+    private static final float HASH_MAP_LOAD_FACTOR = 0.75F;
 
     private final BatchRepository batchRepository;
     private final DocumentJobRepository documentRepository;
     private final OcrEventRepository eventRepository;
+    private final OcrResultRepository resultRepository;
     private final CallbackJobRepository callbackJobRepository;
     private final DashboardRowAssembler rowAssembler;
     private final DashboardStageMetricsAssembler stageMetricsAssembler;
@@ -55,8 +60,9 @@ public class DashboardQueryService {
             DocumentJobRepository documentRepository,
             OcrEventRepository eventRepository
     ) {
-        this(new Dependencies(batchRepository, documentRepository, eventRepository,
-                new EmptyDashboardOcrMetricsProvider(), new EmptyCallbackJobRepository()));
+        this(new Dependencies(new Dependencies.Repositories(batchRepository, documentRepository, eventRepository,
+                new EmptyOcrResultRepository()), new Dependencies.Services(
+                new EmptyDashboardOcrMetricsProvider(), new EmptyCallbackJobRepository())));
     }
 
     /**
@@ -75,8 +81,9 @@ public class DashboardQueryService {
             OcrEventRepository eventRepository,
             DashboardOcrMetricsProvider ocrMetricsProvider
     ) {
-        this(new Dependencies(batchRepository, documentRepository, eventRepository, ocrMetricsProvider,
-                new EmptyCallbackJobRepository()));
+        this(new Dependencies(new Dependencies.Repositories(batchRepository, documentRepository, eventRepository,
+                new EmptyOcrResultRepository()), new Dependencies.Services(ocrMetricsProvider,
+                new EmptyCallbackJobRepository())));
     }
 
     /**
@@ -88,11 +95,12 @@ public class DashboardQueryService {
      */
     public DashboardQueryService(Dependencies dependencies) {
         Dependencies safeDependencies = Objects.requireNonNull(dependencies, "dashboard dependencies is required");
-        this.batchRepository = safeDependencies.batchRepository();
-        this.documentRepository = safeDependencies.documentRepository();
-        this.eventRepository = safeDependencies.eventRepository();
-        this.ocrMetricsProvider = safeDependencies.ocrMetricsProvider();
-        this.callbackJobRepository = safeDependencies.callbackJobRepository();
+        this.batchRepository = safeDependencies.repositories().batchRepository();
+        this.documentRepository = safeDependencies.repositories().documentRepository();
+        this.eventRepository = safeDependencies.repositories().eventRepository();
+        this.resultRepository = safeDependencies.repositories().resultRepository();
+        this.ocrMetricsProvider = safeDependencies.services().ocrMetricsProvider();
+        this.callbackJobRepository = safeDependencies.services().callbackJobRepository();
         this.rowAssembler = new DashboardRowAssembler();
         this.stageMetricsAssembler = new DashboardStageMetricsAssembler();
     }
@@ -218,16 +226,54 @@ public class DashboardQueryService {
         List<DocumentJob> documents = documentRepository.listByBatchId(batchId);
         List<OcrEvent> events = eventRepository.listByBatchId(batchId);
         List<CallbackJob> callbackJobs = callbackJobRepository.listByBatchId(batchId);
+        Map<String, Integer> chunkCounts = chunkCounts(documents);
         return Map.ofEntries(
                 Map.entry("batch", rowAssembler.batchRow(batch, documents)),
                 Map.entry("documents", rowAssembler.documentRows(documents,
-                        ocrMetricsProvider.finalHitNodesByBatch(batchId))),
+                        ocrMetricsProvider.finalHitNodesByBatch(batchId), chunkCounts)),
                 Map.entry("events", rowAssembler.eventRows(events)),
                 Map.entry("callback_jobs", rowAssembler.callbackJobRows(callbackJobs)),
                 Map.entry("ocr_route_policy", rowAssembler.batchRoutePolicy(documents)),
                 Map.entry("batch_dispatch_hit_nodes", ocrMetricsProvider.dispatchHitNodesByBatch(batchId)),
                 Map.entry("failure_summary", rowAssembler.failureSummary(documents))
         );
+    }
+
+    /**
+     * 获取批次内文档对应的 chunk 数。
+     *
+     * @param documents 文档集合
+     * @return 文档 chunk 数映射
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private Map<String, Integer> chunkCounts(List<DocumentJob> documents) {
+        List<String> documentIds = documents.stream().map(DocumentJob::documentId).toList();
+        int capacity = (int) (Math.max(1, documentIds.size()) / HASH_MAP_LOAD_FACTOR) + 1;
+        Map<String, Integer> chunkCounts = new java.util.LinkedHashMap<>(capacity);
+        for (OcrResult result : resultRepository.findByDocumentIds(documentIds)) {
+            chunkCounts.put(result.documentId(), chunkCount(result));
+        }
+        return chunkCounts;
+    }
+
+    /**
+     * 读取单个文档的 chunk 数。
+     *
+     * @param result OCR 结果
+     * @return chunk 数
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private Integer chunkCount(OcrResult result) {
+        Object rawCount = result.rawVendorOutput().get("llm_chunk_count");
+        // 从 OCR 结果元数据中读取 chunk 数时，保留数值字段。
+        if (rawCount instanceof Number number) {
+            return number.intValue();
+        } else {
+            // 元数据缺失或类型不匹配时，回退到 0，避免前端展示异常值。
+            return 0;
+        }
     }
 
     /**
@@ -358,21 +404,72 @@ public class DashboardQueryService {
     /**
      * Dashboard 查询服务依赖集合。
      *
-     * @param batchRepository 批次仓储
-     * @param documentRepository 文档仓储
-     * @param eventRepository 事件仓储
-     * @param ocrMetricsProvider OCR 指标提供器
-     * @param callbackJobRepository 回调任务仓储
+     * @param repositories 数据仓储集合
+     * @param services 查询服务集合
      * @author lvdaxianerplus
      * @date 2026-06-15
      */
     public record Dependencies(
-            BatchRepository batchRepository,
-            DocumentJobRepository documentRepository,
-            OcrEventRepository eventRepository,
-            DashboardOcrMetricsProvider ocrMetricsProvider,
-            CallbackJobRepository callbackJobRepository
+            Repositories repositories,
+            Services services
     ) {
+
+        /**
+         * Dashboard 查询服务数据仓储集合。
+         *
+         * @param batchRepository 批次仓储
+         * @param documentRepository 文档仓储
+         * @param eventRepository 事件仓储
+         * @param resultRepository OCR 结果仓储
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        public record Repositories(
+                BatchRepository batchRepository,
+                DocumentJobRepository documentRepository,
+                OcrEventRepository eventRepository,
+                OcrResultRepository resultRepository
+        ) {
+
+            /**
+             * 创建 Dashboard 查询服务数据仓储集合。
+             *
+             * @author lvdaxianerplus
+             * @date 2026-06-19
+             */
+            public Repositories {
+                batchRepository = Objects.requireNonNull(batchRepository, "batch repository is required");
+                documentRepository = Objects.requireNonNull(documentRepository, "document repository is required");
+                eventRepository = Objects.requireNonNull(eventRepository, "event repository is required");
+                resultRepository = Objects.requireNonNull(resultRepository, "result repository is required");
+            }
+        }
+
+        /**
+         * Dashboard 查询服务查询能力集合。
+         *
+         * @param ocrMetricsProvider OCR 指标提供器
+         * @param callbackJobRepository 回调任务仓储
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        public record Services(
+                DashboardOcrMetricsProvider ocrMetricsProvider,
+                CallbackJobRepository callbackJobRepository
+        ) {
+
+            /**
+             * 创建 Dashboard 查询服务查询能力集合。
+             *
+             * @author lvdaxianerplus
+             * @date 2026-06-19
+             */
+            public Services {
+                ocrMetricsProvider = Objects.requireNonNull(ocrMetricsProvider, "ocr metrics provider is required");
+                callbackJobRepository = Objects.requireNonNull(callbackJobRepository,
+                        "callback job repository is required");
+            }
+        }
 
         /**
          * 创建 Dashboard 查询服务依赖集合。
@@ -381,12 +478,8 @@ public class DashboardQueryService {
          * @date 2026-06-15
          */
         public Dependencies {
-            batchRepository = Objects.requireNonNull(batchRepository, "batch repository is required");
-            documentRepository = Objects.requireNonNull(documentRepository, "document repository is required");
-            eventRepository = Objects.requireNonNull(eventRepository, "event repository is required");
-            ocrMetricsProvider = Objects.requireNonNull(ocrMetricsProvider, "ocr metrics provider is required");
-            callbackJobRepository = Objects.requireNonNull(callbackJobRepository,
-                    "callback job repository is required");
+            repositories = Objects.requireNonNull(repositories, "repositories is required");
+            services = Objects.requireNonNull(services, "services is required");
         }
     }
 
