@@ -36,6 +36,7 @@ const NEW_CONFIG_TITLE = '新增配置'
 export function useLlmMarkdownConfig(message: MessageApi) {
   const form = reactive(createDefaultLlmMarkdownConfigForm())
   const rows = shallowRef<LlmMarkdownConfigRow[]>([])
+  const isDrawerVisible = shallowRef(false)
   const isLoading = shallowRef(false)
   const isSaving = shallowRef(false)
   const isTesting = shallowRef(false)
@@ -81,6 +82,30 @@ export function useLlmMarkdownConfig(message: MessageApi) {
   function editConfig(row: LlmMarkdownConfigRow): void {
     Object.assign(form, fillLlmMarkdownConfigFormFromResponse(rowToResponse(row)))
     editingTitle.value = row.name
+    isDrawerVisible.value = true
+  }
+
+  /**
+   * 打开新增配置抽屉。
+   *
+   * @returns 打开完成信号
+   * @author lvdaxianerplus
+   * @date 2026-06-19
+   */
+  function openCreateDrawer(): void {
+    resetForm()
+    isDrawerVisible.value = true
+  }
+
+  /**
+   * 关闭 LLM Markdown 配置抽屉。
+   *
+   * @returns 关闭完成信号
+   * @author lvdaxianerplus
+   * @date 2026-06-19
+   */
+  function closeDrawer(): void {
+    isDrawerVisible.value = false
   }
 
   /**
@@ -237,6 +262,7 @@ export function useLlmMarkdownConfig(message: MessageApi) {
   return {
     form,
     rows,
+    isDrawerVisible,
     isLoading,
     isSaving,
     isTesting,
@@ -249,6 +275,8 @@ export function useLlmMarkdownConfig(message: MessageApi) {
     emptyStatus,
     capabilityHints,
     loadConfig,
+    openCreateDrawer,
+    closeDrawer,
     resetForm,
     editConfig,
     saveConfig,
