@@ -1,0 +1,5 @@
+id: 2026-06-20-llm-markdown-always-apply
+status: proposed
+title: Always apply configured LLM Markdown formatting
+kind: change
+created: 2026-06-20
