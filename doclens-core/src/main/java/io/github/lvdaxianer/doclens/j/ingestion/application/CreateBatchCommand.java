@@ -17,6 +17,7 @@ import java.util.Map;
  * @param pdfMode PDF 模式
  * @param chunkStrategy 分块策略
  * @param ocrRoutePolicy OCR 路由策略
+ * @param llmOrchestrated 是否已由上游完成 LLM 编排
  * @author lvdaxianerplus
  * @date 2026-06-09
  */
@@ -29,7 +30,8 @@ public record CreateBatchCommand(
         String pdfMode,
         ChunkStrategy chunkStrategy,
         OcrRoutePolicy ocrRoutePolicy,
-        CallerIdentity callerIdentity
+        CallerIdentity callerIdentity,
+        boolean llmOrchestrated
 ) {
     /**
      * 创建使用系统默认 OCR 路由策略的兼容命令。
@@ -55,7 +57,7 @@ public record CreateBatchCommand(
     ) {
         this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy,
                 OcrRoutePolicy.defaultPolicy(),
-                CallerIdentity.anonymous());
+                CallerIdentity.anonymous(), false);
     }
 
     /**
@@ -83,7 +85,37 @@ public record CreateBatchCommand(
             OcrRoutePolicy ocrRoutePolicy
     ) {
         this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, ocrRoutePolicy,
-                CallerIdentity.anonymous());
+                CallerIdentity.anonymous(), false);
+    }
+
+    /**
+     * 创建兼容旧调用方式的匿名调用方命令。
+     *
+     * @param files 已上传文件集合
+     * @param metadata 元数据载荷
+     * @param callbackUrl 回调 URL
+     * @param idempotencyKey 幂等键
+     * @param adapterOverride 适配器覆盖值
+     * @param pdfMode PDF 模式
+     * @param chunkStrategy 分块策略
+     * @param ocrRoutePolicy OCR 路由策略
+     * @param callerIdentity 调用方身份
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    public CreateBatchCommand(
+            List<UploadFileCommand> files,
+            Map<String, Object> metadata,
+            String callbackUrl,
+            String idempotencyKey,
+            String adapterOverride,
+            String pdfMode,
+            ChunkStrategy chunkStrategy,
+            OcrRoutePolicy ocrRoutePolicy,
+            CallerIdentity callerIdentity
+    ) {
+        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, ocrRoutePolicy,
+                callerIdentity, false);
     }
 
     /**
@@ -109,7 +141,7 @@ public record CreateBatchCommand(
             OcrRoutePolicy ocrRoutePolicy
     ) {
         this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, ChunkStrategy.general(),
-                ocrRoutePolicy, CallerIdentity.anonymous());
+                ocrRoutePolicy, CallerIdentity.anonymous(), false);
     }
 
     /**

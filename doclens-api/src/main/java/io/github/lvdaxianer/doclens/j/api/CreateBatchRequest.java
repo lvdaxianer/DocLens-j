@@ -13,6 +13,7 @@ import java.util.Map;
  * @param adapterOverride 可选 OCR 适配器键
  * @param pdfMode 可选 PDF 处理模式
  * @param chunkStrategy 可选分块策略
+ * @param llmOrchestrated 是否已由上游完成 LLM 编排
  * @param ocrRoutingMode 可选 OCR 路由模式
  * @param ocrModelKey 可选 OCR 模型标识
  * @param ocrNodeId 可选 OCR 节点标识
@@ -31,6 +32,7 @@ public record CreateBatchRequest(
         String adapterOverride,
         String pdfMode,
         String chunkStrategy,
+        boolean llmOrchestrated,
         String ocrRoutingMode,
         String ocrModelKey,
         String ocrNodeId,
@@ -59,6 +61,7 @@ public record CreateBatchRequest(
      * @param adapterOverride 可选 OCR 适配器键
      * @param pdfMode 可选 PDF 处理模式
      * @param chunkStrategy 可选分块策略
+     * @param llmOrchestrated 是否已由上游完成 LLM 编排
      * @param ocrRoutingMode 可选 OCR 路由模式
      * @param ocrModelKey 可选 OCR 模型标识
      * @param ocrNodeId 可选 OCR 节点标识
@@ -74,13 +77,14 @@ public record CreateBatchRequest(
             String adapterOverride,
             String pdfMode,
             String chunkStrategy,
+            boolean llmOrchestrated,
             String ocrRoutingMode,
             String ocrModelKey,
             String ocrNodeId,
             String ocrLoadBalanceStrategy
     ) {
-        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, ocrRoutingMode,
-                ocrModelKey, ocrNodeId, ocrLoadBalanceStrategy, null, null, null);
+        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, llmOrchestrated,
+                ocrRoutingMode, ocrModelKey, ocrNodeId, ocrLoadBalanceStrategy, null, null, null);
     }
 
     /**
@@ -105,8 +109,8 @@ public record CreateBatchRequest(
             String pdfMode,
             String chunkStrategy
     ) {
-        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, null, null, null, null,
-                null, null, null);
+        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, chunkStrategy, false, null, null,
+                null, null, null, null, null);
     }
 
     /**
@@ -129,6 +133,7 @@ public record CreateBatchRequest(
             String adapterOverride,
             String pdfMode
     ) {
-        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, null);
+        this(files, metadata, callbackUrl, idempotencyKey, adapterOverride, pdfMode, null, false, null, null,
+                null, null, null, null, null);
     }
 }

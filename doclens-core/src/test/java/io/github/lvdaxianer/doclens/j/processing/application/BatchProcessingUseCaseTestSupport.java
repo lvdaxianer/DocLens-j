@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -126,7 +127,7 @@ final class BatchProcessingUseCaseTestSupport {
      * @date 2026-06-08
      */
     static DocumentJob document(String documentId, int sortOrder) {
-        return document(documentId, sortOrder, JsonPayload.empty());
+        return document(documentId, sortOrder, JsonPayload.empty(), false);
     }
 
     /**
@@ -140,9 +141,25 @@ final class BatchProcessingUseCaseTestSupport {
      * @date 2026-06-09
      */
     static DocumentJob document(String documentId, int sortOrder, JsonPayload metadata) {
+        return document(documentId, sortOrder, metadata, false);
+    }
+
+    /**
+     * 创建测试文档。
+     *
+     * @param documentId 文档 ID
+     * @param sortOrder 排序
+     * @param metadata 文档元数据
+     * @param llmOrchestrated 是否已由上游编排
+     * @return 文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    static DocumentJob document(String documentId, int sortOrder, JsonPayload metadata, boolean llmOrchestrated) {
         DocumentJobCreateRequest request = new DocumentJobCreateRequest(documentId, "batch-test",
                 documentId + ".txt", DocumentType.TEXT, 5, 1, "local://" + documentId, "stub_ocr",
-                Optional.empty(), metadata, sortOrder, OffsetDateTime.now());
+                Optional.empty(), OcrRoutePolicy.defaultPolicy(), metadata, sortOrder, OffsetDateTime.now(),
+                io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy.general(), llmOrchestrated);
         return DocumentJob.create(request);
     }
 

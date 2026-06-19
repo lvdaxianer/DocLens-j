@@ -47,18 +47,37 @@ class DocumentMarkdownPostProcessingService {
      * @date 2026-06-11
      */
     DocumentPostProcessedText process(DocumentJob document, DocumentTextExtractionResult extracted) {
-        RuntimeException lastFailure = null;
-        MarkdownPostProcessingRequest request = markdownRequest(document, extracted);
-        for (int attempt = 1; attempt <= LLM_MARKDOWN_MAX_ATTEMPTS; attempt++) {
-            try {
-                MarkdownPostProcessingResult result = markdownPostProcessor.process(request);
-                return successPostProcessedText(extracted, result);
-            } catch (RuntimeException ex) {
-                lastFailure = ex;
-                retryIfNeeded(document, attempt, ex);
+        if (document.llmOrchestrated()) {
+            // 上游已经完成 LLM 编排时，直接保留 OCR 原文，避免重复后处理。
+            return passthroughPostProcessedText(extracted);
+        } else {
+            // 默认仍沿用现有 Markdown 后处理重试链路，保持未编排请求行为不变。
+            RuntimeException lastFailure = null;
+            MarkdownPostProcessingRequest request = markdownRequest(document, extracted);
+            for (int attempt = 1; attempt <= LLM_MARKDOWN_MAX_ATTEMPTS; attempt++) {
+                try {
+                    MarkdownPostProcessingResult result = markdownPostProcessor.process(request);
+                    return successPostProcessedText(extracted, result);
+                } catch (RuntimeException ex) {
+                    lastFailure = ex;
+                    retryIfNeeded(document, attempt, ex);
+                }
             }
+            return fallbackPostProcessedText(extracted, document, lastFailure);
         }
-        return fallbackPostProcessedText(extracted, document, lastFailure);
+    }
+
+    /**
+     * 构建已由上游编排时的直通结果。
+     *
+     * @param extracted 文本提取结果
+     * @return 直通后的文本
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private DocumentPostProcessedText passthroughPostProcessedText(DocumentTextExtractionResult extracted) {
+        return new DocumentPostProcessedText(extracted.finalText(), extracted.warnings(), false, Optional.empty(),
+                Map.of());
     }
 
     /**

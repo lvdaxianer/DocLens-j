@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
  * @param adapterOverride 适配器覆盖值
  * @param pdfMode PDF 模式
  * @param chunkStrategy 分块策略
+ * @param llmOrchestrated 是否已由上游完成 LLM 编排
  * @param ocrRoutingMode OCR 路由模式
  * @param ocrModelKey OCR 模型标识
  * @param ocrNodeId OCR 节点标识
@@ -28,6 +29,7 @@ public record CreateBatchForm(
         String adapterOverride,
         String pdfMode,
         String chunkStrategy,
+        String llmOrchestrated,
         String ocrRoutingMode,
         String ocrModelKey,
         String ocrNodeId,

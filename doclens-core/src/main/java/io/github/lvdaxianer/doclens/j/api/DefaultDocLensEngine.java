@@ -120,7 +120,8 @@ public class DefaultDocLensEngine implements DocLensEngine {
     private CreateBatchCommand toCommand(CreateBatchRequest request) {
         return new CreateBatchCommand(toUploadFiles(request.files()), request.metadata(), request.callbackUrl(),
                 request.idempotencyKey(), request.adapterOverride(), request.pdfMode(),
-                ChunkStrategy.from(request.chunkStrategy()), toOcrRoutePolicy(request), callerIdentity(request));
+                ChunkStrategy.from(request.chunkStrategy()), toOcrRoutePolicy(request), callerIdentity(request),
+                request.llmOrchestrated());
     }
 
     /**

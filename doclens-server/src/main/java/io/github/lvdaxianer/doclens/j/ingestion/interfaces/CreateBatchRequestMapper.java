@@ -35,6 +35,8 @@ public class CreateBatchRequestMapper {
     private static final String OCR_MODEL_KEY_SNAKE_PARAM = "ocr_model_key";
     private static final String OCR_NODE_ID_SNAKE_PARAM = "ocr_node_id";
     private static final String OCR_LOAD_BALANCE_STRATEGY_SNAKE_PARAM = "ocr_load_balance_strategy";
+    private static final String LLM_ORCHESTRATED_PARAM = "llmOrchestrated";
+    private static final String LLM_ORCHESTRATED_SNAKE_PARAM = "llm_orchestrated";
     private static final String API_KEY_HEADER = "X-DocLens-Api-Key";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
@@ -74,7 +76,7 @@ public class CreateBatchRequestMapper {
                 request.getHeader(AUTHORIZATION_HEADER));
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
                 form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.chunkStrategy(),
-                form.ocrRoutingMode(), form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(),
+                Boolean.parseBoolean(form.llmOrchestrated()), form.ocrRoutingMode(), form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(),
                 caller.clientId(),
                 caller.sourceApp(), caller.tenantKey().orElse(""));
     }
@@ -84,6 +86,7 @@ public class CreateBatchRequestMapper {
                 request.getParameter(CALLBACK_URL_PARAM), request.getParameter(IDEMPOTENCY_KEY_PARAM),
                 request.getParameter(ADAPTER_OVERRIDE_PARAM), request.getParameter(PDF_MODE_PARAM),
                 parameter(request, "chunkStrategy", "chunk_strategy"),
+                parameter(request, LLM_ORCHESTRATED_PARAM, LLM_ORCHESTRATED_SNAKE_PARAM),
                 parameter(request, OCR_ROUTING_MODE_PARAM, OCR_ROUTING_MODE_SNAKE_PARAM),
                 parameter(request, OCR_MODEL_KEY_PARAM, OCR_MODEL_KEY_SNAKE_PARAM),
                 parameter(request, OCR_NODE_ID_PARAM, OCR_NODE_ID_SNAKE_PARAM),

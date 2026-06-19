@@ -85,6 +85,52 @@ class BatchProcessingUseCaseLlmMarkdownTest {
     }
 
     /**
+     * 已编排的文档应跳过 LLM Markdown 后处理。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void processBatchSkipsLlmMarkdownWhenAlreadyOrchestrated() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0, JsonPayload.empty(), true));
+        BatchProcessingUseCase batchUseCase = useCase(BatchProcessingUseCaseConfig.of(documentRepository,
+                resultRepository, new FixedTextExtractor("原始 OCR 文本"), new FailingMarkdownPostProcessor()));
+
+        batchUseCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
+            assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", false);
+            assertThat(result.warnings()).doesNotContain("llm_markdown_post_processing_failed");
+        });
+    }
+
+    /**
+     * 未编排的文档仍应继续执行 LLM Markdown 后处理。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void processBatchStillAppliesLlmMarkdownWhenNotOrchestrated() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
+        documentRepository.save(document("doc-1", 0, JsonPayload.empty(), false));
+        BatchProcessingUseCase batchUseCase = useCase(BatchProcessingUseCaseConfig.of(documentRepository,
+                resultRepository, new FixedTextExtractor("原始 OCR 文本"),
+                new FixedMarkdownPostProcessor("# 正文\n\n原始 OCR 文本")));
+
+        batchUseCase.processBatch("batch-test");
+
+        assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
+            assertThat(result.finalText()).isEqualTo("# 正文\n\n原始 OCR 文本");
+            assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", true);
+        });
+    }
+
+    /**
      * 创建匿名调用方回调载荷。
      *
      * @return 匿名调用方载荷
