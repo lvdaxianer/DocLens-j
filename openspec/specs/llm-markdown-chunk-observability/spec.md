@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# llm-markdown-chunk-observability Specification
 
+## Purpose
+Define how the Dashboard exposes chunked Markdown observability so operators
+can see the planned chunk count on batch detail rows and the activity of the
+dedicated LLM Markdown chunk executor in OCR resource metrics.
+## Requirements
 ### Requirement: Batch detail SHALL surface chunked Markdown scale as a stable chunk count
 The batch detail view SHALL expose the planned chunk count for chunked Markdown
 documents so users can see how much work the LLM path is doing.
