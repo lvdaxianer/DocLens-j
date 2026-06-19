@@ -82,6 +82,35 @@ class DocLensSpringPropertiesBindingTest {
     }
 
     /**
+     * 绑定页任务 worker 运行时配置。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void bindsPageTaskWorkerRuntimeConfiguration() {
+        contextRunner
+                .withPropertyValues(
+                        "doclens.page-task-worker.batch-size=10",
+                        "doclens.page-task-worker.lock-seconds=900",
+                        "doclens.page-task-worker.pool-size=10",
+                        "doclens.page-task-worker.queue-capacity=500",
+                        "doclens.page-task-worker.recovery-limit=64",
+                        "doclens.page-task-worker.interval-millis=250")
+                .run(context -> {
+                    DocLensSpringProperties.PageTaskWorkerProperties worker =
+                            context.getBean(DocLensSpringProperties.class).pageTaskWorker();
+
+                    assertThat(worker.batchSize()).isEqualTo(10);
+                    assertThat(worker.lockSeconds()).isEqualTo(900);
+                    assertThat(worker.poolSize()).isEqualTo(10);
+                    assertThat(worker.queueCapacity()).isEqualTo(500);
+                    assertThat(worker.recoveryLimit()).isEqualTo(64);
+                    assertThat(worker.intervalMillis()).isEqualTo(250);
+                });
+    }
+
+    /**
      * 配置属性绑定测试配置。
      *
      * @author lvdaxianerplus

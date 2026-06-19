@@ -62,6 +62,32 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     private static final int PAGE_TASK_EXECUTOR_QUEUE_CAPACITY = 200;
     /** 页任务线程池空闲线程保活秒数，和项目内其他业务线程池保持一致。 */
     private static final int THREAD_KEEP_ALIVE_SECONDS = 60;
+    /** OCR 请求超时之外预留的页任务锁缓冲，避免网络返回和落库窗口误触发恢复。 */
+    private static final int PAGE_TASK_LOCK_SAFETY_BUFFER_SECONDS = 30;
+
+    /**
+     * 创建页任务 worker 生效运行时配置。
+     *
+     * @param properties DocLens 配置属性
+     * @return 页任务 worker 生效运行时配置
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Bean
+    @ConditionalOnBean(OcrRoutingService.class)
+    @ConditionalOnMissingBean
+    PageTaskWorkerRuntimeSettings pageTaskWorkerRuntimeSettings(DocLensSpringProperties properties) {
+        DocLensSpringProperties.PageTaskWorkerProperties worker = properties.pageTaskWorker();
+        int derivedConcurrency = derivedNodeConcurrency(properties);
+        int poolSize = positiveOrDefault(worker.poolSize(), derivedConcurrency);
+        int batchSize = positiveOrDefault(worker.batchSize(), poolSize);
+        int lockSeconds = positiveOrDefault(worker.lockSeconds(), derivedLockSeconds(properties));
+        int queueCapacity = positiveOrDefault(worker.queueCapacity(), PAGE_TASK_EXECUTOR_QUEUE_CAPACITY);
+        int recoveryLimit = positiveOrDefault(worker.recoveryLimit(), PAGE_TASK_RECOVERY_LIMIT);
+        int intervalMillis = positiveOrDefault(worker.intervalMillis(), PAGE_TASK_WORKER_INTERVAL_MILLIS);
+        return new PageTaskWorkerRuntimeSettings(batchSize, lockSeconds, poolSize, queueCapacity, recoveryLimit,
+                intervalMillis);
+    }
 
     /**
      * 创建文档页任务执行服务。
@@ -78,13 +104,14 @@ public class DocLensPageTaskWorkerAutoConfiguration {
         DocumentPageTaskExecutionDependencies dependencies = context.getBean(DocumentPageTaskExecutionDependencies.class);
         TransactionRunner transactionRunner = context.getBean(TransactionRunner.class);
         DocLensSpringProperties properties = context.getBean(DocLensSpringProperties.class);
+        PageTaskWorkerRuntimeSettings settings = context.getBean(PageTaskWorkerRuntimeSettings.class);
         ExecutorService pageTaskExecutor = context.getBean("doclensPageTaskExecutor", ExecutorService.class);
         // 页任务执行器只负责单页 OCR，成功后的文档收口交给聚合服务统一判断。
         // 这里通过监听器注入聚合入口，避免执行服务直接依赖结果落库细节。
         DocumentPageTaskAggregationService aggregationService =
                 context.getBean(DocumentPageTaskAggregationService.class);
         DocumentPageTaskExecutionOptions options = new DocumentPageTaskExecutionOptions(properties.workerId(),
-                PAGE_TASK_WORKER_BATCH_SIZE, PAGE_TASK_LOCK_SECONDS, pageTaskExecutor,
+                settings.batchSize(), settings.lockSeconds(), pageTaskExecutor,
                 aggregationService::recordSuccess);
         return new DocumentPageTaskExecutionService(dependencies, transactionRunner, options);
     }
@@ -206,10 +233,10 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnBean(OcrRoutingService.class)
     @ConditionalOnMissingBean(name = "doclensPageTaskExecutor")
-    ExecutorService doclensPageTaskExecutor() {
-        return new ThreadPoolExecutor(PAGE_TASK_EXECUTOR_POOL_SIZE, PAGE_TASK_EXECUTOR_POOL_SIZE,
+    ExecutorService doclensPageTaskExecutor(PageTaskWorkerRuntimeSettings settings) {
+        return new ThreadPoolExecutor(settings.poolSize(), settings.poolSize(),
                 THREAD_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(PAGE_TASK_EXECUTOR_QUEUE_CAPACITY),
+                new LinkedBlockingQueue<>(settings.queueCapacity()),
                 new NamedThreadPoolFactory("doclens-page-task-ocr-"), new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
@@ -219,6 +246,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
      * @param executionService 页任务执行服务
      * @param recoveryService 页任务恢复服务
      * @param schedulerExecutor 页任务调度线程池
+     * @param settings 页任务 worker 运行时配置
      * @return 页任务 OCR worker 调度器
      * @author lvdaxianerplus
      * @date 2026-06-11
@@ -229,11 +257,12 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     PageTaskWorkerScheduler pageTaskWorkerScheduler(
             DocumentPageTaskExecutionService executionService,
             DocumentPageTaskRecoveryService recoveryService,
-            @Qualifier("doclensPageTaskWorkerSchedulerExecutor") ScheduledExecutorService schedulerExecutor
+            @Qualifier("doclensPageTaskWorkerSchedulerExecutor") ScheduledExecutorService schedulerExecutor,
+            PageTaskWorkerRuntimeSettings settings
     ) {
         PageTaskWorkerSchedulerDependencies dependencies =
                 new PageTaskWorkerSchedulerDependencies(executionService, recoveryService, schedulerExecutor);
-        return new PageTaskWorkerScheduler(dependencies, PAGE_TASK_WORKER_INTERVAL_MILLIS, PAGE_TASK_RECOVERY_LIMIT);
+        return new PageTaskWorkerScheduler(dependencies, settings.intervalMillis(), settings.recoveryLimit());
     }
 
     /**
@@ -249,5 +278,69 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     @ConditionalOnMissingBean(name = "pageTaskWorkerSchedulerRunner")
     ApplicationRunner pageTaskWorkerSchedulerRunner(PageTaskWorkerScheduler scheduler) {
         return args -> scheduler.start();
+    }
+
+    /**
+     * 根据启用的启动节点并发派生本地页任务并发。
+     *
+     * @param properties DocLens 配置属性
+     * @return 派生并发数
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    static int derivedNodeConcurrency(DocLensSpringProperties properties) {
+        return properties.paddleOcr().bootstrapNodes().stream()
+                .filter(DocLensSpringProperties.PaddleOcrNodeProperties::enabled)
+                .mapToInt(DocLensSpringProperties.PaddleOcrNodeProperties::maxConcurrency)
+                .max()
+                .orElse(PAGE_TASK_EXECUTOR_POOL_SIZE);
+    }
+
+    /**
+     * 根据 OCR 请求超时派生页任务锁时长。
+     *
+     * @param properties DocLens 配置属性
+     * @return 派生锁秒数
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private int derivedLockSeconds(DocLensSpringProperties properties) {
+        int timeoutSeconds = Math.max(1, properties.paddleOcr().timeoutSeconds());
+        return Math.max(PAGE_TASK_LOCK_SECONDS, timeoutSeconds + PAGE_TASK_LOCK_SAFETY_BUFFER_SECONDS);
+    }
+
+    /**
+     * 正数使用配置值，否则使用默认值。
+     *
+     * @param value 配置值
+     * @param defaultValue 默认值
+     * @return 正整数
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private int positiveOrDefault(int value, int defaultValue) {
+        return value > 0 ? value : Math.max(1, defaultValue);
+    }
+
+    /**
+     * 页任务 worker 生效运行时配置。
+     *
+     * @param batchSize 每轮抢占页任务数量
+     * @param lockSeconds 页任务锁秒数
+     * @param poolSize 页任务执行线程数
+     * @param queueCapacity 页任务执行队列容量
+     * @param recoveryLimit 每轮恢复过期页任务数量
+     * @param intervalMillis 页任务扫描间隔毫秒
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    record PageTaskWorkerRuntimeSettings(
+            int batchSize,
+            int lockSeconds,
+            int poolSize,
+            int queueCapacity,
+            int recoveryLimit,
+            int intervalMillis
+    ) {
     }
 }

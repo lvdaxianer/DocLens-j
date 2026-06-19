@@ -47,7 +47,15 @@ public class DocLensOcrThreadPoolAutoConfiguration {
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean(name = "doclensOcrRequestExecutor")
     ExecutorService doclensOcrRequestExecutor(DocLensSpringProperties properties) {
-        return executor(properties.threadPools().ocrRequestThreadPool());
+        DocLensSpringProperties.ThreadPoolProperties threadPool = properties.threadPools().ocrRequestThreadPool();
+        // 默认 OCR 请求线程池跟随节点并发，避免本地线程池低于节点 max-concurrency。
+        if (threadPool.isDefaultOcrRequestThreadPool()) {
+            int concurrency = DocLensPageTaskWorkerAutoConfiguration.derivedNodeConcurrency(properties);
+            return executor(threadPool.withSize(concurrency));
+        } else {
+            // 显式配置过线程池时尊重运维配置，不再自动覆盖。
+            return executor(threadPool);
+        }
     }
 
     /**

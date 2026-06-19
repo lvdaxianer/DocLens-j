@@ -59,6 +59,13 @@ doclens:
         participate-global: true
         weight: 50
         max-concurrency: 10
+  page-task-worker:
+    batch-size: 10
+    lock-seconds: 630
+    pool-size: 10
+    queue-capacity: 200
+    recovery-limit: 32
+    interval-millis: 500
   extraction:
     ocr-concurrency: 4
   pdf-render:

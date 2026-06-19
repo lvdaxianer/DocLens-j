@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -37,6 +38,26 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
     }
 
     /**
+     * 默认 OCR 请求线程池应按启用节点最大并发扩容。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void ocrRequestExecutorDefaultsToBootstrapNodeConcurrency() {
+        ExecutorService executor = new DocLensOcrThreadPoolAutoConfiguration()
+                .doclensOcrRequestExecutor(defaultProperties());
+
+        try {
+            ThreadPoolExecutor threadPool = (ThreadPoolExecutor) executor;
+            assertThat(threadPool.getCorePoolSize()).isEqualTo(10);
+            assertThat(threadPool.getMaximumPoolSize()).isEqualTo(10);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /**
      * 创建默认 DocLens Spring 配置。
      *
      * @return 默认 DocLens Spring 配置
@@ -45,6 +66,6 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
      */
     private DocLensSpringProperties defaultProperties() {
         return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 }

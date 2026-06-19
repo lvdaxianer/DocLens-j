@@ -26,6 +26,7 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  * @param pdfRender PDF 渲染配置
  * @param wordConversion Word 转 PDF 配置
  * @param llmMarkdown LLM Markdown 后处理配置
+ * @param pageTaskWorker 页任务 worker 配置
  * @param threadPools 线程池隔离配置
  * @param traffic 调用方流量治理配置
  * @author lvdaxianerplus
@@ -46,6 +47,7 @@ public record DocLensSpringProperties(
         PdfRenderProperties pdfRender,
         WordConversionProperties wordConversion,
         LlmMarkdownProperties llmMarkdown,
+        PageTaskWorkerProperties pageTaskWorker,
         ThreadPoolsProperties threadPools,
         TrafficProperties traffic
 ) {
@@ -54,8 +56,19 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
     private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 6;
     private static final int DEFAULT_CALLBACK_DELIVERY_CONCURRENCY = 3;
+    private static final int DEFAULT_OCR_REQUEST_CORE_SIZE = 2;
+    private static final int DEFAULT_OCR_REQUEST_MAX_SIZE = 4;
+    private static final int DEFAULT_THREAD_POOL_QUEUE_CAPACITY = 100;
+    private static final int DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS = 60;
+    private static final String DEFAULT_OCR_REQUEST_THREAD_PREFIX = "doclens-ocr-request-";
     private static final int DEFAULT_NODE_WEIGHT = 50;
     private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
+    private static final int DEFAULT_PAGE_TASK_WORKER_INTERVAL_MILLIS = 500;
+    private static final int DEFAULT_PAGE_TASK_WORKER_BATCH_SIZE = 0;
+    private static final int DEFAULT_PAGE_TASK_LOCK_SECONDS = 0;
+    private static final int DEFAULT_PAGE_TASK_WORKER_POOL_SIZE = 0;
+    private static final int DEFAULT_PAGE_TASK_WORKER_QUEUE_CAPACITY = 200;
+    private static final int DEFAULT_PAGE_TASK_RECOVERY_LIMIT = 32;
 
     @ConstructorBinding
     public DocLensSpringProperties {
@@ -69,6 +82,7 @@ public record DocLensSpringProperties(
         pdfRender = pdfRender == null ? new PdfRenderProperties(36, "png") : pdfRender;
         wordConversion = wordConversion == null ? new WordConversionProperties("soffice", 60) : wordConversion;
         llmMarkdown = llmMarkdown == null ? new LlmMarkdownProperties("", "", "") : llmMarkdown;
+        pageTaskWorker = pageTaskWorker == null ? PageTaskWorkerProperties.defaults() : pageTaskWorker;
         threadPools = threadPools == null ? ThreadPoolsProperties.defaults() : threadPools;
         traffic = traffic == null ? TrafficProperties.defaults() : traffic;
     }
@@ -424,6 +438,42 @@ public record DocLensSpringProperties(
     }
 
     /**
+     * 页任务 worker 运行时配置。
+     *
+     * @param batchSize 每轮抢占页任务数量，0 表示跟随节点并发
+     * @param lockSeconds 页任务锁秒数，0 表示根据 OCR 请求超时派生
+     * @param poolSize 页任务执行线程数，0 表示跟随节点并发
+     * @param queueCapacity 页任务执行队列容量
+     * @param recoveryLimit 每轮恢复过期页任务数量
+     * @param intervalMillis 页任务扫描间隔毫秒
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    public record PageTaskWorkerProperties(
+            int batchSize,
+            int lockSeconds,
+            int poolSize,
+            int queueCapacity,
+            int recoveryLimit,
+            int intervalMillis
+    ) {
+
+        /**
+         * 创建默认页任务 worker 配置。
+         *
+         * @return 默认页任务 worker 配置
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        public static PageTaskWorkerProperties defaults() {
+            return new PageTaskWorkerProperties(DEFAULT_PAGE_TASK_WORKER_BATCH_SIZE,
+                    DEFAULT_PAGE_TASK_LOCK_SECONDS, DEFAULT_PAGE_TASK_WORKER_POOL_SIZE,
+                    DEFAULT_PAGE_TASK_WORKER_QUEUE_CAPACITY, DEFAULT_PAGE_TASK_RECOVERY_LIMIT,
+                    DEFAULT_PAGE_TASK_WORKER_INTERVAL_MILLIS);
+        }
+    }
+
+    /**
      * DocLens 线程池隔离属性。
      *
      * @param documentProcessingThreadPool 文档处理线程池
@@ -450,11 +500,16 @@ public record DocLensSpringProperties(
         public static ThreadPoolsProperties defaults() {
             return new ThreadPoolsProperties(
                     new ThreadPoolProperties(DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY,
-                            DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY, 1000, 60, "doclens-document-processing-"),
-                    new ThreadPoolProperties(2, 4, 100, 60, "doclens-ocr-request-"),
-                    new ThreadPoolProperties(1, 2, 100, 60, "doclens-ocr-health-"),
+                            DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY, 1000,
+                            DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS, "doclens-document-processing-"),
+                    new ThreadPoolProperties(DEFAULT_OCR_REQUEST_CORE_SIZE, DEFAULT_OCR_REQUEST_MAX_SIZE,
+                            DEFAULT_THREAD_POOL_QUEUE_CAPACITY, DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS,
+                            DEFAULT_OCR_REQUEST_THREAD_PREFIX),
+                    new ThreadPoolProperties(1, DEFAULT_OCR_REQUEST_CORE_SIZE, DEFAULT_THREAD_POOL_QUEUE_CAPACITY,
+                            DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS, "doclens-ocr-health-"),
                     new ThreadPoolProperties(DEFAULT_CALLBACK_DELIVERY_CONCURRENCY,
-                            DEFAULT_CALLBACK_DELIVERY_CONCURRENCY, 100, 60, "doclens-callback-")
+                            DEFAULT_CALLBACK_DELIVERY_CONCURRENCY, DEFAULT_THREAD_POOL_QUEUE_CAPACITY,
+                            DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS, "doclens-callback-")
             );
         }
     }
@@ -477,6 +532,32 @@ public record DocLensSpringProperties(
             int keepAliveSeconds,
             String threadNamePrefix
     ) {
+        /**
+         * 判断是否为默认 OCR 请求线程池配置。
+         *
+         * @return 是否默认 OCR 请求线程池配置
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        public boolean isDefaultOcrRequestThreadPool() {
+            return coreSize == DEFAULT_OCR_REQUEST_CORE_SIZE && maxSize == DEFAULT_OCR_REQUEST_MAX_SIZE
+                    && queueCapacity == DEFAULT_THREAD_POOL_QUEUE_CAPACITY
+                    && keepAliveSeconds == DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS
+                    && DEFAULT_OCR_REQUEST_THREAD_PREFIX.equals(threadNamePrefix);
+        }
+
+        /**
+         * 创建指定核心和最大线程数的线程池配置。
+         *
+         * @param size 线程池大小
+         * @return 新线程池配置
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        public ThreadPoolProperties withSize(int size) {
+            int safeSize = Math.max(1, size);
+            return new ThreadPoolProperties(safeSize, safeSize, queueCapacity, keepAliveSeconds, threadNamePrefix);
+        }
     }
 
     /**
