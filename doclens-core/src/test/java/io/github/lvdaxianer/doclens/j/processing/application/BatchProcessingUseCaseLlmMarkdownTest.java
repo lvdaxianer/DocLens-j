@@ -85,13 +85,13 @@ class BatchProcessingUseCaseLlmMarkdownTest {
     }
 
     /**
-     * 已编排的文档应跳过 LLM Markdown 后处理。
+     * 历史编排标记不应改变 LLM Markdown 失败回退语义。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-19
+     * @date 2026-06-20
      */
     @Test
-    void processBatchSkipsLlmMarkdownWhenAlreadyOrchestrated() {
+    void processBatchFallsBackWhenLlmFailsEvenWithLegacyOrchestrationFlag() {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
         InMemoryOcrResultRepository resultRepository = new InMemoryOcrResultRepository();
         documentRepository.save(document("doc-1", 0, JsonPayload.empty(), true));
@@ -103,7 +103,7 @@ class BatchProcessingUseCaseLlmMarkdownTest {
         assertThat(resultRepository.findByDocumentId("doc-1")).get().satisfies(result -> {
             assertThat(result.finalText()).isEqualTo("原始 OCR 文本");
             assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", false);
-            assertThat(result.warnings()).doesNotContain("llm_markdown_post_processing_failed");
+            assertThat(result.warnings()).contains("llm_markdown_post_processing_failed");
         });
     }
 
