@@ -18,4 +18,4 @@
 
 ## 4. Final verification and archive
 
-- [ ] 4.1 Run full OpenSpec validation, final implementation audit, and archive this completed change.
+- [x] 4.1 Run full OpenSpec validation, final implementation audit, and archive this completed change.
