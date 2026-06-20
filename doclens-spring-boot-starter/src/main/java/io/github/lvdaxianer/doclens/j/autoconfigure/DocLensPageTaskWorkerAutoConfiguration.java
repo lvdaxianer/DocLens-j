@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExe
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskExecutionService;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskRecoveryService;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
@@ -152,7 +153,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
                 context.getBean(DocumentPageResultRepository.class), context.getBean(OcrResultRepository.class),
                 context.getBean(ObjectStorage.class), context.getBean(IdGenerator.class),
                 context.getBean(OcrEventRepository.class), context.getBean(CallbackJobRepository.class),
-                context.getBean(OcrEventFactory.class));
+                context.getBean(OcrEventFactory.class), context.getBean(MarkdownPostProcessor.class));
     }
 
     /**

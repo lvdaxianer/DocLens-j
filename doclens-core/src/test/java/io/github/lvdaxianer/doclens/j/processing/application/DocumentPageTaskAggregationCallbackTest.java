@@ -91,7 +91,7 @@ class DocumentPageTaskAggregationCallbackTest {
         DocumentPageTaskAggregationDependencies dependencies = new DocumentPageTaskAggregationDependencies(
                 documentRepository, batchRepository, taskRepository, pageResultRepository, resultRepository,
                 new InMemoryObjectStorage(), new IdGenerator(), eventRepository, callbackJobRepository,
-                new OcrEventFactory(new IdGenerator()));
+                new OcrEventFactory(new IdGenerator()), MarkdownPostProcessor.noop());
         DocumentPageTaskAggregationService service = new DocumentPageTaskAggregationService(dependencies,
                 new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner());
         return new TestContext(documentRepository, batchRepository, taskRepository, pageResultRepository,

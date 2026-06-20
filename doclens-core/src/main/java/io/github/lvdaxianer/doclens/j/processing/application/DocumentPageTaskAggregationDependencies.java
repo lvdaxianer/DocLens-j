@@ -37,6 +37,7 @@ public record DocumentPageTaskAggregationDependencies(
         IdGenerator idGenerator,
         OcrEventRepository eventRepository,
         CallbackJobRepository callbackJobRepository,
-        OcrEventFactory eventFactory
+        OcrEventFactory eventFactory,
+        MarkdownPostProcessor markdownPostProcessor
 ) {
 }

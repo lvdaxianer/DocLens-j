@@ -19,6 +19,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.ProcessingStage;
 import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
+import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,6 +41,10 @@ class DocumentPageTaskAggregationServiceTest {
 
     private static final int TWO_PAGES = 2;
     private static final int TWO_DOCUMENTS = 2;
+    private static final int TEST_CHUNK_COUNT = 3;
+    private static final int TEST_MAX_CONTEXT_TOKENS = 32000;
+    private static final int TEST_ESTIMATED_OCR_TOKENS = 1200;
+    private static final int TEST_TRANSACTION_CAPACITY = 8;
 
     /**
      * 聚合服务应在全部页完成后按页码顺序生成最终 OCR 结果。
@@ -114,6 +120,87 @@ class DocumentPageTaskAggregationServiceTest {
     }
 
     /**
+     * 页任务聚合完成时应应用 LLM Markdown 后处理并保留 OCR 原文。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessAppliesMarkdownPostProcessingWhenPageTasksComplete() {
+        TestContext context = testContext(new FixedMarkdownPostProcessor("# 排版后正文"));
+        completeTwoPageDocument(context);
+
+        OcrResult result = context.resultRepository.findByDocumentId("doc-1").orElseThrow();
+
+        assertThat(result.finalText()).isEqualTo("# 排版后正文");
+        assertThat(result.rawVendorOutput()).containsEntry("ocr_text", "first\n\nsecond")
+                .containsEntry("llm_markdown_applied", true);
+        assertThat(result.warnings()).isEmpty();
+    }
+
+    /**
+     * 页任务聚合应透传 LLM 分片观测元数据，便于判断是否走了分块并发链路。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessCarriesMarkdownChunkMetadataIntoRawOutput() {
+        TestContext context = testContext(new ChunkedMetadataMarkdownPostProcessor("# 分片排版后正文",
+                TEST_CHUNK_COUNT, TEST_MAX_CONTEXT_TOKENS, TEST_ESTIMATED_OCR_TOKENS));
+        completeTwoPageDocument(context);
+
+        OcrResult result = context.resultRepository.findByDocumentId("doc-1").orElseThrow();
+
+        assertThat(result.rawVendorOutput()).containsEntry("llm_chunked", true)
+                .containsEntry("llm_chunk_count", TEST_CHUNK_COUNT)
+                .containsEntry("llm_max_context_tokens", TEST_MAX_CONTEXT_TOKENS)
+                .containsEntry("llm_estimated_ocr_tokens", TEST_ESTIMATED_OCR_TOKENS);
+    }
+
+    /**
+     * 页任务聚合 LLM 后处理失败时应回退 OCR 文本并写出失败原因。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessFallsBackToOcrTextWhenMarkdownPostProcessingFails() {
+        CountingFailingMarkdownPostProcessor processor =
+                new CountingFailingMarkdownPostProcessor("llm unavailable");
+        TestContext context = testContext(processor);
+        completeTwoPageDocument(context);
+
+        OcrResult result = context.resultRepository.findByDocumentId("doc-1").orElseThrow();
+
+        assertThat(processor.attempts()).isEqualTo(3);
+        assertThat(result.finalText()).isEqualTo("first\n\nsecond");
+        assertThat(result.warnings()).contains("llm_markdown_post_processing_failed");
+        assertThat(result.rawVendorOutput()).containsEntry("llm_markdown_applied", false)
+                .containsEntry("llm_error_message", "llm unavailable");
+    }
+
+    /**
+     * LLM Markdown 后处理不应运行在数据库事务内，避免慢请求扩大锁持有时间。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessRunsMarkdownPostProcessingOutsideTransaction() {
+        RecordingTransactionRunner transactionRunner = new RecordingTransactionRunner();
+        TransactionStateMarkdownPostProcessor processor =
+                new TransactionStateMarkdownPostProcessor(transactionRunner);
+        TestContext context = testContext(processor, transactionRunner);
+
+        completeTwoPageDocument(context);
+
+        assertThat(processor.wasInTransaction()).isFalse();
+        assertThat(transactionRunner.requiredResultCalls()).isOne();
+        assertThat(transactionRunner.requiredVoidCalls()).isOne();
+    }
+
+    /**
      * 创建测试上下文。
      *
      * @return 测试上下文
@@ -121,6 +208,31 @@ class DocumentPageTaskAggregationServiceTest {
      * @date 2026-06-11
      */
     private TestContext testContext() {
+        return testContext(MarkdownPostProcessor.noop());
+    }
+
+    /**
+     * 创建带指定 Markdown 后处理器的测试上下文。
+     *
+     * @param markdownPostProcessor Markdown 后处理器
+     * @return 测试上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private TestContext testContext(MarkdownPostProcessor markdownPostProcessor) {
+        return testContext(markdownPostProcessor, new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner());
+    }
+
+    /**
+     * 创建带指定 Markdown 后处理器和事务器的测试上下文。
+     *
+     * @param markdownPostProcessor Markdown 后处理器
+     * @param transactionRunner 事务执行器
+     * @return 测试上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private TestContext testContext(MarkdownPostProcessor markdownPostProcessor, TransactionRunner transactionRunner) {
         InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
         InMemoryDocumentPageTaskRepository taskRepository = new InMemoryDocumentPageTaskRepository();
         InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
@@ -132,11 +244,26 @@ class DocumentPageTaskAggregationServiceTest {
         DocumentPageTaskAggregationDependencies dependencies = new DocumentPageTaskAggregationDependencies(
                 documentRepository, batchRepository, taskRepository, pageResultRepository, resultRepository,
                 objectStorage, new IdGenerator(), eventRepository, new EmptyCallbackJobRepository(),
-                new OcrEventFactory(new IdGenerator()));
+                new OcrEventFactory(new IdGenerator()), markdownPostProcessor);
         DocumentPageTaskAggregationService service = new DocumentPageTaskAggregationService(dependencies,
-                new DocumentPageTaskExecutionTestDoubles.InlineTransactionRunner());
+                transactionRunner);
         return new TestContext(documentRepository, batchRepository, taskRepository, pageResultRepository,
                 resultRepository, service);
+    }
+
+    /**
+     * 准备并完成两页文档。
+     *
+     * @param context 测试上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void completeTwoPageDocument(TestContext context) {
+        context.documentRepository.save(document());
+        context.taskRepository.saveAll(List.of(completedTask("task-1", 1), completedTask("task-2", 2)));
+        context.pageResultRepository.upsert(pageResult(1, "first"));
+        context.pageResultRepository.upsert(pageResult(2, "second"));
+        context.service.recordSuccess(completedTask("task-2", 2));
     }
 
     /**
@@ -340,6 +467,149 @@ class DocumentPageTaskAggregationServiceTest {
             InMemoryOcrResultRepository resultRepository,
             DocumentPageTaskAggregationService service
     ) {
+    }
+
+    /**
+     * 可记录事务状态的测试事务器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class RecordingTransactionRunner implements TransactionRunner {
+
+        private boolean inTransaction;
+        private int requiredResultCalls;
+        private int requiredVoidCalls;
+
+        /**
+         * 记录有返回值事务调用。
+         *
+         * @param action 事务动作
+         * @param <T> 返回类型
+         * @return 动作结果
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public <T> T requiredResult(Supplier<T> action) {
+            requiredResultCalls++;
+            return runInTransaction(action);
+        }
+
+        /**
+         * 记录无返回值事务调用。
+         *
+         * @param action 事务动作
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public void requiredVoid(Runnable action) {
+            requiredVoidCalls++;
+            runInTransaction(() -> {
+                action.run();
+                return Boolean.TRUE;
+            });
+        }
+
+        /**
+         * 查询当前是否处于测试事务中。
+         *
+         * @return 是否处于事务中
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        boolean isInTransaction() {
+            return inTransaction;
+        }
+
+        /**
+         * 返回无返回值事务调用次数。
+         *
+         * @return 调用次数
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        int requiredVoidCalls() {
+            return requiredVoidCalls;
+        }
+
+        /**
+         * 返回有返回值事务调用次数。
+         *
+         * @return 调用次数
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        int requiredResultCalls() {
+            return requiredResultCalls;
+        }
+
+        /**
+         * 在测试事务标记内执行动作。
+         *
+         * @param action 待执行动作
+         * @param <T> 返回类型
+         * @return 动作结果
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        private <T> T runInTransaction(Supplier<T> action) {
+            inTransaction = true;
+            try {
+                return action.get();
+            } finally {
+                inTransaction = false;
+            }
+        }
+    }
+
+    /**
+     * 记录 Markdown 后处理调用时事务状态的处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class TransactionStateMarkdownPostProcessor implements MarkdownPostProcessor {
+
+        private final RecordingTransactionRunner transactionRunner;
+        private boolean wasInTransaction;
+
+        /**
+         * 创建事务状态记录处理器。
+         *
+         * @param transactionRunner 事务状态来源
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        private TransactionStateMarkdownPostProcessor(RecordingTransactionRunner transactionRunner) {
+            this.transactionRunner = transactionRunner;
+        }
+
+        /**
+         * 记录调用时事务状态并返回 Markdown。
+         *
+         * @param request Markdown 后处理请求
+         * @return Markdown 结果
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            wasInTransaction = transactionRunner.isInTransaction();
+            return MarkdownPostProcessingResult.markdown("# 事务外排版");
+        }
+
+        /**
+         * 返回后处理调用是否发生在事务中。
+         *
+         * @return 是否处于事务中
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        boolean wasInTransaction() {
+            return wasInTransaction;
+        }
     }
 
     /**
