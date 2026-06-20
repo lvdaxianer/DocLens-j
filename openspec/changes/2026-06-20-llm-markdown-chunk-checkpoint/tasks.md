@@ -39,7 +39,7 @@
 
 ## 5. Verification and archive
 
-- [ ] 5.1 Re-run focused Markdown chunking, checkpoint store, delete, and startup
+- [x] 5.1 Re-run focused Markdown chunking, checkpoint store, delete, and startup
   recovery tests plus the relevant broader backend test slice.
 - [ ] 5.2 Run strict OpenSpec validation, plan-implementation audit, and
   code-review-spec over the completed diff.
