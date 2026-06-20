@@ -184,6 +184,26 @@ public class MybatisPlusDocumentJobRepository
     }
 
     /**
+     * 查询仍有排队文档的去重批次 ID。
+     *
+     * @param limit 最大批次数量
+     * @return 去重后的排队批次 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Override
+    public List<String> listQueuedBatchIds(int limit) {
+        LambdaQueryWrapper<DocumentJobEntity> wrapper = new LambdaQueryWrapper<DocumentJobEntity>()
+                .select(DocumentJobEntity::getBatchId)
+                .eq(DocumentJobEntity::getStatus, DocumentStatus.QUEUED.name().toLowerCase())
+                .groupBy(DocumentJobEntity::getBatchId)
+                .orderByAsc(DocumentJobEntity::getBatchId);
+        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream()
+                .map(DocumentJobEntity::getBatchId)
+                .toList();
+    }
+
+    /**
      * 根据文档 ID 删除文档任务。
      *
      * @param documentId 文档 ID
