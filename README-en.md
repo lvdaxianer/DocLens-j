@@ -68,6 +68,8 @@ curl -X POST http://localhost:10003/api/v1/batches \
   environment variables, OCR/LLM/document processing settings.
 - [Local Development](docs/development.md): development scripts, ports, logs,
   test commands, and build commands.
+- [Technical Delivery](docs/technical-delivery.md): architecture, concurrency,
+  high availability, load balancing, recovery, and technical trade-offs.
 - [Packaging Guide](docs/packaging_en.md): Maven packaging for SDK, Starter, and
   HTTP service artifacts.
 - [OpenWebUI OCR Contract](docs/integrations/open-webui-ocr-contract.md):

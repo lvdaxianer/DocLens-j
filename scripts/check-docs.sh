@@ -11,6 +11,7 @@ REQUIRED_FILES=(
   "docs/sdk.md"
   "docs/configuration.md"
   "docs/development.md"
+  "docs/technical-delivery.md"
   "docs/packaging.md"
   "docs/packaging_en.md"
   "docs/integrations/open-webui-ocr-contract.md"
@@ -36,6 +37,9 @@ REQUIRED_CONTENT=(
   "docs/sdk.md|SDK Usage"
   "docs/configuration.md|Configuration"
   "docs/development.md|Local Development"
+  "docs/technical-delivery.md|技术交付文档"
+  "docs/technical-delivery.md|高可用"
+  "docs/technical-delivery.md|技术取舍"
 )
 
 # Ensure each planned documentation file exists before content checks run.
