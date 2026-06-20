@@ -43,4 +43,4 @@
   recovery tests plus the relevant broader backend test slice.
 - [x] 5.2 Run strict OpenSpec validation, plan-implementation audit, and
   code-review-spec over the completed diff.
-- [ ] 5.3 Archive the completed OpenSpec change after all tasks pass.
+- [x] 5.3 Archive the completed OpenSpec change after all tasks pass.
