@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { Activity, CheckCircle2, Clock3, Image, ServerCrash } from '@lucide/vue'
 import { NIcon } from 'naive-ui'
 
-import type { DashboardOcrResources } from '@/types/dashboard'
+import type { DashboardOcrResources, DashboardThreadPoolMetrics } from '@/types/dashboard'
 import { formatNumber } from '@/utils/formatters'
 import { displayNodeName } from '@/utils/ocrDisplayRules'
 
@@ -37,12 +37,20 @@ const cards = computed(() => [
     tone: 'active'
   },
   {
-    key: 'request-queue',
-    label: 'OCR 请求队列',
-    value: formatNumber(props.metrics?.thread_pools.ocr_request?.queue_size),
-    note: `${formatNumber(props.metrics?.thread_pools.ocr_request?.active_count)} 个活跃请求`,
+    key: 'request-concurrency',
+    label: 'OCR 请求并发',
+    value: activeAgainstCapacity(props.metrics?.thread_pools.ocr_request),
+    note: ocrRequestNote.value,
     icon: Activity,
     tone: 'latency'
+  },
+  {
+    key: 'page-task-concurrency',
+    label: '页任务并发',
+    value: activeAgainstCapacity(props.metrics?.thread_pools.page_task_worker),
+    note: pageTaskWorkerNote.value,
+    icon: Activity,
+    tone: 'active'
   },
   {
     key: 'health-queue',
@@ -72,6 +80,52 @@ const busiestNodeNote = computed(() => {
     return '暂无繁忙节点'
   }
 })
+
+const ocrRequestNote = computed(() => {
+  const metrics = props.metrics?.thread_pools.ocr_request
+  return `队列 ${formatNumber(metrics?.queue_size)} · 当前线程 ${formatNumber(metrics?.pool_size)}`
+})
+
+const pageTaskWorkerNote = computed(() => {
+  const metrics = props.metrics?.thread_pools.page_task_worker
+  return `批量 ${formatNumber(metrics?.batch_size)} · 运行线程 ${formatNumber(runtimePoolSize(metrics))}`
+})
+
+/**
+ * 展示活跃数量与配置容量。
+ *
+ * @param metrics - 线程池指标
+ * @returns 活跃/容量展示文案
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function activeAgainstCapacity(metrics?: DashboardThreadPoolMetrics): string {
+  return `${formatNumber(metrics?.active_count)} / ${formatNumber(configuredCapacity(metrics))}`
+}
+
+/**
+ * 获取配置容量。
+ *
+ * @param metrics - 线程池指标
+ * @returns 配置容量
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function configuredCapacity(metrics?: DashboardThreadPoolMetrics): number | undefined {
+  return metrics?.maximum_pool_size ?? metrics?.pool_size
+}
+
+/**
+ * 获取运行线程数量。
+ *
+ * @param metrics - 线程池指标
+ * @returns 运行线程数量
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function runtimePoolSize(metrics?: DashboardThreadPoolMetrics): number | undefined {
+  return metrics?.runtime_pool_size ?? metrics?.pool_size
+}
 </script>
 
 <template>

@@ -32,6 +32,15 @@ export interface DashboardThreadPoolMetrics {
   active_count: number
   queue_size: number
   pool_size?: number
+  core_pool_size?: number
+  maximum_pool_size?: number
+  largest_pool_size?: number
+  runtime_pool_size?: number
+  batch_size?: number
+  lock_seconds?: number
+  queue_capacity?: number
+  recovery_limit?: number
+  interval_millis?: number
   completed_task_count?: number
 }
 
@@ -51,6 +60,7 @@ export interface DashboardOcrResources {
   thread_pools: {
     document_processing?: DashboardThreadPoolMetrics
     ocr_request?: DashboardThreadPoolMetrics
+    page_task_worker?: DashboardThreadPoolMetrics
     ocr_health?: DashboardThreadPoolMetrics
     callback?: DashboardThreadPoolMetrics
     llm_markdown_chunk?: DashboardThreadPoolMetrics
