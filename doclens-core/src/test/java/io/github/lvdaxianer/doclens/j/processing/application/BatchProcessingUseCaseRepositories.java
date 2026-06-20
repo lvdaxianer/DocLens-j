@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobFailureReques
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import java.util.List;
@@ -146,6 +147,24 @@ class InMemoryDocumentJobRepository implements DocumentJobRepository {
     @Override
     public List<DocumentJob> listRecent(int limit) {
         return documents.values().stream().limit(limit).toList();
+    }
+
+    /**
+     * 查询仍有排队文档的批次 ID。
+     *
+     * @param limit 最大批次数量
+     * @return 去重后的批次 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Override
+    public List<String> listQueuedBatchIds(int limit) {
+        return documents.values().stream()
+                .filter(document -> document.status() == DocumentStatus.QUEUED)
+                .map(DocumentJob::batchId)
+                .distinct()
+                .limit(limit)
+                .toList();
     }
 }
 
