@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchProcessingScheduler;
+import io.github.lvdaxianer.doclens.j.ingestion.application.BatchStartupRecoveryService;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
@@ -27,7 +28,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationContext;
@@ -42,9 +46,12 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration(after = DocLensExtractionAutoConfiguration.class)
 public class DocLensProcessingAutoConfiguration {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocLensProcessingAutoConfiguration.class);
+
     private static final int BATCH_WORKER_POOL_SIZE = 1;
     private static final int BATCH_WORKER_QUEUE_CAPACITY = 1000;
     private static final int THREAD_KEEP_ALIVE_SECONDS = 60;
+    private static final int BATCH_STARTUP_RECOVERY_LIMIT = 100;
 
     /**
      * 创建批次处理用例。
@@ -190,6 +197,45 @@ public class DocLensProcessingAutoConfiguration {
             @Qualifier("docLensBatchProcessingExecutor") ExecutorService batchProcessingExecutor
     ) {
         return new AsyncBatchProcessingScheduler(batchProcessingUseCase, batchProcessingExecutor);
+    }
+
+    /**
+     * 创建批次启动恢复服务。
+     *
+     * @param documentRepository 文档任务仓储
+     * @param batchProcessingScheduler 批次处理调度器
+     * @return 批次启动恢复服务
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    BatchStartupRecoveryService batchStartupRecoveryService(
+            DocumentJobRepository documentRepository,
+            BatchProcessingScheduler batchProcessingScheduler
+    ) {
+        return new BatchStartupRecoveryService(documentRepository, batchProcessingScheduler);
+    }
+
+    /**
+     * 应用启动完成后恢复仍有排队文档的批次。
+     *
+     * @param recoveryService 批次启动恢复服务
+     * @param properties 运行时属性
+     * @return 启动恢复任务
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "batchStartupRecoveryRunner")
+    ApplicationRunner batchStartupRecoveryRunner(BatchStartupRecoveryService recoveryService, DocLensProperties properties) {
+        return args -> {
+            if (properties.autoProcessOnUpload()) {
+                recoveryService.recoverQueuedBatches(BATCH_STARTUP_RECOVERY_LIMIT);
+            } else {
+                LOGGER.info("[批次恢复] 自动上传处理已关闭, 跳过启动恢复");
+            }
+        };
     }
 
     /**
