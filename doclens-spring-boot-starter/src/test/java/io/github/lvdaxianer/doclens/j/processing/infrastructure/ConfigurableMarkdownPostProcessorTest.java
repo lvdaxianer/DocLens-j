@@ -124,6 +124,35 @@ class ConfigurableMarkdownPostProcessorTest {
     }
 
     /**
+     * 运行时配置全部暂停时应标记暂停直通，不应解析缺失凭证为失败。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void returnsPausedPassthroughWhenAllRuntimeConfigsAreDisabledWithoutResolvingCredentials() {
+        LlmMarkdownConfig pausedConfig = LlmMarkdownConfig.configured(
+                "paused", "https://llm.example.com/v1/chat/completions", "runtime-model",
+                RUNTIME_API_KEY_ENV_VAR)
+                .withEnabled(false);
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor(namedThreadFactory(TEST_CHUNK_THREAD_PREFIX));
+        try {
+            ConfigurableMarkdownPostProcessor processor = new ConfigurableMarkdownPostProcessor(OBJECT_MAPPER,
+                    new ListConfigRepository(List.of(pausedConfig)), new FallbackProcessor("fallback text"),
+                    Map.of(), chunkExecutor);
+
+            MarkdownPostProcessingResult result = processor.process(request());
+
+            assertThat(result.markdown()).isEqualTo("OCR 文本");
+            assertThat(result.markdownApplied()).isFalse();
+            assertThat(result.warnings()).contains("llm_markdown_paused")
+                    .doesNotContain("llm_markdown_post_processing_failed");
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
+    }
+
+    /**
      * 运行时配置处理器应将 checkpoint store 传给分片处理器。
      *
      * @throws Exception 测试 HTTP 服务异常时抛出
@@ -366,6 +395,63 @@ class ConfigurableMarkdownPostProcessorTest {
          * @param configs LLM Markdown 配置列表
          * @author lvdaxianerplus
          * @date 2026-06-12
+         */
+        @Override
+        public void saveAll(List<LlmMarkdownConfig> configs) {
+        }
+    }
+
+    /**
+     * 固定配置列表仓储。
+     *
+     * @param configs LLM Markdown 配置列表
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private record ListConfigRepository(List<LlmMarkdownConfig> configs) implements LlmMarkdownConfigRepository {
+
+        /**
+         * 查询当前配置。
+         *
+         * @return 当前配置
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public Optional<LlmMarkdownConfig> find() {
+            return configs.stream().findFirst();
+        }
+
+        /**
+         * 按用途查询配置。
+         *
+         * @param usageType 配置用途
+         * @return 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public List<LlmMarkdownConfig> listByUsage(LlmUsageType usageType) {
+            return configs.stream().filter(config -> config.usageType() == usageType).toList();
+        }
+
+        /**
+         * 保存配置。
+         *
+         * @param config LLM Markdown 配置
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public void save(LlmMarkdownConfig config) {
+        }
+
+        /**
+         * 批量保存配置。
+         *
+         * @param configs LLM Markdown 配置列表
+         * @author lvdaxianerplus
+         * @date 2026-06-21
          */
         @Override
         public void saveAll(List<LlmMarkdownConfig> configs) {

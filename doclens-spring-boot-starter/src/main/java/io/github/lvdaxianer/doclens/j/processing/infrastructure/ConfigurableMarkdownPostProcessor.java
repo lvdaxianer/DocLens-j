@@ -26,8 +26,10 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
 
     private static final int LLM_MARKDOWN_TIMEOUT_SECONDS = 60;
     private static final String NO_AVAILABLE_LLM_CONFIG_REASON = "no_available_llm_config";
+    private static final String LLM_MARKDOWN_PAUSED_REASON = "llm_markdown_paused";
 
     private final LlmConfigSelector configSelector;
+    private final LlmMarkdownConfigRepository configRepository;
     private final MarkdownPostProcessor fallbackProcessor;
     private final MarkdownPostProcessorFactory processorFactory;
     private final LlmConfigRateLimiter rateLimiter = new LlmConfigRateLimiter();
@@ -50,6 +52,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
             MarkdownPostProcessor fallbackProcessor,
             ExecutorService chunkExecutor
     ) {
+        this.configRepository = configRepository;
         this.configSelector = new LlmConfigSelector(configRepository);
         this.fallbackProcessor = fallbackProcessor;
         this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
@@ -76,6 +79,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
             Map<String, String> environmentValues,
             ExecutorService chunkExecutor
     ) {
+        this.configRepository = configRepository;
         this.configSelector = new LlmConfigSelector(configRepository);
         this.fallbackProcessor = fallbackProcessor;
         this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
@@ -94,6 +98,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @date 2026-06-20
      */
     public ConfigurableMarkdownPostProcessor(ConfigurableMarkdownPostProcessorOptions options) {
+        this.configRepository = options.configRepository();
         this.configSelector = new LlmConfigSelector(options.configRepository());
         this.fallbackProcessor = options.fallbackProcessor();
         this.processorFactory = new MarkdownPostProcessorFactory(options.objectMapper(),
@@ -150,7 +155,27 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @date 2026-06-12
      */
     private MarkdownPostProcessingResult noAvailableConfigResult(MarkdownPostProcessingRequest request) {
-        return MarkdownPostProcessingResult.passthrough(request.ocrText(), NO_AVAILABLE_LLM_CONFIG_REASON);
+        if (allConfiguredRuntimeConfigsPaused()) {
+            // 存在完整配置但全部暂停时，明确标记为暂停直通。
+            return MarkdownPostProcessingResult.passthrough(request.ocrText(), LLM_MARKDOWN_PAUSED_REASON);
+        } else {
+            // 不存在完整可用配置时，保持未配置直通语义。
+            return MarkdownPostProcessingResult.passthrough(request.ocrText(), NO_AVAILABLE_LLM_CONFIG_REASON);
+        }
+    }
+
+    /**
+     * 判断当前用途下是否存在配置完整但全部暂停的运行时配置。
+     *
+     * @return 是否全部配置完整项都已暂停
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private boolean allConfiguredRuntimeConfigsPaused() {
+        var configuredConfigs = configRepository.listByUsage(LlmUsageType.MARKDOWN_POST_PROCESSING).stream()
+                .filter(LlmMarkdownConfig::isConfigured)
+                .toList();
+        return !configuredConfigs.isEmpty() && configuredConfigs.stream().noneMatch(LlmMarkdownConfig::enabled);
     }
 
     /**
