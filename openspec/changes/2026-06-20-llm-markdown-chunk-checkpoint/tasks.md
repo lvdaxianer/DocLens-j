@@ -25,7 +25,7 @@
 - [x] 3.2 Add an async-save verification test proving checkpoint writes are not
   performed inline in the LLM worker path, but the processor waits for pending
   checkpoint writes before returning the final document result.
-- [ ] 3.3 Implement checkpoint write coordination and error handling so write
+- [x] 3.3 Implement checkpoint write coordination and error handling so write
   failures are logged without replacing successful in-memory chunk results.
 
 ## 4. Spring wiring and cleanup

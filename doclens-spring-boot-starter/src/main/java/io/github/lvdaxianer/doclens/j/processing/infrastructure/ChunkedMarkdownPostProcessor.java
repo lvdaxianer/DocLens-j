@@ -122,7 +122,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
                 new MarkdownChunkCheckpointPlanSource(request, plan, maxContextTokens));
         List<CompletableFuture<ChunkResult>> futures = submitChunkFutures(request, plan, checkpointPlan);
         List<ChunkResult> results = awaitChunkResults(futures);
-        awaitCheckpointSaves(results);
+        awaitCheckpointSaves(request, results);
         return joinChunkResults(plan, results);
     }
 
@@ -220,10 +220,11 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     private ChunkResult processChunk(
             MarkdownPostProcessingRequest request,
             MarkdownChunk chunk,
-            MarkdownChunkCheckpointPlan checkpointPlan
+        MarkdownChunkCheckpointPlan checkpointPlan
     ) {
         return checkpointStore.load(checkpointPlan, chunk)
-                .map(markdown -> new ChunkResult(chunk.chunkIndex(), markdown, true, CompletableFuture.completedFuture(null)))
+                .map(markdown -> new ChunkResult(chunk.chunkIndex(), markdown, true,
+                        CompletableFuture.completedFuture(null)))
                 .orElseGet(() -> processMissingChunk(request, chunk, checkpointPlan));
     }
 
@@ -285,13 +286,20 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     /**
      * 等待本轮 checkpoint 写入完成。
      *
+     * @param request 原始 Markdown 后处理请求
      * @param results 分片处理结果
      * @author lvdaxianerplus
      * @date 2026-06-20
      */
-    private void awaitCheckpointSaves(List<ChunkResult> results) {
+    private void awaitCheckpointSaves(MarkdownPostProcessingRequest request, List<ChunkResult> results) {
         for (ChunkResult result : results) {
-            result.checkpointSave().join();
+            try {
+                result.checkpointSave().join();
+            } catch (CompletionException ex) {
+                Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+                LOGGER.warn("[LLM Markdown 分片] checkpoint 写入失败 documentId={}, chunkIndex={}, error={}",
+                        request.documentId(), result.chunkIndex(), cause.getClass().getSimpleName(), cause);
+            }
         }
     }
 

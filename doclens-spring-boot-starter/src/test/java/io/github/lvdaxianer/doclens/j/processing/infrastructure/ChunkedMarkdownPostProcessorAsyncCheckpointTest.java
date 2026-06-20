@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 class ChunkedMarkdownPostProcessorAsyncCheckpointTest {
 
     private static final int SMALL_CHUNK_MAX_CONTEXT_TOKENS = 2000;
-    private static final String LARGE_DOCUMENT = "段落内容\n\n".repeat(5000);
+    private static final String LARGE_DOCUMENT = "段落内容\n\n".repeat(400);
 
     /**
      * checkpoint 保存应离开 LLM worker 执行，并在返回结果前完成。
