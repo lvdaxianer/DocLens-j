@@ -74,7 +74,7 @@ class LibreOfficeWordToPdfConverterTest {
         Path command = tempDir.resolve("success-soffice.sh");
         Files.writeString(command, """
                 #!/bin/sh
-                printf '%s\\n' "$*" > "%s"
+                printf '%%s\\n' "$*" > "%s"
                 while [ "$#" -gt 0 ]; do
                   if [ "$1" = "--outdir" ]; then
                     shift
@@ -104,7 +104,7 @@ class LibreOfficeWordToPdfConverterTest {
         Path command = tempDir.resolve("failing-soffice.sh");
         Files.writeString(command, """
                 #!/bin/sh
-                printf '%s\\n' "%s"
+                printf '%%s\\n' "%s"
                 exit 7
                 """.formatted(diagnostic), StandardCharsets.UTF_8);
         command.toFile().setExecutable(true);
