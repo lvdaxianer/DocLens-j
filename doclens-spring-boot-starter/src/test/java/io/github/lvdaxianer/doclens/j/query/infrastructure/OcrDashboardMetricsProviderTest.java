@@ -201,7 +201,10 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
     private void assertFinanceNodeMetrics(Object row) {
         assertThat(row).asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsEntry("node_id", FINANCE_NODE_ID)
+                .containsEntry("model_key", DEFAULT_MODEL_KEY)
                 .containsEntry("node_name", FINANCE_NODE_NAME)
+                .containsEntry("max_concurrency", 4)
+                .containsEntry("inflight_images", 0)
                 .containsEntry("processed_images_today", 2L)
                 .containsEntry("avg_latency_ms", 150L)
                 .containsEntry("p95_latency_ms", 200L);

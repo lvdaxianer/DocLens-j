@@ -50,6 +50,23 @@ class DashboardQueryServiceOcrRouteDetailTest {
     }
 
     /**
+     * 批次详情应返回当前路由相关的 OCR 并发快照。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void batchDetailExposesOcrRuntimeCapacity() {
+        DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
+                new InMemoryDocumentJobRepository(List.of(routedDocument())), new InMemoryOcrEventRepository(),
+                new RuntimeCapacityDashboardOcrMetricsProvider());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        assertRuntimeCapacity(detail);
+    }
+
+    /**
      * 批次详情中的文档最终分配节点不能串入其他文档的 OCR 命中数据。
      *
      * @author lvdaxianerplus
@@ -122,6 +139,31 @@ class DashboardQueryServiceOcrRouteDetailTest {
     }
 
     /**
+     * 校验 OCR 运行态并发快照。
+     *
+     * @param detail 批次详情
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void assertRuntimeCapacity(Map<String, Object> detail) {
+        assertThat(detail.get("ocr_runtime_capacity"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("model_key", "paddle_ocr")
+                .containsEntry("model_name", "PaddleOCR")
+                .containsEntry("inflight_images", 6)
+                .containsEntry("max_concurrency", 30);
+        assertThat(detail.get("ocr_runtime_capacity"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .extractingByKey("nodes")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .hasSize(2)
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("node_id", "node-1")
+                        .containsEntry("inflight_images", 2)
+                        .containsEntry("max_concurrency", 10));
+    }
+
+    /**
      * 校验指定文档的最终命中节点。
      *
      * @param document 文档详情
@@ -171,6 +213,40 @@ class DashboardQueryServiceOcrRouteDetailTest {
             return Map.of(
                     "doc-1", List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L)),
                     "doc-2", List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-2", "image_count", 1L))
+            );
+        }
+    }
+
+    /**
+     * 提供并发容量快照的测试指标提供器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private static class RuntimeCapacityDashboardOcrMetricsProvider extends TestDashboardOcrMetricsProvider {
+
+        /**
+         * 返回包含模型和节点并发容量的 OCR 资源快照。
+         *
+         * @return OCR 资源快照
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public Map<String, Object> ocrResources() {
+            return Map.ofEntries(
+                    Map.entry("models", List.of(Map.of(
+                            "model_key", "paddle_ocr",
+                            "model_name", "PaddleOCR",
+                            "inflight_images", 6,
+                            "max_concurrency", 30
+                    ))),
+                    Map.entry("nodes", List.of(
+                            Map.of("model_key", "paddle_ocr", "node_id", "node-1", "node_name", "节点一",
+                                    "inflight_images", 2, "max_concurrency", 10),
+                            Map.of("model_key", "paddle_ocr", "node_id", "node-2", "node_name", "节点二",
+                                    "inflight_images", 4, "max_concurrency", 20)
+                    ))
             );
         }
     }

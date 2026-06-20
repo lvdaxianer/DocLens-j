@@ -16,7 +16,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -53,6 +52,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private final OcrNodeMetricsAggregator metricsAggregator;
     private final OcrBatchHitTracker batchHitTracker;
     private final OcrDashboardHitNodeRows hitNodeRows;
+    private final OcrDashboardResourceRows resourceRows;
 
     /**
      * 创建 OCR Dashboard 指标提供器。
@@ -70,6 +70,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, dependencies.runtimeSources().nodePool());
         this.batchHitTracker = dependencies.attributionSources().batchHitTracker();
         this.hitNodeRows = new OcrDashboardHitNodeRows(dependencies.attributionSources().modelRegistry());
+        this.resourceRows = new OcrDashboardResourceRows(dependencies.attributionSources().modelRegistry(), nodePool);
     }
 
     /**
@@ -90,7 +91,8 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
                 Map.entry("recovering_node_count", statusCount(nodes, OcrNodeStatus.RECOVERING)),
                 Map.entry("global_inflight_images", globalInflightImages()),
                 Map.entry("busiest_node", busiestNode()),
-                Map.entry("nodes", nodeRows(nodes, metricsByNodeId)),
+                Map.entry("models", resourceRows.modelRows(nodes)),
+                Map.entry("nodes", resourceRows.nodeRows(nodes, metricsByNodeId)),
                 Map.entry("thread_pools", threadPoolMetrics())
         );
     }
@@ -223,45 +225,6 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
                         "model_key", node.modelKey(),
                         "inflight_images", node.inflightImages()))
                 .orElseGet(Map::of);
-    }
-
-    /**
-     * 组装 OCR 节点表展示指标。
-     *
-     * @param nodes OCR 节点集合
-     * @param metricsByNodeId 节点指标映射
-     * @return 节点展示指标
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private List<Map<String, Object>> nodeRows(List<OcrNode> nodes, Map<String, OcrNodeMetrics> metricsByNodeId) {
-        return nodes.stream().map(node -> nodeRow(node, metricsByNodeId)).toList();
-    }
-
-    /**
-     * 组装单个 OCR 节点展示指标。
-     *
-     * @param node OCR 节点
-     * @param metricsByNodeId 节点指标映射
-     * @return 节点展示指标
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private Map<String, Object> nodeRow(OcrNode node, Map<String, OcrNodeMetrics> metricsByNodeId) {
-        OcrNodeMetrics metrics = metricsByNodeId.getOrDefault(node.id(),
-                new OcrNodeMetrics(0, 0, 0L, 0L, 0L, 0L, 0L, Optional.empty(), Optional.empty()));
-        return Map.ofEntries(
-                Map.entry("node_id", node.id()),
-                Map.entry("node_name", node.name()),
-                Map.entry("status", node.status().name()),
-                Map.entry("last_health_at", node.lastHealthAt().map(OffsetDateTime::toString).orElse("")),
-                Map.entry("last_error", node.lastError().orElse("")),
-                Map.entry("processed_images_today", metrics.processedImagesToday()),
-                Map.entry("success_images", metrics.successImages()),
-                Map.entry("failed_images", metrics.failedImages()),
-                Map.entry("avg_latency_ms", metrics.avgLatencyMs()),
-                Map.entry("p95_latency_ms", metrics.p95LatencyMs())
-        );
     }
 
     /**

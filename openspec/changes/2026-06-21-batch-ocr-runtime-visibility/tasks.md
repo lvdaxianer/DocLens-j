@@ -1,8 +1,8 @@
 ## 1. Expose batch OCR runtime capacity
 
-- [ ] 1.1 Add failing backend tests proving batch detail returns model/node runtime concurrency capacity for the batch route.
-- [ ] 1.2 Implement batch detail OCR runtime capacity fields using existing OCR resources and node runtime snapshots.
-- [ ] 1.3 Verify focused backend tests and relevant broader backend slice.
+- [x] 1.1 Add failing backend tests proving batch detail returns model/node runtime concurrency capacity for the batch route.
+- [x] 1.2 Implement batch detail OCR runtime capacity fields using existing OCR resources and node runtime snapshots.
+- [x] 1.3 Verify focused backend tests and relevant broader backend slice.
 
 ## 2. Show running allocation separately from final allocation
 
