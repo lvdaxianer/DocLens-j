@@ -1,7 +1,7 @@
 # batch-startup-recovery Specification
 
 ## Purpose
-TBD - created by archiving change 2026-06-20-batch-startup-recovery. Update Purpose after archive.
+Ensure DocLens can safely resume persisted batch work after a service restart by resubmitting batches that still have queued documents while leaving terminal and manually retried states untouched.
 ## Requirements
 ### Requirement: Service startup resubmits batches with queued documents
 
@@ -37,4 +37,3 @@ When automatic processing is enabled, DocLens MUST resubmit persisted batches th
 - **WHEN** the application startup recovery runner would otherwise execute
 - **THEN** queued batches are not submitted automatically
 - **AND** external workers or manual operations remain responsible for scheduling them
-
