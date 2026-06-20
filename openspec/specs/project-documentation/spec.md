@@ -72,6 +72,14 @@ configuration, local development workflows, and technical delivery.
   high-availability controls, duplicate-consumption protection, observability,
   capacity tuning, and deliberate technical trade-offs
 
+#### Scenario: Reader wants a three-high delivery capability summary
+
+- **WHEN** a reader needs to evaluate how DocLens-j supports high concurrency,
+  high availability, and high performance
+- **THEN** the technical delivery document includes a dedicated three-high
+  section that maps those delivery goals to implementation mechanisms and
+  deliberate technical trade-offs
+
 #### Scenario: Reader wants a full high-volume processing flow
 
 - **WHEN** a reader needs to understand what happens after 100 documents are
