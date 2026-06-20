@@ -146,7 +146,7 @@ class ChunkedMarkdownPostProcessorCheckpointFailureTest {
     }
 
     /**
-     * ChunkedMarkdownPostProcessor 日志捕获器。
+     * ChunkedMarkdownCheckpointCoordinator 日志捕获器。
      *
      * @param logger logback logger
      * @param appender 日志 appender
@@ -166,7 +166,7 @@ class ChunkedMarkdownPostProcessorCheckpointFailureTest {
          * @date 2026-06-20
          */
         private static LogCapture start() {
-            Logger logger = (Logger) LoggerFactory.getLogger(ChunkedMarkdownPostProcessor.class);
+            Logger logger = (Logger) LoggerFactory.getLogger(ChunkedMarkdownCheckpointCoordinator.class);
             boolean isAdditive = logger.isAdditive();
             ListAppender<ILoggingEvent> appender = new ListAppender<>();
             appender.start();
