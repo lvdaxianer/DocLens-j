@@ -6,7 +6,6 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownApiType;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,15 +44,15 @@ class LlmConfigSelectorRoundRobinTest {
     }
 
     /**
-     * 轮询池应跳过不健康配置。
+     * 轮询池应跳过已禁用配置。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-13
+     * @date 2026-06-20
      */
     @Test
-    void skipsUnhealthyConfigsDuringRoundRobin() {
+    void skipsDisabledConfigsDuringRoundRobin() {
         InMemoryConfigRepository repository = new InMemoryConfigRepository();
-        repository.save(config("llm-a", FIRST_PRIORITY, false).updateHealth(false, "down", OffsetDateTime.now()));
+        repository.save(config("llm-a", FIRST_PRIORITY, false).withEnabled(false));
         repository.save(config("llm-b", SECOND_PRIORITY, true));
         LlmConfigSelector selector = new LlmConfigSelector(repository);
 

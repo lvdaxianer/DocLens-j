@@ -76,7 +76,7 @@ public class LlmConfigSelector {
      * @date 2026-06-12
      */
     private boolean isSelectable(LlmMarkdownConfig config) {
-        return config.isAvailableForPostProcessing() && config.healthy();
+        return config.isAvailableForPostProcessing();
     }
 
     /**

@@ -41,13 +41,13 @@ class LlmConfigSelectorTest {
     }
 
     /**
-     * 默认配置不可用时应选择优先级最小的健康配置。
+     * 健康状态异常但已启用的配置仍应进入 LLM Markdown 尝试。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-20
      */
     @Test
-    void selectsLowestPriorityHealthyConfigWhenDefaultIsUnhealthy() {
+    void selectsEnabledConfiguredConfigEvenWhenUnhealthy() {
         LlmConfigSelector selector = new LlmConfigSelector(new InMemoryConfigRepository(List.of(
                 defaultConfig("default", 1, false),
                 healthyConfig("slow", 30),
@@ -55,20 +55,20 @@ class LlmConfigSelectorTest {
 
         Optional<LlmMarkdownConfig> selected = selector.select(LlmUsageType.MARKDOWN_POST_PROCESSING);
 
-        assertThat(selected).get().extracting(LlmMarkdownConfig::id).isEqualTo("fast");
+        assertThat(selected).get().extracting(LlmMarkdownConfig::id).isEqualTo("default");
     }
 
     /**
-     * 没有健康可用配置时应返回空。
+     * 没有启用且配置完整的配置时应返回空。
      *
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-20
      */
     @Test
-    void returnsEmptyWhenNoEnabledHealthyConfigExists() {
+    void returnsEmptyWhenNoEnabledConfiguredConfigExists() {
         LlmConfigSelector selector = new LlmConfigSelector(new InMemoryConfigRepository(List.of(
                 disabledDefaultConfig("disabled", 1),
-                unhealthyConfig("unhealthy", 2))));
+                incompleteConfig("incomplete", 2))));
 
         Optional<LlmMarkdownConfig> selected = selector.select(LlmUsageType.MARKDOWN_POST_PROCESSING);
 
@@ -131,16 +131,23 @@ class LlmConfigSelectorTest {
     }
 
     /**
-     * 创建不健康备选测试配置。
+     * 创建不完整备选测试配置。
      *
      * @param id 配置 ID
      * @param priority 优先级
      * @return LLM 配置
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-20
      */
-    private LlmMarkdownConfig unhealthyConfig(String id, int priority) {
-        return baseConfig(id, priority).defaultConfig(false).enabled(true).healthy(false).build();
+    private LlmMarkdownConfig incompleteConfig(String id, int priority) {
+        return LlmMarkdownConfig.builder(id, id, LlmMarkdownApiType.OPENAI)
+                .endpoint("", "")
+                .credential("")
+                .usage(LlmUsageType.MARKDOWN_POST_PROCESSING, priority)
+                .defaultConfig(false)
+                .enabled(true)
+                .healthy(false)
+                .build();
     }
 
     /**
