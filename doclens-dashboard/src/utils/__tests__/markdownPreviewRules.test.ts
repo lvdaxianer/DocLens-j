@@ -24,3 +24,17 @@ test('markdown preview renders safe links and blocks javascript links', () => {
   assert.match(html, /坏链接/)
   assert.equal(html.includes('javascript:alert'), false)
 })
+
+test('markdown preview renders pipe tables and escapes cell content', () => {
+  const html = renderMarkdownPreviewHtml([
+    '| 编号 | 名称 | 备注 |',
+    '| --- | --- | --- |',
+    '| A-1 | 文件登记表 | <script>alert(1)</script> |'
+  ].join('\n'))
+
+  assert.match(html, /<table>/)
+  assert.match(html, /<th>编号<\/th>/)
+  assert.match(html, /<td>文件登记表<\/td>/)
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
+  assert.equal(html.includes('<script>'), false)
+})

@@ -3,6 +3,7 @@ const SAFE_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:']
 const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/
 const STRONG_PATTERN = /\*\*([^*]+)\*\*/g
 const LINK_PATTERN = /\[([^\]]+)]\(([^)]+)\)/g
+const TABLE_SEPARATOR_CELL_PATTERN = /^:?-{3,}:?$/
 
 /**
  * 将 Markdown 文本渲染为安全预览 HTML。
@@ -34,6 +35,9 @@ function renderMarkdownBlock(block: string): string {
   if (headingMatch) {
     // 标题块按井号数量映射为 h1-h6。
     return renderHeading(headingMatch[1].length, headingMatch[2])
+  } else if (isMarkdownTable(trimmedBlock)) {
+    // 表格块渲染为真实 table，便于查看结构化 OCR/LLM 输出。
+    return renderTable(trimmedBlock)
   } else {
     // 非标题块统一作为段落展示，保留块内换行。
     return `<p>${renderInlineMarkdown(trimmedBlock).replace(/\n/g, '<br>')}</p>`
@@ -52,6 +56,82 @@ function renderMarkdownBlock(block: string): string {
 function renderHeading(level: number, content: string): string {
   const safeLevel = Math.min(Math.max(level, 1), 6)
   return `<h${safeLevel}>${renderInlineMarkdown(content)}</h${safeLevel}>`
+}
+
+/**
+ * 判断 Markdown 块是否为有效管道表格。
+ *
+ * @param block - Markdown 块
+ * @returns 是否为表格块
+ * @author lvdaxianerplus
+ * @date 2026-06-20
+ */
+function isMarkdownTable(block: string): boolean {
+  const rows = tableRows(block)
+  if (rows.length >= 3) {
+    // 至少需要表头、分隔行和一行数据才视为表格。
+    return rows[1].every((cell) => TABLE_SEPARATOR_CELL_PATTERN.test(cell.trim()))
+  } else {
+    // 行数不足时保留普通段落渲染。
+    return false
+  }
+}
+
+/**
+ * 渲染 Markdown 管道表格。
+ *
+ * @param block - Markdown 表格块
+ * @returns 表格 HTML
+ * @author lvdaxianerplus
+ * @date 2026-06-20
+ */
+function renderTable(block: string): string {
+  const rows = tableRows(block)
+  const headerCells = rows[0].map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join('')
+  const bodyRows = rows.slice(2)
+    .map((row) => `<tr>${renderTableBodyCells(row)}</tr>`)
+    .join('')
+  return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`
+}
+
+/**
+ * 渲染表格正文单元格。
+ *
+ * @param row - 表格行
+ * @returns 表格正文单元格 HTML
+ * @author lvdaxianerplus
+ * @date 2026-06-20
+ */
+function renderTableBodyCells(row: string[]): string {
+  return row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('')
+}
+
+/**
+ * 提取 Markdown 表格行。
+ *
+ * @param block - Markdown 表格块
+ * @returns 表格单元格矩阵
+ * @author lvdaxianerplus
+ * @date 2026-06-20
+ */
+function tableRows(block: string): string[][] {
+  return block
+    .split('\n')
+    .map((line) => splitTableRow(line))
+}
+
+/**
+ * 拆分 Markdown 表格行。
+ *
+ * @param line - Markdown 表格行
+ * @returns 单元格内容
+ * @author lvdaxianerplus
+ * @date 2026-06-20
+ */
+function splitTableRow(line: string): string[] {
+  const trimmedLine = line.trim()
+  const content = trimmedLine.replace(/^\|/, '').replace(/\|$/, '')
+  return content.split('|').map((cell) => cell.trim())
 }
 
 /**

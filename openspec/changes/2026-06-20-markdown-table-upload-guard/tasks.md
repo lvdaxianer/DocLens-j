@@ -1,8 +1,8 @@
 ## 1. Markdown result table rendering
 
-- [ ] 1.1 Add a failing Markdown preview utility test that proves pipe-table Markdown renders as a table while escaping unsafe cell content.
-- [ ] 1.2 Extend the safe Markdown preview renderer and result drawer styles so valid tables render readably and existing Markdown safety tests still pass.
-- [ ] 1.3 Re-run the focused Markdown utility tests and the result drawer UI test slice.
+- [x] 1.1 Add a failing Markdown preview utility test that proves pipe-table Markdown renders as a table while escaping unsafe cell content.
+- [x] 1.2 Extend the safe Markdown preview renderer and result drawer styles so valid tables render readably and existing Markdown safety tests still pass.
+- [x] 1.3 Re-run the focused Markdown utility tests and the result drawer UI test slice.
 
 ## 2. Dashboard upload preflight guard
 

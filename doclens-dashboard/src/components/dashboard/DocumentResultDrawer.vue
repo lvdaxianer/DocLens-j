@@ -305,45 +305,39 @@ function downloadResult(format: ResultDownloadFormat): void {
 .document-result__text pre,
 .document-result__markdown {
   max-height: var(--document-result-text-max-height);
-  margin: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--rail-border);
-  border-radius: 8px;
-  overflow: auto;
-  background: var(--surface-inset);
-  color: var(--ink-strong);
-  font-size: 13px;
-  line-height: 1.65;
-  word-break: break-word;
+  margin: 0; padding: 14px 16px; overflow: auto;
+  border: 1px solid var(--rail-border); border-radius: 8px;
+  background: var(--surface-inset); color: var(--ink-strong);
+  font-size: 13px; line-height: 1.65; word-break: break-word;
 }
 
 .document-result__text pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre-wrap;
 }
 
-.document-result__markdown :deep(h1),
-.document-result__markdown :deep(h2),
-.document-result__markdown :deep(h3),
-.document-result__markdown :deep(h4),
-.document-result__markdown :deep(h5),
-.document-result__markdown :deep(h6) {
-  margin: 0 0 10px;
-  color: var(--ink-strong);
-  font-weight: 800;
-  line-height: 1.35;
+.document-result__markdown :deep(:is(h1, h2, h3, h4, h5, h6)) {
+  margin: 0 0 10px; color: var(--ink-strong); font-weight: 800; line-height: 1.35;
 }
 
-.document-result__markdown :deep(p) {
-  margin: 0 0 12px;
+.document-result__markdown :deep(p) { margin: 0 0 12px; }
+
+.document-result__markdown :deep(a) { color: var(--active); font-weight: 700; }
+
+.document-result__markdown :deep(strong) { color: var(--ink-strong); }
+
+.document-result__markdown :deep(table) {
+  width: 100%; min-width: 520px; overflow: hidden; border: 1px solid var(--rail-border);
+  border-radius: 8px; border-collapse: collapse; background: var(--surface-raised);
 }
 
-.document-result__markdown :deep(a) {
-  color: var(--active);
-  font-weight: 700;
+.document-result__markdown :deep(:is(th, td)) {
+  padding: 8px 10px; border-bottom: 1px solid var(--rail-border);
+  border-left: 1px solid var(--rail-border); text-align: left; vertical-align: top;
 }
 
-.document-result__markdown :deep(strong) {
-  color: var(--ink-strong);
-}
+.document-result__markdown :deep(:is(th:first-child, td:first-child)) { border-left: 0; }
+
+.document-result__markdown :deep(th) { background: var(--surface-hover); color: var(--ink-strong); font-weight: 800; }
+
+.document-result__markdown :deep(tr:last-child td) { border-bottom: 0; }
 </style>
