@@ -52,6 +52,15 @@ public interface DocumentPageTaskRepository {
     void updateAll(List<DocumentPageTask> tasks);
 
     /**
+     * 按文档删除全部页任务。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    void deleteByDocumentId(String documentId);
+
+    /**
      * 原子抢占等待中的页任务。
      *
      * @param request 抢占请求

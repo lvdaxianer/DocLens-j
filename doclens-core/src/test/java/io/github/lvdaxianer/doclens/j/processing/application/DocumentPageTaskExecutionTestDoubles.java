@@ -126,6 +126,18 @@ final class DocumentPageTaskExecutionTestDoubles {
         }
 
         /**
+         * 按文档删除全部页结果。
+         *
+         * @param documentId 文档 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        @Override
+        public void deleteByDocumentId(String documentId) {
+            results.entrySet().removeIf(entry -> documentId.equals(entry.getValue().documentId()));
+        }
+
+        /**
          * 生成页结果唯一键。
          *
          * @param documentId 文档 ID

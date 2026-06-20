@@ -50,4 +50,13 @@ public interface DocumentPageResultRepository {
      * @date 2026-06-11
      */
     List<DocumentPageResult> listByDocumentIds(List<String> documentIds);
+
+    /**
+     * 按文档删除全部页 OCR 结果。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    void deleteByDocumentId(String documentId);
 }

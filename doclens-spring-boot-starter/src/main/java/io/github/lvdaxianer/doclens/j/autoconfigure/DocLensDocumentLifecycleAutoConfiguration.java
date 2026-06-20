@@ -6,7 +6,10 @@ import io.github.lvdaxianer.doclens.j.processing.application.BatchDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCase;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryDependencies;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryCleanupDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -68,7 +71,23 @@ public class DocLensDocumentLifecycleAutoConfiguration {
     DocumentRetryDependencies documentRetryDependencies(ApplicationContext context) {
         return new DocumentRetryDependencies(context.getBean(DocumentJobRepository.class),
                 context.getBean(BatchRepository.class), context.getBean(OcrEventRepository.class),
-                context.getBean(BatchProcessingScheduler.class), context.getBean(OcrEventFactory.class));
+                context.getBean(BatchProcessingScheduler.class), context.getBean(OcrEventFactory.class),
+                documentRetryCleanupDependencies(context));
+    }
+
+    /**
+     * 创建文档重试页级清理依赖持有对象。
+     *
+     * @param context Spring 上下文
+     * @return 页级清理依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    DocumentRetryCleanupDependencies documentRetryCleanupDependencies(ApplicationContext context) {
+        return new DocumentRetryCleanupDependencies(context.getBean(DocumentPageTaskRepository.class),
+                context.getBean(DocumentPageResultRepository.class));
     }
 
     /**

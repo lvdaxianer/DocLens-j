@@ -233,6 +233,47 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
     }
 
     /**
+     * 恢复重排后必须清空旧锁和旧执行时间，避免任务回到队列后仍被视为持锁中。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void updateAllClearsRetryStateWhenTaskIsResetToQueued() {
+        DocumentPageTask expired = task("task-12", "doc-9", 1, "page://12")
+                .markProcessing("worker-a", BASE_TIME.minusSeconds(1), BASE_TIME.minusMinutes(1));
+        repository.saveAll(List.of(expired));
+
+        repository.updateAll(List.of(expired.resetForRetry(BASE_TIME)));
+
+        assertThat(repository.findByDocumentIdAndPageNo("doc-9", 1)).get().satisfies(task -> {
+            assertThat(task.status()).isEqualTo(DocumentPageTaskStatus.QUEUED);
+            assertThat(task.lockedBy()).isEmpty();
+            assertThat(task.lockedUntil()).isEmpty();
+            assertThat(task.startedAt()).isEmpty();
+            assertThat(task.completedAt()).isEmpty();
+        });
+    }
+
+    /**
+     * 按文档删除页任务后，后续重试不应再读到旧页任务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void deleteByDocumentIdRemovesAllTasksForDocument() {
+        repository.saveAll(List.of(task("task-13", "doc-10", 1, "page://13"),
+                task("task-14", "doc-10", 2, "page://14"), task("task-15", "doc-11", 1, "page://15")));
+
+        repository.deleteByDocumentId("doc-10");
+
+        assertThat(repository.listByDocumentId("doc-10")).isEmpty();
+        assertThat(repository.listByDocumentId("doc-11")).extracting(DocumentPageTask::taskId)
+                .containsExactly("task-15");
+    }
+
+    /**
      * 创建测试页任务。
      *
      * @param taskId 任务 ID
@@ -296,6 +337,7 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration(excludeName = {
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensAutoConfiguration",
+            "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensDashboardMetricsAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensPaddleOcrAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensExtractionAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensProcessingAutoConfiguration"
@@ -310,9 +352,9 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
         /**
          * 测试应用只装配页任务 Mapper 和仓储，避免启动完整 OCR 处理链路。
          */
-        @Bean
-        JsonCodec jsonCodec() {
-            return new JsonCodec(new ObjectMapper());
-        }
+    @Bean
+    JsonCodec jsonCodec() {
+        return new JsonCodec(new ObjectMapper());
     }
+}
 }

@@ -94,7 +94,8 @@ abstract class OcrDashboardMetricsProviderTestSupport {
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
         nodePool.initialize();
         return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
-                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null), batchHitTracker);
+                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null, null),
+                batchHitTracker);
     }
 
     /**

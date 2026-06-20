@@ -33,6 +33,7 @@ public class DocumentRetryUseCase {
     private final OcrEventRepository eventRepository;
     private final BatchProcessingScheduler batchProcessingScheduler;
     private final OcrEventFactory eventFactory;
+    private final DocumentRetryCleanupDependencies cleanupDependencies;
     private final TransactionRunner transactionRunner;
 
     /**
@@ -52,6 +53,7 @@ public class DocumentRetryUseCase {
         this.eventRepository = dependencies.eventRepository();
         this.batchProcessingScheduler = dependencies.batchProcessingScheduler();
         this.eventFactory = dependencies.eventFactory();
+        this.cleanupDependencies = dependencies.cleanupDependencies();
         this.transactionRunner = transactionRunner;
     }
 
@@ -68,7 +70,7 @@ public class DocumentRetryUseCase {
     }
 
     /**
-     * 在事务内重置文档状态、写事件并刷新批次摘要。
+     * 在事务内清理页级子记录、重置文档状态、写事件并刷新批次摘要。
      *
      * @param documentId 文档 ID
      * @return 被调度的批次 ID
@@ -79,11 +81,24 @@ public class DocumentRetryUseCase {
         DocumentJob document = loadDocument(documentId);
         Batch batch = loadBatch(document.batchId());
         validateRetryable(document);
+        clearPageChildren(documentId);
         DocumentJob retried = document.retry(OffsetDateTime.now());
         documentRepository.update(retried);
         eventRepository.save(eventFactory.create(retryEvent(batch, retried)));
         refreshBatchSummary(batch.batchId());
         return batch.batchId();
+    }
+
+    /**
+     * 清理文档的旧页级子记录。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private void clearPageChildren(String documentId) {
+        cleanupDependencies.pageResultRepository().deleteByDocumentId(documentId);
+        cleanupDependencies.pageTaskRepository().deleteByDocumentId(documentId);
     }
 
     /**

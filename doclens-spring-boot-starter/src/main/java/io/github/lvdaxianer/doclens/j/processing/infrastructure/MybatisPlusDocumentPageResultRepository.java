@@ -113,6 +113,18 @@ public class MybatisPlusDocumentPageResultRepository
     }
 
     /**
+     * 按文档删除全部页 OCR 结果。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        remove(byDocument(documentId));
+    }
+
+    /**
      * 构造文档维度查询条件。
      *
      * @param documentId 文档 ID

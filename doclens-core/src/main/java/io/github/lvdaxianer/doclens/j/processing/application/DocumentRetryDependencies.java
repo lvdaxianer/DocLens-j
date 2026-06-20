@@ -14,6 +14,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
  * @param eventRepository 事件仓储
  * @param batchProcessingScheduler 批次处理调度器
  * @param eventFactory 事件工厂
+ * @param cleanupDependencies 页级清理依赖
  * @author lvdaxianerplus
  * @date 2026-06-10
  */
@@ -22,6 +23,7 @@ public record DocumentRetryDependencies(
         BatchRepository batchRepository,
         OcrEventRepository eventRepository,
         BatchProcessingScheduler batchProcessingScheduler,
-        OcrEventFactory eventFactory
+        OcrEventFactory eventFactory,
+        DocumentRetryCleanupDependencies cleanupDependencies
 ) {
 }

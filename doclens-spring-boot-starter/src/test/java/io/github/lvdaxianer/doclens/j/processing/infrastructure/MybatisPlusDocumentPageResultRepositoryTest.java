@@ -79,6 +79,25 @@ class MybatisPlusDocumentPageResultRepositoryTest {
     }
 
     /**
+     * 按文档删除页结果后，重试应重新生成而不是复用旧结果。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void deleteByDocumentIdRemovesAllResultsForDocument() {
+        repository.upsert(result("doc-2", 1, "page one"));
+        repository.upsert(result("doc-2", 2, "page two"));
+        repository.upsert(result("doc-3", 1, "other document"));
+
+        repository.deleteByDocumentId("doc-2");
+
+        assertThat(repository.listByDocumentId("doc-2")).isEmpty();
+        assertThat(repository.listByDocumentId("doc-3")).extracting(DocumentPageResult::pageText)
+                .containsExactly("other document");
+    }
+
+    /**
      * 批量查询应只返回已存在文档的页结果。
      *
      * @author lvdaxianerplus
@@ -116,6 +135,7 @@ class MybatisPlusDocumentPageResultRepositoryTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration(excludeName = {
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensAutoConfiguration",
+            "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensDashboardMetricsAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensPaddleOcrAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensExtractionAutoConfiguration",
             "io.github.lvdaxianer.doclens.j.autoconfigure.DocLensProcessingAutoConfiguration"

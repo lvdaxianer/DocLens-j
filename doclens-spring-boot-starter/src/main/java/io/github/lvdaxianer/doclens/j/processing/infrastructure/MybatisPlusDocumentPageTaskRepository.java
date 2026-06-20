@@ -29,6 +29,7 @@ public class MybatisPlusDocumentPageTaskRepository
     private static final String COMPLETE_OPERATION = "complete";
     private static final String FAIL_OPERATION = "fail";
     private static final String STATE_UPDATE_FAILED_MESSAGE = "page task %s state update failed: %s";
+    private static final String STATE_UPDATE_CONTEXT_MESSAGE = "taskId=%s, status=%s, lockedBy=%s, lockedUntil=%s, workerId=%s";
 
     /**
      * 批量保存页任务。
@@ -96,6 +97,18 @@ public class MybatisPlusDocumentPageTaskRepository
     }
 
     /**
+     * 按文档删除全部页任务。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        remove(byDocument(documentId));
+    }
+
+    /**
      * 原子抢占等待中的页任务。
      *
      * @param request 抢占请求
@@ -117,7 +130,7 @@ public class MybatisPlusDocumentPageTaskRepository
      */
     @Override
     public void markCompleted(DocumentPageTaskCompletionRequest request) {
-        ensureUpdated(baseMapper.markCompleted(request), request.taskId(), COMPLETE_OPERATION);
+        ensureUpdated(baseMapper.markCompleted(request), request.taskId(), COMPLETE_OPERATION, request.workerId());
     }
 
     /**
@@ -129,7 +142,7 @@ public class MybatisPlusDocumentPageTaskRepository
      */
     @Override
     public void markFailed(DocumentPageTaskFailureRequest request) {
-        ensureUpdated(baseMapper.markFailed(request), request.taskId(), FAIL_OPERATION);
+        ensureUpdated(baseMapper.markFailed(request), request.taskId(), FAIL_OPERATION, null);
     }
 
     /**
@@ -141,10 +154,32 @@ public class MybatisPlusDocumentPageTaskRepository
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    private void ensureUpdated(int updatedRows, String taskId, String operation) {
+    private void ensureUpdated(int updatedRows, String taskId, String operation, String workerId) {
         // 条件更新 0 行说明锁归属或状态不匹配，继续当作成功会破坏恢复语义。
         if (updatedRows != UPDATED_ONE_ROW) {
-            throw new IllegalStateException(STATE_UPDATE_FAILED_MESSAGE.formatted(operation, taskId));
+            throw new IllegalStateException(STATE_UPDATE_FAILED_MESSAGE.formatted(operation,
+                    stateUpdateContext(taskId, workerId)));
+        } else {
+            // 更新成功时不额外查询数据库，保持原有成功路径轻量。
+        }
+    }
+
+    /**
+     * 构造页任务状态更新失败上下文。
+     *
+     * @param taskId 页任务 ID
+     * @return 状态更新上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private String stateUpdateContext(String taskId, String workerId) {
+        DocumentPageTaskEntity entity = getBaseMapper().selectById(taskId);
+        if (entity == null) {
+            return STATE_UPDATE_CONTEXT_MESSAGE.formatted(taskId, "missing", "missing", "missing",
+                    workerId == null ? "unknown" : workerId);
+        } else {
+            return STATE_UPDATE_CONTEXT_MESSAGE.formatted(taskId, entity.getStatus(), entity.getLockedBy(),
+                    entity.getLockedUntil(), workerId == null ? "unknown" : workerId);
         }
     }
 

@@ -1,6 +1,8 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -31,18 +33,24 @@ public class DocumentPageTaskEntity {
     /** 页任务状态。 */
     private String status;
     /** 抢占该任务的工作线程标识。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String lockedBy;
     /** 抢占锁过期时间。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private OffsetDateTime lockedUntil;
     /** OCR 重试次数。 */
     private int retryCount;
     /** 终态失败错误码。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorCode;
     /** 终态失败错误信息。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorMessage;
     /** OCR 开始时间。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private OffsetDateTime startedAt;
     /** OCR 完成时间。 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private OffsetDateTime completedAt;
     /** 创建时间。 */
     private OffsetDateTime createdAt;

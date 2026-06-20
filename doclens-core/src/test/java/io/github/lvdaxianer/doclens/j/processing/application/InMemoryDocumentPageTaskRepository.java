@@ -79,6 +79,18 @@ class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
     }
 
     /**
+     * 按文档删除全部页任务。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        tasks.removeIf(task -> documentId.equals(task.documentId()));
+    }
+
+    /**
      * 原子抢占等待任务。
      *
      * @param request 抢占请求

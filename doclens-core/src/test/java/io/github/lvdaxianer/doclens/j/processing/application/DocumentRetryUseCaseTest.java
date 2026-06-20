@@ -10,6 +10,10 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -134,6 +138,43 @@ class DocumentRetryUseCaseTest {
     }
 
     /**
+     * 文档重试后必须清理旧的页任务和页结果，避免新一轮处理撞上唯一键。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    @Test
+    void retryFailedDocumentClearsPageChildrenBeforeRescheduling() {
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        InMemoryBatchRepository batchRepository = new InMemoryBatchRepository();
+        InMemoryOcrEventRepository eventRepository = new InMemoryOcrEventRepository();
+        InMemoryDocumentPageTaskRepository pageTaskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryDocumentPageResultRepository pageResultRepository = new InMemoryDocumentPageResultRepository();
+        RecordingBatchProcessingScheduler scheduler = new RecordingBatchProcessingScheduler();
+        OffsetDateTime now = OffsetDateTime.now();
+        DocumentJob failedDocument = document("doc-failed", 0)
+                .startProcessing(now)
+                .advanceStage(ProcessingStage.OCR_IMAGES, 2, 5, now.plusSeconds(1))
+                .fail(DocLensConstants.ERROR_CODE_OCR_FAILED, "ocr failed", now.plusSeconds(2));
+        documentRepository.save(failedDocument);
+        batchRepository.save(batch());
+        pageTaskRepository.saveAll(List.of(pageTask("page-task-1", "doc-failed", 1),
+                pageTask("page-task-2", "doc-failed", 2)));
+        pageResultRepository.upsert(pageResult("doc-failed", 1));
+        pageResultRepository.upsert(pageResult("doc-failed", 2));
+        DocumentRetryUseCase useCase = new DocumentRetryUseCase(new DocumentRetryDependencies(documentRepository,
+                batchRepository, eventRepository, scheduler, new OcrEventFactory(new IdGenerator()),
+                new DocumentRetryCleanupDependencies(pageTaskRepository, pageResultRepository)),
+                new InlineTransactionRunner());
+
+        useCase.retry("doc-failed");
+
+        assertThat(pageTaskRepository.listByDocumentId("doc-failed")).isEmpty();
+        assertThat(pageResultRepository.listByDocumentId("doc-failed")).isEmpty();
+        assertThat(scheduler.scheduledBatchIds).containsExactly("batch-test");
+    }
+
+    /**
      * 创建待测文档重试用例。
      *
      * @param documentRepository 文档仓储
@@ -151,7 +192,10 @@ class DocumentRetryUseCaseTest {
             RecordingBatchProcessingScheduler scheduler
     ) {
         return new DocumentRetryUseCase(new DocumentRetryDependencies(documentRepository, batchRepository,
-                eventRepository, scheduler, new OcrEventFactory(new IdGenerator())), new InlineTransactionRunner());
+                eventRepository, scheduler, new OcrEventFactory(new IdGenerator()),
+                new DocumentRetryCleanupDependencies(new InMemoryDocumentPageTaskRepository(),
+                        new InMemoryDocumentPageResultRepository())),
+                new InlineTransactionRunner());
     }
 
     /**
@@ -179,6 +223,88 @@ class DocumentRetryUseCaseTest {
     private Batch batch() {
         return Batch.create("batch-test", 1, JsonPayload.empty(), Optional.empty(), Optional.empty(),
                 OffsetDateTime.now());
+    }
+
+    /**
+     * 创建测试页任务。
+     *
+     * @param taskId 任务 ID
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @return 测试页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private DocumentPageTask pageTask(String taskId, String documentId, int pageNo) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new DocumentPageTask(taskId, "batch-test", documentId, pageNo, "page://" + pageNo,
+                io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus.COMPLETED,
+                Optional.empty(), Optional.empty(), 0, Optional.empty(), Optional.empty(), Optional.empty(),
+                Optional.of(now), now, now);
+    }
+
+    /**
+     * 创建测试页结果。
+     *
+     * @param documentId 文档 ID
+     * @param pageNo 页码
+     * @return 测试页结果
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private DocumentPageResult pageResult(String documentId, int pageNo) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new DocumentPageResult(documentId, pageNo, Map.of("page", pageNo), "page-" + pageNo, List.of(),
+                1.0, List.of(), "node-" + pageNo, now, now);
+    }
+
+    /**
+     * 内存页结果仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class InMemoryDocumentPageResultRepository implements DocumentPageResultRepository {
+
+        private final Map<String, DocumentPageResult> results = new HashMap<>(TEST_CAPACITY);
+
+        @Override
+        public void upsert(DocumentPageResult result) {
+            results.put(key(result.documentId(), result.pageNo()), result);
+        }
+
+        @Override
+        public Optional<DocumentPageResult> findByDocumentIdAndPageNo(String documentId, int pageNo) {
+            return Optional.ofNullable(results.get(key(documentId, pageNo)));
+        }
+
+        @Override
+        public List<DocumentPageResult> listByDocumentId(String documentId) {
+            return results.values().stream().filter(result -> documentId.equals(result.documentId())).toList();
+        }
+
+        @Override
+        public List<DocumentPageResult> listByDocumentIds(List<String> documentIds) {
+            return results.values().stream().filter(result -> documentIds.contains(result.documentId())).toList();
+        }
+
+        @Override
+        public void deleteByDocumentId(String documentId) {
+            results.entrySet().removeIf(entry -> documentId.equals(entry.getValue().documentId()));
+        }
+
+        /**
+         * 生成页结果唯一键。
+         *
+         * @param documentId 文档 ID
+         * @param pageNo 页码
+         * @return 结果键
+         * @author lvdaxianerplus
+         * @date 2026-06-19
+         */
+        private String key(String documentId, int pageNo) {
+            return documentId + "#" + pageNo;
+        }
     }
 
     /**
@@ -232,6 +358,67 @@ class DocumentRetryUseCaseTest {
         @Override
         public List<DocumentJob> listRecent(int limit) {
             return documents.values().stream().limit(limit).toList();
+        }
+    }
+
+    /**
+     * 内存页任务仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
+    private static final class InMemoryDocumentPageTaskRepository implements DocumentPageTaskRepository {
+
+        private final List<DocumentPageTask> tasks = new ArrayList<>(TEST_CAPACITY);
+
+        @Override
+        public void saveAll(List<DocumentPageTask> tasks) {
+            this.tasks.addAll(tasks);
+        }
+
+        @Override
+        public List<DocumentPageTask> listQueued(int limit) {
+            return tasks.stream().limit(limit).toList();
+        }
+
+        @Override
+        public List<DocumentPageTask> listProcessingExpired(OffsetDateTime now, int limit) {
+            return List.of();
+        }
+
+        @Override
+        public void updateAll(List<DocumentPageTask> tasks) {
+            this.tasks.clear();
+            this.tasks.addAll(tasks);
+        }
+
+        @Override
+        public void deleteByDocumentId(String documentId) {
+            tasks.removeIf(task -> documentId.equals(task.documentId()));
+        }
+
+        @Override
+        public boolean tryMarkProcessing(io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskClaimRequest request) {
+            return false;
+        }
+
+        @Override
+        public void markCompleted(io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest request) {
+        }
+
+        @Override
+        public void markFailed(io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest request) {
+        }
+
+        @Override
+        public List<DocumentPageTask> listByDocumentId(String documentId) {
+            return tasks.stream().filter(task -> documentId.equals(task.documentId())).toList();
+        }
+
+        @Override
+        public Optional<DocumentPageTask> findByDocumentIdAndPageNo(String documentId, int pageNo) {
+            return tasks.stream().filter(task -> documentId.equals(task.documentId()))
+                    .filter(task -> task.pageNo() == pageNo).findFirst();
         }
     }
 

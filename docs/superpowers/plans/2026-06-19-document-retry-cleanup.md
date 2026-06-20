@@ -15,7 +15,7 @@
 **Files:**
 - Modify: `doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentRetryUseCaseTest.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 @Test
@@ -52,12 +52,12 @@ void retryFailedDocumentClearsPageChildrenBeforeRescheduling() {
 }
 ```
 
-- [ ] **Step 2: Run the focused test to verify it fails**
+- [x] **Step 2: Run the focused test to verify it fails**
 
 Run: `mvn -pl doclens-core -Dtest=DocumentRetryUseCaseTest#retryFailedDocumentClearsPageChildrenBeforeRescheduling test`
 Expected: FAIL with missing repository method or missing cleanup behavior
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentRetryUseCaseTest.java
@@ -78,7 +78,7 @@ git commit -m "test: add retry child-cleanup regression"
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageTaskRepositoryTest.java`
 - Modify: `doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageResultRepositoryTest.java`
 
-- [ ] **Step 1: Write the minimal implementation**
+- [x] **Step 1: Write the minimal implementation**
 
 ```java
 public interface DocumentPageTaskRepository {
@@ -108,27 +108,27 @@ private String retryWithinTransaction(String documentId) {
 }
 ```
 
-- [ ] **Step 2: Run the focused test to verify it passes**
+- [x] **Step 2: Run the focused test to verify it passes**
 
 Run: `mvn -pl doclens-core,doclens-spring-boot-starter -am -Dtest=DocumentRetryUseCaseTest,MybatisPlusDocumentPageTaskRepositoryTest,MybatisPlusDocumentPageResultRepositoryTest test`
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentRetryDependencies.java doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentRetryUseCase.java doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageTaskRepository.java doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/processing/domain/DocumentPageResultRepository.java doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageTaskRepository.java doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageResultRepository.java doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/InMemoryDocumentPageTaskRepository.java doclens-core/src/test/java/io/github/lvdaxianer/doclens/j/processing/application/DocumentPageTaskExecutionTestDoubles.java doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageTaskRepositoryTest.java doclens-spring-boot-starter/src/test/java/io/github/lvdaxianer/doclens/j/processing/infrastructure/MybatisPlusDocumentPageResultRepositoryTest.java\n+git commit -m \"fix: clear retry leftovers before rescheduling\"\n+```\n+\n+### Task 3: Broader verification\n+\n+**Files:**
 - None\n+
-- [ ] **Step 1: Run broader processing tests**
+- [x] **Step 1: Run broader processing tests**
 
 Run: `mvn -pl doclens-core,doclens-spring-boot-starter -am -DskipITs test`
 Expected: PASS
 
-- [ ] **Step 2: Check plan coverage and code review rules**
+- [x] **Step 2: Check plan coverage and code review rules**
 
 Run: `openspec validate 2026-06-19-document-retry-cleanup --strict`
 Expected: PASS
 
-- [ ] **Step 3: Commit the verification evidence if repository files changed**
+- [x] **Step 3: Commit the verification evidence if repository files changed**
 
 ```bash
 git add openspec/changes/2026-06-19-document-retry-cleanup docs/superpowers/plans/2026-06-19-document-retry-cleanup.md
