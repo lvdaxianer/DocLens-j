@@ -193,9 +193,23 @@ public class MybatisPlusDocumentJobRepository
      */
     @Override
     public List<String> listQueuedBatchIds(int limit) {
+        return listBatchIdsByStatus(DocumentStatus.QUEUED, limit);
+    }
+
+    /**
+     * 查询包含指定状态文档的去重批次 ID。
+     *
+     * @param status 文档状态
+     * @param limit 最大批次数量
+     * @return 去重后的批次 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Override
+    public List<String> listBatchIdsByStatus(DocumentStatus status, int limit) {
         LambdaQueryWrapper<DocumentJobEntity> wrapper = new LambdaQueryWrapper<DocumentJobEntity>()
                 .select(DocumentJobEntity::getBatchId)
-                .eq(DocumentJobEntity::getStatus, DocumentStatus.QUEUED.name().toLowerCase())
+                .eq(DocumentJobEntity::getStatus, status.name().toLowerCase())
                 .groupBy(DocumentJobEntity::getBatchId)
                 .orderByAsc(DocumentJobEntity::getBatchId);
         return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream()

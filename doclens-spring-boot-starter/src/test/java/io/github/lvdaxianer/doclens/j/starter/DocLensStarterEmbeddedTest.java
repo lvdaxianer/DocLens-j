@@ -119,12 +119,20 @@ class DocLensStarterEmbeddedTest {
     private CreateBatchRequest createRequest() {
         return new CreateBatchRequest(
                 List.of(new DocumentInput("embedded.md", "# Embedded\ncontent".getBytes())),
-                Map.of("source", "starter-test"),
+                Map.<String, Object>of("source", "starter-test"),
                 "",
                 "idem-starter-" + UUID.randomUUID(),
                 "",
                 "page_image_fallback",
-                ChunkStrategy.GENERAL.name()
+                ChunkStrategy.GENERAL.name(),
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 

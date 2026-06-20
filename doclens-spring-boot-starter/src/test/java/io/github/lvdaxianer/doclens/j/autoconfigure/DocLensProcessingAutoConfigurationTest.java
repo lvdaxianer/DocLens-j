@@ -4,16 +4,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchProcessingScheduler;
+import io.github.lvdaxianer.doclens.j.ingestion.application.BatchStartupRecoveryDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchStartupRecoveryService;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
+import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTask;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskClaimRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompletionRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
+import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
+import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import io.github.lvdaxianer.doclens.j.shared.config.DocLensProperties;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.IdGenerator;
 import java.lang.reflect.Field;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -186,8 +205,20 @@ class DocLensProcessingAutoConfigurationTest {
      * @date 2026-06-20
      */
     private RecordingBatchStartupRecoveryService recoveryService() {
-        return new RecordingBatchStartupRecoveryService(new EmptyDocumentJobRepository(),
-                batchId -> {
+        return new RecordingBatchStartupRecoveryService(emptyRecoveryDependencies(), new ImmediateTransactionRunner());
+    }
+
+    /**
+     * 创建空启动恢复依赖。
+     *
+     * @return 启动恢复依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private BatchStartupRecoveryDependencies emptyRecoveryDependencies() {
+        return new BatchStartupRecoveryDependencies(new EmptyDocumentJobRepository(), new EmptyBatchRepository(),
+                new EmptyPageTaskRepository(), new EmptyPageResultRepository(), new EmptyEventRepository(),
+                new OcrEventFactory(new IdGenerator()), batchId -> {
                 });
     }
 
@@ -280,16 +311,16 @@ class DocLensProcessingAutoConfigurationTest {
         /**
          * 创建记录启动恢复调用的测试服务。
          *
-         * @param documentRepository 文档任务仓储
-         * @param batchProcessingScheduler 批次处理调度器
+         * @param dependencies 启动恢复依赖
+         * @param transactionRunner 事务执行器
          * @author lvdaxianerplus
          * @date 2026-06-20
          */
         private RecordingBatchStartupRecoveryService(
-                DocumentJobRepository documentRepository,
-                BatchProcessingScheduler batchProcessingScheduler
+                BatchStartupRecoveryDependencies dependencies,
+                TransactionRunner transactionRunner
         ) {
-            super(documentRepository, batchProcessingScheduler);
+            super(dependencies, transactionRunner);
         }
 
         /**
@@ -314,5 +345,210 @@ class DocLensProcessingAutoConfigurationTest {
      * @date 2026-06-20
      */
     private static final class EmptyDocumentJobRepository implements DocumentJobRepository {
+
+        @Override
+        public void save(DocumentJob document) {
+        }
+
+        @Override
+        public void saveAll(List<DocumentJob> documents) {
+        }
+
+        @Override
+        public void update(DocumentJob document) {
+        }
+
+        @Override
+        public void updateAll(List<DocumentJob> documents) {
+        }
+
+        @Override
+        public Optional<DocumentJob> findById(String documentId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<DocumentJob> listByBatchId(String batchId) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentJob> listByBatchIds(List<String> batchIds) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentJob> listRecent(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentJob> listByStatus(DocumentStatus status, int limit) {
+            return List.of();
+        }
+    }
+
+    /**
+     * 空批次仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class EmptyBatchRepository implements BatchRepository {
+
+        @Override
+        public void save(Batch batch) {
+        }
+
+        @Override
+        public Optional<Batch> findById(String batchId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Batch> findByIdempotencyKey(String idempotencyKey) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<Batch> listRecent(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public void updateSummary(String batchId, int completedFiles, int failedFiles, BatchStatus status) {
+        }
+    }
+
+    /**
+     * 空页任务仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class EmptyPageTaskRepository implements DocumentPageTaskRepository {
+
+        @Override
+        public void saveAll(List<DocumentPageTask> tasks) {
+        }
+
+        @Override
+        public List<DocumentPageTask> listQueued(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentPageTask> listProcessingExpired(OffsetDateTime now, int limit) {
+            return List.of();
+        }
+
+        @Override
+        public void updateAll(List<DocumentPageTask> tasks) {
+        }
+
+        @Override
+        public void deleteByDocumentId(String documentId) {
+        }
+
+        @Override
+        public boolean tryMarkProcessing(DocumentPageTaskClaimRequest request) {
+            return false;
+        }
+
+        @Override
+        public void markCompleted(DocumentPageTaskCompletionRequest request) {
+        }
+
+        @Override
+        public void markFailed(DocumentPageTaskFailureRequest request) {
+        }
+
+        @Override
+        public List<DocumentPageTask> listByDocumentId(String documentId) {
+            return List.of();
+        }
+
+        @Override
+        public Optional<DocumentPageTask> findByDocumentIdAndPageNo(String documentId, int pageNo) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 空页结果仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class EmptyPageResultRepository implements DocumentPageResultRepository {
+
+        @Override
+        public void upsert(DocumentPageResult result) {
+        }
+
+        @Override
+        public Optional<DocumentPageResult> findByDocumentIdAndPageNo(String documentId, int pageNo) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<DocumentPageResult> listByDocumentId(String documentId) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentPageResult> listByDocumentIds(List<String> documentIds) {
+            return List.of();
+        }
+
+        @Override
+        public void deleteByDocumentId(String documentId) {
+        }
+    }
+
+    /**
+     * 空事件仓储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class EmptyEventRepository implements OcrEventRepository {
+
+        @Override
+        public void save(OcrEvent event) {
+        }
+
+        @Override
+        public void saveAll(List<OcrEvent> events) {
+        }
+
+        @Override
+        public List<OcrEvent> listByBatchId(String batchId) {
+            return List.of();
+        }
+
+        @Override
+        public List<OcrEvent> listRecent(int limit) {
+            return List.of();
+        }
+    }
+
+    /**
+     * 立即执行事务 runner。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class ImmediateTransactionRunner implements TransactionRunner {
+
+        @Override
+        public <T> T requiredResult(java.util.function.Supplier<T> action) {
+            return action.get();
+        }
+
+        @Override
+        public void requiredVoid(Runnable action) {
+            action.run();
+        }
     }
 }

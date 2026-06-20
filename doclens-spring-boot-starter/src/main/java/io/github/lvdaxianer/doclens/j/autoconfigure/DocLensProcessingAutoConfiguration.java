@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.DefaultAdapterRegistry;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchProcessingScheduler;
+import io.github.lvdaxianer.doclens.j.ingestion.application.BatchStartupRecoveryDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.BatchStartupRecoveryService;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchDependencies;
 import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
@@ -15,6 +16,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.PageImagePreparatio
 import io.github.lvdaxianer.doclens.j.processing.application.extraction.DocumentTextExtractor;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
@@ -202,8 +204,14 @@ public class DocLensProcessingAutoConfiguration {
     /**
      * 创建批次启动恢复服务。
      *
-     * @param documentRepository 文档任务仓储
+     * @param documentRepository 文档仓储
+     * @param batchRepository 批次仓储
+     * @param pageTaskRepository 页任务仓储
+     * @param pageResultRepository 页结果仓储
+     * @param eventRepository 事件仓储
+     * @param eventFactory 事件工厂
      * @param batchProcessingScheduler 批次处理调度器
+     * @param transactionRunner 事务执行器
      * @return 批次启动恢复服务
      * @author lvdaxianerplus
      * @date 2026-06-20
@@ -212,9 +220,18 @@ public class DocLensProcessingAutoConfiguration {
     @ConditionalOnMissingBean
     BatchStartupRecoveryService batchStartupRecoveryService(
             DocumentJobRepository documentRepository,
-            BatchProcessingScheduler batchProcessingScheduler
+            BatchRepository batchRepository,
+            DocumentPageTaskRepository pageTaskRepository,
+            DocumentPageResultRepository pageResultRepository,
+            OcrEventRepository eventRepository,
+            OcrEventFactory eventFactory,
+            BatchProcessingScheduler batchProcessingScheduler,
+            TransactionRunner transactionRunner
     ) {
-        return new BatchStartupRecoveryService(documentRepository, batchProcessingScheduler);
+        BatchStartupRecoveryDependencies dependencies = new BatchStartupRecoveryDependencies(documentRepository,
+                batchRepository, pageTaskRepository, pageResultRepository, eventRepository, eventFactory,
+                batchProcessingScheduler);
+        return new BatchStartupRecoveryService(dependencies, transactionRunner);
     }
 
     /**

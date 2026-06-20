@@ -19,6 +19,7 @@ import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensStaleDocumentRecovery
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobCreateRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
+import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentType;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
@@ -86,6 +87,26 @@ class MybatisPlusDocumentJobRepositoryTest {
 
         assertThat(repository.listQueuedBatchIds(QUERY_LIMIT))
                 .containsExactly("batch-a", "batch-b");
+    }
+
+    /**
+     * 启动恢复查询应支持按卡住状态查找可恢复批次。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void listBatchIdsByStatusReturnsDistinctStalledBatchesWithinLimit() {
+        repository.saveAll(List.of(
+                stalledDocument("doc-stalled-a-1", "batch-aa-stalled", 10),
+                stalledDocument("doc-stalled-a-2", "batch-aa-stalled", 11),
+                stalledDocument("doc-stalled-b-1", "batch-ab-stalled", 12),
+                queuedDocument("doc-queued", "batch-queued", 13),
+                terminalDocument("doc-completed", "batch-completed", 14)
+        ));
+
+        assertThat(repository.listBatchIdsByStatus(DocumentStatus.STALLED, QUERY_LIMIT))
+                .containsExactly("batch-aa-stalled", "batch-ab-stalled");
     }
 
     /**

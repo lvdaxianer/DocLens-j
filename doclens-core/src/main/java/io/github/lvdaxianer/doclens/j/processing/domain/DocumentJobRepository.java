@@ -112,7 +112,20 @@ public interface DocumentJobRepository {
      * @date 2026-06-20
      */
     default List<String> listQueuedBatchIds(int limit) {
-        return listByStatus(DocumentStatus.QUEUED, limit).stream()
+        return listBatchIdsByStatus(DocumentStatus.QUEUED, limit);
+    }
+
+    /**
+     * 查询包含指定状态文档的批次 ID。
+     *
+     * @param status 文档状态
+     * @param limit 最大批次数量
+     * @return 去重后的批次 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    default List<String> listBatchIdsByStatus(DocumentStatus status, int limit) {
+        return listByStatus(status, limit).stream()
                 .map(DocumentJob::batchId)
                 .distinct()
                 .limit(limit)
