@@ -53,11 +53,14 @@ public class MybatisPlusDocumentPageTaskRepository
      */
     @Override
     public List<DocumentPageTask> listQueued(int limit) {
-        LambdaQueryWrapper<DocumentPageTaskEntity> wrapper = new LambdaQueryWrapper<DocumentPageTaskEntity>()
-                .eq(DocumentPageTaskEntity::getStatus, DocumentPageTaskStatus.QUEUED.name())
-                .orderByAsc(DocumentPageTaskEntity::getCreatedAt)
-                .orderByAsc(DocumentPageTaskEntity::getTaskId);
-        return page(MybatisPlusPages.limit(limit), wrapper).getRecords().stream().map(this::toDomain).toList();
+        int safeLimit = Math.max(0, limit);
+        if (safeLimit > 0) {
+            // 有调度容量时直接使用跨文档公平查询，避免大文档长期独占扫描名额。
+            return baseMapper.listQueuedFairly(safeLimit).stream().map(this::toDomain).toList();
+        } else {
+            // 调用方请求零个任务时直接返回空集合，避免底层分页兜底扩大查询。
+            return List.of();
+        }
     }
 
     /**

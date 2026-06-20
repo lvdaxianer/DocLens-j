@@ -10,10 +10,10 @@
 
 ## 2. Fair queued page-task scheduling
 
-- [ ] 2.1 Add a failing repository test proving queued page selection distributes
+- [x] 2.1 Add a failing repository test proving queued page selection distributes
   a limited scan across multiple documents when one large document has many
   older queued pages.
-- [ ] 2.2 Implement bounded fair selection for queued page tasks without changing
+- [x] 2.2 Implement bounded fair selection for queued page tasks without changing
   page result aggregation order.
-- [ ] 2.3 Run focused repository tests and the relevant page-task execution
+- [x] 2.3 Run focused repository tests and the relevant page-task execution
   verification slice.

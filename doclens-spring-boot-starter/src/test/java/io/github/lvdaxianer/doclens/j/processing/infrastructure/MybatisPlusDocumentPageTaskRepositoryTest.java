@@ -15,6 +15,7 @@ import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,20 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
 
     @Autowired
     private DocumentPageTaskRepository repository;
+
+    @Autowired
+    private MybatisPlusDocumentPageTaskRepository mybatisRepository;
+
+    /**
+     * 每个测试开始前清空页任务，避免共享 H2 上下文造成队列顺序互相污染。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @BeforeEach
+    void cleanPageTasks() {
+        mybatisRepository.remove(null);
+    }
 
     /**
      * H2 内存库每个测试上下文独立，避免不同仓储测试之间共享页任务数据。
@@ -97,6 +112,28 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
         assertThat(repository.listQueued(1))
                 .extracting(DocumentPageTask::taskId)
                 .containsExactly("task-3");
+    }
+
+    /**
+     * 队列查询应在单个大文档有大量旧任务时优先跨文档分配扫描名额。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void listQueuedDistributesLimitedScanAcrossDocuments() {
+        repository.saveAll(List.of(task("task-16", "doc-large", 1, "page://16"),
+                task("task-17", "doc-large", 2, "page://17"),
+                task("task-18", "doc-large", 3, "page://18"),
+                task("task-19", "doc-small-a", 1, "page://19"),
+                task("task-20", "doc-small-b", 1, "page://20")));
+
+        List<DocumentPageTask> queuedTasks = repository.listQueued(3);
+
+        assertThat(queuedTasks).extracting(DocumentPageTask::documentId)
+                .containsExactly("doc-large", "doc-small-a", "doc-small-b");
+        assertThat(queuedTasks).extracting(DocumentPageTask::pageNo)
+                .containsExactly(1, 1, 1);
     }
 
     /**
