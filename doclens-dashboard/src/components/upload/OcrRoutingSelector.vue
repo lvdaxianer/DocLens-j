@@ -20,6 +20,7 @@ const loadingModels = shallowRef(false)
 const loadingNodes = shallowRef(false)
 const errorMessage = shallowRef('')
 let form = reactive<UploadOcrRoutingOptions>(createDefaultUploadOcrRouting())
+const PREFERRED_UPLOAD_OCR_MODEL_KEY = 'paddle_ocr'
 
 const modelOptions = computed(() => models.value.map((model) => ({
   label: model.name,
@@ -64,11 +65,57 @@ async function loadModels(): Promise<void> {
   try {
     const response = await fetchOcrModels()
     models.value = response.items
+    applyModelBoundDefault()
   } catch (error) {
     errorMessage.value = toErrorMessage(error)
   } finally {
     loadingModels.value = false
   }
+}
+
+/**
+ * 初次加载模型后应用页面级默认 OCR。
+ *
+ * @returns 应用完成信号
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function applyModelBoundDefault(): void {
+  if (shouldApplyModelBoundDefault()) {
+    form.ocrRoutingMode = 'MODEL_LOAD_BALANCE'
+    form.ocrModelKey = preferredModelKey()
+    form.ocrNodeId = ''
+    form.ocrLoadBalanceStrategy = DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY
+  } else {
+    // 用户已有明确选择或无可用模型时，不覆盖当前表单状态。
+  }
+}
+
+/**
+ * 判断是否需要用模型列表覆盖初始全局默认。
+ *
+ * @returns 是否应用页面级默认 OCR
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function shouldApplyModelBoundDefault(): boolean {
+  return form.ocrRoutingMode === 'GLOBAL_LOAD_BALANCE'
+    && !form.ocrModelKey
+    && !form.ocrNodeId
+    && models.value.length > 0
+}
+
+/**
+ * 获取上传页优先 OCR 模型。
+ *
+ * @returns OCR 模型标识
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function preferredModelKey(): string {
+  return models.value.find((model) => model.model_key === PREFERRED_UPLOAD_OCR_MODEL_KEY)?.model_key
+    ?? models.value[0]?.model_key
+    ?? ''
 }
 
 /**

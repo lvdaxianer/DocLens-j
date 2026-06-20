@@ -1,8 +1,8 @@
 ## 1. Make upload default model-bound
 
-- [ ] 1.1 Add a failing frontend test proving the OCR routing selector defaults to PaddleOCR model load balance when that model is available.
-- [ ] 1.2 Implement the upload routing selector default so page-loaded model data wins over the config/global fallback.
-- [ ] 1.3 Verify focused upload routing tests and the broader dashboard test/build slice.
+- [x] 1.1 Add a failing frontend test proving the OCR routing selector defaults to PaddleOCR model load balance when that model is available.
+- [x] 1.2 Implement the upload routing selector default so page-loaded model data wins over the config/global fallback.
+- [x] 1.3 Verify focused upload routing tests and the broader dashboard test/build slice.
 
 ## 2. Expose OCR capacity clearly
 
