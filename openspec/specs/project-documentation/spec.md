@@ -4,7 +4,6 @@
 Define the expected shape of DocLens Java project documentation so the root
 READMEs remain concise entry points and detailed API, SDK, configuration,
 development, packaging, and integration references stay discoverable.
-
 ## Requirements
 ### Requirement: Bilingual README Overview
 
@@ -45,7 +44,7 @@ main REST endpoint groups exposed by `doclens-server`.
 ### Requirement: Focused Operational Reference Documents
 
 The project SHALL provide focused reference documents for SDK usage,
-configuration, and local development workflows.
+configuration, local development workflows, and technical delivery.
 
 #### Scenario: Reader wants embedded usage
 
@@ -64,3 +63,11 @@ configuration, and local development workflows.
 - **WHEN** a reader needs to run the project locally
 - **THEN** they can find dev scripts, service ports, logs, and verification
   commands in the development document
+
+#### Scenario: Reader wants delivery architecture and high availability
+
+- **WHEN** a reader needs to evaluate DocLens-j as a delivered technical system
+- **THEN** they can find a technical delivery document that explains system
+  positioning, architecture, high-volume concurrency, OCR load balancing,
+  high-availability controls, duplicate-consumption protection, observability,
+  capacity tuning, and deliberate technical trade-offs
