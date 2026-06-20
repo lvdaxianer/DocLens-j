@@ -12,7 +12,7 @@
 - [x] 2.1 Add a failing processor test proving valid checkpointed chunks are
   returned without calling the LLM delegate, while missing chunks still call the
   delegate and are merged in order.
-- [ ] 2.2 Wire checkpoint lookup and successful chunk checkpoint scheduling into
+- [x] 2.2 Wire checkpoint lookup and successful chunk checkpoint scheduling into
   the chunked Markdown processor without changing the public
   `MarkdownPostProcessor` contract.
 - [ ] 2.3 Add a focused test proving fallback chunks produced after exhausted

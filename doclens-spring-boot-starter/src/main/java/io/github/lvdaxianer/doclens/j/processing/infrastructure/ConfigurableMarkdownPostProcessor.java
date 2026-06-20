@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.ApproximateTokenEstimator;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmConfigSelector;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingResult;
@@ -31,6 +32,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private final MarkdownPostProcessorFactory processorFactory;
     private final LlmConfigRateLimiter rateLimiter = new LlmConfigRateLimiter();
     private final ExecutorService chunkExecutor;
+    private final MarkdownChunkCheckpointStore checkpointStore;
 
     /**
      * 创建可配置 Markdown 后处理器。
@@ -52,6 +54,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
         this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
         this.chunkExecutor = chunkExecutor;
+        this.checkpointStore = MarkdownChunkCheckpointStore.noop();
     }
 
     /**
@@ -77,6 +80,24 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS),
                 new EnvironmentCredentialResolver(environmentValues));
         this.chunkExecutor = chunkExecutor;
+        this.checkpointStore = MarkdownChunkCheckpointStore.noop();
+    }
+
+    /**
+     * 创建可配置 Markdown 后处理器。
+     *
+     * @param options 可配置处理器选项
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    ConfigurableMarkdownPostProcessor(ConfigurableMarkdownPostProcessorOptions options) {
+        this.configSelector = new LlmConfigSelector(options.configRepository());
+        this.fallbackProcessor = options.fallbackProcessor();
+        this.processorFactory = new MarkdownPostProcessorFactory(options.objectMapper(),
+                Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS),
+                new EnvironmentCredentialResolver(options.environmentValues()));
+        this.chunkExecutor = options.runtimeOptions().chunkExecutor();
+        this.checkpointStore = options.runtimeOptions().checkpointStore();
     }
 
     /**
@@ -139,7 +160,9 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private MarkdownPostProcessor runtimeProcessor(LlmMarkdownConfig config) {
         MarkdownPostProcessor delegate = rateLimitedProcessor(config, processorFactory.create(config));
         MarkdownChunker chunker = new MarkdownChunker(new ApproximateTokenEstimator());
-        return new ChunkedMarkdownPostProcessor(delegate, chunker, config.maxContextTokens(), chunkExecutor);
+        ChunkedMarkdownPostProcessorOptions options = new ChunkedMarkdownPostProcessorOptions(delegate, chunker,
+                config.maxContextTokens(), chunkExecutor, checkpointStore);
+        return new ChunkedMarkdownPostProcessor(options);
     }
 
     /**
