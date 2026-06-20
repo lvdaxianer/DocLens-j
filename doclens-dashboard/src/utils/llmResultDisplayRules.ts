@@ -6,7 +6,8 @@ export interface DocumentResultDisplayPayload {
   warnings: string[]
 }
 
-const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_failed'
+export const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_failed'
+export const LLM_DISABLED_WARNING = 'no_available_llm_config'
 const OCR_TEXT_FIELD = 'ocr_text'
 
 /**
@@ -78,8 +79,10 @@ export function llmPostProcessingStatus(result: DocumentResultDisplayPayload): s
     return 'LLM 已排版'
   } else if (isLlmMarkdownFallback(result)) {
     return 'LLM 回退 OCR'
+  } else if (isLlmMarkdownDisabled(result)) {
+    return 'LLM 未配置'
   } else {
-    return 'LLM 未启用'
+    return 'LLM 未应用'
   }
 }
 
@@ -96,7 +99,21 @@ export function llmStageDescription(result: DocumentResultDisplayPayload): strin
     return '已输出 Markdown 结构化结果'
   } else if (isLlmMarkdownFallback(result)) {
     return 'LLM 排版失败，已回退 OCR 纯文本'
-  } else {
+  } else if (isLlmMarkdownDisabled(result)) {
     return '未配置 LLM 后处理，返回 OCR 纯文本'
+  } else {
+    return 'LLM 已配置但本次结果未应用，返回 OCR 纯文本'
   }
+}
+
+/**
+ * 判断结果是否明确表示当前未配置 LLM。
+ *
+ * @param result 文档结果载荷
+ * @returns 是否明确未配置 LLM
+ * @author lvdaxianerplus
+ * @date 2026-06-19
+ */
+function isLlmMarkdownDisabled(result: DocumentResultDisplayPayload): boolean {
+  return result.warnings.includes(LLM_DISABLED_WARNING)
 }

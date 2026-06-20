@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  LLM_DISABLED_WARNING,
   isLlmMarkdownApplied,
   llmStageDescription,
   llmPostProcessingStatus,
@@ -41,10 +42,23 @@ test('llm result display keeps ocr label when llm is not configured', () => {
 
   assert.equal(isLlmMarkdownApplied(result), false)
   assert.equal(resultTextTitle(result), 'OCR 纯文本')
-  assert.equal(llmPostProcessingStatus(result), 'LLM 未启用')
+  assert.equal(llmPostProcessingStatus(result), 'LLM 未应用')
 })
 
-test('llm result display distinguishes success fallback and disabled state descriptions', () => {
+test('llm result display distinguishes configured but unused markdown output', () => {
+  const result = {
+    finalText: '原始 OCR 文本',
+    llmMarkdownApplied: false,
+    warnings: [LLM_DISABLED_WARNING],
+    rawVendorOutput: { llm_markdown_applied: false }
+  }
+
+  assert.equal(isLlmMarkdownApplied(result), false)
+  assert.equal(llmPostProcessingStatus(result), 'LLM 未配置')
+  assert.equal(llmStageDescription(result), '未配置 LLM 后处理，返回 OCR 纯文本')
+})
+
+test('llm result display distinguishes success fallback and unused state descriptions', () => {
   assert.equal(llmStageDescription({
     finalText: '# 发票',
     llmMarkdownApplied: true,
@@ -61,5 +75,5 @@ test('llm result display distinguishes success fallback and disabled state descr
     finalText: '原始 OCR 文本',
     llmMarkdownApplied: false,
     warnings: []
-  }), '未配置 LLM 后处理，返回 OCR 纯文本')
+  }), 'LLM 已配置但本次结果未应用，返回 OCR 纯文本')
 })
