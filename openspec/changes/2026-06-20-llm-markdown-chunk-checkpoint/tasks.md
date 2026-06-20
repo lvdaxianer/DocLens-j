@@ -20,7 +20,7 @@
 
 ## 3. Crash-resume and async durability
 
-- [ ] 3.1 Add a crash-resume simulation test that seeds completed chunk files for
+- [x] 3.1 Add a crash-resume simulation test that seeds completed chunk files for
   an interrupted document and proves the next run processes only missing chunks.
 - [ ] 3.2 Add an async-save verification test proving checkpoint writes are not
   performed inline in the LLM worker path, but the processor waits for pending

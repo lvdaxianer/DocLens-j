@@ -232,6 +232,37 @@ class ChunkedMarkdownPostProcessorTest {
     }
 
     /**
+     * 宕机恢复时应复用已完成 chunk 文件，只处理缺失 chunk。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void resumesInterruptedDocumentFromPersistedChunkFiles() {
+        MarkdownChunkPlan plan = plan();
+        MarkdownPostProcessingRequest request = request(LARGE_DOCUMENT);
+        FileSystemMarkdownChunkCheckpointStore checkpointStore = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        int missingChunkIndex = plan.chunks().size() - 1;
+        CrashResumeSetup crashResumeSetup = new CrashResumeSetup(checkpointStore, request, plan, missingChunkIndex);
+        seedCompletedChunks(crashResumeSetup);
+        RecordingProcessor delegate = new RecordingProcessor(List.of(
+                MarkdownPostProcessingResult.markdown("recovered-chunk-" + missingChunkIndex)));
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor restartedProcessor = checkpointedProcessor(delegate, chunkExecutor,
+                    checkpointStore);
+
+            MarkdownPostProcessingResult result = restartedProcessor.process(request);
+
+            assertThat(result.markdown()).isEqualTo(crashResumeMarkdown(plan, missingChunkIndex));
+            assertThat(delegate.requests()).hasSize(1);
+            assertThat(extractChunkIndex(delegate.requests().getFirst().ocrText())).isEqualTo(missingChunkIndex);
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
+    }
+
+    /**
      * 创建 Markdown 后处理请求。
      *
      * @param text OCR 文本
@@ -332,6 +363,43 @@ class ChunkedMarkdownPostProcessorTest {
     }
 
     /**
+     * 写入模拟宕机前已完成的 chunk 文件。
+     *
+     * @param crashResumeSetup 宕机恢复测试上下文
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void seedCompletedChunks(CrashResumeSetup crashResumeSetup) {
+        MarkdownChunkCheckpointPlan checkpointPlan = MarkdownChunkCheckpointPlan.from(
+                new MarkdownChunkCheckpointPlanSource(crashResumeSetup.request(), crashResumeSetup.plan(),
+                        SMALL_CHUNK_MAX_CONTEXT_TOKENS));
+        for (MarkdownChunk chunk : crashResumeSetup.plan().chunks()) {
+            saveCompletedChunk(crashResumeSetup, checkpointPlan, chunk);
+        }
+    }
+
+    /**
+     * 保存非缺失 chunk 的完成结果。
+     *
+     * @param crashResumeSetup 宕机恢复测试上下文
+     * @param checkpointPlan checkpoint 计划
+     * @param chunk Markdown 分片
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void saveCompletedChunk(
+            CrashResumeSetup crashResumeSetup,
+            MarkdownChunkCheckpointPlan checkpointPlan,
+            MarkdownChunk chunk
+    ) {
+        // 当前 chunk 不是模拟宕机缺失 chunk 时写入完成 checkpoint。
+        if (chunk.chunkIndex() != crashResumeSetup.missingChunkIndex()) {
+            crashResumeSetup.checkpointStore().save(new MarkdownChunkCheckpoint(checkpointPlan, chunk,
+                    "completed-chunk-" + chunk.chunkIndex(), true));
+        }
+    }
+
+    /**
      * 读取指定 chunk checkpoint。
      *
      * @param checkpointLookup checkpoint 查询上下文
@@ -391,6 +459,24 @@ class ChunkedMarkdownPostProcessorTest {
     }
 
     /**
+     * 宕机恢复测试上下文。
+     *
+     * @param checkpointStore checkpoint 存储
+     * @param request Markdown 后处理请求
+     * @param plan 分片计划
+     * @param missingChunkIndex 缺失 chunk 序号
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private record CrashResumeSetup(
+            FileSystemMarkdownChunkCheckpointStore checkpointStore,
+            MarkdownPostProcessingRequest request,
+            MarkdownChunkPlan plan,
+            int missingChunkIndex
+    ) {
+    }
+
+    /**
      * 等待指定分片数进入处理区。
      *
      * @param delegate 并发记录器
@@ -426,6 +512,25 @@ class ChunkedMarkdownPostProcessorTest {
     private String fallbackChunkMarkdown(MarkdownChunkPlan plan) {
         return joinChunkMarkdown(plan, chunk -> chunk.chunkIndex() == 1 ? chunk.mainContent()
                 : "chunk-" + chunk.chunkIndex());
+    }
+
+    /**
+     * 生成宕机恢复后的预期 Markdown。
+     *
+     * @param plan 分片计划
+     * @param missingChunkIndex 缺失 chunk 序号
+     * @return 预期 Markdown
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private String crashResumeMarkdown(MarkdownChunkPlan plan, int missingChunkIndex) {
+        return joinChunkMarkdown(plan, chunk -> {
+            if (chunk.chunkIndex() == missingChunkIndex) {
+                return "recovered-chunk-" + missingChunkIndex;
+            } else {
+                return "completed-chunk-" + chunk.chunkIndex();
+            }
+        });
     }
 
     /**
