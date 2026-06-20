@@ -104,6 +104,22 @@ public interface DocumentJobRepository {
     }
 
     /**
+     * 查询仍有排队文档的批次 ID。
+     *
+     * @param limit 最大批次数量
+     * @return 去重后的批次 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    default List<String> listQueuedBatchIds(int limit) {
+        return listByStatus(DocumentStatus.QUEUED, limit).stream()
+                .map(DocumentJob::batchId)
+                .distinct()
+                .limit(limit)
+                .toList();
+    }
+
+    /**
      * 根据 ID 删除文档任务。
      *
      * @param documentId 文档 ID

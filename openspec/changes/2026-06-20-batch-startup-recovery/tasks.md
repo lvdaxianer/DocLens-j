@@ -1,6 +1,6 @@
 ## 1. Add batch startup recovery
 
-- [ ] 1.1 Add failing tests for startup recovery service behavior: distinct queued batch resubmission, no completed/failed/stalled-only resubmission, and recovery limit handling.
+- [x] 1.1 Add failing tests for startup recovery service behavior: distinct queued batch resubmission, no completed/failed/stalled-only resubmission, and recovery limit handling.
 - [ ] 1.2 Extend `DocumentJobRepository` and its in-memory test doubles with a distinct queued-batch lookup used by startup recovery.
 - [ ] 1.3 Implement `BatchStartupRecoveryService` and wire it to `BatchProcessingScheduler`.
 - [ ] 1.4 Add MyBatis repository support and tests for distinct queued batch ID lookup.
