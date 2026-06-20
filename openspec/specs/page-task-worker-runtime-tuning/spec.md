@@ -30,24 +30,42 @@ The page-task worker MUST expose configurable batch size, executor pool size, qu
 ### Requirement: Default local OCR concurrency follows configured node capacity
 
 The local OCR request executor and page-task worker MUST default to the aggregate
-concurrency of enabled bootstrap OCR nodes that participate in global routing
-when no explicit OCR request thread-pool or page-task worker override is
-configured.
+concurrency of dashboard-persisted OCR nodes that are enabled, participate in
+global routing, and are healthy. When no dashboard-persisted OCR node qualifies,
+the defaults MUST fall back to the aggregate concurrency of enabled bootstrap
+OCR nodes that participate in global routing. Explicit OCR request thread-pool
+and page-task worker overrides MUST be respected.
 
-#### Scenario: Multiple OCR nodes allow thirty concurrent OCR requests
+#### Scenario: Dashboard nodes override bootstrap concurrency
 
-- **GIVEN** three enabled bootstrap OCR nodes participate in global routing
-- **AND** each node has `max-concurrency` set to 10
-- **AND** no explicit page-task worker or OCR request thread-pool override is configured
+- **GIVEN** the dashboard has three persisted OCR nodes that are enabled,
+  participate in global routing, and are `UP`
+- **AND** their `maxConcurrency` values are 10, 4, and 10
+- **AND** the bootstrap configuration contains one enabled global OCR node with
+  `max-concurrency` set to 10
+- **AND** no explicit page-task worker or OCR request thread-pool override is
+  configured
+- **WHEN** OCR request infrastructure is auto-configured
+- **THEN** the OCR request thread pool can execute up to 24 concurrent requests
+- **AND** the page-task worker can claim and execute up to 24 page tasks per scan
+
+#### Scenario: Unhealthy dashboard nodes do not increase local concurrency
+
+- **GIVEN** the dashboard has two persisted OCR nodes
+- **AND** one node is enabled, participates in global routing, and is `UP` with
+  `maxConcurrency` 10
+- **AND** the other node is enabled, participates in global routing, and is
+  `DOWN` with `maxConcurrency` 10
+- **WHEN** OCR request infrastructure is auto-configured
+- **THEN** the derived default local OCR concurrency is 10
+
+#### Scenario: Bootstrap nodes are used when no dashboard node qualifies
+
+- **GIVEN** no dashboard-persisted OCR node is enabled, participates in global
+  routing, and is `UP`
+- **AND** three enabled bootstrap OCR nodes participate in global routing
+- **AND** each bootstrap node has `max-concurrency` set to 10
 - **WHEN** OCR request infrastructure is auto-configured
 - **THEN** the OCR request thread pool can execute up to 30 concurrent requests
 - **AND** the page-task worker can claim and execute up to 30 page tasks per scan
-
-#### Scenario: Explicit page-task worker override is respected
-
-- **GIVEN** three enabled bootstrap OCR nodes provide 30 aggregate slots
-- **AND** an operator explicitly configures page-task worker pool size and batch size to 12
-- **WHEN** the page-task worker is auto-configured
-- **THEN** it uses the configured pool size of 12
-- **AND** it claims up to the configured batch size of 12 per scan
 
