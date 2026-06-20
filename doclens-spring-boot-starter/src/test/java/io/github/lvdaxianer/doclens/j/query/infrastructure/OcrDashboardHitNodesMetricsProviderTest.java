@@ -48,6 +48,29 @@ class OcrDashboardHitNodesMetricsProviderTest extends OcrDashboardMetricsProvide
     }
 
     /**
+     * 批次命中节点应返回 OCR 模型名称，避免前端把 provider model 当成 OCR 模型。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void hitNodesByBatchIncludesModelName() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode(FINANCE_NODE_ID, FINANCE_NODE_NAME)
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of(
+                successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), FINANCE_NODE_ID, 320)
+        ));
+        OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository);
+
+        List<Map<String, Object>> hitNodes = provider.dispatchHitNodesByBatch("batch-1");
+
+        assertThat(hitNodes).singleElement().satisfies(row -> assertThat(row)
+                .containsEntry("model_key", DEFAULT_MODEL_KEY)
+                .containsEntry("model_name", DEFAULT_MODEL_NAME));
+    }
+
+    /**
      * 批次命中节点应合并进行中的运行时命中，避免处理中遗漏尚未落库的节点。
      *
      * @author lvdaxianerplus

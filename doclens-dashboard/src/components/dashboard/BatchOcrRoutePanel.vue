@@ -56,11 +56,10 @@ defineProps<{
         >
           <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
           <span>
-            {{ displayNodeSubtitle({
-              nodeId: node.node_id,
-              modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
-              imageCount: node.image_count
-            }) }}
+            OCR 模型：{{ displayModelName({ modelKey: node.model_key, name: node.model_name }) }}
+          </span>
+          <span>
+            {{ displayNodeSubtitle({ nodeId: node.node_id, imageCount: node.image_count }) }}
           </span>
         </article>
       </div>
@@ -76,11 +75,10 @@ defineProps<{
         <article v-for="node in hitNodes" :key="`${node.model_key}-${node.node_id}`" class="batch-ocr-route__hit">
           <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
           <span>
-            {{ displayNodeSubtitle({
-              nodeId: node.node_id,
-              modelKey: displayModelName({ modelKey: node.model_key, name: node.model_name }),
-              imageCount: node.image_count
-            }) }}
+            OCR 模型：{{ displayModelName({ modelKey: node.model_key, name: node.model_name }) }}
+          </span>
+          <span>
+            {{ displayNodeSubtitle({ nodeId: node.node_id, imageCount: node.image_count }) }}
           </span>
         </article>
       </div>

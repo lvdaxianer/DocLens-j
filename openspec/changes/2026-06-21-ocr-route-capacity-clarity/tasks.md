@@ -12,9 +12,9 @@
 
 ## 3. Clarify batch OCR route attribution
 
-- [ ] 3.1 Add failing backend and frontend tests proving batch hit rows include and render OCR model names distinctly from node/provider details.
-- [ ] 3.2 Resolve model names for batch hit rows and update the route panel display copy.
-- [ ] 3.3 Verify focused batch route tests and the broader dashboard/backend slices.
+- [x] 3.1 Add failing backend and frontend tests proving batch hit rows include and render OCR model names distinctly from node/provider details.
+- [x] 3.2 Resolve model names for batch hit rows and update the route panel display copy.
+- [x] 3.3 Verify focused batch route tests and the broader dashboard/backend slices.
 
 ## 4. Final verification and archive
 

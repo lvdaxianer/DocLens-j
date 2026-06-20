@@ -104,13 +104,13 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
-    private OcrDashboardMetricsProvider.DashboardThreadPools dashboardThreadPools(
+    private DashboardThreadPools dashboardThreadPools(
             ThreadPoolExecutor ocrRequestExecutor,
             ThreadPoolExecutor pageTaskExecutor
     ) {
-        OcrDashboardMetricsProvider.DashboardCoreThreadPools coreThreadPools =
-                new OcrDashboardMetricsProvider.DashboardCoreThreadPools(null, ocrRequestExecutor, null, null, null);
-        return new OcrDashboardMetricsProvider.DashboardThreadPools(coreThreadPools, Optional.of(pageTaskExecutor),
+        DashboardCoreThreadPools coreThreadPools =
+                new DashboardCoreThreadPools(null, ocrRequestExecutor, null, null, null);
+        return new DashboardThreadPools(coreThreadPools, Optional.of(pageTaskExecutor),
                 Optional.of(pageTaskWorkerSettings()));
     }
 
@@ -149,8 +149,8 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
-    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings pageTaskWorkerSettings() {
-        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings(pageTaskExecutionSettings(),
+    private DashboardPageTaskWorkerSettings pageTaskWorkerSettings() {
+        return new DashboardPageTaskWorkerSettings(pageTaskExecutionSettings(),
                 pageTaskRecoverySettings());
     }
 
@@ -161,8 +161,8 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
-    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Execution pageTaskExecutionSettings() {
-        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Execution(PAGE_TASK_WORKER_BATCH_SIZE,
+    private DashboardPageTaskWorkerSettings.Execution pageTaskExecutionSettings() {
+        return new DashboardPageTaskWorkerSettings.Execution(PAGE_TASK_WORKER_BATCH_SIZE,
                 PAGE_TASK_WORKER_LOCK_SECONDS, PAGE_TASK_WORKER_POOL_SIZE, PAGE_TASK_WORKER_QUEUE_CAPACITY);
     }
 
@@ -173,8 +173,8 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
-    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Recovery pageTaskRecoverySettings() {
-        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Recovery(
+    private DashboardPageTaskWorkerSettings.Recovery pageTaskRecoverySettings() {
+        return new DashboardPageTaskWorkerSettings.Recovery(
                 PAGE_TASK_WORKER_RECOVERY_LIMIT, PAGE_TASK_WORKER_INTERVAL_MILLIS);
     }
 

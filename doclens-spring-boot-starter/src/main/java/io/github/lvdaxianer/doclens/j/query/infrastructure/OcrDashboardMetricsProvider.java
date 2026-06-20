@@ -44,16 +44,6 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private static final String RUNTIME_POOL_SIZE_KEY = "runtime_pool_size";
     /** 线程池大小指标键。 */
     private static final String POOL_SIZE_KEY = "pool_size";
-    /** 页任务批量大小指标键。 */
-    private static final String BATCH_SIZE_KEY = "batch_size";
-    /** 页任务锁秒数指标键。 */
-    private static final String LOCK_SECONDS_KEY = "lock_seconds";
-    /** 队列容量指标键。 */
-    private static final String QUEUE_CAPACITY_KEY = "queue_capacity";
-    /** 恢复数量上限指标键。 */
-    private static final String RECOVERY_LIMIT_KEY = "recovery_limit";
-    /** 调度间隔毫秒指标键。 */
-    private static final String INTERVAL_MILLIS_KEY = "interval_millis";
 
     private final OcrNodeRepository nodeRepository;
     private final OcrNodeCallRepository callRepository;
@@ -62,32 +52,24 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private final ThreadPoolMetricsReader threadPoolMetricsReader;
     private final OcrNodeMetricsAggregator metricsAggregator;
     private final OcrBatchHitTracker batchHitTracker;
+    private final OcrDashboardHitNodeRows hitNodeRows;
 
     /**
      * 创建 OCR Dashboard 指标提供器。
      *
-     * @param nodeRepository OCR 节点仓储
-     * @param callRepository OCR 调用仓储
-     * @param nodePool 运行时节点池
-     * @param threadPools Dashboard 线程池集合
-     * @param batchHitTracker 批次运行时命中跟踪器
+     * @param dependencies 指标提供器依赖集合
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
-    public OcrDashboardMetricsProvider(
-            OcrNodeRepository nodeRepository,
-            OcrNodeCallRepository callRepository,
-            OcrRuntimeNodePool nodePool,
-            DashboardThreadPools threadPools,
-            OcrBatchHitTracker batchHitTracker
-    ) {
-        this.nodeRepository = nodeRepository;
-        this.callRepository = callRepository;
-        this.nodePool = nodePool;
-        this.threadPools = threadPools;
+    public OcrDashboardMetricsProvider(OcrDashboardMetricsProviderDependencies dependencies) {
+        this.nodeRepository = dependencies.dataSources().nodeRepository();
+        this.callRepository = dependencies.dataSources().callRepository();
+        this.nodePool = dependencies.runtimeSources().nodePool();
+        this.threadPools = dependencies.runtimeSources().threadPools();
         this.threadPoolMetricsReader = new ThreadPoolMetricsReader();
-        this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, nodePool);
-        this.batchHitTracker = batchHitTracker;
+        this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, dependencies.runtimeSources().nodePool());
+        this.batchHitTracker = dependencies.attributionSources().batchHitTracker();
+        this.hitNodeRows = new OcrDashboardHitNodeRows(dependencies.attributionSources().modelRegistry());
     }
 
     /**
@@ -128,11 +110,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         Map<OcrDashboardHitNodeKey, Long> hitCounts = callRepository.listByBatchId(batchId).stream()
                 .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
         mergeRuntimeHits(hitCounts, batchHitTracker.snapshotByBatch(batchId));
-        return hitCounts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(OcrDashboardHitNodeKey::modelKey)
-                        .thenComparing(OcrDashboardHitNodeKey::nodeId)))
-                .map(entry -> hitNodeRow(nodesById, entry))
-                .toList();
+        return hitNodeRows.rows(hitCounts, nodesById);
     }
 
     /**
@@ -203,11 +181,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
                         LinkedHashMap::new));
         Map<OcrDashboardHitNodeKey, Long> hitCounts = finalSuccessfulCallsByPage.values().stream()
                 .collect(Collectors.groupingBy(this::hitNodeKey, Collectors.counting()));
-        return hitCounts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(OcrDashboardHitNodeKey::modelKey)
-                        .thenComparing(OcrDashboardHitNodeKey::nodeId)))
-                .map(entry -> hitNodeRow(nodesById, entry))
-                .toList();
+        return hitNodeRows.rows(hitCounts, nodesById);
     }
 
     /**
@@ -351,222 +325,6 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      */
     private OcrDashboardHitNodeKey hitNodeKey(OcrNodeCall call) {
         return new OcrDashboardHitNodeKey(call.modelKey(), call.nodeId());
-    }
-
-    /**
-     * 创建命中节点读模型。
-     *
-     * @param nodesById 节点索引
-     * @param hitCountEntry 命中节点统计项
-     * @return 命中节点读模型
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private Map<String, Object> hitNodeRow(
-            Map<String, OcrNode> nodesById,
-            Map.Entry<OcrDashboardHitNodeKey, Long> hitCountEntry
-    ) {
-        OcrDashboardHitNodeKey key = hitCountEntry.getKey();
-        return Map.ofEntries(
-                Map.entry("model_key", key.modelKey()),
-                Map.entry("node_id", key.nodeId()),
-                Map.entry("node_name", nodeName(nodesById, key.nodeId())),
-                Map.entry("image_count", hitCountEntry.getValue())
-        );
-    }
-
-    /**
-     * 返回节点名称，缺失时回退为空串。
-     *
-     * @param nodesById 节点索引
-     * @param nodeId 节点 ID
-     * @return 节点名称
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    private String nodeName(Map<String, OcrNode> nodesById, String nodeId) {
-        return Optional.ofNullable(nodesById.get(nodeId)).map(OcrNode::name).orElse("");
-    }
-
-    /**
-     * Dashboard 核心线程池集合。
-     *
-     * @param documentProcessing 文档处理线程池
-     * @param ocrRequest OCR 请求线程池
-     * @param ocrHealth OCR 健康检查线程池
-     * @param callback 回调线程池
-     * @param llmMarkdownChunk LLM Markdown 分块线程池
-     * @author lvdaxianerplus
-     * @date 2026-06-21
-     */
-    public record DashboardCoreThreadPools(
-            ExecutorService documentProcessing,
-            ExecutorService ocrRequest,
-            ExecutorService ocrHealth,
-            ExecutorService callback,
-            ExecutorService llmMarkdownChunk
-    ) {
-    }
-
-    /**
-     * Dashboard 线程池集合。
-     *
-     * @param core 核心线程池集合
-     * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
-     * @param pageTaskWorkerSettings 页任务 worker 生效配置
-     * @author lvdaxianerplus
-     * @date 2026-06-21
-     */
-    public record DashboardThreadPools(
-            DashboardCoreThreadPools core,
-            Optional<ExecutorService> pageTaskWorkerExecutor,
-            Optional<DashboardPageTaskWorkerSettings> pageTaskWorkerSettings
-    ) {
-
-        /**
-         * 创建 Dashboard 线程池集合。
-         *
-         * @param core 核心线程池集合
-         * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
-         * @param pageTaskWorkerSettings 页任务 worker 生效配置
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        public DashboardThreadPools {
-            pageTaskWorkerExecutor = pageTaskWorkerExecutor == null ? Optional.empty() : pageTaskWorkerExecutor;
-            pageTaskWorkerSettings = pageTaskWorkerSettings == null ? Optional.empty() : pageTaskWorkerSettings;
-        }
-
-        /**
-         * 创建无页任务 worker 配置的 Dashboard 线程池集合。
-         *
-         * @param core 核心线程池集合
-         * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        public DashboardThreadPools(
-                DashboardCoreThreadPools core,
-                ExecutorService pageTaskWorkerExecutor
-        ) {
-            this(core, Optional.ofNullable(pageTaskWorkerExecutor), Optional.empty());
-        }
-
-        /**
-         * 获取文档处理线程池。
-         *
-         * @return 文档处理线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Optional<ExecutorService> documentProcessing() {
-            return Optional.ofNullable(core).map(DashboardCoreThreadPools::documentProcessing);
-        }
-
-        /**
-         * 获取 OCR 请求线程池。
-         *
-         * @return OCR 请求线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Optional<ExecutorService> ocrRequest() {
-            return Optional.ofNullable(core).map(DashboardCoreThreadPools::ocrRequest);
-        }
-
-        /**
-         * 获取 OCR 健康检查线程池。
-         *
-         * @return OCR 健康检查线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Optional<ExecutorService> ocrHealth() {
-            return Optional.ofNullable(core).map(DashboardCoreThreadPools::ocrHealth);
-        }
-
-        /**
-         * 获取回调线程池。
-         *
-         * @return 回调线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Optional<ExecutorService> callback() {
-            return Optional.ofNullable(core).map(DashboardCoreThreadPools::callback);
-        }
-
-        /**
-         * 获取 LLM Markdown 分块线程池。
-         *
-         * @return LLM Markdown 分块线程池
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Optional<ExecutorService> llmMarkdownChunk() {
-            return Optional.ofNullable(core).map(DashboardCoreThreadPools::llmMarkdownChunk);
-        }
-    }
-
-    /**
-     * 页任务 worker 生效配置。
-     *
-     * @param execution 页任务 worker 执行配置
-     * @param recovery 页任务 worker 恢复配置
-     * @author lvdaxianerplus
-     * @date 2026-06-21
-     */
-    public record DashboardPageTaskWorkerSettings(
-            Execution execution,
-            Recovery recovery
-    ) {
-
-        /**
-         * 转换为 Dashboard 指标键值。
-         *
-         * @return Dashboard 指标键值
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        private Map<String, Object> toMetrics() {
-            return Map.ofEntries(
-                    Map.entry(BATCH_SIZE_KEY, execution.batchSize()),
-                    Map.entry(LOCK_SECONDS_KEY, execution.lockSeconds()),
-                    Map.entry(POOL_SIZE_KEY, execution.poolSize()),
-                    Map.entry(QUEUE_CAPACITY_KEY, execution.queueCapacity()),
-                    Map.entry(RECOVERY_LIMIT_KEY, recovery.recoveryLimit()),
-                    Map.entry(INTERVAL_MILLIS_KEY, recovery.intervalMillis())
-            );
-        }
-
-        /**
-         * 页任务 worker 执行配置。
-         *
-         * @param batchSize 每轮抢占页任务数量
-         * @param lockSeconds 页任务锁秒数
-         * @param poolSize 页任务执行线程数
-         * @param queueCapacity 页任务执行队列容量
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        public record Execution(
-                int batchSize,
-                int lockSeconds,
-                int poolSize,
-                int queueCapacity
-        ) {
-        }
-
-        /**
-         * 页任务 worker 恢复配置。
-         *
-         * @param recoveryLimit 每轮恢复过期页任务数量
-         * @param intervalMillis 页任务扫描间隔毫秒
-         * @author lvdaxianerplus
-         * @date 2026-06-21
-         */
-        public record Recovery(int recoveryLimit, int intervalMillis) {
-        }
     }
 
 }

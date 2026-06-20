@@ -51,4 +51,27 @@ describe('BatchOcrRoutePanel', () => {
     expect(wrapper.text()).toContain('当前文件尚未完成 OCR，暂无最终分配结果')
     expect(wrapper.text()).toContain('批次 OCR 调度命中')
   })
+
+  it('shows OCR model names separately from provider model details', () => {
+    const wrapper = mount(BatchOcrRoutePanel, {
+      props: {
+        routePolicy: {
+          routing_mode: 'GLOBAL_LOAD_BALANCE',
+          model_key: '',
+          node_id: '',
+          load_balance_strategy: 'least-inflight'
+        },
+        currentDocumentName: 'manual.pdf',
+        currentDocumentFinalHitNodes: [
+          { model_key: 'ollama', model_name: 'Ollama', node_id: 'node-ollama', node_name: 'Ollama 节点', image_count: 1 }
+        ],
+        hitNodes: [
+          { model_key: 'ollama', model_name: 'Ollama', node_id: 'node-ollama', node_name: 'Ollama 节点', image_count: 2 }
+        ]
+      }
+    })
+
+    expect(wrapper.text()).toContain('OCR 模型：Ollama')
+    expect(wrapper.text()).not.toContain('OCR 模型：deepseek-ocr')
+  })
 })

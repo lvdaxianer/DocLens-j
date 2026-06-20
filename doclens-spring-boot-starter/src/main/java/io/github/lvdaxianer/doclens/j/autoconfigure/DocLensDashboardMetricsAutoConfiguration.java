@@ -1,17 +1,22 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeMetricsViewReader;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.application.EmptyDashboardOcrMetricsProvider;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.DashboardCoreThreadPools;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.DashboardPageTaskWorkerSettings;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.DashboardThreadPools;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardAttributionSources;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardDataSources;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProviderDependencies;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardRuntimeSources;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrNodeMetricsAggregator;
-import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings;
-import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardCoreThreadPools;
-import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardThreadPools;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -37,27 +42,95 @@ public class DocLensDashboardMetricsAutoConfiguration {
     /**
      * 创建 Dashboard OCR 指标提供器。
      *
-     * @param nodeRepository OCR 节点仓储
-     * @param callRepository OCR 调用记录仓储
-     * @param nodePool OCR 运行时节点池
-     * @param threadPools Dashboard 线程池集合
-     * @param batchHitTracker 批次运行时命中跟踪器
+     * @param dependencies Dashboard OCR 指标提供器依赖
      * @return Dashboard OCR 指标提供器
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
     @Bean
-    @ConditionalOnBean({OcrNodeRepository.class, OcrNodeCallRepository.class, OcrRuntimeNodePool.class})
+    @ConditionalOnBean({
+            OcrNodeRepository.class,
+            OcrNodeCallRepository.class,
+            OcrRuntimeNodePool.class,
+            OcrModelRegistry.class
+    })
     @ConditionalOnMissingBean
-    DashboardOcrMetricsProvider dashboardOcrMetricsProvider(
-            OcrNodeRepository nodeRepository,
-            OcrNodeCallRepository callRepository,
-            OcrRuntimeNodePool nodePool,
-            DashboardThreadPools threadPools,
-            OcrBatchHitTracker batchHitTracker
+    DashboardOcrMetricsProvider dashboardOcrMetricsProvider(OcrDashboardMetricsProviderDependencies dependencies) {
+        return new OcrDashboardMetricsProvider(dependencies);
+    }
+
+    /**
+     * 创建 Dashboard OCR 指标提供器依赖。
+     *
+     * @param dataSources 查询侧仓储集合
+     * @param runtimeSources 运行态依赖集合
+     * @param attributionSources 路由归因依赖集合
+     * @return Dashboard OCR 指标提供器依赖
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrDashboardMetricsProviderDependencies dashboardOcrMetricsProviderDependencies(
+            OcrDashboardDataSources dataSources,
+            OcrDashboardRuntimeSources runtimeSources,
+            OcrDashboardAttributionSources attributionSources
     ) {
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools,
-                batchHitTracker);
+        return new OcrDashboardMetricsProviderDependencies(dataSources, runtimeSources, attributionSources);
+    }
+
+    /**
+     * 创建 Dashboard OCR 查询侧仓储集合。
+     *
+     * @param nodeRepository OCR 节点仓储
+     * @param callRepository OCR 调用记录仓储
+     * @return Dashboard OCR 查询侧仓储集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrDashboardDataSources dashboardOcrDataSources(
+            OcrNodeRepository nodeRepository,
+            OcrNodeCallRepository callRepository
+    ) {
+        return new OcrDashboardDataSources(nodeRepository, callRepository);
+    }
+
+    /**
+     * 创建 Dashboard OCR 运行态依赖集合。
+     *
+     * @param nodePool OCR 运行时节点池
+     * @param threadPools Dashboard 线程池集合
+     * @return Dashboard OCR 运行态依赖集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrDashboardRuntimeSources dashboardOcrRuntimeSources(
+            OcrRuntimeNodePool nodePool,
+            DashboardThreadPools threadPools
+    ) {
+        return new OcrDashboardRuntimeSources(nodePool, threadPools);
+    }
+
+    /**
+     * 创建 Dashboard OCR 路由归因依赖集合。
+     *
+     * @param batchHitTracker 批次运行时命中跟踪器
+     * @param modelRegistry OCR 模型注册表
+     * @return Dashboard OCR 路由归因依赖集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrDashboardAttributionSources dashboardOcrAttributionSources(
+            OcrBatchHitTracker batchHitTracker,
+            OcrModelRegistry modelRegistry
+    ) {
+        return new OcrDashboardAttributionSources(batchHitTracker, modelRegistry);
     }
 
     /**

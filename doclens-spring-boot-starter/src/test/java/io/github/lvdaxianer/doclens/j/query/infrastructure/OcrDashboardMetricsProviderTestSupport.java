@@ -1,21 +1,17 @@
 package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
-import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelDefinition;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -46,6 +42,8 @@ abstract class OcrDashboardMetricsProviderTestSupport {
             .withNano(0);
     /** 默认 OCR 模型键。 */
     protected static final String DEFAULT_MODEL_KEY = "paddle_ocr";
+    /** 默认 OCR 模型名称。 */
+    protected static final String DEFAULT_MODEL_NAME = "PaddleOCR";
     /** 财务节点 ID。 */
     protected static final String FINANCE_NODE_ID = "ocr_node_1";
     /** 财务节点名称。 */
@@ -58,8 +56,6 @@ abstract class OcrDashboardMetricsProviderTestSupport {
     protected static final String CONTRACT_NODE_ID = "ocr_node_3";
     /** 合同节点名称。 */
     protected static final String CONTRACT_NODE_NAME = "合同 OCR 节点";
-    /** 内存节点仓储初始容量。 */
-    private static final int TEST_NODE_CAPACITY = 8;
     /** 测试线程保活秒数。 */
     private static final int TEST_THREAD_KEEP_ALIVE_SECONDS = 60;
 
@@ -100,9 +96,10 @@ abstract class OcrDashboardMetricsProviderTestSupport {
          */
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
         nodePool.initialize();
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
-                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null),
-                batchHitTracker);
+        return new OcrDashboardMetricsProvider(new OcrDashboardMetricsProviderDependencies(
+                new OcrDashboardDataSources(nodeRepository, callRepository),
+                new OcrDashboardRuntimeSources(nodePool, new DashboardThreadPools(null, null)),
+                new OcrDashboardAttributionSources(batchHitTracker, modelRegistry())));
     }
 
     /**
@@ -118,12 +115,29 @@ abstract class OcrDashboardMetricsProviderTestSupport {
     protected OcrDashboardMetricsProvider providerWithThreadPools(
             InMemoryOcrNodeRepository nodeRepository,
             InMemoryOcrNodeCallRepository callRepository,
-            OcrDashboardMetricsProvider.DashboardThreadPools threadPools
+            DashboardThreadPools threadPools
     ) {
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
         nodePool.initialize();
-        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools,
-                new InMemoryBatchHitTracker(List.of()));
+        return new OcrDashboardMetricsProvider(new OcrDashboardMetricsProviderDependencies(
+                new OcrDashboardDataSources(nodeRepository, callRepository),
+                new OcrDashboardRuntimeSources(nodePool, threadPools),
+                new OcrDashboardAttributionSources(new InMemoryBatchHitTracker(List.of()), modelRegistry())));
+    }
+
+    /**
+     * 创建 OCR 模型注册表。
+     *
+     * @return OCR 模型注册表
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    protected OcrModelRegistry modelRegistry() {
+        return new OcrModelRegistry(List.of(OcrModelDefinition.create(new OcrModelDefinition.CreateCommand(
+                new OcrModelDefinition.Identity(DEFAULT_MODEL_KEY, DEFAULT_MODEL_NAME,
+                        "PaddleOCR native-compatible HTTP API"),
+                new OcrModelDefinition.Capability(List.of("image"), "/ocr", "/ocr"),
+                new OcrModelDefinition.RuntimeDefaults(8080, "", "", true)))));
     }
 
     /**
@@ -235,150 +249,4 @@ abstract class OcrDashboardMetricsProviderTestSupport {
     protected record CallSeed(String callId, String batchId, String documentId, int pageNo) {
     }
 
-    /**
-     * 内存节点仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    protected static final class InMemoryOcrNodeRepository implements OcrNodeRepository {
-
-        private final Map<String, OcrNode> nodes = new HashMap<>(TEST_NODE_CAPACITY);
-
-        /**
-         * 创建内存节点仓储。
-         *
-         * @param seedNodes 初始节点
-         * @author lvdaxianerplus
-         * @date 2026-06-11
-         */
-        InMemoryOcrNodeRepository(List<OcrNode> seedNodes) {
-            // 节点按 ID 建索引，匹配真实仓储的主键查询语义。
-            seedNodes.forEach(node -> nodes.put(node.id(), node));
-        }
-
-        @Override
-        public void save(OcrNode node) {
-            nodes.put(node.id(), node);
-        }
-
-        @Override
-        public void saveAll(List<OcrNode> seedNodes) {
-            seedNodes.forEach(this::save);
-        }
-
-        @Override
-        public void update(OcrNode node) {
-            nodes.put(node.id(), node);
-        }
-
-        @Override
-        public Optional<OcrNode> findById(String nodeId) {
-            return Optional.ofNullable(nodes.get(nodeId));
-        }
-
-        @Override
-        public Optional<OcrNode> findByModelHostPort(String modelKey, String host, int port) {
-            // host/port 唯一性查询仅在节点池初始化路径中使用。
-            return nodes.values().stream()
-                    .filter(node -> node.modelKey().equals(modelKey) && node.host().equals(host) && node.port() == port)
-                    .findFirst();
-        }
-
-        @Override
-        public List<OcrNode> listByModelKey(String modelKey) {
-            return nodes.values().stream().filter(node -> node.modelKey().equals(modelKey)).toList();
-        }
-
-        @Override
-        public List<OcrNode> listEnabled() {
-            return nodes.values().stream().filter(OcrNode::enabled).toList();
-        }
-
-        @Override
-        public List<OcrNode> listAll() {
-            return List.copyOf(nodes.values());
-        }
-
-        @Override
-        public void deleteById(String nodeId) {
-            nodes.remove(nodeId);
-        }
-    }
-
-    /**
-     * 内存调用记录仓储。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    protected static final class InMemoryOcrNodeCallRepository implements OcrNodeCallRepository {
-
-        private final List<OcrNodeCall> calls;
-
-        /**
-         * 创建内存调用记录仓储。
-         *
-         * @param calls 初始调用记录
-         * @author lvdaxianerplus
-         * @date 2026-06-11
-         */
-        InMemoryOcrNodeCallRepository(List<OcrNodeCall> calls) {
-            this.calls = List.copyOf(calls);
-        }
-
-        @Override
-        public void save(OcrNodeCall call) {
-            throw new UnsupportedOperationException("test repository is read only");
-        }
-
-        @Override
-        public List<OcrNodeCall> listByDocumentId(String documentId) {
-            return calls.stream().filter(call -> call.documentId().equals(documentId)).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listByBatchId(String batchId) {
-            return calls.stream().filter(call -> call.batchId().equals(batchId)).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listRecentByNodeId(String nodeId, int limit) {
-            return calls.stream().filter(call -> call.nodeId().equals(nodeId)).limit(limit).toList();
-        }
-
-        @Override
-        public List<OcrNodeCall> listByNodeIdsAndDay(List<String> nodeIds, LocalDate day) {
-            // 资源指标按节点集合和自然日批量查询，测试仓储在内存中等价过滤。
-            return calls.stream()
-                    .filter(call -> nodeIds.contains(call.nodeId()) && call.startedAt().toLocalDate().equals(day))
-                    .toList();
-        }
-    }
-
-    /**
-     * 内存批次运行时命中跟踪器。
-     *
-     * @param hits 命中快照
-     * @author lvdaxianerplus
-     * @date 2026-06-10
-     */
-    protected record InMemoryBatchHitTracker(List<OcrBatchNodeHit> hits) implements OcrBatchHitTracker {
-
-        @Override
-        public void recordDispatch(String batchId, String modelKey, String nodeId) {
-            throw new UnsupportedOperationException("test tracker is read only");
-        }
-
-        @Override
-        public void recordCompletion(String batchId, String modelKey, String nodeId) {
-            throw new UnsupportedOperationException("test tracker is read only");
-        }
-
-        @Override
-        public List<OcrBatchNodeHit> snapshotByBatch(String batchId) {
-            // 运行时命中快照只暴露当前批次，模拟生产 tracker 的批次隔离。
-            return hits.stream().filter(hit -> hit.batchId().equals(batchId)).toList();
-        }
-    }
 }
