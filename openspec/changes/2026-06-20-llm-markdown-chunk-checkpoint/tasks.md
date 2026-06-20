@@ -15,7 +15,7 @@
 - [x] 2.2 Wire checkpoint lookup and successful chunk checkpoint scheduling into
   the chunked Markdown processor without changing the public
   `MarkdownPostProcessor` contract.
-- [ ] 2.3 Add a focused test proving fallback chunks produced after exhausted
+- [x] 2.3 Add a focused test proving fallback chunks produced after exhausted
   retries are not checkpointed and will be retried in a later run.
 
 ## 3. Crash-resume and async durability

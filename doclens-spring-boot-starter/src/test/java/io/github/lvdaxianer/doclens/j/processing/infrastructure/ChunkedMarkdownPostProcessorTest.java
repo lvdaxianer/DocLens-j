@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -204,6 +205,33 @@ class ChunkedMarkdownPostProcessorTest {
     }
 
     /**
+     * fallback chunk 不应写入 checkpoint，后续运行应重新处理该 chunk。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void doesNotCheckpointFallbackChunksSoLaterRunRetriesThem() {
+        MarkdownChunkPlan plan = plan();
+        MarkdownPostProcessingRequest request = request(LARGE_DOCUMENT);
+        FileSystemMarkdownChunkCheckpointStore checkpointStore = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        CheckpointLookup checkpointLookup = new CheckpointLookup(checkpointStore, request, plan);
+        ExecutorService firstExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor firstProcessor = checkpointedProcessor(
+                    new FailingChunkRecordingProcessor(1), firstExecutor, checkpointStore);
+
+            MarkdownPostProcessingResult firstResult = firstProcessor.process(request);
+
+            assertThat(firstResult.markdown()).isEqualTo(fallbackChunkMarkdown(plan));
+            assertThat(loadCheckpoint(checkpointLookup, 1)).isEmpty();
+        } finally {
+            firstExecutor.shutdownNow();
+        }
+        assertOnlyFallbackChunkRetries(request, checkpointStore);
+    }
+
+    /**
      * 创建 Markdown 后处理请求。
      *
      * @param text OCR 文本
@@ -280,6 +308,86 @@ class ChunkedMarkdownPostProcessorTest {
     ) {
         return CompletableFuture.supplyAsync(() -> processor.process(request(documentId, LARGE_DOCUMENT)),
                 callerExecutor);
+    }
+
+    /**
+     * 创建带 checkpoint store 的分片处理器。
+     *
+     * @param delegate 下游处理器
+     * @param chunkExecutor 分片执行器
+     * @param checkpointStore checkpoint 存储
+     * @return 分片处理器
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private ChunkedMarkdownPostProcessor checkpointedProcessor(
+            MarkdownPostProcessor delegate,
+            ExecutorService chunkExecutor,
+            FileSystemMarkdownChunkCheckpointStore checkpointStore
+    ) {
+        ChunkedMarkdownPostProcessorOptions options = new ChunkedMarkdownPostProcessorOptions(delegate,
+                new MarkdownChunker(new ApproximateTokenEstimator()), SMALL_CHUNK_MAX_CONTEXT_TOKENS,
+                chunkExecutor, checkpointStore);
+        return new ChunkedMarkdownPostProcessor(options);
+    }
+
+    /**
+     * 读取指定 chunk checkpoint。
+     *
+     * @param checkpointLookup checkpoint 查询上下文
+     * @param chunkIndex 分片序号
+     * @return checkpoint 内容
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private Optional<String> loadCheckpoint(CheckpointLookup checkpointLookup, int chunkIndex) {
+        MarkdownChunkCheckpointPlan checkpointPlan = MarkdownChunkCheckpointPlan.from(
+                new MarkdownChunkCheckpointPlanSource(checkpointLookup.request(), checkpointLookup.plan(),
+                        SMALL_CHUNK_MAX_CONTEXT_TOKENS));
+        return checkpointLookup.checkpointStore().load(checkpointPlan, checkpointLookup.plan().chunks().get(chunkIndex));
+    }
+
+    /**
+     * 断言后续运行只重试 fallback chunk。
+     *
+     * @param request Markdown 后处理请求
+     * @param checkpointStore checkpoint 存储
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void assertOnlyFallbackChunkRetries(
+            MarkdownPostProcessingRequest request,
+            FileSystemMarkdownChunkCheckpointStore checkpointStore
+    ) {
+        RecordingProcessor delegate = new RecordingProcessor(List.of(
+                MarkdownPostProcessingResult.markdown("retried-chunk-1")));
+        ExecutorService secondExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor secondProcessor = checkpointedProcessor(delegate, secondExecutor,
+                    checkpointStore);
+            MarkdownPostProcessingResult secondResult = secondProcessor.process(request);
+            assertThat(secondResult.markdown()).contains("retried-chunk-1");
+            assertThat(delegate.requests()).hasSize(1);
+            assertThat(extractChunkIndex(delegate.requests().getFirst().ocrText())).isEqualTo(1);
+        } finally {
+            secondExecutor.shutdownNow();
+        }
+    }
+
+    /**
+     * checkpoint 查询上下文。
+     *
+     * @param checkpointStore checkpoint 存储
+     * @param request Markdown 后处理请求
+     * @param plan 分片计划
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private record CheckpointLookup(
+            FileSystemMarkdownChunkCheckpointStore checkpointStore,
+            MarkdownPostProcessingRequest request,
+            MarkdownChunkPlan plan
+    ) {
     }
 
     /**
