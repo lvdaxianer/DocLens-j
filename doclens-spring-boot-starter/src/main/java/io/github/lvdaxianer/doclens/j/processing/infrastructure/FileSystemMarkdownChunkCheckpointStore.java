@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpoint;
@@ -31,6 +32,8 @@ public class FileSystemMarkdownChunkCheckpointStore {
     private static final String META_FILE = "meta.json";
     private static final String SHA_256 = "SHA-256";
     private static final int MIN_CHUNK_NO_WIDTH = 2;
+    private static final TypeReference<Map<String, Object>> JSON_MAP_TYPE = new TypeReference<>() {
+    };
 
     private final Path storageRoot;
     private final ObjectMapper objectMapper;
@@ -89,12 +92,14 @@ public class FileSystemMarkdownChunkCheckpointStore {
      * @date 2026-06-20
      */
     public Optional<String> load(MarkdownChunkCheckpointPlan plan, MarkdownChunk chunk) {
-        Path markdownFile = chunkDir(plan, chunk).resolve(MARKDOWN_FILE);
+        Path chunkDir = chunkDir(plan, chunk);
+        Path markdownFile = chunkDir.resolve(MARKDOWN_FILE);
         // README 存在时读取 checkpoint 内容。
         if (Files.isRegularFile(markdownFile)) {
             try {
-                String markdown = Files.readString(markdownFile, StandardCharsets.UTF_8);
-                return markdown.isBlank() ? Optional.empty() : Optional.of(markdown);
+                MarkdownChunkCheckpointCandidate candidate = new MarkdownChunkCheckpointCandidate(plan, chunk,
+                        chunkDir, Files.readString(markdownFile, StandardCharsets.UTF_8));
+                return validCheckpoint(candidate) ? Optional.of(candidate.markdown()) : Optional.empty();
             } catch (IOException ex) {
                 throw new IllegalStateException("failed to load markdown chunk checkpoint", ex);
             }
@@ -123,6 +128,78 @@ public class FileSystemMarkdownChunkCheckpointStore {
                 "markdownApplied", checkpoint.markdownApplied(),
                 "sha256", sha256(checkpoint.markdown()),
                 "createdAt", OffsetDateTime.now().toString());
+    }
+
+    /**
+     * 判断 checkpoint 候选是否完整且匹配当前计划。
+     *
+     * @param candidate checkpoint 候选
+     * @return 是否可复用
+     * @throws IOException checkpoint 元数据读取失败
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private boolean validCheckpoint(MarkdownChunkCheckpointCandidate candidate) throws IOException {
+        return !candidate.markdown().isBlank() && manifestMatches(candidate.plan()) && metadataMatches(candidate);
+    }
+
+    /**
+     * 判断 manifest 是否匹配当前计划身份。
+     *
+     * @param plan 当前 checkpoint 计划
+     * @return manifest 是否匹配
+     * @throws IOException manifest 读取失败
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private boolean manifestMatches(MarkdownChunkCheckpointPlan plan) throws IOException {
+        Path manifestFile = documentDir(plan).resolve(MANIFEST_FILE);
+        // manifest 存在时校验计划身份。
+        if (Files.isRegularFile(manifestFile)) {
+            Map<String, Object> manifest = readJson(manifestFile);
+            return plan.documentId().equals(manifest.get("documentId"))
+                    && Integer.valueOf(plan.chunkCount()).equals(manifest.get("chunkCount"))
+                    && plan.planFingerprint().equals(manifest.get("planFingerprint"));
+        } else {
+            // manifest 不存在时不能证明 checkpoint 属于当前计划。
+            return false;
+        }
+    }
+
+    /**
+     * 判断 chunk 元数据是否匹配当前 chunk 与 README 内容。
+     *
+     * @param candidate checkpoint 候选
+     * @return 元数据是否匹配
+     * @throws IOException 元数据读取失败
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private boolean metadataMatches(MarkdownChunkCheckpointCandidate candidate) throws IOException {
+        Path metaFile = candidate.chunkDir().resolve(META_FILE);
+        // meta 存在时校验 chunk 编号与 README 摘要。
+        if (Files.isRegularFile(metaFile)) {
+            Map<String, Object> metadata = readJson(metaFile);
+            return Integer.valueOf(candidate.chunk().chunkIndex()).equals(metadata.get("chunkIndex"))
+                    && chunkNo(candidate.plan(), candidate.chunk()).equals(metadata.get("chunkNo"))
+                    && sha256(candidate.markdown()).equals(metadata.get("sha256"));
+        } else {
+            // meta 不存在时不能证明 README 是完整 chunk 输出。
+            return false;
+        }
+    }
+
+    /**
+     * 读取 JSON 对象。
+     *
+     * @param file JSON 文件
+     * @return JSON 映射
+     * @throws IOException JSON 读取失败
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private Map<String, Object> readJson(Path file) throws IOException {
+        return objectMapper.readValue(file.toFile(), JSON_MAP_TYPE);
     }
 
     private Path documentDir(MarkdownChunkCheckpointPlan plan) {
@@ -179,5 +256,23 @@ public class FileSystemMarkdownChunkCheckpointStore {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("sha-256 digest unavailable", ex);
         }
+    }
+
+    /**
+     * checkpoint 读取候选。
+     *
+     * @param plan checkpoint 计划
+     * @param chunk Markdown chunk
+     * @param chunkDir chunk 目录
+     * @param markdown README 内容
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private record MarkdownChunkCheckpointCandidate(
+            MarkdownChunkCheckpointPlan plan,
+            MarkdownChunk chunk,
+            Path chunkDir,
+            String markdown
+    ) {
     }
 }

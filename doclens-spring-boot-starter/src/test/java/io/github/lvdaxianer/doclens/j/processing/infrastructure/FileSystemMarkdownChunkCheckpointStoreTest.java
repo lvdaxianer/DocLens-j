@@ -89,6 +89,46 @@ class FileSystemMarkdownChunkCheckpointStoreTest {
     }
 
     /**
+     * 当前计划身份变化时，不应复用旧 manifest 下的 checkpoint。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void ignoresCheckpointWhenManifestFingerprintDiffers() {
+        FileSystemMarkdownChunkCheckpointStore store = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        MarkdownChunkCheckpointPlan oldPlan = checkpointPlan("doc-4", 50);
+        MarkdownChunkCheckpointPlan currentPlan = new MarkdownChunkCheckpointPlan("doc-4", "demo.md", 50,
+                ChunkStrategy.general(), 16000, "different-fingerprint");
+        MarkdownChunk chunk = chunk(0, 50, "原始 chunk 01");
+        store.save(checkpoint(oldPlan, chunk, "旧计划整理后的 chunk 01"));
+
+        Optional<String> checkpoint = store.load(currentPlan, chunk);
+
+        assertThat(checkpoint).isEmpty();
+    }
+
+    /**
+     * README 内容被半写或篡改导致校验不一致时，不应复用 checkpoint。
+     *
+     * @throws Exception 测试文件写入失败
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void ignoresCheckpointWhenMarkdownChecksumDiffers() throws Exception {
+        FileSystemMarkdownChunkCheckpointStore store = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        MarkdownChunkCheckpointPlan plan = checkpointPlan("doc-5", 50);
+        MarkdownChunk chunk = chunk(0, 50, "原始 chunk 01");
+        store.save(checkpoint(plan, chunk, "完整 chunk"));
+        Files.writeString(storageRoot.resolve("llm-markdown-chunks/doc-5/01/README.md"), "半截 chunk");
+
+        Optional<String> checkpoint = store.load(plan, chunk);
+
+        assertThat(checkpoint).isEmpty();
+    }
+
+    /**
      * 创建 checkpoint 计划。
      *
      * @param documentId 文档 ID
