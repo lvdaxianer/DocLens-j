@@ -1,11 +1,10 @@
 ## 1. Checkpoint file store
 
-- [ ] 1.1 Add failing tests for a filesystem chunk checkpoint store that writes
-  `manifest.json`, `<chunkNo>/README.md`, and `<chunkNo>/meta.json` under
-  `llm-markdown-chunks/<documentId>/`, using zero-padded chunk directories.
-- [ ] 1.2 Implement the checkpoint file store with plan fingerprint validation,
-  non-empty README validation, checksum metadata, and temp-file atomic moves.
-- [ ] 1.3 Add focused tests that reject stale checkpoints when the current plan
+- [x] 1.1 Add failing tests and implement a filesystem chunk checkpoint store
+  that writes `manifest.json`, `<chunkNo>/README.md`, and `<chunkNo>/meta.json`
+  under `llm-markdown-chunks/<documentId>/`, using zero-padded chunk
+  directories, checksum metadata, and temp-file atomic moves.
+- [ ] 1.2 Add focused tests that reject stale checkpoints when the current plan
   identity differs from the persisted manifest.
 
 ## 2. Chunk processor recovery
