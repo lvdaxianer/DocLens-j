@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -7,6 +8,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -40,17 +42,46 @@ public class DocLensOcrThreadPoolAutoConfiguration {
      * 创建 OCR 请求线程池。
      *
      * @param properties DocLens Spring 配置
+     * @param nodeRepositoryProvider OCR 节点仓储提供器
      * @return OCR 请求线程池
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean(name = "doclensOcrRequestExecutor")
+    ExecutorService doclensOcrRequestExecutor(
+            DocLensSpringProperties properties,
+            ObjectProvider<OcrNodeRepository> nodeRepositoryProvider
+    ) {
+        return doclensOcrRequestExecutor(properties, nodeRepositoryProvider.getIfAvailable());
+    }
+
+    /**
+     * 创建 OCR 请求线程池。
+     *
+     * @param properties DocLens Spring 配置
+     * @return OCR 请求线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-08
+     */
     ExecutorService doclensOcrRequestExecutor(DocLensSpringProperties properties) {
+        return doclensOcrRequestExecutor(properties, (OcrNodeRepository) null);
+    }
+
+    /**
+     * 创建 OCR 请求线程池。
+     *
+     * @param properties DocLens Spring 配置
+     * @param nodeRepository OCR 节点仓储
+     * @return OCR 请求线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    ExecutorService doclensOcrRequestExecutor(DocLensSpringProperties properties, OcrNodeRepository nodeRepository) {
         DocLensSpringProperties.ThreadPoolProperties threadPool = properties.threadPools().ocrRequestThreadPool();
         // 默认 OCR 请求线程池跟随节点并发，避免本地线程池低于节点 max-concurrency。
         if (threadPool.isDefaultOcrRequestThreadPool()) {
-            int concurrency = DocLensPageTaskWorkerAutoConfiguration.derivedNodeConcurrency(properties);
+            int concurrency = new OcrRuntimeConcurrencyResolver(properties, nodeRepository).defaultConcurrency();
             return executor(threadPool.withSize(concurrency));
         } else {
             // 显式配置过线程池时尊重运维配置，不再自动覆盖。

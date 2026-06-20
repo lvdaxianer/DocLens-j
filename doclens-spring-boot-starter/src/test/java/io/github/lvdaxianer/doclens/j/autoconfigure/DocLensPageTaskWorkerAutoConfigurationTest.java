@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 class DocLensPageTaskWorkerAutoConfigurationTest {
 
     private static final int SINGLE_NODE_CONCURRENCY = 10;
+    private static final int DASHBOARD_SMALL_NODE_CONCURRENCY = 4;
+    private static final int DASHBOARD_TOTAL_CONCURRENCY = 24;
     private static final int AGGREGATE_NODE_CONCURRENCY = 30;
     private static final int EXPLICIT_WORKER_CONCURRENCY = 12;
     private static final int DEFAULT_QUEUE_CAPACITY = 200;
@@ -86,6 +89,27 @@ class DocLensPageTaskWorkerAutoConfigurationTest {
         assertThat(settings.poolSize()).isEqualTo(AGGREGATE_NODE_CONCURRENCY);
         assertThat(DocLensPageTaskWorkerAutoConfiguration.derivedNodeConcurrency(properties))
                 .isEqualTo(AGGREGATE_NODE_CONCURRENCY);
+    }
+
+    /**
+     * 页面持久化节点存在时，页任务默认并发应优先使用页面健康节点总并发。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void effectiveSettingsUseDashboardNodeConcurrencyBeforeBootstrapConcurrency() {
+        DocLensSpringProperties properties = defaultPropertiesWithPaddleTimeout(DEFAULT_PADDLE_TIMEOUT_SECONDS);
+        OcrNodeRepository repository = OcrRuntimeConcurrencyResolverTest.repository(
+                OcrRuntimeConcurrencyResolverTest.upNode("dashboard-a", SINGLE_NODE_CONCURRENCY),
+                OcrRuntimeConcurrencyResolverTest.upNode("dashboard-b", DASHBOARD_SMALL_NODE_CONCURRENCY),
+                OcrRuntimeConcurrencyResolverTest.upNode("dashboard-c", SINGLE_NODE_CONCURRENCY));
+
+        DocLensPageTaskWorkerAutoConfiguration.PageTaskWorkerRuntimeSettings settings =
+                new DocLensPageTaskWorkerAutoConfiguration().pageTaskWorkerRuntimeSettings(properties, repository);
+
+        assertThat(settings.batchSize()).isEqualTo(DASHBOARD_TOTAL_CONCURRENCY);
+        assertThat(settings.poolSize()).isEqualTo(DASHBOARD_TOTAL_CONCURRENCY);
     }
 
     /**

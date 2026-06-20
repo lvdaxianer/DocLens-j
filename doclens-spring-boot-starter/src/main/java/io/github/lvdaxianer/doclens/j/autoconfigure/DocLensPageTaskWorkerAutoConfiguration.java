@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentPageTaskAggregationService;
@@ -30,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -70,6 +72,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
      * 创建页任务 worker 生效运行时配置。
      *
      * @param properties DocLens 配置属性
+     * @param nodeRepositoryProvider OCR 节点仓储提供器
      * @return 页任务 worker 生效运行时配置
      * @author lvdaxianerplus
      * @date 2026-06-19
@@ -77,9 +80,40 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     @Bean
     @ConditionalOnBean(OcrRoutingService.class)
     @ConditionalOnMissingBean
+    PageTaskWorkerRuntimeSettings pageTaskWorkerRuntimeSettings(
+            DocLensSpringProperties properties,
+            ObjectProvider<OcrNodeRepository> nodeRepositoryProvider
+    ) {
+        return pageTaskWorkerRuntimeSettings(properties, nodeRepositoryProvider.getIfAvailable());
+    }
+
+    /**
+     * 创建页任务 worker 生效运行时配置。
+     *
+     * @param properties DocLens 配置属性
+     * @return 页任务 worker 生效运行时配置
+     * @author lvdaxianerplus
+     * @date 2026-06-19
+     */
     PageTaskWorkerRuntimeSettings pageTaskWorkerRuntimeSettings(DocLensSpringProperties properties) {
+        return pageTaskWorkerRuntimeSettings(properties, (OcrNodeRepository) null);
+    }
+
+    /**
+     * 创建页任务 worker 生效运行时配置。
+     *
+     * @param properties DocLens 配置属性
+     * @param nodeRepository OCR 节点仓储
+     * @return 页任务 worker 生效运行时配置
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    PageTaskWorkerRuntimeSettings pageTaskWorkerRuntimeSettings(
+            DocLensSpringProperties properties,
+            OcrNodeRepository nodeRepository
+    ) {
         DocLensSpringProperties.PageTaskWorkerProperties worker = properties.pageTaskWorker();
-        int derivedConcurrency = derivedNodeConcurrency(properties);
+        int derivedConcurrency = new OcrRuntimeConcurrencyResolver(properties, nodeRepository).defaultConcurrency();
         int poolSize = positiveOrDefault(worker.poolSize(), derivedConcurrency);
         int batchSize = positiveOrDefault(worker.batchSize(), poolSize);
         int lockSeconds = positiveOrDefault(worker.lockSeconds(), derivedLockSeconds(properties));
