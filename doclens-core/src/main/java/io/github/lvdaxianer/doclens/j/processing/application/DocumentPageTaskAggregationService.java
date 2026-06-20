@@ -82,6 +82,9 @@ public class DocumentPageTaskAggregationService {
         if (document.status() == DocumentStatus.COMPLETED) {
             skipCompletedDocument(task);
             return Optional.empty();
+        } else if (document.stage() == ProcessingStage.MERGE_TEXT || document.stage() == ProcessingStage.SAVE_TEXT) {
+            skipAggregatingDocument(task, document.stage());
+            return Optional.empty();
         } else {
             // 未完成文档继续刷新页进度，并在最后一页完成时生成最终 OCR 结果。
         }
@@ -106,6 +109,19 @@ public class DocumentPageTaskAggregationService {
     private void skipCompletedDocument(DocumentPageTask task) {
         LOGGER.info("[页任务聚合] 文档已完成，跳过重复页成功回调 documentId={}, pageNo={}", task.documentId(),
                 task.pageNo());
+    }
+
+    /**
+     * 跳过已经进入后处理阶段的重复成功回调。
+     *
+     * @param task 已完成页任务
+     * @param stage 当前文档阶段
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void skipAggregatingDocument(DocumentPageTask task, ProcessingStage stage) {
+        LOGGER.info("[页任务聚合] 文档已进入聚合后处理阶段，跳过重复页成功回调 documentId={}, pageNo={}, stage={}",
+                task.documentId(), task.pageNo(), stage);
     }
 
     /**
@@ -145,8 +161,31 @@ public class DocumentPageTaskAggregationService {
      */
     private void completeDocument(DocumentJob document) {
         List<DocumentPageResult> pages = sortedPages(document.documentId());
-        OcrResult result = resultBuilder.build(document, pages);
-        transactionRunner.requiredVoid(() -> saveCompletedDocument(document, pages, result));
+        DocumentJob merging = advanceDocumentStage(document, ProcessingStage.MERGE_TEXT, pages);
+        DocumentJob saving = advanceDocumentStage(merging, ProcessingStage.SAVE_TEXT, pages);
+        OcrResult result = resultBuilder.build(saving, pages);
+        transactionRunner.requiredVoid(() -> saveCompletedDocument(saving, pages, result));
+    }
+
+    /**
+     * 在短事务内推进文档阶段，避免慢 LLM 调用期间页面仍显示 OCR 中。
+     *
+     * @param document 文档任务
+     * @param stage 下一阶段
+     * @param pages 页结果集合
+     * @return 推进阶段后的文档任务
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private DocumentJob advanceDocumentStage(
+            DocumentJob document,
+            ProcessingStage stage,
+            List<DocumentPageResult> pages
+    ) {
+        DocumentJob progressed = document.advanceStage(stage, pages.size(), document.totalPages(),
+                OffsetDateTime.now());
+        transactionRunner.requiredVoid(() -> documentRepository.update(progressed));
+        return progressed;
     }
 
     /**

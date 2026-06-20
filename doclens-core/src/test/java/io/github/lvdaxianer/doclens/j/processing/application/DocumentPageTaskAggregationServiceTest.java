@@ -96,6 +96,48 @@ class DocumentPageTaskAggregationServiceTest {
     }
 
     /**
+     * 聚合已经进入 LLM 排版阶段后，重复页成功回调不应把阶段回退到 OCR。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessSkipsDocumentAlreadyInSaveTextStage() {
+        TestContext context = testContext();
+        DocumentJob saving = document().advanceStage(ProcessingStage.SAVE_TEXT, TWO_PAGES, TWO_PAGES,
+                OffsetDateTime.now());
+        context.documentRepository.save(saving);
+        context.taskRepository.saveAll(List.of(completedTask("task-1", 1), completedTask("task-2", 2)));
+
+        context.service.recordSuccess(completedTask("task-2", 2));
+
+        assertThat(context.resultRepository.findByDocumentId("doc-1")).isEmpty();
+        assertThat(context.documentRepository.findById("doc-1").orElseThrow().stage())
+                .isEqualTo(ProcessingStage.SAVE_TEXT);
+    }
+
+    /**
+     * 聚合已经进入文本合并阶段后，重复页成功回调不应把阶段回退到 OCR。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessSkipsDocumentAlreadyInMergeTextStage() {
+        TestContext context = testContext();
+        DocumentJob merging = document().advanceStage(ProcessingStage.MERGE_TEXT, TWO_PAGES, TWO_PAGES,
+                OffsetDateTime.now());
+        context.documentRepository.save(merging);
+        context.taskRepository.saveAll(List.of(completedTask("task-1", 1), completedTask("task-2", 2)));
+
+        context.service.recordSuccess(completedTask("task-2", 2));
+
+        assertThat(context.resultRepository.findByDocumentId("doc-1")).isEmpty();
+        assertThat(context.documentRepository.findById("doc-1").orElseThrow().stage())
+                .isEqualTo(ProcessingStage.MERGE_TEXT);
+    }
+
+    /**
      * 聚合服务完成图片文档后应同步刷新批次摘要，避免公开批次 API 仍停留在旧进度。
      *
      * @author lvdaxianerplus
@@ -197,7 +239,29 @@ class DocumentPageTaskAggregationServiceTest {
 
         assertThat(processor.wasInTransaction()).isFalse();
         assertThat(transactionRunner.requiredResultCalls()).isOne();
-        assertThat(transactionRunner.requiredVoidCalls()).isOne();
+        assertThat(transactionRunner.requiredVoidCalls()).isEqualTo(3);
+    }
+
+    /**
+     * 页任务聚合应在慢 LLM 排版开始前先持久化保存文本阶段，避免页面误显示仍在 OCR。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void recordSuccessAdvancesToSaveTextBeforeMarkdownPostProcessingReturns() {
+        RecordingTransactionRunner transactionRunner = new RecordingTransactionRunner();
+        ProgressObservingMarkdownPostProcessor processor =
+                new ProgressObservingMarkdownPostProcessor(transactionRunner);
+        TestContext context = testContext(processor, transactionRunner);
+        processor.useRepository(context.documentRepository());
+
+        completeTwoPageDocument(context);
+
+        assertThat(processor.observedStage()).isEqualTo(ProcessingStage.SAVE_TEXT);
+        assertThat(processor.observedCurrentPage()).isEqualTo(TWO_PAGES);
+        assertThat(processor.observedTotalPages()).isEqualTo(TWO_PAGES);
+        assertThat(processor.wasInTransaction()).isFalse();
     }
 
     /**
@@ -598,6 +662,106 @@ class DocumentPageTaskAggregationServiceTest {
         public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
             wasInTransaction = transactionRunner.isInTransaction();
             return MarkdownPostProcessingResult.markdown("# 事务外排版");
+        }
+
+        /**
+         * 返回后处理调用是否发生在事务中。
+         *
+         * @return 是否处于事务中
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        boolean wasInTransaction() {
+            return wasInTransaction;
+        }
+    }
+
+    /**
+     * 记录 Markdown 后处理开始时文档进度的处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class ProgressObservingMarkdownPostProcessor implements MarkdownPostProcessor {
+
+        private final RecordingTransactionRunner transactionRunner;
+        private InMemoryDocumentJobRepository documentRepository;
+        private ProcessingStage observedStage;
+        private int observedCurrentPage;
+        private int observedTotalPages;
+        private boolean wasInTransaction;
+
+        /**
+         * 创建进度观察处理器。
+         *
+         * @param transactionRunner 事务状态来源
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        private ProgressObservingMarkdownPostProcessor(RecordingTransactionRunner transactionRunner) {
+            this.transactionRunner = transactionRunner;
+        }
+
+        /**
+         * 设置文档仓储。
+         *
+         * @param documentRepository 文档仓储
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        void useRepository(InMemoryDocumentJobRepository documentRepository) {
+            this.documentRepository = documentRepository;
+        }
+
+        /**
+         * 记录当前持久化阶段并返回 Markdown。
+         *
+         * @param request Markdown 后处理请求
+         * @return Markdown 结果
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
+            wasInTransaction = transactionRunner.isInTransaction();
+            DocumentJob document = documentRepository.findById(request.documentId()).orElseThrow();
+            observedStage = document.stage();
+            observedCurrentPage = document.currentPage();
+            observedTotalPages = document.totalPages();
+            return MarkdownPostProcessingResult.markdown("# 进度已推进");
+        }
+
+        /**
+         * 返回观察到的文档阶段。
+         *
+         * @return 文档阶段
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        ProcessingStage observedStage() {
+            return observedStage;
+        }
+
+        /**
+         * 返回观察到的当前页。
+         *
+         * @return 当前页
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        int observedCurrentPage() {
+            return observedCurrentPage;
+        }
+
+        /**
+         * 返回观察到的总页数。
+         *
+         * @return 总页数
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        int observedTotalPages() {
+            return observedTotalPages;
         }
 
         /**
