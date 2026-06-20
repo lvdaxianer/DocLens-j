@@ -67,22 +67,22 @@ final class OcrRoutingTestFixtures {
         }
 
         @Override
-        public List<OcrRuntimeNodeView> snapshot() {
+        public synchronized List<OcrRuntimeNodeView> snapshot() {
             return nodes.values().stream().map(this::withInflight).toList();
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> incrementInflight(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> incrementInflight(String nodeId) {
             return updateInflight(nodeId, 1);
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> decrementInflight(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> decrementInflight(String nodeId) {
             return updateInflight(nodeId, -1);
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> tryAcquireSlot(String nodeId) {
             tryAcquireCount++;
             return Optional.ofNullable(nodes.get(nodeId))
                     .filter(node -> availableSlots(nodeId) > 0)
@@ -90,18 +90,18 @@ final class OcrRoutingTestFixtures {
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> releaseSlot(String nodeId) {
             releaseCount++;
             return updateInflight(nodeId, -1);
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> incrementQueued(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> incrementQueued(String nodeId) {
             return updateQueued(nodeId, 1);
         }
 
         @Override
-        public Optional<OcrRuntimeNodeView> decrementQueued(String nodeId) {
+        public synchronized Optional<OcrRuntimeNodeView> decrementQueued(String nodeId) {
             return updateQueued(nodeId, -1);
         }
 
@@ -113,7 +113,7 @@ final class OcrRoutingTestFixtures {
          * @author lvdaxianerplus
          * @date 2026-06-08
          */
-        int inflight(String nodeId) {
+        synchronized int inflight(String nodeId) {
             return inflightImages.getOrDefault(nodeId, 0);
         }
 
@@ -124,7 +124,7 @@ final class OcrRoutingTestFixtures {
          * @author lvdaxianerplus
          * @date 2026-06-10
          */
-        int tryAcquireCount() {
+        synchronized int tryAcquireCount() {
             return tryAcquireCount;
         }
 
@@ -135,7 +135,7 @@ final class OcrRoutingTestFixtures {
          * @author lvdaxianerplus
          * @date 2026-06-10
          */
-        int releaseCount() {
+        synchronized int releaseCount() {
             return releaseCount;
         }
 
