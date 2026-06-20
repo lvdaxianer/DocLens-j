@@ -3,16 +3,19 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigService;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DefaultLlmMarkdownConfigTester;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.FileSystemMarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor.HttpMarkdownPostProcessorOptions;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.LlmMarkdownHealthChecker;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -126,6 +129,33 @@ public class DocLensLlmMarkdownAutoConfiguration {
     ExecutorService doclensLlmMarkdownChunkExecutor() {
         return Executors.newFixedThreadPool(LLM_MARKDOWN_CHUNK_WORKER_THREADS,
                 new NamedThreadPoolFactory("doclens-llm-markdown-chunk-"));
+    }
+
+    /**
+     * 创建 LLM Markdown chunk checkpoint 存储。
+     *
+     * @param properties Spring 配置属性
+     * @return Markdown chunk checkpoint 存储
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    MarkdownChunkCheckpointStore markdownChunkCheckpointStore(DocLensSpringProperties properties) {
+        return new FileSystemMarkdownChunkCheckpointStore(Path.of(properties.storageRoot()));
+    }
+
+    /**
+     * 创建 LLM Markdown checkpoint 写入线程池。
+     *
+     * @return LLM Markdown checkpoint 写入线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "doclensLlmMarkdownCheckpointExecutor")
+    ExecutorService doclensLlmMarkdownCheckpointExecutor() {
+        return Executors.newSingleThreadExecutor(new NamedThreadPoolFactory("doclens-llm-markdown-checkpoint-"));
     }
 
     /**

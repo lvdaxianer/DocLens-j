@@ -30,7 +30,7 @@
 
 ## 4. Spring wiring and cleanup
 
-- [ ] 4.1 Add auto-configuration tests for the default filesystem checkpoint
+- [x] 4.1 Add auto-configuration tests for the default filesystem checkpoint
   store and its checkpoint write executor under the configured storage root.
 - [ ] 4.2 Wire the checkpoint store and async write executor into
   `ConfigurableMarkdownPostProcessor` and `ChunkedMarkdownPostProcessor`.
