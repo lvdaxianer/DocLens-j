@@ -45,59 +45,65 @@ flowchart LR
 
 ## 端到端处理链路
 
-上传接口不等待 OCR 完成。它只负责校验文件、写入批次、文档和事件，然后把批次交给后台 worker。
-慢任务被拆成文档任务和页任务，最终由 OCR 节点槽位承载真实解析压力。
+以下用“100 个文档同时上传”为例说明完整流程。上传接口不等待 OCR 完成，只负责校验文件、
+写入批次、文档和事件，然后把批次交给后台 worker。慢任务被拆成文档准备、页任务、OCR 槽位、
+页结果聚合和批次收口多个阶段，每一层都有自己的等待位置和恢复机制。
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Caller as 调用方
-    participant Upload as CreateBatchUseCase
-    participant DB as 数据库
-    participant Batch as BatchProcessingUseCase
-    participant DocPool as documentProcessingExecutor
-    participant Prep as PageTaskPreparation
-    participant Worker as PageTaskWorkerScheduler
-    participant PagePool as pageTaskExecutor
-    participant Router as OcrRoutingService
-    participant Dispatch as OcrDispatchCoordinator
-    participant Node as OCR Node
-    participant Agg as PageTaskAggregation
+flowchart TD
+    A["调用方一次上传 100 个文档"] --> B["CreateBatchUseCase 短事务落库"]
+    B --> C["返回 batch_id，HTTP 请求结束"]
+    B --> D["BatchProcessingUseCase 读取 100 个 QUEUED 文档"]
 
-    Caller->>Upload: 上传批次
-    Upload->>DB: 短事务保存 batch/document/event
-    Upload-->>Caller: 返回 batch_id
-    Upload->>Batch: autoProcessOnUpload 时调度批次
-    Batch->>DocPool: 提交 QUEUED 文档
+    D --> E{"documentProcessingExecutor<br/>core/max = 6"}
+    E --> F["6 个文档立即开始文档准备"]
+    E --> G["94 个文档进入线程池队列等待"]
 
-    alt 图片/PDF/Word
-        DocPool->>Prep: 准备页图片
-        Prep->>DB: 写入页任务 QUEUED
-        Prep->>DB: 文档进入 OCR_QUEUED
-    else Markdown/TXT
-        DocPool->>DB: 直读文本并保存结果
-    end
+    F --> H{"文档类型"}
+    H -->|PDF / Word / 图片| I["转换或渲染为页图片"]
+    H -->|TXT / Markdown| J["直接提取文本并完成文档"]
 
-    Worker->>DB: 恢复过期 PROCESSING 页任务
-    Worker->>DB: 原子抢占 QUEUED 页任务
-    Worker->>PagePool: 执行抢占成功的页任务
-    PagePool->>Router: 单页 OCR
-    Router->>Dispatch: 申请节点槽位
+    I --> K["写入 ocr_document_page_tasks<br/>状态 QUEUED"]
+    K --> L["文档状态进入 OCR_QUEUED"]
 
-    alt 有健康节点且有空闲槽位
-        Dispatch->>Node: 占用 slot
-        Router->>Node: OCR 调用
-        Node-->>Router: OCR 结果
-        Router->>Dispatch: 释放 slot
-    else 候选节点存在但槽位已满
-        Dispatch->>Dispatch: 进入 pending queue
-    else 无健康候选节点
-        Dispatch-->>Router: 返回路由失败
-    end
+    F --> M["任一文档准备完成"]
+    M --> N["释放 1 个文档处理 slot"]
+    N --> O["从等待队列取下一个文档执行"]
+    O --> H
+    G -. 等待 slot .-> O
 
-    PagePool->>DB: upsert 页结果并完成页任务
-    PagePool->>Agg: 页成功通知
-    Agg->>DB: 全部页完成后合并文档结果并刷新批次
+    L --> P["PageTaskWorkerScheduler 周期扫描"]
+    P --> Q["恢复过期 PROCESSING 页任务"]
+    Q --> R["原子抢占 QUEUED 页任务<br/>写 locked_by / locked_until"]
+    R --> S["pageTaskExecutor 执行单页 OCR"]
+
+    S --> T{"OCR 节点是否有可用 slot"}
+    T -->|有| U["调用 OCR 节点解析"]
+    T -->|无| V["进入 OcrDispatchCoordinator pending queue"]
+    V --> W["节点释放 slot 后继续派发"]
+    W --> U
+
+    U --> X{"OCR 是否成功"}
+    X -->|成功| Y["upsert 页结果<br/>标记页任务 COMPLETED"]
+    X -->|失败| Z["按重试、故障转移、熔断策略处理"]
+    Z --> AA{"可重试或可切换节点"}
+    AA -->|是| S
+    AA -->|否| AB["记录页任务或文档失败原因"]
+
+    Y --> AC{"该文档所有页是否完成"}
+    AC -->|否| P
+    AC -->|是| AD["聚合页结果为文档结果"]
+    AD --> AE{"是否需要 LLM Markdown 后处理"}
+    AE -->|是| AF["进入 LLM chunk executor 分片处理"]
+    AE -->|否| AG["完成文档"]
+    AF --> AG
+
+    J --> AH{"100 个文档是否全部到达终态"}
+    AG --> AH
+    AB --> AH
+    AH -->|否| P
+    AH -->|是| AI["刷新批次状态"]
+    AI --> AJ["创建或投递回调<br/>Dashboard 可查看最终结果"]
 ```
 
 ## 并发处理能力
@@ -114,9 +120,11 @@ DocLens-j 的并发不是单一线程池，而是多层削峰：
 | 节点槽位 | OCR 节点真实并发 | `OcrDispatchCoordinator` pending queue | 按节点 `maxConcurrency` 控制下游压力 |
 | LLM 分片 | OCR 后 Markdown 后处理 | 独立 chunk executor | 大文本后处理不阻塞页级 OCR 调度 |
 
-例如一次上传 10 个多页 PDF，默认最多 6 个文档先进入文档准备线程，其余文档留在线程池队列。
-每个 PDF 会拆出多条页任务；未被 worker 抢占的页任务保持 `QUEUED`，抢占后如果 OCR 节点槽位不足，
-请求会进入 OCR pending queue。这样系统不会因为单个大批次把所有资源直接打满。
+例如一次上传 100 个多页 PDF，默认最多 6 个文档先进入文档准备线程，其余 94 个文档留在
+`documentProcessingExecutor` 队列。当前 6 个文档中任意一个完成“页图片准备并写入页任务”后，
+线程池立即释放 1 个 slot，并从等待队列取下一个文档继续准备。每个 PDF 会拆出多条页任务；
+未被 worker 抢占的页任务保持 `QUEUED`，抢占后如果 OCR 节点槽位不足，请求会进入 OCR pending queue。
+最终，所有页完成后才聚合为文档结果；100 个文档全部完成或失败后，批次才进入最终状态。
 
 ## 负载均衡能力
 
