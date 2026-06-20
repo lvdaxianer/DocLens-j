@@ -5,4 +5,4 @@
 - [x] 1.3 Implement `BatchStartupRecoveryService` and wire it to `BatchProcessingScheduler`.
 - [x] 1.4 Add MyBatis repository support and tests for distinct queued batch ID lookup.
 - [x] 1.5 Add Spring auto-configuration startup runner and tests, enabled only when automatic upload processing is enabled.
-- [ ] 1.6 Re-run the focused recovery/repository/auto-configuration tests and the broader ingestion/processing recovery test slice.
+- [x] 1.6 Re-run the focused recovery/repository/auto-configuration tests and the broader ingestion/processing recovery test slice.
