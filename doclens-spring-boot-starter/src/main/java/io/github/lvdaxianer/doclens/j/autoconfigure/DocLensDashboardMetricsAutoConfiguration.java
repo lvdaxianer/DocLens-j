@@ -9,12 +9,16 @@ import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvi
 import io.github.lvdaxianer.doclens.j.query.application.EmptyDashboardOcrMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrNodeMetricsAggregator;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings;
+import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardCoreThreadPools;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider.DashboardThreadPools;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -90,25 +94,78 @@ public class DocLensDashboardMetricsAutoConfiguration {
     /**
      * 创建 Dashboard 线程池集合。
      *
-     * @param documentProcessingExecutor 文档处理线程池
-     * @param ocrRequestExecutor OCR 请求线程池
-     * @param ocrHealthExecutor OCR 健康检查线程池
-     * @param callbackExecutor 回调线程池
-     * @param llmMarkdownChunkExecutor LLM Markdown 分块线程池
+     * @param context Spring 上下文
+     * @param pageTaskWorkerSettingsProvider 页任务 worker 生效配置
      * @return Dashboard 线程池集合
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
     @Bean
     @ConditionalOnMissingBean
     DashboardThreadPools dashboardThreadPools(
-            @Qualifier("doclensDocumentProcessingExecutor") ExecutorService documentProcessingExecutor,
-            @Qualifier("doclensOcrRequestExecutor") ExecutorService ocrRequestExecutor,
-            @Qualifier("doclensOcrHealthExecutor") ExecutorService ocrHealthExecutor,
-            @Qualifier("doclensCallbackExecutor") ExecutorService callbackExecutor,
-            @Qualifier("doclensLlmMarkdownChunkExecutor") ExecutorService llmMarkdownChunkExecutor
+            ApplicationContext context,
+            ObjectProvider<DocLensPageTaskWorkerAutoConfiguration.PageTaskWorkerRuntimeSettings>
+                    pageTaskWorkerSettingsProvider
     ) {
-        return new DashboardThreadPools(documentProcessingExecutor, ocrRequestExecutor, ocrHealthExecutor,
-                callbackExecutor, llmMarkdownChunkExecutor);
+        return new DashboardThreadPools(coreThreadPools(context), pageTaskExecutor(context),
+                pageTaskWorkerSettings(pageTaskWorkerSettingsProvider.getIfAvailable()));
+    }
+
+    /**
+     * 创建 Dashboard 核心线程池集合。
+     *
+     * @param context Spring 上下文
+     * @return Dashboard 核心线程池集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private DashboardCoreThreadPools coreThreadPools(ApplicationContext context) {
+        return new DashboardCoreThreadPools(context.getBean("doclensDocumentProcessingExecutor", ExecutorService.class),
+                context.getBean("doclensOcrRequestExecutor", ExecutorService.class),
+                context.getBean("doclensOcrHealthExecutor", ExecutorService.class),
+                context.getBean("doclensCallbackExecutor", ExecutorService.class),
+                context.getBean("doclensLlmMarkdownChunkExecutor", ExecutorService.class));
+    }
+
+    /**
+     * 获取页任务 OCR 执行线程池。
+     *
+     * @param context Spring 上下文
+     * @return 页任务 OCR 执行线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private Optional<ExecutorService> pageTaskExecutor(ApplicationContext context) {
+        if (context.containsBean("doclensPageTaskExecutor")) {
+            // 页任务 worker 已启用时，读取实际执行线程池用于运行态指标。
+            return Optional.of(context.getBean("doclensPageTaskExecutor", ExecutorService.class));
+        } else {
+            // 页任务 worker 未启用时，Dashboard 使用空线程池指标保持响应稳定。
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 映射页任务 worker 生效配置。
+     *
+     * @param settings 页任务 worker 生效配置
+     * @return Dashboard 页任务 worker 配置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private Optional<DashboardPageTaskWorkerSettings> pageTaskWorkerSettings(
+            DocLensPageTaskWorkerAutoConfiguration.PageTaskWorkerRuntimeSettings settings
+    ) {
+        if (settings == null) {
+            // 页任务 worker 未启用时，Dashboard 仍保留线程池空指标。
+            return Optional.empty();
+        } else {
+            // 页任务 worker 已启用时，暴露最终生效配置给前端展示容量来源。
+            return Optional.of(new DashboardPageTaskWorkerSettings(
+                    new DashboardPageTaskWorkerSettings.Execution(settings.batchSize(), settings.lockSeconds(),
+                            settings.poolSize(), settings.queueCapacity()),
+                    new DashboardPageTaskWorkerSettings.Recovery(settings.recoveryLimit(),
+                            settings.intervalMillis())));
+        }
     }
 }

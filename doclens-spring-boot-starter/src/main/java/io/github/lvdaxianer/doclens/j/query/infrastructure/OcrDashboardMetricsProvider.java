@@ -28,6 +28,33 @@ import java.util.stream.Collectors;
  */
 public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider {
 
+    /** 文档处理线程池指标键。 */
+    private static final String DOCUMENT_PROCESSING_POOL_KEY = "document_processing";
+    /** OCR 请求线程池指标键。 */
+    private static final String OCR_REQUEST_POOL_KEY = "ocr_request";
+    /** OCR 健康检查线程池指标键。 */
+    private static final String OCR_HEALTH_POOL_KEY = "ocr_health";
+    /** 回调线程池指标键。 */
+    private static final String CALLBACK_POOL_KEY = "callback";
+    /** LLM Markdown 分块线程池指标键。 */
+    private static final String LLM_MARKDOWN_CHUNK_POOL_KEY = "llm_markdown_chunk";
+    /** 页任务 worker 指标键。 */
+    private static final String PAGE_TASK_WORKER_POOL_KEY = "page_task_worker";
+    /** 当前运行时线程池大小指标键。 */
+    private static final String RUNTIME_POOL_SIZE_KEY = "runtime_pool_size";
+    /** 线程池大小指标键。 */
+    private static final String POOL_SIZE_KEY = "pool_size";
+    /** 页任务批量大小指标键。 */
+    private static final String BATCH_SIZE_KEY = "batch_size";
+    /** 页任务锁秒数指标键。 */
+    private static final String LOCK_SECONDS_KEY = "lock_seconds";
+    /** 队列容量指标键。 */
+    private static final String QUEUE_CAPACITY_KEY = "queue_capacity";
+    /** 恢复数量上限指标键。 */
+    private static final String RECOVERY_LIMIT_KEY = "recovery_limit";
+    /** 调度间隔毫秒指标键。 */
+    private static final String INTERVAL_MILLIS_KEY = "interval_millis";
+
     private final OcrNodeRepository nodeRepository;
     private final OcrNodeCallRepository callRepository;
     private final OcrRuntimeNodePool nodePool;
@@ -272,12 +299,46 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
      */
     private Map<String, Object> threadPoolMetrics() {
         return Map.ofEntries(
-                Map.entry("document_processing", threadPoolMetricsReader.read(threadPools.documentProcessing())),
-                Map.entry("ocr_request", threadPoolMetricsReader.read(threadPools.ocrRequest())),
-                Map.entry("ocr_health", threadPoolMetricsReader.read(threadPools.ocrHealth())),
-                Map.entry("callback", threadPoolMetricsReader.read(threadPools.callback())),
-                Map.entry("llm_markdown_chunk", threadPoolMetricsReader.read(threadPools.llmMarkdownChunk()))
+                Map.entry(DOCUMENT_PROCESSING_POOL_KEY, threadPools.documentProcessing()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics)),
+                Map.entry(OCR_REQUEST_POOL_KEY, threadPools.ocrRequest()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics)),
+                Map.entry(OCR_HEALTH_POOL_KEY, threadPools.ocrHealth()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics)),
+                Map.entry(CALLBACK_POOL_KEY, threadPools.callback()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics)),
+                Map.entry(LLM_MARKDOWN_CHUNK_POOL_KEY, threadPools.llmMarkdownChunk()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics)),
+                Map.entry(PAGE_TASK_WORKER_POOL_KEY, pageTaskWorkerMetrics())
         );
+    }
+
+    /**
+     * 读取线程池指标。
+     *
+     * @param executorService 线程池
+     * @return 线程池指标
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private Map<String, Object> readThreadPoolMetrics(ExecutorService executorService) {
+        return threadPoolMetricsReader.read(executorService);
+    }
+
+    /**
+     * 获取页任务 worker 指标。
+     *
+     * @return 页任务 worker 指标
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private Map<String, Object> pageTaskWorkerMetrics() {
+        Map<String, Object> metrics =
+                new LinkedHashMap<>(threadPools.pageTaskWorkerExecutor()
+                        .map(this::readThreadPoolMetrics).orElseGet(threadPoolMetricsReader::emptyMetrics));
+        metrics.put(RUNTIME_POOL_SIZE_KEY, metrics.get(POOL_SIZE_KEY));
+        threadPools.pageTaskWorkerSettings().ifPresent(settings -> metrics.putAll(settings.toMetrics()));
+        return Map.copyOf(metrics);
     }
 
     /**
@@ -328,22 +389,184 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     }
 
     /**
-     * Dashboard 线程池集合。
+     * Dashboard 核心线程池集合。
      *
      * @param documentProcessing 文档处理线程池
      * @param ocrRequest OCR 请求线程池
      * @param ocrHealth OCR 健康检查线程池
      * @param callback 回调线程池
+     * @param llmMarkdownChunk LLM Markdown 分块线程池
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
-    public record DashboardThreadPools(
+    public record DashboardCoreThreadPools(
             ExecutorService documentProcessing,
             ExecutorService ocrRequest,
             ExecutorService ocrHealth,
             ExecutorService callback,
             ExecutorService llmMarkdownChunk
     ) {
+    }
+
+    /**
+     * Dashboard 线程池集合。
+     *
+     * @param core 核心线程池集合
+     * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
+     * @param pageTaskWorkerSettings 页任务 worker 生效配置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    public record DashboardThreadPools(
+            DashboardCoreThreadPools core,
+            Optional<ExecutorService> pageTaskWorkerExecutor,
+            Optional<DashboardPageTaskWorkerSettings> pageTaskWorkerSettings
+    ) {
+
+        /**
+         * 创建 Dashboard 线程池集合。
+         *
+         * @param core 核心线程池集合
+         * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
+         * @param pageTaskWorkerSettings 页任务 worker 生效配置
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        public DashboardThreadPools {
+            pageTaskWorkerExecutor = pageTaskWorkerExecutor == null ? Optional.empty() : pageTaskWorkerExecutor;
+            pageTaskWorkerSettings = pageTaskWorkerSettings == null ? Optional.empty() : pageTaskWorkerSettings;
+        }
+
+        /**
+         * 创建无页任务 worker 配置的 Dashboard 线程池集合。
+         *
+         * @param core 核心线程池集合
+         * @param pageTaskWorkerExecutor 页任务 OCR 执行线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        public DashboardThreadPools(
+                DashboardCoreThreadPools core,
+                ExecutorService pageTaskWorkerExecutor
+        ) {
+            this(core, Optional.ofNullable(pageTaskWorkerExecutor), Optional.empty());
+        }
+
+        /**
+         * 获取文档处理线程池。
+         *
+         * @return 文档处理线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Optional<ExecutorService> documentProcessing() {
+            return Optional.ofNullable(core).map(DashboardCoreThreadPools::documentProcessing);
+        }
+
+        /**
+         * 获取 OCR 请求线程池。
+         *
+         * @return OCR 请求线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Optional<ExecutorService> ocrRequest() {
+            return Optional.ofNullable(core).map(DashboardCoreThreadPools::ocrRequest);
+        }
+
+        /**
+         * 获取 OCR 健康检查线程池。
+         *
+         * @return OCR 健康检查线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Optional<ExecutorService> ocrHealth() {
+            return Optional.ofNullable(core).map(DashboardCoreThreadPools::ocrHealth);
+        }
+
+        /**
+         * 获取回调线程池。
+         *
+         * @return 回调线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Optional<ExecutorService> callback() {
+            return Optional.ofNullable(core).map(DashboardCoreThreadPools::callback);
+        }
+
+        /**
+         * 获取 LLM Markdown 分块线程池。
+         *
+         * @return LLM Markdown 分块线程池
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Optional<ExecutorService> llmMarkdownChunk() {
+            return Optional.ofNullable(core).map(DashboardCoreThreadPools::llmMarkdownChunk);
+        }
+    }
+
+    /**
+     * 页任务 worker 生效配置。
+     *
+     * @param execution 页任务 worker 执行配置
+     * @param recovery 页任务 worker 恢复配置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    public record DashboardPageTaskWorkerSettings(
+            Execution execution,
+            Recovery recovery
+    ) {
+
+        /**
+         * 转换为 Dashboard 指标键值。
+         *
+         * @return Dashboard 指标键值
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        private Map<String, Object> toMetrics() {
+            return Map.ofEntries(
+                    Map.entry(BATCH_SIZE_KEY, execution.batchSize()),
+                    Map.entry(LOCK_SECONDS_KEY, execution.lockSeconds()),
+                    Map.entry(POOL_SIZE_KEY, execution.poolSize()),
+                    Map.entry(QUEUE_CAPACITY_KEY, execution.queueCapacity()),
+                    Map.entry(RECOVERY_LIMIT_KEY, recovery.recoveryLimit()),
+                    Map.entry(INTERVAL_MILLIS_KEY, recovery.intervalMillis())
+            );
+        }
+
+        /**
+         * 页任务 worker 执行配置。
+         *
+         * @param batchSize 每轮抢占页任务数量
+         * @param lockSeconds 页任务锁秒数
+         * @param poolSize 页任务执行线程数
+         * @param queueCapacity 页任务执行队列容量
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        public record Execution(
+                int batchSize,
+                int lockSeconds,
+                int poolSize,
+                int queueCapacity
+        ) {
+        }
+
+        /**
+         * 页任务 worker 恢复配置。
+         *
+         * @param recoveryLimit 每轮恢复过期页任务数量
+         * @param intervalMillis 页任务扫描间隔毫秒
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        public record Recovery(int recoveryLimit, int intervalMillis) {
+        }
     }
 
 }

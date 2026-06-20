@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +16,25 @@ import org.junit.jupiter.api.Test;
  * @date 2026-06-09
  */
 class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSupport {
+
+    /** OCR 请求核心线程数。 */
+    private static final int OCR_REQUEST_CORE_POOL_SIZE = 3;
+    /** OCR 请求最大线程数。 */
+    private static final int OCR_REQUEST_MAXIMUM_POOL_SIZE = 30;
+    /** OCR 请求队列容量。 */
+    private static final int OCR_REQUEST_QUEUE_CAPACITY = 50;
+    /** 页任务 worker 线程数。 */
+    private static final int PAGE_TASK_WORKER_POOL_SIZE = 30;
+    /** 页任务 worker 队列容量。 */
+    private static final int PAGE_TASK_WORKER_QUEUE_CAPACITY = 200;
+    /** 页任务 worker 抢占批量。 */
+    private static final int PAGE_TASK_WORKER_BATCH_SIZE = 18;
+    /** 页任务 worker 锁秒数。 */
+    private static final int PAGE_TASK_WORKER_LOCK_SECONDS = 630;
+    /** 页任务 worker 恢复上限。 */
+    private static final int PAGE_TASK_WORKER_RECOVERY_LIMIT = 32;
+    /** 页任务 worker 轮询间隔。 */
+    private static final int PAGE_TASK_WORKER_INTERVAL_MILLIS = 500;
 
     /*
      * 该类只保留 OCR 资源面板指标。
@@ -44,6 +65,117 @@ class OcrDashboardMetricsProviderTest extends OcrDashboardMetricsProviderTestSup
 
         assertThat(resources).containsEntry("healthy_node_count", 2L);
         assertResourceNodes(resources);
+    }
+
+    /**
+     * OCR 资源指标应展示请求线程池容量和页任务 worker 生效容量。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void ocrResourcesIncludesThreadPoolCapacityAndPageTaskWorkerRuntime() {
+        InMemoryOcrNodeRepository nodeRepository = new InMemoryOcrNodeRepository(List.of(
+                offlineNode(FINANCE_NODE_ID, FINANCE_NODE_NAME)
+        ));
+        InMemoryOcrNodeCallRepository callRepository = new InMemoryOcrNodeCallRepository(List.of());
+        ThreadPoolExecutor ocrRequestExecutor = testExecutor(OCR_REQUEST_CORE_POOL_SIZE,
+                OCR_REQUEST_MAXIMUM_POOL_SIZE, OCR_REQUEST_QUEUE_CAPACITY);
+        ThreadPoolExecutor pageTaskExecutor = testExecutor(PAGE_TASK_WORKER_POOL_SIZE,
+                PAGE_TASK_WORKER_POOL_SIZE, PAGE_TASK_WORKER_QUEUE_CAPACITY);
+        try {
+            OcrDashboardMetricsProvider provider = providerWithThreadPools(nodeRepository, callRepository,
+                    dashboardThreadPools(ocrRequestExecutor, pageTaskExecutor));
+
+            Map<String, Object> resources = provider.ocrResources();
+
+            assertThreadPoolCapacity(resources);
+        } finally {
+            shutdownExecutors(ocrRequestExecutor, pageTaskExecutor);
+        }
+    }
+
+    /**
+     * 创建 Dashboard 线程池集合。
+     *
+     * @param ocrRequestExecutor OCR 请求线程池
+     * @param pageTaskExecutor 页任务 OCR 执行线程池
+     * @return Dashboard 线程池集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private OcrDashboardMetricsProvider.DashboardThreadPools dashboardThreadPools(
+            ThreadPoolExecutor ocrRequestExecutor,
+            ThreadPoolExecutor pageTaskExecutor
+    ) {
+        OcrDashboardMetricsProvider.DashboardCoreThreadPools coreThreadPools =
+                new OcrDashboardMetricsProvider.DashboardCoreThreadPools(null, ocrRequestExecutor, null, null, null);
+        return new OcrDashboardMetricsProvider.DashboardThreadPools(coreThreadPools, Optional.of(pageTaskExecutor),
+                Optional.of(pageTaskWorkerSettings()));
+    }
+
+    /**
+     * 断言线程池容量指标。
+     *
+     * @param resources 资源指标响应
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void assertThreadPoolCapacity(Map<String, Object> resources) {
+        assertThat(resources.get("thread_pools")).asInstanceOf(InstanceOfAssertFactories.MAP)
+                .extractingByKey("ocr_request")
+                .asInstanceOf(InstanceOfAssertFactories.MAP)
+                .containsEntry("core_pool_size", OCR_REQUEST_CORE_POOL_SIZE)
+                .containsEntry("maximum_pool_size", OCR_REQUEST_MAXIMUM_POOL_SIZE)
+                .containsKey("largest_pool_size");
+        assertThat(resources.get("thread_pools")).asInstanceOf(InstanceOfAssertFactories.MAP)
+                .extractingByKey("page_task_worker")
+                .asInstanceOf(InstanceOfAssertFactories.MAP)
+                .containsEntry("pool_size", PAGE_TASK_WORKER_POOL_SIZE)
+                .containsEntry("runtime_pool_size", 0)
+                .containsEntry("core_pool_size", PAGE_TASK_WORKER_POOL_SIZE)
+                .containsEntry("maximum_pool_size", PAGE_TASK_WORKER_POOL_SIZE)
+                .containsEntry("batch_size", PAGE_TASK_WORKER_BATCH_SIZE)
+                .containsEntry("lock_seconds", PAGE_TASK_WORKER_LOCK_SECONDS)
+                .containsEntry("queue_capacity", PAGE_TASK_WORKER_QUEUE_CAPACITY)
+                .containsEntry("recovery_limit", PAGE_TASK_WORKER_RECOVERY_LIMIT)
+                .containsEntry("interval_millis", PAGE_TASK_WORKER_INTERVAL_MILLIS);
+    }
+
+    /**
+     * 创建页任务 worker 生效设置。
+     *
+     * @return 页任务 worker 生效设置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings pageTaskWorkerSettings() {
+        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings(pageTaskExecutionSettings(),
+                pageTaskRecoverySettings());
+    }
+
+    /**
+     * 创建页任务 worker 执行设置。
+     *
+     * @return 页任务 worker 执行设置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Execution pageTaskExecutionSettings() {
+        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Execution(PAGE_TASK_WORKER_BATCH_SIZE,
+                PAGE_TASK_WORKER_LOCK_SECONDS, PAGE_TASK_WORKER_POOL_SIZE, PAGE_TASK_WORKER_QUEUE_CAPACITY);
+    }
+
+    /**
+     * 创建页任务 worker 恢复设置。
+     *
+     * @return 页任务 worker 恢复设置
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Recovery pageTaskRecoverySettings() {
+        return new OcrDashboardMetricsProvider.DashboardPageTaskWorkerSettings.Recovery(
+                PAGE_TASK_WORKER_RECOVERY_LIMIT, PAGE_TASK_WORKER_INTERVAL_MILLIS);
     }
 
     /**

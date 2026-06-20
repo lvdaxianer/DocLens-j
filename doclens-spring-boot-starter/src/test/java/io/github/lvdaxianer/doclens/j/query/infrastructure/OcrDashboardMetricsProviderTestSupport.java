@@ -10,12 +10,17 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import io.github.lvdaxianer.doclens.j.shared.infrastructure.NamedThreadPoolFactory;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * OCR Dashboard 指标测试共享支持。
@@ -55,6 +60,8 @@ abstract class OcrDashboardMetricsProviderTestSupport {
     protected static final String CONTRACT_NODE_NAME = "合同 OCR 节点";
     /** 内存节点仓储初始容量。 */
     private static final int TEST_NODE_CAPACITY = 8;
+    /** 测试线程保活秒数。 */
+    private static final int TEST_THREAD_KEEP_ALIVE_SECONDS = 60;
 
     /**
      * 创建待测指标提供器。
@@ -94,8 +101,58 @@ abstract class OcrDashboardMetricsProviderTestSupport {
         OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
         nodePool.initialize();
         return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool,
-                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null, null, null, null),
+                new OcrDashboardMetricsProvider.DashboardThreadPools(null, null),
                 batchHitTracker);
+    }
+
+    /**
+     * 创建带线程池指标的待测指标提供器。
+     *
+     * @param nodeRepository 节点仓储
+     * @param callRepository 调用记录仓储
+     * @param threadPools Dashboard 线程池集合
+     * @return 指标提供器
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    protected OcrDashboardMetricsProvider providerWithThreadPools(
+            InMemoryOcrNodeRepository nodeRepository,
+            InMemoryOcrNodeCallRepository callRepository,
+            OcrDashboardMetricsProvider.DashboardThreadPools threadPools
+    ) {
+        OcrRuntimeNodePool nodePool = new OcrRuntimeNodePool(nodeRepository);
+        nodePool.initialize();
+        return new OcrDashboardMetricsProvider(nodeRepository, callRepository, nodePool, threadPools,
+                new InMemoryBatchHitTracker(List.of()));
+    }
+
+    /**
+     * 创建测试线程池。
+     *
+     * @param corePoolSize 核心线程数
+     * @param maximumPoolSize 最大线程数
+     * @param queueCapacity 队列容量
+     * @return 测试线程池
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    protected ThreadPoolExecutor testExecutor(int corePoolSize, int maximumPoolSize, int queueCapacity) {
+        return new ThreadPoolExecutor(corePoolSize, maximumPoolSize, TEST_THREAD_KEEP_ALIVE_SECONDS,
+                TimeUnit.SECONDS, new LinkedBlockingQueue<>(queueCapacity),
+                new NamedThreadPoolFactory("doclens-test-dashboard-metrics-"));
+    }
+
+    /**
+     * 关闭测试线程池。
+     *
+     * @param executors 线程池集合
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    protected void shutdownExecutors(ExecutorService... executors) {
+        for (ExecutorService executor : executors) {
+            executor.shutdownNow();
+        }
     }
 
     /**

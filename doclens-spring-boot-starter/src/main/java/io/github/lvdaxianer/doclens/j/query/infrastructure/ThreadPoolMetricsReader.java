@@ -12,6 +12,21 @@ import java.util.concurrent.ThreadPoolExecutor;
  */
 public class ThreadPoolMetricsReader {
 
+    /** 活跃线程数指标键。 */
+    private static final String ACTIVE_COUNT_KEY = "active_count";
+    /** 队列大小指标键。 */
+    private static final String QUEUE_SIZE_KEY = "queue_size";
+    /** 当前线程池大小指标键。 */
+    private static final String POOL_SIZE_KEY = "pool_size";
+    /** 核心线程池大小指标键。 */
+    private static final String CORE_POOL_SIZE_KEY = "core_pool_size";
+    /** 最大线程池大小指标键。 */
+    private static final String MAXIMUM_POOL_SIZE_KEY = "maximum_pool_size";
+    /** 历史最大线程池大小指标键。 */
+    private static final String LARGEST_POOL_SIZE_KEY = "largest_pool_size";
+    /** 已完成任务数指标键。 */
+    private static final String COMPLETED_TASK_COUNT_KEY = "completed_task_count";
+
     /**
      * 读取线程池运行指标。
      *
@@ -38,10 +53,13 @@ public class ThreadPoolMetricsReader {
      */
     private Map<String, Object> threadPoolMetrics(ThreadPoolExecutor executor) {
         return Map.ofEntries(
-                Map.entry("active_count", executor.getActiveCount()),
-                Map.entry("queue_size", executor.getQueue().size()),
-                Map.entry("pool_size", executor.getPoolSize()),
-                Map.entry("completed_task_count", executor.getCompletedTaskCount())
+                Map.entry(ACTIVE_COUNT_KEY, executor.getActiveCount()),
+                Map.entry(QUEUE_SIZE_KEY, executor.getQueue().size()),
+                Map.entry(POOL_SIZE_KEY, executor.getPoolSize()),
+                Map.entry(CORE_POOL_SIZE_KEY, executor.getCorePoolSize()),
+                Map.entry(MAXIMUM_POOL_SIZE_KEY, executor.getMaximumPoolSize()),
+                Map.entry(LARGEST_POOL_SIZE_KEY, executor.getLargestPoolSize()),
+                Map.entry(COMPLETED_TASK_COUNT_KEY, executor.getCompletedTaskCount())
         );
     }
 
@@ -52,12 +70,15 @@ public class ThreadPoolMetricsReader {
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
-    private Map<String, Object> emptyMetrics() {
+    public Map<String, Object> emptyMetrics() {
         return Map.ofEntries(
-                Map.entry("active_count", 0),
-                Map.entry("queue_size", 0),
-                Map.entry("pool_size", 0),
-                Map.entry("completed_task_count", 0L)
+                Map.entry(ACTIVE_COUNT_KEY, 0),
+                Map.entry(QUEUE_SIZE_KEY, 0),
+                Map.entry(POOL_SIZE_KEY, 0),
+                Map.entry(CORE_POOL_SIZE_KEY, 0),
+                Map.entry(MAXIMUM_POOL_SIZE_KEY, 0),
+                Map.entry(LARGEST_POOL_SIZE_KEY, 0),
+                Map.entry(COMPLETED_TASK_COUNT_KEY, 0L)
         );
     }
 }
