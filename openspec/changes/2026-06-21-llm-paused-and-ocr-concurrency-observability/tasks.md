@@ -1,7 +1,7 @@
 ## 1. LLM paused result state
 
 - [x] 1.1 Add backend TDD coverage and implement LLM config-state classification so paused Markdown LLM configs return OCR passthrough with a paused warning and do not expose credential-resolution failures.
-- [ ] 1.2 Add failing dashboard tests for paused LLM result wording, then update result display rules to show `LLM 已暂停`.
+- [x] 1.2 Add failing dashboard tests for paused LLM result wording, then update result display rules to show `LLM 已暂停`.
 - [ ] 1.3 Run focused backend/frontend tests and relevant broader slices for LLM result state.
 
 ## 2. OCR concurrency observability and same-node parallelism

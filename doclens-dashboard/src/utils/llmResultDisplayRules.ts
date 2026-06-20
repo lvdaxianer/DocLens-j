@@ -8,6 +8,7 @@ export interface DocumentResultDisplayPayload {
 
 export const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_failed'
 export const LLM_DISABLED_WARNING = 'no_available_llm_config'
+export const LLM_PAUSED_WARNING = 'llm_markdown_paused'
 const OCR_TEXT_FIELD = 'ocr_text'
 
 /**
@@ -79,6 +80,8 @@ export function llmPostProcessingStatus(result: DocumentResultDisplayPayload): s
     return 'LLM 已排版'
   } else if (isLlmMarkdownFallback(result)) {
     return 'LLM 回退 OCR'
+  } else if (isLlmMarkdownPaused(result)) {
+    return 'LLM 已暂停'
   } else if (isLlmMarkdownDisabled(result)) {
     return 'LLM 未配置'
   } else {
@@ -99,6 +102,8 @@ export function llmStageDescription(result: DocumentResultDisplayPayload): strin
     return '已输出 Markdown 结构化结果'
   } else if (isLlmMarkdownFallback(result)) {
     return 'LLM 排版失败，已回退 OCR 纯文本'
+  } else if (isLlmMarkdownPaused(result)) {
+    return 'LLM 后处理已暂停，返回 OCR 纯文本'
   } else if (isLlmMarkdownDisabled(result)) {
     return '未配置 LLM 后处理，返回 OCR 纯文本'
   } else {
@@ -116,4 +121,16 @@ export function llmStageDescription(result: DocumentResultDisplayPayload): strin
  */
 function isLlmMarkdownDisabled(result: DocumentResultDisplayPayload): boolean {
   return result.warnings.includes(LLM_DISABLED_WARNING)
+}
+
+/**
+ * 判断结果是否明确表示当前 LLM 后处理已暂停。
+ *
+ * @param result 文档结果载荷
+ * @returns 是否明确暂停 LLM
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+function isLlmMarkdownPaused(result: DocumentResultDisplayPayload): boolean {
+  return result.warnings.includes(LLM_PAUSED_WARNING)
 }
