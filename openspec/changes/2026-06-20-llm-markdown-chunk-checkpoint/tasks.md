@@ -1,0 +1,47 @@
+## 1. Checkpoint file store
+
+- [ ] 1.1 Add failing tests for a filesystem chunk checkpoint store that writes
+  `manifest.json`, `<chunkNo>/README.md`, and `<chunkNo>/meta.json` under
+  `llm-markdown-chunks/<documentId>/`, using zero-padded chunk directories.
+- [ ] 1.2 Implement the checkpoint file store with plan fingerprint validation,
+  non-empty README validation, checksum metadata, and temp-file atomic moves.
+- [ ] 1.3 Add focused tests that reject stale checkpoints when the current plan
+  identity differs from the persisted manifest.
+
+## 2. Chunk processor recovery
+
+- [ ] 2.1 Add a failing processor test proving valid checkpointed chunks are
+  returned without calling the LLM delegate, while missing chunks still call the
+  delegate and are merged in order.
+- [ ] 2.2 Wire checkpoint lookup and successful chunk checkpoint scheduling into
+  the chunked Markdown processor without changing the public
+  `MarkdownPostProcessor` contract.
+- [ ] 2.3 Add a focused test proving fallback chunks produced after exhausted
+  retries are not checkpointed and will be retried in a later run.
+
+## 3. Crash-resume and async durability
+
+- [ ] 3.1 Add a crash-resume simulation test that seeds completed chunk files for
+  an interrupted document and proves the next run processes only missing chunks.
+- [ ] 3.2 Add an async-save verification test proving checkpoint writes are not
+  performed inline in the LLM worker path, but the processor waits for pending
+  checkpoint writes before returning the final document result.
+- [ ] 3.3 Implement checkpoint write coordination and error handling so write
+  failures are logged without replacing successful in-memory chunk results.
+
+## 4. Spring wiring and cleanup
+
+- [ ] 4.1 Add auto-configuration tests for the default filesystem checkpoint
+  store and its checkpoint write executor under the configured storage root.
+- [ ] 4.2 Wire the checkpoint store and async write executor into
+  `ConfigurableMarkdownPostProcessor` and `ChunkedMarkdownPostProcessor`.
+- [ ] 4.3 Extend document and batch delete behavior so checkpoint directories are
+  removed when documents or batches are explicitly deleted.
+
+## 5. Verification and archive
+
+- [ ] 5.1 Re-run focused Markdown chunking, checkpoint store, delete, and startup
+  recovery tests plus the relevant broader backend test slice.
+- [ ] 5.2 Run strict OpenSpec validation, plan-implementation audit, and
+  code-review-spec over the completed diff.
+- [ ] 5.3 Archive the completed OpenSpec change after all tasks pass.
