@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Boxes, CheckCircle2, CircleAlert, Server } from '@lucide/vue'
+import { Activity, Boxes, CheckCircle2, CircleAlert, Server } from '@lucide/vue'
 import { NButton, NIcon, NTag } from 'naive-ui'
 
 import type { OcrModel } from '@/types/ocrResources'
@@ -90,6 +90,12 @@ function selectModel(modelKey: string): void {
           <NIcon :component="CircleAlert" />
           {{ formatNumber(unhealthyNodeCount(model)) }} 异常
         </span>
+        <span>
+          <NIcon :component="Activity" />
+          并发 {{ formatNumber(model.inflight_images) }} / {{ formatNumber(model.max_concurrency) }}
+        </span>
+        <span>启用容量 {{ formatNumber(model.enabled_max_concurrency) }}</span>
+        <span>全局容量 {{ formatNumber(model.global_max_concurrency) }}</span>
       </div>
 
       <div class="ocr-model__footer">

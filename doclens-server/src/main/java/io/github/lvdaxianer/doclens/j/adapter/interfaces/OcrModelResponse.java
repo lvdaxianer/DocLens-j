@@ -3,8 +3,9 @@ package io.github.lvdaxianer.doclens.j.adapter.interfaces;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelDefinition;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
-import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
+import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeMetrics;
 import java.util.List;
+import java.util.Map;
 
 /**
  * OCR 模型响应 DTO。
@@ -15,7 +16,7 @@ import java.util.List;
 public class OcrModelResponse {
 
     private final OcrModelDefinition definition;
-    private final NodeCounts nodeCounts;
+    private final OcrModelNodeCounts nodeCounts;
 
     /**
      * 创建 OCR 模型响应 DTO。
@@ -25,7 +26,7 @@ public class OcrModelResponse {
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    private OcrModelResponse(OcrModelDefinition definition, NodeCounts nodeCounts) {
+    private OcrModelResponse(OcrModelDefinition definition, OcrModelNodeCounts nodeCounts) {
         this.definition = definition;
         this.nodeCounts = nodeCounts;
     }
@@ -40,7 +41,25 @@ public class OcrModelResponse {
      * @date 2026-06-09
      */
     public static OcrModelResponse from(OcrModelDefinition definition, List<OcrNode> nodes) {
-        return new OcrModelResponse(definition, NodeCounts.from(nodes));
+        return new OcrModelResponse(definition, OcrModelNodeCounts.from(nodes));
+    }
+
+    /**
+     * 从模型定义、节点集合与指标创建响应。
+     *
+     * @param definition OCR 模型定义
+     * @param nodes 模型节点集合
+     * @param metricsByNodeId 节点指标映射
+     * @return OCR 模型响应
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    public static OcrModelResponse from(
+            OcrModelDefinition definition,
+            List<OcrNode> nodes,
+            Map<String, OcrNodeMetrics> metricsByNodeId
+    ) {
+        return new OcrModelResponse(definition, OcrModelNodeCounts.from(nodes, metricsByNodeId));
     }
 
     /**
@@ -187,51 +206,51 @@ public class OcrModelResponse {
     }
 
     /**
-     * OCR 节点统计信息。
+     * 读取模型当前解析中图片数。
      *
-     * @param nodeCount 节点数量
-     * @param healthyNodeCount 健康节点数量
-     * @param enabledNodeCount 启用节点数量
+     * @return 当前解析中图片数
      * @author lvdaxianerplus
-     * @date 2026-06-12
+     * @date 2026-06-21
      */
-    private record NodeCounts(int nodeCount, int healthyNodeCount, int enabledNodeCount) {
-
-        /**
-         * 从节点集合创建统计信息。
-         *
-         * @param nodes OCR 节点集合
-         * @return 节点统计信息
-         * @author lvdaxianerplus
-         * @date 2026-06-12
-         */
-        private static NodeCounts from(List<OcrNode> nodes) {
-            return new NodeCounts(nodes.size(), OcrModelResponse.healthyNodeCount(nodes),
-                    OcrModelResponse.enabledNodeCount(nodes));
-        }
+    @JsonProperty("inflight_images")
+    public int inflightImages() {
+        return nodeCounts.inflightImages();
     }
 
     /**
-     * 统计健康节点数量。
+     * 读取模型总最大并发容量。
      *
-     * @param nodes OCR 节点集合
-     * @return 健康节点数量
+     * @return 总最大并发容量
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
-    private static int healthyNodeCount(List<OcrNode> nodes) {
-        return (int) nodes.stream().filter(node -> node.status() == OcrNodeStatus.UP).count();
+    @JsonProperty("max_concurrency")
+    public int maxConcurrency() {
+        return nodeCounts.maxConcurrency();
     }
 
     /**
-     * 统计启用节点数量。
+     * 读取模型启用节点并发容量。
      *
-     * @param nodes OCR 节点集合
-     * @return 启用节点数量
+     * @return 启用节点并发容量
      * @author lvdaxianerplus
-     * @date 2026-06-09
+     * @date 2026-06-21
      */
-    private static int enabledNodeCount(List<OcrNode> nodes) {
-        return (int) nodes.stream().filter(OcrNode::enabled).count();
+    @JsonProperty("enabled_max_concurrency")
+    public int enabledMaxConcurrency() {
+        return nodeCounts.enabledMaxConcurrency();
     }
+
+    /**
+     * 读取模型全局调度并发容量。
+     *
+     * @return 全局调度并发容量
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @JsonProperty("global_max_concurrency")
+    public int globalMaxConcurrency() {
+        return nodeCounts.globalMaxConcurrency();
+    }
+
 }

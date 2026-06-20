@@ -13,6 +13,10 @@ export interface OcrModel {
   node_count: number
   healthy_node_count: number
   enabled_node_count: number
+  inflight_images?: number
+  max_concurrency?: number
+  enabled_max_concurrency?: number
+  global_max_concurrency?: number
 }
 
 export interface OcrModelListResponse {

@@ -136,6 +136,7 @@ function governanceSummary(node: OcrNode) {
             <th>启用</th>
             <th>全局</th>
             <th>解析中</th>
+            <th>最大并发</th>
             <th>排队</th>
             <th>今日处理</th>
             <th>成功</th>
@@ -188,6 +189,7 @@ function governanceSummary(node: OcrNode) {
               </NTag>
             </td>
             <td>{{ formatNumber(node.inflight_images) }}</td>
+            <td>{{ formatNumber(node.max_concurrency) }}</td>
             <td>{{ formatNumber(node.queued_images) }}</td>
             <td>{{ formatNumber(node.processed_images_today) }}</td>
             <td>{{ formatNumber(node.success_images) }}</td>

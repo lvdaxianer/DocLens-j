@@ -6,9 +6,9 @@
 
 ## 2. Expose OCR capacity clearly
 
-- [ ] 2.1 Add failing backend and frontend tests for model-level concurrency capacity and node max concurrency display.
-- [ ] 2.2 Add aggregate capacity fields to the model list response and render model/node capacity in the OCR resources UI.
-- [ ] 2.3 Verify focused capacity tests and the broader backend/frontend slices.
+- [x] 2.1 Add failing backend and frontend tests for model-level concurrency capacity and node max concurrency display.
+- [x] 2.2 Add aggregate capacity fields to the model list response and render model/node capacity in the OCR resources UI.
+- [x] 2.3 Verify focused capacity tests and the broader backend/frontend slices.
 
 ## 3. Clarify batch OCR route attribution
 
