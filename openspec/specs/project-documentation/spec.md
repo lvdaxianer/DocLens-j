@@ -71,3 +71,12 @@ configuration, local development workflows, and technical delivery.
   positioning, architecture, high-volume concurrency, OCR load balancing,
   high-availability controls, duplicate-consumption protection, observability,
   capacity tuning, and deliberate technical trade-offs
+
+#### Scenario: Reader wants a full high-volume processing flow
+
+- **WHEN** a reader needs to understand what happens after 100 documents are
+  uploaded at the same time
+- **THEN** the technical delivery document includes a flowchart that follows the
+  documents from upload acknowledgement through document executor queueing,
+  page-task persistence, OCR slot scheduling, retry or failure handling,
+  aggregation, optional LLM processing, and final batch completion
