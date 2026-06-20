@@ -40,6 +40,8 @@ REQUIRED_CONTENT=(
   "docs/technical-delivery.md|技术交付文档"
   "docs/technical-delivery.md|高可用"
   "docs/technical-delivery.md|技术取舍"
+  "docs/technical-delivery.md|flowchart TD"
+  "docs/technical-delivery.md|100 个文档"
 )
 
 # Ensure each planned documentation file exists before content checks run.
