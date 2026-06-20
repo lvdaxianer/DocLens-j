@@ -44,6 +44,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     private final MarkdownChunker chunker;
     private final int maxContextTokens;
     private final ExecutorService chunkExecutor;
+    private final ExecutorService checkpointExecutor;
     private final ObjectMapper objectMapper;
     private final MarkdownChunkCheckpointStore checkpointStore;
 
@@ -81,7 +82,8 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
         this.delegate = options.delegate();
         this.chunker = options.chunker();
         this.maxContextTokens = options.maxContextTokens();
-        this.chunkExecutor = options.chunkExecutor();
+        this.chunkExecutor = options.runtimeOptions().chunkExecutor();
+        this.checkpointExecutor = options.runtimeOptions().checkpointExecutor();
         this.objectMapper = new ObjectMapper();
         this.checkpointStore = options.checkpointStore();
     }
@@ -120,6 +122,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
                 new MarkdownChunkCheckpointPlanSource(request, plan, maxContextTokens));
         List<CompletableFuture<ChunkResult>> futures = submitChunkFutures(request, plan, checkpointPlan);
         List<ChunkResult> results = awaitChunkResults(futures);
+        awaitCheckpointSaves(results);
         return joinChunkResults(plan, results);
     }
 
@@ -220,7 +223,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             MarkdownChunkCheckpointPlan checkpointPlan
     ) {
         return checkpointStore.load(checkpointPlan, chunk)
-                .map(markdown -> new ChunkResult(chunk.chunkIndex(), markdown, true))
+                .map(markdown -> new ChunkResult(chunk.chunkIndex(), markdown, true, CompletableFuture.completedFuture(null)))
                 .orElseGet(() -> processMissingChunk(request, chunk, checkpointPlan));
     }
 
@@ -242,8 +245,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
         for (int attempt = 1; attempt <= CHUNK_MAX_ATTEMPTS; attempt++) {
             try {
                 ChunkResult result = processChunkOnce(request, chunk);
-                saveCheckpointIfApplied(checkpointPlan, chunk, result);
-                return result;
+                return result.withCheckpointSave(scheduleCheckpointSave(checkpointPlan, chunk, result));
             } catch (IOException | RuntimeException ex) {
                 if (attempt < CHUNK_MAX_ATTEMPTS) {
                     logChunkRetry(request, chunk, attempt, ex);
@@ -265,14 +267,31 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      * @author lvdaxianerplus
      * @date 2026-06-20
      */
-    private void saveCheckpointIfApplied(
+    private CompletableFuture<Void> scheduleCheckpointSave(
             MarkdownChunkCheckpointPlan checkpointPlan,
             MarkdownChunk chunk,
             ChunkResult result
     ) {
         // 只有真实应用 LLM Markdown 的 chunk 才写 checkpoint。
         if (result.markdownApplied()) {
-            checkpointStore.save(new MarkdownChunkCheckpoint(checkpointPlan, chunk, result.markdown(), true));
+            return CompletableFuture.runAsync(() -> checkpointStore.save(
+                    new MarkdownChunkCheckpoint(checkpointPlan, chunk, result.markdown(), true)), checkpointExecutor);
+        } else {
+            // fallback chunk 不写 checkpoint，后续 retry 仍会重新处理。
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    /**
+     * 等待本轮 checkpoint 写入完成。
+     *
+     * @param results 分片处理结果
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void awaitCheckpointSaves(List<ChunkResult> results) {
+        for (ChunkResult result : results) {
+            result.checkpointSave().join();
         }
     }
 
@@ -290,7 +309,8 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             throws IOException {
         MarkdownPostProcessingRequest chunkRequest = chunkRequest(request, chunk);
         MarkdownPostProcessingResult result = delegate.process(chunkRequest);
-        return new ChunkResult(chunk.chunkIndex(), result.markdown(), result.markdownApplied());
+        return new ChunkResult(chunk.chunkIndex(), result.markdown(), result.markdownApplied(),
+                CompletableFuture.completedFuture(null));
     }
 
     /**
@@ -341,7 +361,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     private ChunkResult fallbackChunk(MarkdownPostProcessingRequest request, MarkdownChunk chunk, Exception ex) {
         LOGGER.warn("[LLM Markdown 分片] 分片重试耗尽，回退原文 documentId={}, chunkIndex={}, error={}",
                 request.documentId(), chunk.chunkIndex(), ex.getClass().getSimpleName());
-        return new ChunkResult(chunk.chunkIndex(), chunk.mainContent(), false);
+        return new ChunkResult(chunk.chunkIndex(), chunk.mainContent(), false, CompletableFuture.completedFuture(null));
     }
 
     /**
@@ -406,6 +426,23 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      * @author lvdaxianerplus
      * @date 2026-06-19
      */
-    private record ChunkResult(int chunkIndex, String markdown, boolean markdownApplied) {
+    private record ChunkResult(
+            int chunkIndex,
+            String markdown,
+            boolean markdownApplied,
+            CompletableFuture<Void> checkpointSave
+    ) {
+
+        /**
+         * 附加 checkpoint 写入 future。
+         *
+         * @param checkpointSave checkpoint 写入 future
+         * @return 更新后的分片结果
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        private ChunkResult withCheckpointSave(CompletableFuture<Void> checkpointSave) {
+            return new ChunkResult(chunkIndex, markdown, markdownApplied, checkpointSave);
+        }
     }
 }
