@@ -90,11 +90,12 @@ let selectedFiles: File[] = []
  * @date 2026-06-20
  */
 function selectedFileList(): FileList {
-  return {
-    length: selectedFiles.length,
+  const fileList = {
     item: (index: number) => selectedFiles[index] ?? null,
     ...selectedFiles
   } as FileList
+  Object.defineProperty(fileList, 'length', { value: selectedFiles.length })
+  return fileList
 }
 
 /**
