@@ -9,7 +9,7 @@
 
 ## 2. Chunk processor recovery
 
-- [ ] 2.1 Add a failing processor test proving valid checkpointed chunks are
+- [x] 2.1 Add a failing processor test proving valid checkpointed chunks are
   returned without calling the LLM delegate, while missing chunks still call the
   delegate and are merged in order.
 - [ ] 2.2 Wire checkpoint lookup and successful chunk checkpoint scheduling into

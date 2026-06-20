@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lvdaxianer.doclens.j.processing.application.ApproximateTokenEstimator;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpoint;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlan;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlanSource;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkPlan;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingResult;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * 分片 Markdown 后处理器测试。
@@ -33,6 +38,9 @@ class ChunkedMarkdownPostProcessorTest {
     private static final int DEFAULT_MAX_CONTEXT_TOKENS = 16000;
     private static final int SMALL_CHUNK_MAX_CONTEXT_TOKENS = 2000;
     private static final String LARGE_DOCUMENT = "段落内容\n\n".repeat(5000);
+
+    @TempDir
+    private Path storageRoot;
 
     /**
      * 小文档应只调用一次下游处理器。
@@ -155,6 +163,41 @@ class ChunkedMarkdownPostProcessorTest {
 
             assertThat(result.markdown()).isEqualTo(fallbackChunkMarkdown(plan));
             assertThat(result.markdownApplied()).isTrue();
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
+    }
+
+    /**
+     * 已有有效 checkpoint 的 chunk 应跳过 LLM，仅缺失 chunk 调用下游处理器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void reusesCheckpointedChunksAndProcessesOnlyMissingChunks() {
+        MarkdownChunkPlan plan = plan();
+        MarkdownPostProcessingRequest request = request(LARGE_DOCUMENT);
+        FileSystemMarkdownChunkCheckpointStore checkpointStore = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        MarkdownChunkCheckpointPlan checkpointPlan = MarkdownChunkCheckpointPlan.from(
+                new MarkdownChunkCheckpointPlanSource(request, plan, SMALL_CHUNK_MAX_CONTEXT_TOKENS));
+        checkpointStore.save(new MarkdownChunkCheckpoint(checkpointPlan, plan.chunks().getFirst(), "cached-chunk-0",
+                true));
+        RecordingProcessor delegate = new RecordingProcessor(List.of(
+                MarkdownPostProcessingResult.markdown("chunk-1"),
+                MarkdownPostProcessingResult.markdown("chunk-2"),
+                MarkdownPostProcessingResult.markdown("chunk-3")));
+        ExecutorService chunkExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ChunkedMarkdownPostProcessor processor = new ChunkedMarkdownPostProcessor(
+                    new ChunkedMarkdownPostProcessorOptions(delegate, new MarkdownChunker(new ApproximateTokenEstimator()),
+                            SMALL_CHUNK_MAX_CONTEXT_TOKENS, chunkExecutor, checkpointStore));
+
+            MarkdownPostProcessingResult result = processor.process(request);
+
+            assertThat(result.markdown()).startsWith("cached-chunk-0\n\nchunk-1");
+            assertThat(delegate.requests()).hasSize(plan.chunks().size() - 1);
+            assertThat(extractChunkIndex(delegate.requests().getFirst().ocrText())).isEqualTo(1);
         } finally {
             chunkExecutor.shutdownNow();
         }

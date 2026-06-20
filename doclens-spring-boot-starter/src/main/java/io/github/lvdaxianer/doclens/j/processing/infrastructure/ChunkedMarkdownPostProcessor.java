@@ -2,6 +2,10 @@ package io.github.lvdaxianer.doclens.j.processing.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpoint;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlan;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlanSource;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkPlan;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
@@ -41,6 +45,7 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
     private final int maxContextTokens;
     private final ExecutorService chunkExecutor;
     private final ObjectMapper objectMapper;
+    private final MarkdownChunkCheckpointStore checkpointStore;
 
     /**
      * 创建分片 Markdown 后处理器。
@@ -57,11 +62,28 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             int maxContextTokens,
             ExecutorService chunkExecutor
     ) {
-        this.delegate = delegate;
-        this.chunker = chunker;
-        this.maxContextTokens = maxContextTokens;
-        this.chunkExecutor = chunkExecutor;
+        this(new ChunkedMarkdownPostProcessorOptions(delegate, chunker, maxContextTokens, chunkExecutor,
+                MarkdownChunkCheckpointStore.noop()));
+    }
+
+    /**
+     * 创建分片 Markdown 后处理器。
+     *
+     * @param delegate 实际 LLM 后处理器
+     * @param chunker Markdown 分片器
+     * @param maxContextTokens 最大上下文 Token 数
+     * @param chunkExecutor 分片执行器
+     * @param checkpointStore chunk checkpoint 存储
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    public ChunkedMarkdownPostProcessor(ChunkedMarkdownPostProcessorOptions options) {
+        this.delegate = options.delegate();
+        this.chunker = options.chunker();
+        this.maxContextTokens = options.maxContextTokens();
+        this.chunkExecutor = options.chunkExecutor();
         this.objectMapper = new ObjectMapper();
+        this.checkpointStore = options.checkpointStore();
     }
 
     /**
@@ -94,7 +116,9 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      * @date 2026-06-13
      */
     private MarkdownPostProcessingResult processChunks(MarkdownPostProcessingRequest request, MarkdownChunkPlan plan) {
-        List<CompletableFuture<ChunkResult>> futures = submitChunkFutures(request, plan);
+        MarkdownChunkCheckpointPlan checkpointPlan = MarkdownChunkCheckpointPlan.from(
+                new MarkdownChunkCheckpointPlanSource(request, plan, maxContextTokens));
+        List<CompletableFuture<ChunkResult>> futures = submitChunkFutures(request, plan, checkpointPlan);
         List<ChunkResult> results = awaitChunkResults(futures);
         return joinChunkResults(plan, results);
     }
@@ -110,11 +134,13 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      */
     private List<CompletableFuture<ChunkResult>> submitChunkFutures(
             MarkdownPostProcessingRequest request,
-            MarkdownChunkPlan plan
+            MarkdownChunkPlan plan,
+            MarkdownChunkCheckpointPlan checkpointPlan
     ) {
         List<CompletableFuture<ChunkResult>> futures = new ArrayList<>(plan.chunks().size());
         for (MarkdownChunk chunk : plan.chunks()) {
-            futures.add(CompletableFuture.supplyAsync(() -> processChunk(request, chunk), chunkExecutor));
+            futures.add(CompletableFuture.supplyAsync(() -> processChunk(request, chunk, checkpointPlan),
+                    chunkExecutor));
         }
         return futures;
     }
@@ -183,14 +209,41 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
      *
      * @param request 原始 Markdown 后处理请求
      * @param chunk Markdown 分片
+     * @param checkpointPlan checkpoint 计划
      * @return 分片结果
      * @author lvdaxianerplus
      * @date 2026-06-13
      */
-    private ChunkResult processChunk(MarkdownPostProcessingRequest request, MarkdownChunk chunk) {
+    private ChunkResult processChunk(
+            MarkdownPostProcessingRequest request,
+            MarkdownChunk chunk,
+            MarkdownChunkCheckpointPlan checkpointPlan
+    ) {
+        return checkpointStore.load(checkpointPlan, chunk)
+                .map(markdown -> new ChunkResult(chunk.chunkIndex(), markdown, true))
+                .orElseGet(() -> processMissingChunk(request, chunk, checkpointPlan));
+    }
+
+    /**
+     * 处理缺少 checkpoint 的单个分片。
+     *
+     * @param request 原始 Markdown 后处理请求
+     * @param chunk Markdown 分片
+     * @param checkpointPlan checkpoint 计划
+     * @return 分片结果
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private ChunkResult processMissingChunk(
+            MarkdownPostProcessingRequest request,
+            MarkdownChunk chunk,
+            MarkdownChunkCheckpointPlan checkpointPlan
+    ) {
         for (int attempt = 1; attempt <= CHUNK_MAX_ATTEMPTS; attempt++) {
             try {
-                return processChunkOnce(request, chunk);
+                ChunkResult result = processChunkOnce(request, chunk);
+                saveCheckpointIfApplied(checkpointPlan, chunk, result);
+                return result;
             } catch (IOException | RuntimeException ex) {
                 if (attempt < CHUNK_MAX_ATTEMPTS) {
                     logChunkRetry(request, chunk, attempt, ex);
@@ -201,6 +254,26 @@ public final class ChunkedMarkdownPostProcessor implements MarkdownPostProcessor
             }
         }
         return fallbackChunk(request, chunk, new IllegalStateException("unreachable"));
+    }
+
+    /**
+     * 成功应用 Markdown 后保存 chunk checkpoint。
+     *
+     * @param checkpointPlan checkpoint 计划
+     * @param chunk Markdown 分片
+     * @param result 分片结果
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void saveCheckpointIfApplied(
+            MarkdownChunkCheckpointPlan checkpointPlan,
+            MarkdownChunk chunk,
+            ChunkResult result
+    ) {
+        // 只有真实应用 LLM Markdown 的 chunk 才写 checkpoint。
+        if (result.markdownApplied()) {
+            checkpointStore.save(new MarkdownChunkCheckpoint(checkpointPlan, chunk, result.markdown(), true));
+        }
     }
 
     /**

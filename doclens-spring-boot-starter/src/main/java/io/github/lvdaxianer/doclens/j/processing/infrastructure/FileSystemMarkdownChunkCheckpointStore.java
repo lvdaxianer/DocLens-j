@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpoint;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlan;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -24,7 +25,7 @@ import java.util.Optional;
  * @author lvdaxianerplus
  * @date 2026-06-20
  */
-public class FileSystemMarkdownChunkCheckpointStore {
+public class FileSystemMarkdownChunkCheckpointStore implements MarkdownChunkCheckpointStore {
 
     private static final String ROOT_DIR = "llm-markdown-chunks";
     private static final String MANIFEST_FILE = "manifest.json";
