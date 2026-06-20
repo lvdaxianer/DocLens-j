@@ -19,6 +19,7 @@ import {
   createDefaultUploadOcrRouting,
   validateMetadataJson
 } from '@/utils/uploadFormRules'
+import { validateUploadBatchFiles } from '@/utils/uploadBatchRules'
 
 // UploadDropzone 是上传表单的编排组件。
 // 维护边界：
@@ -92,14 +93,14 @@ const filePicker = useTemplateRef<InstanceType<typeof UploadFilePicker>>('filePi
 const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
 const message = useMessage()
 const selectedFiles = shallowRef<File[]>([])
-const form = reactive<UploadAdvancedOptionsValue>({
+let form = reactive<UploadAdvancedOptionsValue>({
   metadata: EMPTY_UPLOAD_OPTIONS.metadata,
   callbackUrl: EMPTY_UPLOAD_OPTIONS.callbackUrl,
   idempotencyKey: EMPTY_UPLOAD_OPTIONS.idempotencyKey
 })
 
 const hasFiles = computed(() => selectedFiles.value.length > 0)
-const chunkStrategy = reactive<UploadChunkStrategyOptions>({
+let chunkStrategy = reactive<UploadChunkStrategyOptions>({
   chunkStrategy: EMPTY_UPLOAD_OPTIONS.chunkStrategy
 })
 const ocrRouting = reactive<UploadOcrRoutingOptions>({
@@ -208,7 +209,12 @@ function submitUpload(): void {
   const validationMessage = ocrRoutingSelector.value?.validateRouting() ?? ''
   // metadata 是文本域输入，必须在提交前单独验证 JSON。
   const metadataValidationMessage = validateMetadataJson(form.metadata)
-  if (metadataValidationMessage) {
+  // 文件数量和总体积必须在发起 multipart 请求前预检。
+  const batchFileValidationMessage = validateUploadBatchFiles(selectedFiles.value)
+  if (batchFileValidationMessage) {
+    // 上传批次超出前端限制时阻止 submit 事件发出。
+    message.warning(batchFileValidationMessage)
+  } else if (metadataValidationMessage) {
     // 元数据 JSON 不合法时阻止提交并提示用户。
     message.warning(metadataValidationMessage)
   } else if (validationMessage) {

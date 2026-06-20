@@ -6,9 +6,9 @@
 
 ## 2. Dashboard upload preflight guard
 
-- [ ] 2.1 Add failing UI tests proving the upload form blocks submit and warns when the selected batch exceeds 30 files or 500 MB total.
-- [ ] 2.2 Add upload preflight validation helpers and wire them into `UploadDropzone` before the submit event is emitted.
-- [ ] 2.3 Re-run the focused upload UI tests and dashboard upload API tests.
+- [x] 2.1 Add failing UI tests proving the upload form blocks submit and warns when the selected batch exceeds 30 files or 500 MB total.
+- [x] 2.2 Add upload preflight validation helpers and wire them into `UploadDropzone` before the submit event is emitted.
+- [x] 2.3 Re-run the focused upload UI tests and dashboard upload API tests.
 
 ## 3. Server upload limit fallback
 
