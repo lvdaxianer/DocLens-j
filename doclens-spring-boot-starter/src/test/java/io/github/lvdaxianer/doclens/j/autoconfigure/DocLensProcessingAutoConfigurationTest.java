@@ -18,6 +18,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskCompleti
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureRequest;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -123,7 +124,8 @@ class DocLensProcessingAutoConfigurationTest {
         try {
             MarkdownPostProcessor processor = new DocLensLlmMarkdownAutoConfiguration()
                     .markdownPostProcessor(new ObjectMapper(), new DocLensSpringProperties(null, false, null, null, null,
-                            null, null, null, null, null, null, null, null, null, null, null), repository, chunkExecutor);
+                            null, null, null, null, null, null, null, null, null, null, null), repository,
+                            MarkdownChunkCheckpointStore.noop(), chunkExecutor, chunkExecutor);
 
             assertThat(processor).isInstanceOf(ConfigurableMarkdownPostProcessor.class);
         } finally {

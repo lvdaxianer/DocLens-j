@@ -7,6 +7,8 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckp
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessor;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfigRepository;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessor;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownPostProcessorOptions;
+import io.github.lvdaxianer.doclens.j.processing.infrastructure.ConfigurableMarkdownRuntimeOptions;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.DefaultLlmMarkdownConfigTester;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.FileSystemMarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.infrastructure.HttpMarkdownPostProcessor;
@@ -199,6 +201,9 @@ public class DocLensLlmMarkdownAutoConfiguration {
      * @param objectMapper JSON 映射器
      * @param properties Spring 配置属性
      * @param configRepository LLM Markdown 配置仓储
+     * @param checkpointStore Markdown chunk checkpoint 存储
+     * @param chunkExecutor LLM Markdown 分片执行器
+     * @param checkpointExecutor LLM Markdown checkpoint 写入执行器
      * @return Markdown 后处理器
      * @author lvdaxianerplus
      * @date 2026-06-11
@@ -209,10 +214,16 @@ public class DocLensLlmMarkdownAutoConfiguration {
             ObjectMapper objectMapper,
             DocLensSpringProperties properties,
             LlmMarkdownConfigRepository configRepository,
-            @Qualifier("doclensLlmMarkdownChunkExecutor") ExecutorService chunkExecutor
+            MarkdownChunkCheckpointStore checkpointStore,
+            @Qualifier("doclensLlmMarkdownChunkExecutor") ExecutorService chunkExecutor,
+            @Qualifier("doclensLlmMarkdownCheckpointExecutor") ExecutorService checkpointExecutor
     ) {
         MarkdownPostProcessor fallbackProcessor = fallbackMarkdownPostProcessor(objectMapper, properties);
-        return new ConfigurableMarkdownPostProcessor(objectMapper, configRepository, fallbackProcessor, chunkExecutor);
+        ConfigurableMarkdownRuntimeOptions runtimeOptions = new ConfigurableMarkdownRuntimeOptions(chunkExecutor,
+                checkpointExecutor, checkpointStore);
+        ConfigurableMarkdownPostProcessorOptions options = new ConfigurableMarkdownPostProcessorOptions(objectMapper,
+                configRepository, fallbackProcessor, null, runtimeOptions);
+        return new ConfigurableMarkdownPostProcessor(options);
     }
 
     /**

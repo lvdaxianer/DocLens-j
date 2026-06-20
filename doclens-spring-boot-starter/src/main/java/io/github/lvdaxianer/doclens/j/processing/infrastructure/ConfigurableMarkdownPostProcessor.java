@@ -32,6 +32,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private final MarkdownPostProcessorFactory processorFactory;
     private final LlmConfigRateLimiter rateLimiter = new LlmConfigRateLimiter();
     private final ExecutorService chunkExecutor;
+    private final ExecutorService checkpointExecutor;
     private final MarkdownChunkCheckpointStore checkpointStore;
 
     /**
@@ -54,6 +55,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
         this.processorFactory = new MarkdownPostProcessorFactory(objectMapper,
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS));
         this.chunkExecutor = chunkExecutor;
+        this.checkpointExecutor = chunkExecutor;
         this.checkpointStore = MarkdownChunkCheckpointStore.noop();
     }
 
@@ -80,6 +82,7 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS),
                 new EnvironmentCredentialResolver(environmentValues));
         this.chunkExecutor = chunkExecutor;
+        this.checkpointExecutor = chunkExecutor;
         this.checkpointStore = MarkdownChunkCheckpointStore.noop();
     }
 
@@ -90,13 +93,14 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
      * @author lvdaxianerplus
      * @date 2026-06-20
      */
-    ConfigurableMarkdownPostProcessor(ConfigurableMarkdownPostProcessorOptions options) {
+    public ConfigurableMarkdownPostProcessor(ConfigurableMarkdownPostProcessorOptions options) {
         this.configSelector = new LlmConfigSelector(options.configRepository());
         this.fallbackProcessor = options.fallbackProcessor();
         this.processorFactory = new MarkdownPostProcessorFactory(options.objectMapper(),
                 Duration.ofSeconds(LLM_MARKDOWN_TIMEOUT_SECONDS),
                 new EnvironmentCredentialResolver(options.environmentValues()));
         this.chunkExecutor = options.runtimeOptions().chunkExecutor();
+        this.checkpointExecutor = options.runtimeOptions().checkpointExecutor();
         this.checkpointStore = options.runtimeOptions().checkpointStore();
     }
 
@@ -160,8 +164,10 @@ public class ConfigurableMarkdownPostProcessor implements MarkdownPostProcessor 
     private MarkdownPostProcessor runtimeProcessor(LlmMarkdownConfig config) {
         MarkdownPostProcessor delegate = rateLimitedProcessor(config, processorFactory.create(config));
         MarkdownChunker chunker = new MarkdownChunker(new ApproximateTokenEstimator());
+        ChunkedMarkdownRuntimeOptions runtimeOptions = new ChunkedMarkdownRuntimeOptions(chunkExecutor,
+                checkpointExecutor);
         ChunkedMarkdownPostProcessorOptions options = new ChunkedMarkdownPostProcessorOptions(delegate, chunker,
-                config.maxContextTokens(), chunkExecutor, checkpointStore);
+                config.maxContextTokens(), checkpointStore, runtimeOptions);
         return new ChunkedMarkdownPostProcessor(options);
     }
 

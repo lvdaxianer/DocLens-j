@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunk;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpoint;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlan;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointPlanSource;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkPlan;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunker;
 import io.github.lvdaxianer.doclens.j.processing.application.MarkdownPostProcessingRequest;
@@ -31,6 +32,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,6 +49,8 @@ class ConfigurableMarkdownPostProcessorTest {
     private static final OffsetDateTime CHECKED_AT = OffsetDateTime.parse("2026-06-12T12:00:00+08:00");
     private static final String RUNTIME_API_KEY_ENV_VAR = "RUNTIME_LLM_API_KEY";
     private static final String RUNTIME_API_KEY = "sk-runtime";
+    private static final String TEST_CHUNK_THREAD_PREFIX = "doclens-test-chunk-";
+    private static final String TEST_CHECKPOINT_THREAD_PREFIX = "doclens-test-checkpoint-";
     private static final int SMALL_MAX_CONTEXT_TOKENS = 2000;
     private static final String LARGE_DOCUMENT = "段落内容\n\n".repeat(5000);
 
@@ -136,13 +141,43 @@ class ConfigurableMarkdownPostProcessorTest {
                 MarkdownPostProcessingRequest request = largeRequest();
                 seedAllChunkCheckpoints(checkpointStore, request, "cached-runtime");
                 ConfigurableMarkdownPostProcessor processor = configurableProcessor(config, checkpointStore,
-                        chunkExecutor);
+                        runtimeOptions(chunkExecutor, chunkExecutor, checkpointStore));
 
                 MarkdownPostProcessingResult result = processor.process(request);
 
                 assertThat(result.markdown()).contains("cached-runtime-0");
                 assertThat(server.requestCount()).isZero();
             } finally {
+                chunkExecutor.shutdownNow();
+            }
+        }
+    }
+
+    /**
+     * 运行时配置处理器应把独立 checkpoint 执行器传给分片处理器。
+     *
+     * @throws Exception 测试 HTTP 服务异常时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void runtimeProcessorUsesInjectedCheckpointExecutor() throws Exception {
+        try (MockLlmServer server = MockLlmServer.start()) {
+            ExecutorService chunkExecutor = Executors.newSingleThreadExecutor(
+                    namedThreadFactory(TEST_CHUNK_THREAD_PREFIX));
+            ExecutorService checkpointExecutor = Executors.newSingleThreadExecutor(
+                    namedThreadFactory(TEST_CHECKPOINT_THREAD_PREFIX));
+            RecordingCheckpointStore checkpointStore = new RecordingCheckpointStore();
+            try {
+                LlmMarkdownConfig config = runtimeChunkedConfig(server).updateHealth(true, "", CHECKED_AT);
+                ConfigurableMarkdownPostProcessor processor = configurableProcessor(config, checkpointStore,
+                        runtimeOptions(chunkExecutor, checkpointExecutor, checkpointStore));
+
+                processor.process(largeRequest());
+
+                assertThat(checkpointStore.saveThreadName()).startsWith(TEST_CHECKPOINT_THREAD_PREFIX);
+            } finally {
+                checkpointExecutor.shutdownNow();
                 chunkExecutor.shutdownNow();
             }
         }
@@ -182,14 +217,43 @@ class ConfigurableMarkdownPostProcessorTest {
      */
     private ConfigurableMarkdownPostProcessor configurableProcessor(
             LlmMarkdownConfig config,
-            FileSystemMarkdownChunkCheckpointStore checkpointStore,
-            ExecutorService chunkExecutor
+            MarkdownChunkCheckpointStore checkpointStore,
+            ConfigurableMarkdownRuntimeOptions runtimeOptions
     ) {
         ConfigurableMarkdownPostProcessorOptions options = new ConfigurableMarkdownPostProcessorOptions(OBJECT_MAPPER,
                 new FixedConfigRepository(config), new FallbackProcessor("fallback text"),
-                Map.of(RUNTIME_API_KEY_ENV_VAR, RUNTIME_API_KEY),
-                new ConfigurableMarkdownRuntimeOptions(chunkExecutor, checkpointStore));
+                Map.of(RUNTIME_API_KEY_ENV_VAR, RUNTIME_API_KEY), runtimeOptions);
         return new ConfigurableMarkdownPostProcessor(options);
+    }
+
+    /**
+     * 创建可配置 Markdown 运行时选项。
+     *
+     * @param chunkExecutor 分片执行器
+     * @param checkpointExecutor checkpoint 执行器
+     * @param checkpointStore checkpoint 存储
+     * @return 可配置 Markdown 运行时选项
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private ConfigurableMarkdownRuntimeOptions runtimeOptions(
+            ExecutorService chunkExecutor,
+            ExecutorService checkpointExecutor,
+            MarkdownChunkCheckpointStore checkpointStore
+    ) {
+        return new ConfigurableMarkdownRuntimeOptions(chunkExecutor, checkpointExecutor, checkpointStore);
+    }
+
+    /**
+     * 创建带名称前缀的测试线程工厂。
+     *
+     * @param prefix 线程名前缀
+     * @return 测试线程工厂
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private ThreadFactory namedThreadFactory(String prefix) {
+        return runnable -> new Thread(runnable, prefix + "1");
     }
 
     /**
@@ -328,6 +392,54 @@ class ConfigurableMarkdownPostProcessorTest {
         @Override
         public MarkdownPostProcessingResult process(MarkdownPostProcessingRequest request) {
             return MarkdownPostProcessingResult.markdown(markdown);
+        }
+    }
+
+    /**
+     * 记录 checkpoint 保存线程的测试存储。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private static final class RecordingCheckpointStore implements MarkdownChunkCheckpointStore {
+
+        private final AtomicReference<String> saveThreadName = new AtomicReference<>("");
+
+        /**
+         * 保存 checkpoint 并记录线程名。
+         *
+         * @param checkpoint chunk checkpoint 内容
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public void save(MarkdownChunkCheckpoint checkpoint) {
+            saveThreadName.set(Thread.currentThread().getName());
+        }
+
+        /**
+         * 不返回已有 checkpoint。
+         *
+         * @param plan checkpoint 计划
+         * @param chunk Markdown chunk
+         * @return 空 checkpoint
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public Optional<String> load(MarkdownChunkCheckpointPlan plan, MarkdownChunk chunk) {
+            return Optional.empty();
+        }
+
+        /**
+         * 获取保存线程名。
+         *
+         * @return 保存线程名
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        String saveThreadName() {
+            return saveThreadName.get();
         }
     }
 
