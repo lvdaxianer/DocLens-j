@@ -15,9 +15,14 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 基于文件系统的 Markdown chunk 检查点存储。
@@ -27,6 +32,7 @@ import java.util.Optional;
  */
 public class FileSystemMarkdownChunkCheckpointStore implements MarkdownChunkCheckpointStore {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemMarkdownChunkCheckpointStore.class);
     private static final String ROOT_DIR = "llm-markdown-chunks";
     private static final String MANIFEST_FILE = "manifest.json";
     private static final String MARKDOWN_FILE = "README.md";
@@ -108,6 +114,36 @@ public class FileSystemMarkdownChunkCheckpointStore implements MarkdownChunkChec
             // README 不存在时视为该 chunk 尚未完成。
             return Optional.empty();
         }
+    }
+
+    /**
+     * 删除指定文档的全部 chunk 检查点目录。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Override
+    public void deleteByDocumentId(String documentId) {
+        Path documentDir = resolveCheckpointPath(documentId);
+        // checkpoint 目录存在时才执行递归删除。
+        if (Files.exists(documentDir)) {
+            deleteExistingDirectory(documentDir);
+        } else {
+            // 没有 checkpoint 残留时删除动作保持幂等。
+        }
+    }
+
+    /**
+     * 批量删除指定文档的全部 chunk 检查点目录。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Override
+    public void deleteByDocumentIds(List<String> documentIds) {
+        documentIds.forEach(this::deleteByDocumentId);
     }
 
     private Map<String, Object> manifest(MarkdownChunkCheckpointPlan plan) {
@@ -228,6 +264,25 @@ public class FileSystemMarkdownChunkCheckpointStore implements MarkdownChunkChec
             Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (AtomicMoveNotSupportedException ex) {
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
+     * 递归删除已存在的 checkpoint 目录。
+     *
+     * @param documentDir 文档 checkpoint 目录
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private void deleteExistingDirectory(Path documentDir) {
+        try (Stream<Path> paths = Files.walk(documentDir)) {
+            List<Path> orderedPaths = paths.sorted(Comparator.reverseOrder()).toList();
+            for (Path path : orderedPaths) {
+                Files.deleteIfExists(path);
+            }
+        } catch (IOException ex) {
+            LOGGER.warn("[MarkdownCheckpoint] 删除 chunk checkpoint 目录失败, documentDir={}", documentDir, ex);
+            throw new IllegalStateException("failed to delete markdown chunk checkpoint", ex);
         }
     }
 

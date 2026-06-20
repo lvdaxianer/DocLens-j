@@ -9,6 +9,7 @@ import static io.github.lvdaxianer.doclens.j.processing.application.DocumentDele
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingObjectStorage;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import java.time.OffsetDateTime;
@@ -49,6 +50,22 @@ class BatchDeleteUseCaseTest {
 
         assertThat(deletedCount).isEqualTo(2);
         assertDeletableBatchCleanup(scenario);
+    }
+
+    /**
+     * 删除批次时应清理批次内所有文档的 Markdown chunk checkpoint 目录。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void deleteBatchCleansMarkdownChunkCheckpoints() {
+        BatchDeleteScenario scenario = deletableBatchScenario();
+
+        // 批次删除是显式删除，应一次性移除所有文档的 checkpoint 恢复目录。
+        scenario.useCase().delete("batch-test");
+
+        assertThat(scenario.checkpointStore().deletedDocumentIds).containsExactly("doc-completed", "doc-stalled");
     }
 
     /**
@@ -172,7 +189,9 @@ class BatchDeleteUseCaseTest {
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage
     ) {
-        return new BatchDeleteScenario(repositories, objectStorage, batchUseCase(repositories, objectStorage));
+        RecordingCheckpointStore checkpointStore = new RecordingCheckpointStore();
+        return new BatchDeleteScenario(repositories, objectStorage, checkpointStore,
+                batchUseCase(repositories, objectStorage, checkpointStore));
     }
 
     /**
@@ -180,13 +199,15 @@ class BatchDeleteUseCaseTest {
      *
      * @param repositories 测试仓储集合
      * @param objectStorage 对象存储桩
+     * @param checkpointStore checkpoint 存储桩
      * @param useCase 批次删除用例
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-20
      */
     private record BatchDeleteScenario(
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage,
+            RecordingCheckpointStore checkpointStore,
             BatchDeleteUseCase useCase
     ) {
     }

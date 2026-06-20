@@ -1,5 +1,6 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -42,6 +43,27 @@ public interface MarkdownChunkCheckpointStore {
     Optional<String> load(MarkdownChunkCheckpointPlan plan, MarkdownChunk chunk);
 
     /**
+     * 删除指定文档的全部 chunk 检查点。
+     *
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    default void deleteByDocumentId(String documentId) {
+    }
+
+    /**
+     * 批量删除指定文档的全部 chunk 检查点。
+     *
+     * @param documentIds 文档 ID 集合
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    default void deleteByDocumentIds(List<String> documentIds) {
+        documentIds.forEach(this::deleteByDocumentId);
+    }
+
+    /**
      * 空 Markdown chunk checkpoint 存储。
      *
      * @author lvdaxianerplus
@@ -73,6 +95,17 @@ public interface MarkdownChunkCheckpointStore {
         @Override
         public Optional<String> load(MarkdownChunkCheckpointPlan plan, MarkdownChunk chunk) {
             return Optional.empty();
+        }
+
+        /**
+         * 空存储忽略批量 checkpoint 删除。
+         *
+         * @param documentIds 文档 ID 集合
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public void deleteByDocumentIds(List<String> documentIds) {
         }
     }
 }

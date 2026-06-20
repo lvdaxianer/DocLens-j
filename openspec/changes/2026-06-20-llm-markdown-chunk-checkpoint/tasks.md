@@ -34,7 +34,7 @@
   store and its checkpoint write executor under the configured storage root.
 - [x] 4.2 Wire the checkpoint store and async write executor into
   `ConfigurableMarkdownPostProcessor` and `ChunkedMarkdownPostProcessor`.
-- [ ] 4.3 Extend document and batch delete behavior so checkpoint directories are
+- [x] 4.3 Extend document and batch delete behavior so checkpoint directories are
   removed when documents or batches are explicitly deleted.
 
 ## 5. Verification and archive

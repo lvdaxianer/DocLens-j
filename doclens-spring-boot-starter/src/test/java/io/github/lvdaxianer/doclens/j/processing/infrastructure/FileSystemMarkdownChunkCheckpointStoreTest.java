@@ -129,6 +129,24 @@ class FileSystemMarkdownChunkCheckpointStoreTest {
     }
 
     /**
+     * 删除文档 checkpoint 时应递归移除该文档的所有 chunk 目录。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void deleteByDocumentIdRemovesCheckpointDirectoryRecursively() {
+        FileSystemMarkdownChunkCheckpointStore store = new FileSystemMarkdownChunkCheckpointStore(storageRoot);
+        MarkdownChunkCheckpointPlan plan = checkpointPlan("doc-delete", 50);
+        store.save(checkpoint(plan, chunk(0, 50, "原始 chunk 01"), "整理后的 chunk 01"));
+        store.save(checkpoint(plan, chunk(1, 50, "原始 chunk 02"), "整理后的 chunk 02"));
+
+        store.deleteByDocumentId("doc-delete");
+
+        assertThat(storageRoot.resolve("llm-markdown-chunks/doc-delete")).doesNotExist();
+    }
+
+    /**
      * 创建 checkpoint 计划。
      *
      * @param documentId 文档 ID

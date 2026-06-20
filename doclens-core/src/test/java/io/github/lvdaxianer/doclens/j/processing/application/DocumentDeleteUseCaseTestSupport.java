@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.Batch;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.InlineTransactionRunner;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingObjectStorage;
 import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
@@ -67,7 +68,26 @@ final class DocumentDeleteUseCaseTestSupport {
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage
     ) {
-        return new DocumentDeleteUseCase(dependencies(repositories, objectStorage), new InlineTransactionRunner());
+        return documentUseCase(repositories, objectStorage, new RecordingCheckpointStore());
+    }
+
+    /**
+     * 创建待测文档删除用例。
+     *
+     * @param repositories 测试仓储集合
+     * @param objectStorage 对象存储桩
+     * @param checkpointStore checkpoint 存储桩
+     * @return 文档删除用例
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    static DocumentDeleteUseCase documentUseCase(
+            DocumentDeleteUseCaseRepositories repositories,
+            RecordingObjectStorage objectStorage,
+            RecordingCheckpointStore checkpointStore
+    ) {
+        return new DocumentDeleteUseCase(dependencies(repositories, objectStorage),
+                new InlineTransactionRunner(), checkpointStore);
     }
 
     /**
@@ -83,7 +103,26 @@ final class DocumentDeleteUseCaseTestSupport {
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage
     ) {
-        return new BatchDeleteUseCase(dependencies(repositories, objectStorage), new InlineTransactionRunner());
+        return batchUseCase(repositories, objectStorage, new RecordingCheckpointStore());
+    }
+
+    /**
+     * 创建待测批次删除用例。
+     *
+     * @param repositories 测试仓储集合
+     * @param objectStorage 对象存储桩
+     * @param checkpointStore checkpoint 存储桩
+     * @return 批次删除用例
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    static BatchDeleteUseCase batchUseCase(
+            DocumentDeleteUseCaseRepositories repositories,
+            RecordingObjectStorage objectStorage,
+            RecordingCheckpointStore checkpointStore
+    ) {
+        return new BatchDeleteUseCase(dependencies(repositories, objectStorage),
+                new InlineTransactionRunner(), checkpointStore);
     }
 
     /**

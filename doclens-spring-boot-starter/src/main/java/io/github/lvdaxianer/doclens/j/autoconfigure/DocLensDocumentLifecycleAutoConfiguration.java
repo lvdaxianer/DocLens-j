@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCa
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryCleanupDependencies;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentRetryUseCase;
+import io.github.lvdaxianer.doclens.j.processing.application.MarkdownChunkCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -16,6 +17,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -95,17 +97,19 @@ public class DocLensDocumentLifecycleAutoConfiguration {
      *
      * @param dependencies 删除依赖
      * @param transactionRunner 事务执行器
+     * @param checkpointStoreProvider checkpoint 存储提供器
      * @return 文档级删除用例
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-20
      */
     @Bean
     @ConditionalOnMissingBean
     DocumentDeleteUseCase documentDeleteUseCase(
             DocumentDeleteDependencies dependencies,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            ObjectProvider<MarkdownChunkCheckpointStore> checkpointStoreProvider
     ) {
-        return new DocumentDeleteUseCase(dependencies, transactionRunner);
+        return new DocumentDeleteUseCase(dependencies, transactionRunner, checkpointStore(checkpointStoreProvider));
     }
 
     /**
@@ -113,17 +117,19 @@ public class DocLensDocumentLifecycleAutoConfiguration {
      *
      * @param dependencies 删除依赖
      * @param transactionRunner 事务执行器
+     * @param checkpointStoreProvider checkpoint 存储提供器
      * @return 批次级删除用例
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-20
      */
     @Bean
     @ConditionalOnMissingBean
     BatchDeleteUseCase batchDeleteUseCase(
             DocumentDeleteDependencies dependencies,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            ObjectProvider<MarkdownChunkCheckpointStore> checkpointStoreProvider
     ) {
-        return new BatchDeleteUseCase(dependencies, transactionRunner);
+        return new BatchDeleteUseCase(dependencies, transactionRunner, checkpointStore(checkpointStoreProvider));
     }
 
     /**
@@ -141,5 +147,19 @@ public class DocLensDocumentLifecycleAutoConfiguration {
                 context.getBean(BatchRepository.class), context.getBean(OcrResultRepository.class),
                 context.getBean(OcrEventRepository.class), context.getBean(ObjectStorage.class),
                 context.getBean(OcrEventFactory.class));
+    }
+
+    /**
+     * 获取可选 checkpoint 存储，未启用 LLM Markdown 时使用空实现。
+     *
+     * @param checkpointStoreProvider checkpoint 存储提供器
+     * @return checkpoint 存储
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    private MarkdownChunkCheckpointStore checkpointStore(
+            ObjectProvider<MarkdownChunkCheckpointStore> checkpointStoreProvider
+    ) {
+        return checkpointStoreProvider.getIfAvailable(MarkdownChunkCheckpointStore::noop);
     }
 }

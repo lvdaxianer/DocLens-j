@@ -4,6 +4,7 @@ import io.github.lvdaxianer.doclens.j.shared.application.TransactionRunner;
 import io.github.lvdaxianer.doclens.j.storage.ObjectStorage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 文档删除用例测试基础设施桩。
@@ -84,6 +85,54 @@ final class DocumentDeleteUseCaseInfrastructure {
         @Override
         public void deleteAll(List<String> storageUris) {
             deletedUris.addAll(storageUris);
+        }
+    }
+
+    /**
+     * 记录 checkpoint 删除请求的存储桩。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    static final class RecordingCheckpointStore implements MarkdownChunkCheckpointStore {
+
+        final List<String> deletedDocumentIds = new ArrayList<>(TEST_CAPACITY);
+
+        /**
+         * 忽略 checkpoint 保存。
+         *
+         * @param checkpoint chunk checkpoint 内容
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public void save(MarkdownChunkCheckpoint checkpoint) {
+        }
+
+        /**
+         * 测试桩不提供可复用 checkpoint。
+         *
+         * @param plan checkpoint 计划
+         * @param chunk Markdown chunk
+         * @return 空 checkpoint
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public Optional<String> load(MarkdownChunkCheckpointPlan plan, MarkdownChunk chunk) {
+            return Optional.empty();
+        }
+
+        /**
+         * 记录被请求清理的文档 checkpoint。
+         *
+         * @param documentId 文档 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-20
+         */
+        @Override
+        public void deleteByDocumentId(String documentId) {
+            deletedDocumentIds.add(documentId);
         }
     }
 

@@ -36,6 +36,7 @@ public class BatchDeleteUseCase {
     private final ObjectStorage objectStorage;
     private final OcrEventFactory eventFactory;
     private final TransactionRunner transactionRunner;
+    private final MarkdownChunkCheckpointStore checkpointStore;
 
     /**
      * 创建批次级删除用例。
@@ -49,6 +50,23 @@ public class BatchDeleteUseCase {
             DocumentDeleteDependencies dependencies,
             TransactionRunner transactionRunner
     ) {
+        this(dependencies, transactionRunner, MarkdownChunkCheckpointStore.noop());
+    }
+
+    /**
+     * 创建批次级删除用例。
+     *
+     * @param dependencies 删除依赖
+     * @param transactionRunner 事务执行器
+     * @param checkpointStore Markdown chunk checkpoint 存储
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    public BatchDeleteUseCase(
+            DocumentDeleteDependencies dependencies,
+            TransactionRunner transactionRunner,
+            MarkdownChunkCheckpointStore checkpointStore
+    ) {
         this.documentRepository = dependencies.documentRepository();
         this.batchRepository = dependencies.batchRepository();
         this.resultRepository = dependencies.resultRepository();
@@ -56,6 +74,7 @@ public class BatchDeleteUseCase {
         this.objectStorage = dependencies.objectStorage();
         this.eventFactory = dependencies.eventFactory();
         this.transactionRunner = transactionRunner;
+        this.checkpointStore = checkpointStore;
     }
 
     /**
@@ -84,6 +103,7 @@ public class BatchDeleteUseCase {
         List<String> documentIds = documentIds(documents);
         List<OcrResult> results = resultRepository.findByDocumentIds(documentIds);
         objectStorage.deleteAll(storageUris(documents, results));
+        checkpointStore.deleteByDocumentIds(documentIds);
         resultRepository.deleteByDocumentIds(documentIds);
         eventRepository.deleteByDocumentIds(documentIds);
         documentRepository.deleteByIds(documentIds);

@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
+import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingCheckpointStore;
 import io.github.lvdaxianer.doclens.j.processing.application.DocumentDeleteUseCaseInfrastructure.RecordingObjectStorage;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJob;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEvent;
@@ -59,6 +60,22 @@ class DocumentDeleteUseCaseTest {
         scenario.useCase().delete("doc-failed");
 
         assertFailedDocumentCleanup(scenario);
+    }
+
+    /**
+     * 删除文档时应同步清理该文档的 Markdown chunk checkpoint 目录。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void deleteDocumentCleansMarkdownChunkCheckpoint() {
+        DeleteDocumentScenario scenario = lastDocumentScenario();
+
+        // checkpoint 目录属于显式删除文档的一部分，避免恢复链路复用残留 chunk。
+        scenario.useCase().delete("doc-last");
+
+        assertThat(scenario.checkpointStore().deletedDocumentIds).containsExactly("doc-last");
     }
 
     /**
@@ -261,7 +278,9 @@ class DocumentDeleteUseCaseTest {
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage
     ) {
-        return new DeleteDocumentScenario(repositories, objectStorage, documentUseCase(repositories, objectStorage));
+        RecordingCheckpointStore checkpointStore = new RecordingCheckpointStore();
+        return new DeleteDocumentScenario(repositories, objectStorage, checkpointStore,
+                documentUseCase(repositories, objectStorage, checkpointStore));
     }
 
     /**
@@ -269,13 +288,15 @@ class DocumentDeleteUseCaseTest {
      *
      * @param repositories 测试仓储集合
      * @param objectStorage 对象存储桩
+     * @param checkpointStore checkpoint 存储桩
      * @param useCase 文档删除用例
      * @author lvdaxianerplus
-     * @date 2026-06-11
+     * @date 2026-06-20
      */
     private record DeleteDocumentScenario(
             DocumentDeleteUseCaseRepositories repositories,
             RecordingObjectStorage objectStorage,
+            RecordingCheckpointStore checkpointStore,
             DocumentDeleteUseCase useCase
     ) {
     }
