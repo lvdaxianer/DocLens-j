@@ -1,11 +1,11 @@
 ## 1. Restore aggregate OCR dispatch capacity
 
-- [ ] 1.1 Add failing auto-configuration tests proving default page-task worker
+- [x] 1.1 Add failing auto-configuration tests proving default page-task worker
   and OCR request executor concurrency use the sum of enabled participating OCR
   node capacities while explicit worker overrides still win.
-- [ ] 1.2 Implement aggregate node concurrency derivation and update server
+- [x] 1.2 Implement aggregate node concurrency derivation and update server
   defaults so local page-task worker capacity can follow configured nodes.
-- [ ] 1.3 Run focused and broader verification for page-task worker and OCR
+- [x] 1.3 Run focused and broader verification for page-task worker and OCR
   thread-pool auto-configuration.
 
 ## 2. Fair queued page-task scheduling

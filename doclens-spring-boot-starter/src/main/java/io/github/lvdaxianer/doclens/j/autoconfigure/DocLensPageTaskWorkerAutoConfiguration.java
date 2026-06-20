@@ -282,7 +282,7 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     }
 
     /**
-     * 根据启用的启动节点并发派生本地页任务并发。
+     * 根据参与全局路由的启动节点总并发派生本地页任务并发。
      *
      * @param properties DocLens 配置属性
      * @return 派生并发数
@@ -290,11 +290,17 @@ public class DocLensPageTaskWorkerAutoConfiguration {
      * @date 2026-06-19
      */
     static int derivedNodeConcurrency(DocLensSpringProperties properties) {
-        return properties.paddleOcr().bootstrapNodes().stream()
+        int totalConcurrency = properties.paddleOcr().bootstrapNodes().stream()
                 .filter(DocLensSpringProperties.PaddleOcrNodeProperties::enabled)
+                .filter(DocLensSpringProperties.PaddleOcrNodeProperties::participateGlobal)
                 .mapToInt(DocLensSpringProperties.PaddleOcrNodeProperties::maxConcurrency)
-                .max()
-                .orElse(PAGE_TASK_EXECUTOR_POOL_SIZE);
+                .sum();
+        if (totalConcurrency > 0) {
+            return totalConcurrency;
+        } else {
+            // 没有可参与全局调度的启动节点时保留历史默认并发。
+            return PAGE_TASK_EXECUTOR_POOL_SIZE;
+        }
     }
 
     /**
