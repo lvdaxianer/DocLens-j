@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String UPLOAD_SIZE_LIMIT_DETAIL = "上传文件总大小不能超过 500MB，请拆分后再上传";
 
     /**
      * 处理参数校验失败。
@@ -102,6 +104,24 @@ public class GlobalExceptionHandler {
         headers.add(GlobalProtectionInterceptor.headerName(), "enabled");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).headers(headers)
                 .body(Map.of("detail", ex.getMessage()));
+    }
+
+    /**
+     * 处理上传内容超过服务端限制。
+     *
+     * @param ex 上传大小异常
+     * @param request HTTP 请求
+     * @return 错误响应
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handlePayloadTooLarge(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("[上传大小] 上传大小超限, path={}, detail={}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of("detail", UPLOAD_SIZE_LIMIT_DETAIL));
     }
 
     /**

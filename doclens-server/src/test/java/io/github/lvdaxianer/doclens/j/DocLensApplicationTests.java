@@ -19,7 +19,7 @@ class DocLensApplicationTests {
 
     private static final String MULTIPART_MAX_FILE_SIZE_PROPERTY = "spring.servlet.multipart.max-file-size";
     private static final String MULTIPART_MAX_REQUEST_SIZE_PROPERTY = "spring.servlet.multipart.max-request-size";
-    private static final String MULTIPART_UPLOAD_LIMIT = "300MB";
+    private static final String MULTIPART_UPLOAD_LIMIT = "500MB";
 
     @Autowired
     private DocLensEngine docLensEngine;
@@ -39,13 +39,13 @@ class DocLensApplicationTests {
     }
 
     /**
-     * 验证 multipart 上传限制允许 300MB 文件。
+     * 验证 multipart 上传限制允许 500MB 文件。
      *
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     @Test
-    void multipartUploadLimitShouldAllowThreeHundredMegabytes() {
+    void multipartUploadLimitShouldAllowFiveHundredMegabytes() {
         assertThat(environment.getProperty(MULTIPART_MAX_FILE_SIZE_PROPERTY))
                 .isEqualTo(MULTIPART_UPLOAD_LIMIT);
         assertThat(environment.getProperty(MULTIPART_MAX_REQUEST_SIZE_PROPERTY))

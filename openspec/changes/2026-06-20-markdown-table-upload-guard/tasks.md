@@ -12,9 +12,9 @@
 
 ## 3. Server upload limit fallback
 
-- [ ] 3.1 Add failing server tests proving multipart upload config uses 500 MB and oversized multipart errors return structured HTTP 413 detail.
-- [ ] 3.2 Align server multipart limits with the dashboard cap and add the structured 413 exception mapping.
-- [ ] 3.3 Re-run the focused server tests for application config and upload error handling.
+- [x] 3.1 Add failing server tests proving multipart upload config uses 500 MB and oversized multipart errors return structured HTTP 413 detail.
+- [x] 3.2 Align server multipart limits with the dashboard cap and add the structured 413 exception mapping.
+- [x] 3.3 Re-run the focused server tests for application config and upload error handling.
 
 ## 4. Final verification
 

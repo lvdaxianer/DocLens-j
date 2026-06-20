@@ -10,6 +10,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * 全局异常映射与安全日志测试。
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 class GlobalExceptionHandlerTest {
 
     private static final String SECRET_API_KEY = "secret-api-key";
+    private static final long MAX_UPLOAD_BYTES = 524288000L;
 
     /**
      * 401 日志应保留错误语义，但不得泄露请求凭证。
@@ -84,6 +86,27 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getHeaders().getFirst("X-DocLens-Global-Protection")).isEqualTo("enabled");
         assertThat(output.getOut()).contains("/api/v1/health").contains("全局保护");
+        assertThat(output.getOut()).doesNotContain(SECRET_API_KEY);
+    }
+
+    /**
+     * 413 响应应返回结构化 detail，便于前端展示友好上传限制文案。
+     *
+     * @param output 控制台捕获输出
+     * @author lvdaxianerplus
+     * @date 2026-06-20
+     */
+    @Test
+    void oversizedUploadReturnsStructuredPayload(CapturedOutput output) {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        MockHttpServletRequest request = request("/api/v1/batches");
+
+        ResponseEntity<Map<String, String>> response = handler.handlePayloadTooLarge(
+                new MaxUploadSizeExceededException(MAX_UPLOAD_BYTES), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(413);
+        assertThat(response.getBody()).containsEntry("detail", "上传文件总大小不能超过 500MB，请拆分后再上传");
+        assertThat(output.getOut()).contains("/api/v1/batches").contains("上传大小超限");
         assertThat(output.getOut()).doesNotContain(SECRET_API_KEY);
     }
 
