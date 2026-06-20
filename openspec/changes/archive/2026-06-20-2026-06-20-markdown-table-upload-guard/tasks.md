@@ -19,4 +19,4 @@
 ## 4. Final verification
 
 - [x] 4.1 Run dashboard utility tests, dashboard UI tests, dashboard build, and relevant server tests.
-- [ ] 4.2 Run the final plan-implementation audit, archive the OpenSpec change, and commit the archive.
+- [x] 4.2 Run the final plan-implementation audit, archive the OpenSpec change, and commit the archive.
