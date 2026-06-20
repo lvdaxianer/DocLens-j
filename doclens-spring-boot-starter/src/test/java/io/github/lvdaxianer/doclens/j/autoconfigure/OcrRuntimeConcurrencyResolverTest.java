@@ -206,11 +206,13 @@ class OcrRuntimeConcurrencyResolverTest {
 
         @Override
         public void save(OcrNode node) {
+            // 本测试只读取节点列表，不覆盖保存路径。
             throw new UnsupportedOperationException("save is not used by this test");
         }
 
         @Override
         public void saveAll(List<OcrNode> nodes) {
+            // 本测试只读取节点列表，不覆盖批量保存路径。
             throw new UnsupportedOperationException("saveAll is not used by this test");
         }
 
