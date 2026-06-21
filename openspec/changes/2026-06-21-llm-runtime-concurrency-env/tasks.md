@@ -21,6 +21,6 @@
 
 ## 4. Verification and archive
 
-- [ ] 4.1 Run the broader backend and Dashboard verification slices for touched areas.
+- [x] 4.1 Run the broader backend and Dashboard verification slices for touched areas.
 - [ ] 4.2 Run plan-implementation consistency audit and code-review-spec.
 - [ ] 4.3 Archive the completed OpenSpec change after all tasks pass.
