@@ -96,6 +96,31 @@ describe('DocumentResultDrawer', () => {
     expect(wrapper.text()).toContain('下载 TXT')
     expect(wrapper.text()).toContain('下载 JSON')
   })
+
+  /**
+   * LLM 凭证环境变量缺失时应展示用户能直接处理的中文说明。
+   *
+   * @author lvdaxianerplus
+   * @date 2026-06-21
+   */
+  it('renders friendly llm missing credential environment variable message', () => {
+    const result = documentResult()
+    result.result.llm_markdown_applied = false
+    result.result.warnings = ['llm_markdown_post_processing_failed']
+    result.result.llm_error_message = 'credential environment variable DOCLENS_LLM_KEY is not configured'
+    const wrapper = mount(DocumentResultDrawer, {
+      props: {
+        show: true,
+        document: documentRow(),
+        result,
+        loading: false,
+        error: ''
+      }
+    })
+
+    expect(wrapper.text()).toContain('服务进程未读取到环境变量 DOCLENS_LLM_KEY')
+    expect(wrapper.text()).toContain('请在启动服务前设置该变量后重启服务')
+  })
 })
 
 /**

@@ -24,6 +24,7 @@ import {
 import { formatNumber, formatPercent } from '@/utils/formatters'
 import {
   extractOcrOriginalText,
+  friendlyLlmErrorMessage,
   isLlmMarkdownApplied,
   llmStageDescription,
   llmPostProcessingStatus,
@@ -68,7 +69,7 @@ const llmApplied = computed(() => props.result ? isLlmMarkdownApplied(props.resu
 const llmDescription = computed(() => props.result ? llmStageDescription(props.result.result) : '未配置 LLM 后处理，返回 OCR 纯文本')
 const llmErrorMessage = computed(() => {
   const message = props.result?.result.llm_error_message?.trim() ?? ''
-  return message
+  return friendlyLlmErrorMessage(message)
 })
 const downloadDisabled = computed(() => !props.document || !props.result)
 

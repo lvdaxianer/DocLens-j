@@ -15,6 +15,7 @@ import {
 
 import type { LlmMarkdownConfigFormState, LlmConfigCapabilityHints } from '@/utils/llmMarkdownConfigRules'
 import type { LlmMarkdownApiType } from '@/types/llmMarkdownConfig'
+import { credentialEnvVarHelpText } from '@/utils/llmCredentialDisplayRules'
 
 /**
  * LLM Markdown 配置抽屉，承载创建和编辑表单。
@@ -42,6 +43,7 @@ const apiTypeOptions = [
   { label: 'OpenAI compatible', value: 'openai' satisfies LlmMarkdownApiType },
   { label: 'Anthropic', value: 'anthropic' satisfies LlmMarkdownApiType }
 ]
+const credentialHelpText = credentialEnvVarHelpText()
 </script>
 
 <template>
@@ -69,6 +71,9 @@ const apiTypeOptions = [
             v-model:value="form.credentialEnvVar"
             placeholder="例如：MINIMAX_API_KEY"
           />
+          <p class="llm-config-drawer__field-help">
+            {{ credentialHelpText }}
+          </p>
         </NFormItem>
         <NFormItem label="最大上下文 Token 数">
           <NInputNumber
@@ -141,6 +146,12 @@ const apiTypeOptions = [
 <style scoped>
 .llm-config-drawer__hint {
   margin: 0 0 14px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.llm-config-drawer__field-help {
+  margin: 6px 0 0;
   color: var(--ink-muted);
   font-size: 12px;
 }

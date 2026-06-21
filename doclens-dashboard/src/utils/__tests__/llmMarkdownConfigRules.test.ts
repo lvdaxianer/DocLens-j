@@ -15,6 +15,7 @@ import {
   validateMaxContextTokens,
   validateRequestIntervalMillis
 } from '../llmMarkdownConfigRules.ts'
+import { credentialEnvVarHelpText } from '../llmCredentialDisplayRules.ts'
 
 test('default llm markdown config form starts with env credential and runtime limits', () => {
   const form = createDefaultLlmMarkdownConfigForm()
@@ -148,6 +149,13 @@ test('llm markdown config validators reject invalid runtime fields', () => {
   )
   assert.equal(validateMaxConcurrency(0), '最大并发数必须大于等于 1')
   assert.equal(validateRequestIntervalMillis(-1), '请求间隔不能小于 0')
+})
+
+test('llm markdown config explains env credential name instead of key value', () => {
+  assert.equal(
+    credentialEnvVarHelpText(),
+    '这里只填写服务进程可读取的环境变量名，真实 Key 需在启动服务前写入该环境变量。'
+  )
 })
 
 test('llm markdown config requires url and model together with http url', () => {

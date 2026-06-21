@@ -191,6 +191,21 @@ describe('LlmMarkdownConfigPanel drawer editing', () => {
     expect(wrapper.find('.n-drawer').exists()).toBe(true)
     expect(wrapper.text()).toContain('默认 LLM 配置')
   })
+
+  /**
+   * API Key 字段应说明保存的是环境变量名，不是真实 Key。
+   *
+   * @author lvdaxianerplus
+   * @date 2026-06-21
+   */
+  it('explains that api key credential field stores an environment variable name', async () => {
+    const wrapper = mount(LlmMarkdownConfigPanel)
+
+    await wrapper.findAll('button').find((button) => button.text() === '新增配置')?.trigger('click')
+
+    expect(wrapper.text()).toContain('这里只填写服务进程可读取的环境变量名')
+    expect(wrapper.text()).toContain('真实 Key 需在启动服务前写入该环境变量')
+  })
 })
 
 function passthrough(tag: string, className: string) {

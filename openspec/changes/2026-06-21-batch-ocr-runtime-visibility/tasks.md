@@ -12,9 +12,9 @@
 
 ## 3. Clarify LLM env credential failures
 
-- [ ] 3.1 Add failing frontend tests for LLM credential environment variable guidance and friendly missing-env result copy.
-- [ ] 3.2 Update LLM config drawer/result display wording without changing credential storage semantics.
-- [ ] 3.3 Verify focused LLM UI tests and dashboard utility/component test slice.
+- [x] 3.1 Add failing frontend tests for LLM credential environment variable guidance and friendly missing-env result copy.
+- [x] 3.2 Update LLM config drawer/result display wording without changing credential storage semantics.
+- [x] 3.3 Verify focused LLM UI tests and dashboard utility/component test slice.
 
 ## 4. Final verification and archive
 

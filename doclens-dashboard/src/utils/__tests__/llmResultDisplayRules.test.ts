@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   LLM_DISABLED_WARNING,
   LLM_PAUSED_WARNING,
+  friendlyLlmErrorMessage,
   isLlmMarkdownApplied,
   llmStageDescription,
   llmPostProcessingStatus,
@@ -71,6 +72,13 @@ test('llm result display distinguishes paused markdown post processing', () => {
   assert.equal(resultTextTitle(result), 'OCR 纯文本')
   assert.equal(llmPostProcessingStatus(result), 'LLM 已暂停')
   assert.equal(llmStageDescription(result), 'LLM 后处理已暂停，返回 OCR 纯文本')
+})
+
+test('llm result display translates missing credential environment variable errors', () => {
+  assert.equal(
+    friendlyLlmErrorMessage('credential environment variable DOCLENS_LLM_KEY is not configured'),
+    '服务进程未读取到环境变量 DOCLENS_LLM_KEY，请在启动服务前设置该变量后重启服务。'
+  )
 })
 
 test('llm result display distinguishes success fallback and unused state descriptions', () => {

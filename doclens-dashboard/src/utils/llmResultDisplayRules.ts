@@ -10,6 +10,7 @@ export const LLM_POST_PROCESSING_FAILED_WARNING = 'llm_markdown_post_processing_
 export const LLM_DISABLED_WARNING = 'no_available_llm_config'
 export const LLM_PAUSED_WARNING = 'llm_markdown_paused'
 const OCR_TEXT_FIELD = 'ocr_text'
+const MISSING_CREDENTIAL_ENV_VAR_PATTERN = /^credential environment variable ([A-Z_][A-Z0-9_]*) is not configured$/i
 
 /**
  * 判断当前结果是否因为 LLM 排版失败而回退。
@@ -108,6 +109,26 @@ export function llmStageDescription(result: DocumentResultDisplayPayload): strin
     return '未配置 LLM 后处理，返回 OCR 纯文本'
   } else {
     return 'LLM 已配置但本次结果未应用，返回 OCR 纯文本'
+  }
+}
+
+/**
+ * 将 LLM 失败原因转换为可操作的用户提示。
+ *
+ * @param message 原始失败原因
+ * @returns 用户可读的失败原因
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+export function friendlyLlmErrorMessage(message: string): string {
+  const trimmed = message.trim()
+  const missingEnvVar = trimmed.match(MISSING_CREDENTIAL_ENV_VAR_PATTERN)
+  if (missingEnvVar) {
+    // 命中后端凭证环境变量缺失错误时，转换成可操作的中文提示。
+    return `服务进程未读取到环境变量 ${missingEnvVar[1]}，请在启动服务前设置该变量后重启服务。`
+  } else {
+    // 其他错误保持原始信息，避免隐藏未知失败原因。
+    return trimmed
   }
 }
 
