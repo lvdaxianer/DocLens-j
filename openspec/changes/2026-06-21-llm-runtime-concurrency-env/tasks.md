@@ -12,12 +12,12 @@
 
 ## 3. Dashboard failure wording and upload defaults
 
-- [ ] 3.1 Add failing frontend tests for the credential failure copy and LLM concurrency wording.
-- [ ] 3.2 Add a failing frontend test that proves the upload OCR route remains global load balance after models load.
-- [ ] 3.3 Update the result drawer/config display copy so stale missing-env results are not described as a current process-env fact.
-- [ ] 3.4 Update the upload OCR routing selector so model loading no longer overrides the global load-balance default.
-- [ ] 3.5 Add a browser tab favicon and reference it from the Dashboard HTML entrypoint.
-- [ ] 3.6 Run the focused Dashboard tests.
+- [x] 3.1 Add failing frontend tests for the credential failure copy and LLM concurrency wording.
+- [x] 3.2 Add a failing frontend test that proves the upload OCR route remains global load balance after models load.
+- [x] 3.3 Update the result drawer/config display copy so stale missing-env results are not described as a current process-env fact.
+- [x] 3.4 Update the upload OCR routing selector so model loading no longer overrides the global load-balance default.
+- [x] 3.5 Add a browser tab favicon and reference it from the Dashboard HTML entrypoint.
+- [x] 3.6 Run the focused Dashboard tests.
 
 ## 4. Verification and archive
 

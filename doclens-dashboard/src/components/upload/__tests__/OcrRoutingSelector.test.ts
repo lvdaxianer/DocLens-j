@@ -24,15 +24,15 @@ vi.mock('@/api/ocrResources', () => ({
  * @date 2026-06-21
  */
 describe('OcrRoutingSelector', () => {
-  it('defaults to PaddleOCR model load balance after models load', async () => {
+  it('keeps global load balance selected after models load', async () => {
     const wrapper = mount(OcrRoutingSelector)
 
     await flushPromises()
 
     const emittedValues = wrapper.emitted('change')?.flat() ?? []
     expect(emittedValues.at(-1)).toMatchObject({
-      ocrRoutingMode: 'MODEL_LOAD_BALANCE',
-      ocrModelKey: PADDLE_MODEL_KEY,
+      ocrRoutingMode: 'GLOBAL_LOAD_BALANCE',
+      ocrModelKey: '',
       ocrNodeId: '',
       ocrLoadBalanceStrategy: 'weighted-idle'
     })

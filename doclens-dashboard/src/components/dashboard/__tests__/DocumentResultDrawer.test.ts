@@ -118,8 +118,9 @@ describe('DocumentResultDrawer', () => {
       }
     })
 
-    expect(wrapper.text()).toContain('服务进程未读取到环境变量 DOCLENS_LLM_KEY')
-    expect(wrapper.text()).toContain('请在启动服务前设置该变量后重启服务')
+    expect(wrapper.text()).toContain('本次 LLM 尝试未解析到环境变量 DOCLENS_LLM_KEY')
+    expect(wrapper.text()).toContain('请确认后端服务环境已配置该变量后重试文档')
+    expect(wrapper.text()).not.toContain('服务进程未读取到环境变量')
   })
 })
 

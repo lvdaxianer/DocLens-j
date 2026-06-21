@@ -124,8 +124,8 @@ export function friendlyLlmErrorMessage(message: string): string {
   const trimmed = message.trim()
   const missingEnvVar = trimmed.match(MISSING_CREDENTIAL_ENV_VAR_PATTERN)
   if (missingEnvVar) {
-    // 命中后端凭证环境变量缺失错误时，转换成可操作的中文提示。
-    return `服务进程未读取到环境变量 ${missingEnvVar[1]}，请在启动服务前设置该变量后重启服务。`
+    // 命中后端凭证环境变量缺失错误时，按本次保存结果提示重试，避免误判当前进程状态。
+    return `本次 LLM 尝试未解析到环境变量 ${missingEnvVar[1]}，请确认后端服务环境已配置该变量后重试文档。`
   } else {
     // 其他错误保持原始信息，避免隐藏未知失败原因。
     return trimmed

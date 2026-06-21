@@ -77,7 +77,7 @@ test('llm result display distinguishes paused markdown post processing', () => {
 test('llm result display translates missing credential environment variable errors', () => {
   assert.equal(
     friendlyLlmErrorMessage('credential environment variable DOCLENS_LLM_KEY is not configured'),
-    '服务进程未读取到环境变量 DOCLENS_LLM_KEY，请在启动服务前设置该变量后重启服务。'
+    '本次 LLM 尝试未解析到环境变量 DOCLENS_LLM_KEY，请确认后端服务环境已配置该变量后重试文档。'
   )
 })
 
