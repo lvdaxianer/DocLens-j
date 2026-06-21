@@ -48,6 +48,7 @@ class ConfigurableMarkdownPostProcessorTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final OffsetDateTime CHECKED_AT = OffsetDateTime.parse("2026-06-12T12:00:00+08:00");
     private static final String RUNTIME_API_KEY_ENV_VAR = "RUNTIME_LLM_API_KEY";
+    private static final String PROCESS_API_KEY_ENV_VAR = "DOCLENS_LLM_KEY";
     private static final String RUNTIME_API_KEY = "sk-runtime";
     private static final String TEST_CHUNK_THREAD_PREFIX = "doclens-test-chunk-";
     private static final String TEST_CHECKPOINT_THREAD_PREFIX = "doclens-test-checkpoint-";
@@ -79,6 +80,39 @@ class ConfigurableMarkdownPostProcessorTest {
             assertThat(result.markdown()).isEqualTo("# 运行时 Markdown");
             assertThat(server.lastAuthorization()).isEqualTo("Bearer " + RUNTIME_API_KEY);
             assertThat(server.lastBody()).contains("\"model\":\"runtime-model\"");
+        }
+    }
+
+    /**
+     * 生产选项未传显式环境变量映射时，应读取服务进程环境。
+     *
+     * @throws Exception 测试 HTTP 服务异常时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void productionOptionsResolveCredentialsFromProcessEnvironmentWhenMapIsAbsent() throws Exception {
+        try (MockLlmServer server = MockLlmServer.start()) {
+            LlmMarkdownConfig config = LlmMarkdownConfig.configured(
+                    "default", server.endpoint().toString(), "runtime-model", PROCESS_API_KEY_ENV_VAR)
+                    .updateHealth(true, "", CHECKED_AT);
+            ExecutorService chunkExecutor = Executors.newSingleThreadExecutor(
+                    namedThreadFactory(TEST_CHUNK_THREAD_PREFIX));
+            try {
+                ConfigurableMarkdownRuntimeOptions runtimeOptions = runtimeOptions(chunkExecutor, chunkExecutor,
+                        MarkdownChunkCheckpointStore.noop());
+                ConfigurableMarkdownPostProcessorOptions options = new ConfigurableMarkdownPostProcessorOptions(
+                        OBJECT_MAPPER, new FixedConfigRepository(config), new FallbackProcessor("fallback text"),
+                        null, runtimeOptions);
+
+                MarkdownPostProcessingResult result = new ConfigurableMarkdownPostProcessor(options)
+                        .process(request());
+
+                assertThat(result.markdown()).isEqualTo("# 运行时 Markdown");
+                assertThat(server.lastAuthorization()).isEqualTo("Bearer " + System.getenv(PROCESS_API_KEY_ENV_VAR));
+            } finally {
+                chunkExecutor.shutdownNow();
+            }
         }
     }
 

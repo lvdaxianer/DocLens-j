@@ -1,8 +1,8 @@
 ## 1. Runtime credential source
 
-- [ ] 1.1 Add a failing backend test that proves production Markdown processor options resolve credentials from the process environment when no explicit map is supplied.
-- [ ] 1.2 Implement the production environment fallback while keeping explicit test maps deterministic.
-- [ ] 1.3 Run the focused credential/configurable Markdown tests.
+- [x] 1.1 Add a failing backend test that proves production Markdown processor options resolve credentials from the process environment when no explicit map is supplied.
+- [x] 1.2 Implement the production environment fallback while keeping explicit test maps deterministic.
+- [x] 1.3 Run the focused credential/configurable Markdown tests.
 
 ## 2. LLM chunk concurrency limiter
 

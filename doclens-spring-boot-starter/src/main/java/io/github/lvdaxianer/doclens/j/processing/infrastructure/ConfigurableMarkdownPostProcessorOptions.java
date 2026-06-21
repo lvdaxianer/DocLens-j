@@ -32,7 +32,7 @@ public record ConfigurableMarkdownPostProcessorOptions(
      * @date 2026-06-20
      */
     public ConfigurableMarkdownPostProcessorOptions {
-        environmentValues = environmentValues == null ? Map.of() : Map.copyOf(environmentValues);
+        environmentValues = environmentValues == null ? System.getenv() : Map.copyOf(environmentValues);
         runtimeOptions = Objects.requireNonNull(runtimeOptions, "markdown runtime options is required");
     }
 }
