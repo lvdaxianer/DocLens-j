@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.query.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.batch;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.completedDocument;
+import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.processingDocument;
 import static io.github.lvdaxianer.doclens.j.query.application.DashboardQueryServiceFixtures.routedDocument;
 
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsTestFixtures.TestDashboardOcrMetricsProvider;
@@ -84,6 +85,26 @@ class DashboardQueryServiceOcrRouteDetailTest {
 
         assertDocumentFinalHit(documents.get(0), "doc-1", "node-1");
         assertDocumentFinalHit(documents.get(1), "doc-2", "node-2");
+    }
+
+    /**
+     * 批次详情应按文档返回 OCR 运行中分配节点，避免和最终分配混淆。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void batchDetailExposesRunningHitNodesScopedPerDocument() {
+        DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
+                new InMemoryDocumentJobRepository(List.of(
+                        processingDocument("doc-running", DocumentType.PDF, 0),
+                        completedDocument("doc-done", DocumentType.PDF, 1)
+                )), new InMemoryOcrEventRepository(), new RunningDashboardOcrMetricsProvider());
+
+        List<?> documents = documentsOf(service.batchDetail("batch-test"));
+
+        assertDocumentRunningHit(documents.get(0), "doc-running", "node-running");
+        assertDocumentRunningHit(documents.get(1), "doc-done", "node-done");
     }
 
     /**
@@ -183,6 +204,25 @@ class DashboardQueryServiceOcrRouteDetailTest {
     }
 
     /**
+     * 校验指定文档的运行中命中节点。
+     *
+     * @param document 文档详情
+     * @param documentId 文档 ID
+     * @param nodeId OCR 节点 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void assertDocumentRunningHit(Object document, String documentId, String nodeId) {
+        Map<?, ?> documentDetail = (Map<?, ?>) document;
+        assertThat(documentDetail.get("document_id")).isEqualTo(documentId);
+        assertThat(documentDetail.get("ocr_running_hit_nodes"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("node_id", nodeId);
+    }
+
+    /**
      * 限定文档维度最终命中节点的测试指标提供器。
      *
      * @author lvdaxianerplus
@@ -206,6 +246,19 @@ class DashboardQueryServiceOcrRouteDetailTest {
             return List.of(
                     Map.of("model_key", "paddle_ocr", "node_id", "node-1", "image_count", 2L),
                     Map.of("model_key", "paddle_ocr", "node_id", "node-2", "image_count", 1L));
+        }
+
+        /**
+         * 返回空文档运行中分配节点。
+         *
+         * @param batchId 批次 ID
+         * @return 空运行中分配节点
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId) {
+            return Map.of();
         }
 
         @Override
@@ -247,6 +300,33 @@ class DashboardQueryServiceOcrRouteDetailTest {
                             Map.of("model_key", "paddle_ocr", "node_id", "node-2", "node_name", "节点二",
                                     "inflight_images", 4, "max_concurrency", 20)
                     ))
+            );
+        }
+    }
+
+    /**
+     * 提供文档级运行中分配节点的测试指标提供器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private static class RunningDashboardOcrMetricsProvider extends TestDashboardOcrMetricsProvider {
+
+        /**
+         * 返回文档级 OCR 运行中命中节点。
+         *
+         * @param batchId 批次 ID
+         * @return 文档级运行中命中节点
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId) {
+            return Map.of(
+                    "doc-running", List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-running",
+                            "image_count", 2L)),
+                    "doc-done", List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-done",
+                            "image_count", 1L))
             );
         }
     }

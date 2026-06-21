@@ -6,9 +6,9 @@
 
 ## 2. Show running allocation separately from final allocation
 
-- [ ] 2.1 Add failing backend and frontend tests proving current-document running OCR allocation is rendered before final OCR completion.
-- [ ] 2.2 Add current-document running allocation data and update the batch OCR route panel labels/layout.
-- [ ] 2.3 Verify focused batch route panel tests and dashboard build/test slice.
+- [x] 2.1 Add failing backend and frontend tests proving current-document running OCR allocation is rendered before final OCR completion.
+- [x] 2.2 Add current-document running allocation data and update the batch OCR route panel labels/layout.
+- [x] 2.3 Verify focused batch route panel tests and dashboard build/test slice.
 
 ## 3. Clarify LLM env credential failures
 

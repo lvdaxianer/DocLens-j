@@ -83,8 +83,8 @@ class OcrDashboardHitNodesMetricsProviderTest extends OcrDashboardMetricsProvide
                 successfulCall(callSeed("call-1", "batch-1", "doc-1", 1), FINANCE_NODE_ID, 320)
         ));
         InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker(List.of(
-                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, FINANCE_NODE_ID, 1L),
-                new OcrBatchNodeHit("batch-1", DEFAULT_MODEL_KEY, INVOICE_NODE_ID, 2L)
+                new OcrBatchNodeHit("batch-1", "doc-1", DEFAULT_MODEL_KEY, FINANCE_NODE_ID, 1L),
+                new OcrBatchNodeHit("batch-1", "doc-2", DEFAULT_MODEL_KEY, INVOICE_NODE_ID, 2L)
         ));
         OcrDashboardMetricsProvider provider = provider(nodeRepository, callRepository, batchHitTracker);
 
@@ -93,6 +93,27 @@ class OcrDashboardHitNodesMetricsProviderTest extends OcrDashboardMetricsProvide
         assertThat(hitNodes)
                 .anySatisfy(row -> assertFinanceHitNode(row, 2L))
                 .anySatisfy(row -> assertInvoiceHitNode(row, 2L));
+    }
+
+    /**
+     * 文档运行中分配节点应按文档隔离，不混入同批次其他文档。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void runningHitNodesByBatchKeepsHitsScopedPerDocument() {
+        InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker(List.of(
+                new OcrBatchNodeHit("batch-1", "doc-1", DEFAULT_MODEL_KEY, FINANCE_NODE_ID, 1L),
+                new OcrBatchNodeHit("batch-1", "doc-2", DEFAULT_MODEL_KEY, INVOICE_NODE_ID, 2L)
+        ));
+        OcrDashboardMetricsProvider provider = provider(twoNodeRepository(),
+                new InMemoryOcrNodeCallRepository(List.of()), batchHitTracker);
+
+        Map<String, List<Map<String, Object>>> hitNodes = provider.runningHitNodesByBatch("batch-1");
+
+        assertThat(hitNodes.get("doc-1")).singleElement().satisfies(row -> assertFinanceHitNode(row, 1L));
+        assertThat(hitNodes.get("doc-2")).singleElement().satisfies(row -> assertInvoiceHitNode(row, 2L));
     }
 
     /**

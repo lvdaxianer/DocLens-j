@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHitCommand;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
@@ -305,27 +306,23 @@ final class DocumentPageTaskRoutingTestDoubles {
         /**
          * 忽略测试派发记录。
          *
-         * @param batchId 批次 ID
-         * @param modelKey 模型 Key
-         * @param nodeId 节点 ID
+         * @param command 运行中节点命中计数命令
          * @author lvdaxianerplus
          * @date 2026-06-11
          */
         @Override
-        public void recordDispatch(String batchId, String modelKey, String nodeId) {
+        public void recordDispatch(OcrBatchNodeHitCommand command) {
         }
 
         /**
          * 忽略测试完成记录。
          *
-         * @param batchId 批次 ID
-         * @param modelKey 模型 Key
-         * @param nodeId 节点 ID
+         * @param command 运行中节点命中计数命令
          * @author lvdaxianerplus
          * @date 2026-06-11
          */
         @Override
-        public void recordCompletion(String batchId, String modelKey, String nodeId) {
+        public void recordCompletion(OcrBatchNodeHitCommand command) {
         }
 
         /**

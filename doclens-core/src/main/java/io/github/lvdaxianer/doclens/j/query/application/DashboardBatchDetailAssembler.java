@@ -91,6 +91,7 @@ class DashboardBatchDetailAssembler {
      */
     private List<Map<String, Object>> documentRows(String batchId, List<DocumentJob> documents) {
         return rowAssembler.documentRows(documents,
+                dependencies.ocrMetricsProvider().runningHitNodesByBatch(batchId),
                 dependencies.ocrMetricsProvider().finalHitNodesByBatch(batchId), chunkCounts(documents));
     }
 

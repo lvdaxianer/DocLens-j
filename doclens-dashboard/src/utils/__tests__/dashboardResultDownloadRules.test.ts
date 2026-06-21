@@ -65,6 +65,7 @@ function documentRow(): DocumentRow {
     duration_ms: 1000,
     llm_chunk_count: 0,
     track: [],
+    ocr_running_hit_nodes: [],
     ocr_final_hit_nodes: [],
     error_code: '',
     error_message: '',

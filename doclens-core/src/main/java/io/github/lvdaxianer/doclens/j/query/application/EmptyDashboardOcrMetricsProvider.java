@@ -45,6 +45,19 @@ public class EmptyDashboardOcrMetricsProvider implements DashboardOcrMetricsProv
     }
 
     /**
+     * 获取空批次文档运行中分配节点映射。
+     *
+     * @param batchId 批次 ID
+     * @return 空运行中分配节点映射
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Override
+    public Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId) {
+        return Map.of();
+    }
+
+    /**
      * 获取空批次文档最终分配节点映射。
      *
      * @param batchId 批次 ID

@@ -11,6 +11,7 @@ import {
 defineProps<{
   routePolicy?: BatchOcrRoutePolicy | null
   currentDocumentName?: string
+  currentDocumentRunningHitNodes: BatchOcrHitNode[]
   currentDocumentFinalHitNodes: BatchOcrHitNode[]
   hitNodes: BatchOcrHitNode[]
 }>()
@@ -21,7 +22,7 @@ defineProps<{
     <div class="panel__header">
       <div>
         <h2 class="panel__title">OCR 路由</h2>
-        <span class="panel__hint">上传时路由策略、当前文件最终分配与批次级调度命中</span>
+        <span class="panel__hint">上传时路由策略、当前文件运行中分配、最终分配与批次级调度命中</span>
       </div>
     </div>
     <dl class="batch-ocr-route__policy">
@@ -48,6 +49,33 @@ defineProps<{
         <h3>当前文件实际分配</h3>
         <span>{{ currentDocumentName || '当前文件未确定' }}</span>
       </div>
+      <div class="batch-ocr-route__allocation-block">
+        <div class="batch-ocr-route__subheader">
+          <h4>运行中分配</h4>
+          <span>仅展示当前仍在 OCR 的图片</span>
+        </div>
+        <div v-if="currentDocumentRunningHitNodes.length > 0" class="batch-ocr-route__hits">
+          <article
+            v-for="node in currentDocumentRunningHitNodes"
+            :key="`running-${node.model_key}-${node.node_id}`"
+            class="batch-ocr-route__hit"
+          >
+            <strong>{{ displayNodeName({ nodeId: node.node_id, nodeName: node.node_name }) }}</strong>
+            <span>
+              OCR 模型：{{ displayModelName({ modelKey: node.model_key, name: node.model_name }) }}
+            </span>
+            <span>
+              {{ displayNodeSubtitle({ nodeId: node.node_id, imageCount: node.image_count }) }}
+            </span>
+          </article>
+        </div>
+        <p v-else class="batch-ocr-route__empty">当前文件暂无运行中的 OCR 图片</p>
+      </div>
+      <div class="batch-ocr-route__allocation-block">
+        <div class="batch-ocr-route__subheader">
+          <h4>最终分配结果</h4>
+          <span>只统计每页最终成功归属</span>
+        </div>
       <div v-if="currentDocumentFinalHitNodes.length > 0" class="batch-ocr-route__hits">
         <article
           v-for="node in currentDocumentFinalHitNodes"
@@ -64,6 +92,7 @@ defineProps<{
         </article>
       </div>
       <p v-else class="batch-ocr-route__empty">当前文件尚未完成 OCR，暂无最终分配结果</p>
+      </div>
     </section>
 
     <section class="batch-ocr-route__section">
@@ -99,6 +128,11 @@ defineProps<{
   gap: 8px;
 }
 
+.batch-ocr-route__allocation-block {
+  display: grid;
+  gap: 6px;
+}
+
 .batch-ocr-route__section-header {
   display: flex;
   align-items: baseline;
@@ -112,7 +146,21 @@ defineProps<{
   font-size: 14px;
 }
 
-.batch-ocr-route__section-header span {
+.batch-ocr-route__subheader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.batch-ocr-route__subheader h4 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+
+.batch-ocr-route__section-header span,
+.batch-ocr-route__subheader span {
   color: var(--ink-muted);
   font-size: 12px;
 }

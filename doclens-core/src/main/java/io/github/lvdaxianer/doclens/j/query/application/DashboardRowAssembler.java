@@ -69,25 +69,28 @@ class DashboardRowAssembler {
      * @date 2026-06-09
      */
     List<Map<String, Object>> documentRows(List<DocumentJob> documents) {
-        return documentRows(documents, Map.of(), Map.of());
+        return documentRows(documents, Map.of(), Map.of(), Map.of());
     }
 
     /**
      * 创建带 OCR 最终分配信息的文档行集合。
      *
      * @param documents 文档集合
+     * @param runningHitNodesByDocument 文档级运行中分配映射
      * @param finalHitNodesByDocument 文档级最终分配映射
      * @param chunkCounts 文档级 chunk 数映射
      * @return 文档行集合
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-21
      */
     List<Map<String, Object>> documentRows(
             List<DocumentJob> documents,
+            Map<String, List<Map<String, Object>>> runningHitNodesByDocument,
             Map<String, List<Map<String, Object>>> finalHitNodesByDocument,
             Map<String, Integer> chunkCounts
     ) {
         return documents.stream().map(document -> documentRow(document,
+                runningHitNodesByDocument.getOrDefault(document.documentId(), List.of()),
                 finalHitNodesByDocument.getOrDefault(document.documentId(), List.of()),
                 chunkCounts.getOrDefault(document.documentId(), 0))).toList();
     }
@@ -126,7 +129,7 @@ class DashboardRowAssembler {
      */
     List<Map<String, Object>> failureRows(List<DocumentJob> documents) {
         return documents.stream().filter(document -> document.status().isFailureLike())
-                .map(document -> documentRow(document, List.of(), 0)).toList();
+                .map(document -> documentRow(document, List.of(), List.of(), 0)).toList();
     }
 
     /**
@@ -169,6 +172,7 @@ class DashboardRowAssembler {
      */
     private Map<String, Object> documentRow(
             DocumentJob document,
+            List<Map<String, Object>> runningHitNodes,
             List<Map<String, Object>> finalHitNodes,
             int chunkCount
     ) {
@@ -185,6 +189,7 @@ class DashboardRowAssembler {
                 Map.entry("duration_ms", durationMillis(document)),
                 Map.entry("llm_chunk_count", chunkCount),
                 Map.entry("track", processingTrackAssembler.assemble(document)),
+                Map.entry("ocr_running_hit_nodes", runningHitNodes),
                 Map.entry("ocr_final_hit_nodes", finalHitNodes),
                 Map.entry("error_code", document.errorCode().orElse(DocLensConstants.EMPTY_VALUE)),
                 Map.entry("error_message", document.errorMessage().orElse(DocLensConstants.EMPTY_VALUE)),

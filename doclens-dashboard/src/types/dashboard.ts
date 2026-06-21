@@ -49,6 +49,7 @@ export interface DashboardOcrResources {
   down_node_count: number
   recovering_node_count: number
   global_inflight_images: number
+  models?: DashboardOcrResourceModel[]
   nodes: DashboardOcrResourceNode[]
   busiest_node: {
     model_key?: string
@@ -67,9 +68,30 @@ export interface DashboardOcrResources {
   }
 }
 
+/**
+ * Dashboard OCR 模型运行态容量读模型。
+ *
+ * @author lvdaxianerplus
+ * @date 2026-06-21
+ */
+export interface DashboardOcrResourceModel {
+  /** OCR 模型 key。 */
+  model_key: string
+  /** OCR 模型展示名称。 */
+  model_name?: string
+  /** 当前运行中图片数量。 */
+  inflight_images: number
+  /** 模型可用最大并发。 */
+  max_concurrency: number
+}
+
 export interface DashboardOcrResourceNode {
   node_id: string
+  model_key?: string
+  model_name?: string
   node_name: string
+  max_concurrency?: number
+  inflight_images?: number
   status?: 'UP' | 'DOWN' | 'RECOVERING' | 'DISABLED' | string
   last_health_at?: string
   last_error?: string
@@ -120,6 +142,7 @@ export interface DocumentRow {
   duration_ms: number
   llm_chunk_count: number
   track: ProcessingTrackNode[]
+  ocr_running_hit_nodes: BatchOcrHitNode[]
   ocr_final_hit_nodes: BatchOcrHitNode[]
   error_code: string
   error_message: string
@@ -206,6 +229,13 @@ export interface BatchDetailResponse {
   events: OcrEventRow[]
   callback_jobs: CallbackJobRow[]
   ocr_route_policy: BatchOcrRoutePolicy
+  ocr_runtime_capacity?: {
+    model_key: string
+    model_name?: string
+    inflight_images: number
+    max_concurrency: number
+    nodes: DashboardOcrResourceNode[]
+  }
   batch_dispatch_hit_nodes: BatchOcrHitNode[]
   failure_summary: Record<string, number>
 }

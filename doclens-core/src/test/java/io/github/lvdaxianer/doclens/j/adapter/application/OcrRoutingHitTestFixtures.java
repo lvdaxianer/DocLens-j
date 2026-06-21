@@ -34,23 +34,23 @@ final class OcrRoutingHitTestFixtures {
     static class InMemoryBatchHitTracker implements OcrBatchHitTracker {
 
         /*
-         * 使用扁平 key 保存 batch + model + node 三段信息。
+         * 使用扁平 key 保存 batch + document + model + node 四段信息。
          * 测试关注的是计数快照行为，不需要引入多层 Map 增加阅读成本。
          */
 
-        private static final int KEY_SEGMENT_COUNT = 3;
+        private static final int KEY_SEGMENT_COUNT = 4;
         private static final String KEY_SEPARATOR = "|";
         private final Map<String, AtomicLong> hitCounts = new ConcurrentHashMap<>(TEST_CALL_CAPACITY);
 
         @Override
-        public void recordDispatch(String batchId, String modelKey, String nodeId) {
-            hitCounts.computeIfAbsent(hitKey(batchId, modelKey, nodeId), ignored -> new AtomicLong(0L))
+        public void recordDispatch(OcrBatchNodeHitCommand command) {
+            hitCounts.computeIfAbsent(hitKey(command), ignored -> new AtomicLong(0L))
                     .incrementAndGet();
         }
 
         @Override
-        public void recordCompletion(String batchId, String modelKey, String nodeId) {
-            String key = hitKey(batchId, modelKey, nodeId);
+        public void recordCompletion(OcrBatchNodeHitCommand command) {
+            String key = hitKey(command);
             AtomicLong counter = hitCounts.get(key);
             if (counter == null) {
                 // 测试中未记录派发时收到完成回调，直接忽略避免负计数。
@@ -87,15 +87,14 @@ final class OcrRoutingHitTestFixtures {
         /**
          * 组装批次命中键，避免维护多层并发结构。
          *
-         * @param batchId 批次 ID
-         * @param modelKey 模型标识
-         * @param nodeId 节点 ID
+         * @param command 运行中节点命中计数命令
          * @return 命中键
          * @author lvdaxianerplus
-         * @date 2026-06-11
+         * @date 2026-06-21
          */
-        private String hitKey(String batchId, String modelKey, String nodeId) {
-            return batchId + KEY_SEPARATOR + modelKey + KEY_SEPARATOR + nodeId;
+        private String hitKey(OcrBatchNodeHitCommand command) {
+            return String.join(KEY_SEPARATOR, command.batchId(), command.documentId(),
+                    command.modelKey(), command.nodeId());
         }
 
         /**
@@ -109,7 +108,7 @@ final class OcrRoutingHitTestFixtures {
          */
         private OcrBatchNodeHit toHit(String key, long imageCount) {
             String[] segments = key.split("\\|", KEY_SEGMENT_COUNT);
-            return new OcrBatchNodeHit(segments[0], segments[1], segments[2], imageCount);
+            return new OcrBatchNodeHit(segments[0], segments[1], segments[2], segments[3], imageCount);
         }
     }
 }

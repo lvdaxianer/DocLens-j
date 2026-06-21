@@ -209,6 +209,7 @@ useAutoRefresh(refresh)
       v-if="selectedBatch"
       :route-policy="selectedBatch.ocr_route_policy"
       :current-document-name="currentRouteDocument?.file_name"
+      :current-document-running-hit-nodes="currentRouteDocument?.ocr_running_hit_nodes ?? []"
       :current-document-final-hit-nodes="currentRouteDocument?.ocr_final_hit_nodes ?? []"
       :hit-nodes="selectedBatch.batch_dispatch_hit_nodes"
     />

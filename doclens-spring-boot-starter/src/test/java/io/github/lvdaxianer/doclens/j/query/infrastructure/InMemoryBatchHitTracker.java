@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHitCommand;
 import java.util.List;
 
 /**
@@ -16,28 +17,24 @@ record InMemoryBatchHitTracker(List<OcrBatchNodeHit> hits) implements OcrBatchHi
     /**
      * 记录调度命中。
      *
-     * @param batchId 批次 ID
-     * @param modelKey OCR 模型 key
-     * @param nodeId 节点 ID
+     * @param command 运行中节点命中计数命令
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
     @Override
-    public void recordDispatch(String batchId, String modelKey, String nodeId) {
+    public void recordDispatch(OcrBatchNodeHitCommand command) {
         throw new UnsupportedOperationException("test tracker is read only");
     }
 
     /**
      * 记录调度完成。
      *
-     * @param batchId 批次 ID
-     * @param modelKey OCR 模型 key
-     * @param nodeId 节点 ID
+     * @param command 运行中节点命中计数命令
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
     @Override
-    public void recordCompletion(String batchId, String modelKey, String nodeId) {
+    public void recordCompletion(OcrBatchNodeHitCommand command) {
         throw new UnsupportedOperationException("test tracker is read only");
     }
 

@@ -1,21 +1,19 @@
 package io.github.lvdaxianer.doclens.j.adapter.application;
 
 /**
- * 批次维度 OCR 节点命中快照。
+ * OCR 批次运行中节点命中计数命令。
  *
  * @param batchId 批次 ID
  * @param documentId 文档 ID
  * @param modelKey 模型标识
  * @param nodeId 节点 ID
- * @param imageCount 当前仍在该节点处理中的图片数
  * @author lvdaxianerplus
  * @date 2026-06-21
  */
-public record OcrBatchNodeHit(
+public record OcrBatchNodeHitCommand(
         String batchId,
         String documentId,
         String modelKey,
-        String nodeId,
-        long imageCount
+        String nodeId
 ) {
 }

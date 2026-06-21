@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lvdaxianer.doclens.j.adapter.application.LeastInflightOcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHitCommand;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.InMemoryOcrDocumentAffinityTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
@@ -116,12 +117,12 @@ class ImageDocumentExtractorTest {
     private OcrBatchHitTracker noOpBatchHitTracker() {
         return new OcrBatchHitTracker() {
             @Override
-            public void recordDispatch(String batchId, String modelKey, String nodeId) {
+            public void recordDispatch(OcrBatchNodeHitCommand command) {
                 // 当前测试只验证路由结果，不关心运行时批次命中展示。
             }
 
             @Override
-            public void recordCompletion(String batchId, String modelKey, String nodeId) {
+            public void recordCompletion(OcrBatchNodeHitCommand command) {
                 // 当前测试只验证路由结果，不关心运行时批次命中展示。
             }
 

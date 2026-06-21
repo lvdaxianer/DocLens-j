@@ -145,7 +145,8 @@ public class OcrRoutingService {
             OcrRouteAccumulator accumulator,
             OcrRuntimeNodeView node
     ) {
-        batchHitTracker.recordDispatch(request.batchId(), node.modelKey(), node.nodeId());
+        OcrBatchNodeHitCommand hitCommand = hitCommand(request, node);
+        batchHitTracker.recordDispatch(hitCommand);
         try {
             NodeAttemptResult result = executeWithRetry(request, effectivePolicy, node, accumulator);
             if (result.result().isPresent()) {
@@ -157,9 +158,22 @@ public class OcrRoutingService {
                 throw routeException(accumulator.lastFailure());
             }
         } finally {
-            batchHitTracker.recordCompletion(request.batchId(), node.modelKey(), node.nodeId());
+            batchHitTracker.recordCompletion(hitCommand);
             dispatchCoordinator.release(node.nodeId());
         }
+    }
+
+    /**
+     * 创建 OCR 批次运行中节点命中计数命令。
+     *
+     * @param request 图片 OCR 请求
+     * @param node 选中节点
+     * @return 运行中节点命中计数命令
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private OcrBatchNodeHitCommand hitCommand(ImageOcrRequest request, OcrRuntimeNodeView node) {
+        return new OcrBatchNodeHitCommand(request.batchId(), request.documentId(), node.modelKey(), node.nodeId());
     }
 
     /**

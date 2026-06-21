@@ -14,6 +14,7 @@ describe('BatchOcrRoutePanel', () => {
           load_balance_strategy: 'least-inflight'
         },
         currentDocumentName: 'invoice-a.pdf',
+        currentDocumentRunningHitNodes: [],
         currentDocumentFinalHitNodes: [
           { model_key: 'paddle_ocr', node_id: 'node-1', node_name: '节点一', image_count: 2 }
         ],
@@ -40,6 +41,9 @@ describe('BatchOcrRoutePanel', () => {
           load_balance_strategy: 'least-inflight'
         },
         currentDocumentName: 'invoice-b.pdf',
+        currentDocumentRunningHitNodes: [
+          { model_key: 'paddle_ocr', node_id: 'node-3', node_name: '节点三', image_count: 2 }
+        ],
         currentDocumentFinalHitNodes: [],
         hitNodes: [
           { model_key: 'paddle_ocr', node_id: 'node-3', node_name: '节点三', image_count: 3 }
@@ -48,8 +52,36 @@ describe('BatchOcrRoutePanel', () => {
     })
 
     expect(wrapper.text()).toContain('当前文件实际分配')
+    expect(wrapper.text()).toContain('运行中分配')
+    expect(wrapper.text()).toContain('节点三')
     expect(wrapper.text()).toContain('当前文件尚未完成 OCR，暂无最终分配结果')
     expect(wrapper.text()).toContain('批次 OCR 调度命中')
+  })
+
+  it('shows running and final allocation as separate sections', () => {
+    const wrapper = mount(BatchOcrRoutePanel, {
+      props: {
+        routePolicy: {
+          routing_mode: 'MODEL_LOAD_BALANCE',
+          model_key: 'paddle_ocr',
+          node_id: '',
+          load_balance_strategy: 'least-inflight'
+        },
+        currentDocumentName: 'running.pdf',
+        currentDocumentRunningHitNodes: [
+          { model_key: 'paddle_ocr', node_id: 'node-running', node_name: '运行节点', image_count: 1 }
+        ],
+        currentDocumentFinalHitNodes: [
+          { model_key: 'paddle_ocr', node_id: 'node-final', node_name: '最终节点', image_count: 2 }
+        ],
+        hitNodes: []
+      }
+    })
+
+    expect(wrapper.text()).toContain('运行中分配')
+    expect(wrapper.text()).toContain('最终分配结果')
+    expect(wrapper.text()).toContain('运行节点')
+    expect(wrapper.text()).toContain('最终节点')
   })
 
   it('shows OCR model names separately from provider model details', () => {
@@ -62,6 +94,7 @@ describe('BatchOcrRoutePanel', () => {
           load_balance_strategy: 'least-inflight'
         },
         currentDocumentName: 'manual.pdf',
+        currentDocumentRunningHitNodes: [],
         currentDocumentFinalHitNodes: [
           { model_key: 'ollama', model_name: 'Ollama', node_id: 'node-ollama', node_name: 'Ollama 节点', image_count: 1 }
         ],

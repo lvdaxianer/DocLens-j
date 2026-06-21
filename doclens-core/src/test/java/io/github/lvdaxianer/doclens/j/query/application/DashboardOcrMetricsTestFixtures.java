@@ -78,6 +78,19 @@ final class DashboardOcrMetricsTestFixtures {
         }
 
         /**
+         * 返回空文档运行中分配节点。
+         *
+         * @param batchId 批次 ID
+         * @return 空运行中分配节点
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId) {
+            return Map.of();
+        }
+
+        /**
          * 返回测试文档的最终分配节点。
          *
          * @param batchId 批次 ID

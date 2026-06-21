@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.adapter.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHitCommand;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class InMemoryOcrBatchHitTracker implements OcrBatchHitTracker {
 
-    private static final int KEY_SEGMENT_COUNT = 3;
+    private static final int KEY_SEGMENT_COUNT = 4;
     private static final String KEY_SEPARATOR = "|";
 
     private final Map<String, AtomicLong> hitCounts = new ConcurrentHashMap<>();
@@ -24,30 +25,26 @@ public class InMemoryOcrBatchHitTracker implements OcrBatchHitTracker {
     /**
      * 记录某个批次已派发到指定节点的进行中图片。
      *
-     * @param batchId 批次 ID
-     * @param modelKey 模型标识
-     * @param nodeId 节点 ID
+     * @param command 运行中节点命中计数命令
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-21
      */
     @Override
-    public void recordDispatch(String batchId, String modelKey, String nodeId) {
-        hitCounts.computeIfAbsent(hitKey(batchId, modelKey, nodeId), ignored -> new AtomicLong(0L))
+    public void recordDispatch(OcrBatchNodeHitCommand command) {
+        hitCounts.computeIfAbsent(hitKey(command), ignored -> new AtomicLong(0L))
                 .incrementAndGet();
     }
 
     /**
      * 记录某个批次在指定节点上的图片已完成处理。
      *
-     * @param batchId 批次 ID
-     * @param modelKey 模型标识
-     * @param nodeId 节点 ID
+     * @param command 运行中节点命中计数命令
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-21
      */
     @Override
-    public void recordCompletion(String batchId, String modelKey, String nodeId) {
-        String key = hitKey(batchId, modelKey, nodeId);
+    public void recordCompletion(OcrBatchNodeHitCommand command) {
+        String key = hitKey(command);
         AtomicLong counter = hitCounts.get(key);
         if (counter == null) {
             // 未记录派发时收到完成回调，直接忽略避免产生负计数。
@@ -81,15 +78,14 @@ public class InMemoryOcrBatchHitTracker implements OcrBatchHitTracker {
     /**
      * 组装批次命中键，避免维护多层并发映射。
      *
-     * @param batchId 批次 ID
-     * @param modelKey 模型标识
-     * @param nodeId 节点 ID
+     * @param command 运行中节点命中计数命令
      * @return 命中键
      * @author lvdaxianerplus
-     * @date 2026-06-10
+     * @date 2026-06-21
      */
-    private String hitKey(String batchId, String modelKey, String nodeId) {
-        return batchId + KEY_SEPARATOR + modelKey + KEY_SEPARATOR + nodeId;
+    private String hitKey(OcrBatchNodeHitCommand command) {
+        return String.join(KEY_SEPARATOR, command.batchId(), command.documentId(),
+                command.modelKey(), command.nodeId());
     }
 
     /**
@@ -103,6 +99,6 @@ public class InMemoryOcrBatchHitTracker implements OcrBatchHitTracker {
      */
     private OcrBatchNodeHit toHit(String key, long imageCount) {
         String[] segments = key.split("\\|", KEY_SEGMENT_COUNT);
-        return new OcrBatchNodeHit(segments[0], segments[1], segments[2], imageCount);
+        return new OcrBatchNodeHit(segments[0], segments[1], segments[2], segments[3], imageCount);
     }
 }

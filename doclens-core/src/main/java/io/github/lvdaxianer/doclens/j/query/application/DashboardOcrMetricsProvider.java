@@ -31,6 +31,16 @@ public interface DashboardOcrMetricsProvider {
     List<Map<String, Object>> dispatchHitNodesByBatch(String batchId);
 
     /**
+     * 获取批次内各文档正在处理中的 OCR 分配节点。
+     *
+     * @param batchId 批次 ID
+     * @return 文档运行中分配节点映射
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId);
+
+    /**
      * 获取批次内各文档最终成功分配到的 OCR 节点。
      *
      * @param batchId 批次 ID
