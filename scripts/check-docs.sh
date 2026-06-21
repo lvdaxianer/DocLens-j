@@ -6,7 +6,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REQUIRED_FILES=(
   "README.md"
   "README-en.md"
-  "README_EN.md"
   "docs/api.md"
   "docs/sdk.md"
   "docs/configuration.md"
@@ -28,7 +27,6 @@ REQUIRED_CONTENT=(
   "README-en.md|docs/sdk.md"
   "README-en.md|docs/configuration.md"
   "README-en.md|docs/development.md"
-  "README_EN.md|README-en.md"
   "docs/api.md|HTTP API Reference"
   "docs/api.md|/api/v1/batches"
   "docs/api.md|/api/v1/ocr-nodes"
@@ -42,10 +40,11 @@ REQUIRED_CONTENT=(
   "docs/technical-delivery.md|高并发"
   "docs/technical-delivery.md|高可用"
   "docs/technical-delivery.md|高性能"
-  "docs/technical-delivery.md|启动恢复"
+  "docs/technical-delivery.md|宕机恢复"
+  "docs/technical-delivery.md|chunk checkpoint"
   "docs/technical-delivery.md|技术取舍"
   "docs/technical-delivery.md|flowchart TD"
-  "docs/technical-delivery.md|100 个文档"
+  "docs/technical-delivery.md|30 个文件"
 )
 
 # Ensure each planned documentation file exists before content checks run.

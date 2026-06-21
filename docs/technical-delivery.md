@@ -2,265 +2,267 @@
 
 ## 交付定位
 
-DocLens-j 交付的是一套文档解析基础设施，而不是单点 OCR 调用示例。它面向批量文档接入、
-OCR/LLM 后处理、结果交付、调用归因和运行诊断，既可以作为 Spring Boot Starter 嵌入宿主系统，
-也可以作为独立 HTTP 服务部署。
+DocLens-j 交付的是一套文档解析基础设施，不是单次 OCR 调用示例。它面向批量上传、异步处理、
+OCR 节点治理、LLM Markdown 后处理、结果查询、回调交付和运行诊断，支持两种交付形态：
 
-交付目标有三类：
+- 嵌入式：通过 `doclens-spring-boot-starter` 接入宿主 Spring Boot 应用。
+- 独立式：运行 `doclens-server`，通过 HTTP API 和 Dashboard 提供服务。
 
-| 目标 | 交付价值 | 技术体现 |
+设计目标是让慢 OCR、慢 LLM、下游回调失败和服务重启都不会把上传入口拖垮。系统优先保证任务可恢复、
+状态可解释、容量可调优，然后再通过节点并发和负载均衡提升吞吐。
+
+## 架构边界
+
+| 模块 | 交付职责 | 边界 |
 | --- | --- | --- |
-| 稳定处理 | 大量文档上传时不把 HTTP 请求绑定到慢 OCR 调用 | 短事务落库、异步调度、页级任务队列 |
-| 高可用运行 | 节点失败、进程重启、慢请求和重复回调不破坏主流程 | 健康探测、熔断、重试、过期锁恢复、幂等约束 |
-| 可运营治理 | 能解释容量瓶颈、节点命中、失败原因和回调状态 | Dashboard 指标、事件轨迹、线程池与节点指标 |
-
-## 总体架构
-
-DocLens-j 使用四层模块边界控制复杂度：
-
-| 模块 | 交付职责 | 技术边界 |
-| --- | --- | --- |
-| `doclens-api` | 对外 SDK 契约 | 不依赖 Spring Web，保持宿主系统可嵌入 |
-| `doclens-core` | 领域模型、用例、查询和路由编排 | 不引入 MyBatis、Servlet 或 Web Controller |
-| `doclens-spring-boot-starter` | 自动装配、仓储、Flyway、线程池、本地存储和适配器 | 承接基础设施替换点 |
-| `doclens-server` | REST API、Actuator、Dashboard 静态入口 | Controller 只做协议适配 |
+| `doclens-api` | SDK 契约、DTO、事件 SPI、适配器能力模型 | 不依赖 Spring Web |
+| `doclens-core` | 领域模型、批次/文档/页任务用例、查询服务、OCR 路由编排 | 不依赖 Servlet 和 MyBatis |
+| `doclens-spring-boot-starter` | 自动装配、仓储、Flyway、线程池、本地存储、OCR/LLM/回调基础设施 | 承接可替换基础设施 |
+| `doclens-server` | REST API、Actuator、Dashboard 静态入口 | 只做协议适配和启动 |
+| `doclens-dashboard` | 运维控制台 | 通过 `/api/v1/**` 查询和操作 |
 
 ```mermaid
 flowchart LR
-    Client[调用方 / Dashboard / OpenWebUI] --> API[doclens-server HTTP API]
-    Host[宿主 Spring Boot 应用] --> SDK[doclens-api DocLensEngine]
-    API --> SDK
-    SDK --> Core[doclens-core 用例与领域]
-    Core --> Storage[对象存储]
-    Core --> DB[(数据库)]
-    Core --> Routing[OCR 路由与治理]
-    Routing --> NodeA[OCR 节点 A]
-    Routing --> NodeB[OCR 节点 B]
-    Core --> LLM[LLM Markdown 后处理]
-    Core --> Callback[回调投递]
+    Client["业务系统 / Dashboard / OpenWebUI"] --> Server["doclens-server"]
+    Host["宿主 Spring Boot"] --> Starter["doclens-spring-boot-starter"]
+    Server --> Core["doclens-core"]
+    Starter --> Core
+    Core --> DB[("数据库")]
+    Core --> Storage["本地对象存储"]
+    Core --> OCR["OCR 路由服务"]
+    OCR --> NodeA["OCR 节点 A"]
+    OCR --> NodeB["OCR 节点 B"]
+    Core --> LLM["LLM Markdown"]
+    Core --> Callback["回调任务"]
 ```
-
-这个分层让交付有两个形态：业务系统可以直接嵌入 SDK，也可以把 DocLens-j 当作独立解析服务调用。
-核心流程保持一致，部署形态不同不会拆散业务语义。
-
-## 三高保障体系
-
-DocLens-j 对“三高”的定义不是单点指标，而是把接入、调度、执行、恢复和观测拆成可治理的工程链路。
-系统不把所有压力推给一个线程池，也不把可靠性押在一次同步 OCR 调用上，而是用持久化任务、容量匹配、
-节点治理和幂等状态机共同保证交付质量。
-
-| 维度 | 核心能力 | 实现机制 | 技术平衡 |
-| --- | --- | --- | --- |
-| 高并发 | 大批量上传时保持接入层稳定 | 上传短事务返回 `batch_id`，文档准备由 `documentProcessingExecutor` 控制，PDF/Word/图片继续拆成页级任务 | 牺牲同步即时完成，换取 HTTP 线程释放和后台可调度 |
-| 高可用 | 进程重启、节点失败、任务中断后仍可恢复 | 批次启动恢复、页任务过期锁恢复、OCR 重试与故障转移、节点熔断、回调重试 | 优先保证任务不丢和状态可解释，而不是盲目快速失败 |
-| 高性能 | 把吞吐压力分散到真实瓶颈处治理 | `weighted-idle` 节点选择、节点 `maxConcurrency` 槽位、本地执行池隔离、LLM 分片并发、索引和唯一约束支撑扫描与去重 | 不简单放大所有线程，按 OCR、数据库、LLM、回调等资源分别限流 |
-
-高并发方面，上传阶段只完成校验、存储、批次和文档记录写入，避免慢 OCR 占用调用方请求。默认文档处理
-并发为 `6`，其余文档进入线程池队列；多页文档再拆成数据库页任务，由 worker 按批次扫描和抢占。OCR
-层还会按节点槽位再次排队，因此 100 个文档同时进入系统时，等待发生在明确的队列和状态中，而不是变成
-不可控的下游洪峰。
-
-高可用方面，系统把关键进度落到数据库。服务启动时，`BatchStartupRecoveryService` 会扫描仍处于
-`QUEUED` 的批次并重新调度，避免上传后进程重启导致批次长期无人处理。页任务执行中如果 worker 退出，
-`locked_until` 到期后恢复服务会判断页结果是否已存在：已存在则补完成并继续聚合，不存在则回到
-`QUEUED` 重新执行。OCR 节点连续失败会进入熔断窗口，恢复需要健康检查重新证明节点可用。
-
-高性能方面，系统追求“容量匹配”而不是“线程堆叠”。OCR 路由会同时参考节点健康、空闲槽位和权重，
-优先选择更空闲且更有容量的节点；节点无槽位时请求进入 pending queue，等待释放后继续派发。LLM
-Markdown 后处理使用独立分片 executor 和配置级并发控制，回调投递也有独立 worker 与重试节奏，避免
-OCR 主链路被后处理或下游回调拖慢。数据库层通过页任务状态索引、批次恢复分组查询和 `(document_id,
-page_no)` 唯一约束支撑高频扫描、恢复和幂等写入。
 
 ## 端到端处理链路
 
-以下用“100 个文档同时上传”为例说明完整流程。上传接口不等待 OCR 完成，只负责校验文件、
-写入批次、文档和事件，然后把批次交给后台 worker。慢任务被拆成文档准备、页任务、OCR 槽位、
-页结果聚合和批次收口多个阶段，每一层都有自己的等待位置和恢复机制。
-
 ```mermaid
 flowchart TD
-    A["调用方一次上传 100 个文档"] --> B["CreateBatchUseCase 短事务落库"]
-    B --> C["返回 batch_id，HTTP 请求结束"]
-    B --> D["BatchProcessingUseCase 读取 100 个 QUEUED 文档"]
+    A["上传 1 到 30 个文件"] --> B["校验数量、总大小、metadata、路由参数"]
+    B --> C["短事务保存 batch、document、原始文件"]
+    C --> D["返回 batch_id"]
+    C --> E["后台批次处理"]
 
-    D --> E{"documentProcessingExecutor<br/>core/max = 6"}
-    E --> F["6 个文档立即开始文档准备"]
-    E --> G["94 个文档进入线程池队列等待"]
+    E --> F{"文档类型"}
+    F -->|TXT / Markdown| G["直接读取文本"]
+    F -->|图片 / TIFF| H["创建单页 OCR 任务"]
+    F -->|PDF| I["按页渲染图片并创建页任务"]
+    F -->|Word| J["LibreOffice 转 PDF 后复用 PDF 流程"]
 
-    F --> H{"文档类型"}
-    H -->|PDF / Word / 图片| I["转换或渲染为页图片"]
-    H -->|TXT / Markdown| J["直接提取文本并完成文档"]
-
-    I --> K["写入 ocr_document_page_tasks<br/>状态 QUEUED"]
-    K --> L["文档状态进入 OCR_QUEUED"]
-
-    F --> M["任一文档准备完成"]
-    M --> N["释放 1 个文档处理 slot"]
-    N --> O["从等待队列取下一个文档执行"]
-    O --> H
-    G -. 等待 slot .-> O
-
-    L --> P["PageTaskWorkerScheduler 周期扫描"]
-    P --> Q["恢复过期 PROCESSING 页任务"]
-    Q --> R["原子抢占 QUEUED 页任务<br/>写 locked_by / locked_until"]
-    R --> S["pageTaskExecutor 执行单页 OCR"]
-
-    S --> T{"OCR 节点是否有可用 slot"}
-    T -->|有| U["调用 OCR 节点解析"]
-    T -->|无| V["进入 OcrDispatchCoordinator pending queue"]
-    V --> W["节点释放 slot 后继续派发"]
-    W --> U
-
-    U --> X{"OCR 是否成功"}
-    X -->|成功| Y["upsert 页结果<br/>标记页任务 COMPLETED"]
-    X -->|失败| Z["按重试、故障转移、熔断策略处理"]
-    Z --> AA{"可重试或可切换节点"}
-    AA -->|是| S
-    AA -->|否| AB["记录页任务或文档失败原因"]
-
-    Y --> AC{"该文档所有页是否完成"}
-    AC -->|否| P
-    AC -->|是| AD["聚合页结果为文档结果"]
-    AD --> AE{"是否需要 LLM Markdown 后处理"}
-    AE -->|是| AF["进入 LLM chunk executor 分片处理"]
-    AE -->|否| AG["完成文档"]
-    AF --> AG
-
-    J --> AH{"100 个文档是否全部到达终态"}
-    AG --> AH
-    AB --> AH
-    AH -->|否| P
-    AH -->|是| AI["刷新批次状态"]
-    AI --> AJ["创建或投递回调<br/>Dashboard 可查看最终结果"]
+    H --> K["页任务 QUEUED"]
+    I --> K
+    J --> K
+    K --> L["PageTaskWorkerScheduler 周期扫描"]
+    L --> M["恢复过期 PROCESSING 页任务"]
+    M --> N["原子抢占 QUEUED 页任务"]
+    N --> O["doclensPageTaskExecutor 执行图片 OCR"]
+    O --> P{"OCR 节点有空闲槽位"}
+    P -->|有| Q["调用 OCR 节点"]
+    P -->|无| R["进入 OCR pending queue"]
+    R --> Q
+    Q --> S{"OCR 成功"}
+    S -->|成功| T["upsert 页结果并完成页任务"]
+    S -->|失败| U["重试、故障转移或记录失败"]
+    T --> V{"文档所有页完成"}
+    V -->|否| L
+    V -->|是| W["按页码聚合文档结果"]
+    G --> W
+    W --> X{"是否有可用 LLM Markdown 配置"}
+    X -->|有| Y["按 chunk 并发处理并写 checkpoint"]
+    X -->|无或暂停| Z["OCR 文本直通"]
+    Y --> AA["完成文档"]
+    Z --> AA
+    U --> AA
+    AA --> AB{"批次所有文档终态"}
+    AB -->|否| L
+    AB -->|是| AC["批次完成并触发可选回调"]
 ```
 
-## 并发处理能力
+## 三高保障体系
 
-DocLens-j 的并发不是单一线程池，而是多层削峰：
+| 目标 | 实现机制 | 取舍 |
+| --- | --- | --- |
+| 高并发 | 上传短事务、文档准备线程池、页任务表、页任务 worker、OCR 节点槽位、LLM chunk executor | 不追求同步完成，优先释放 HTTP 线程 |
+| 高可用 | 批次启动恢复、页任务过期锁恢复、页结果 upsert、OCR 健康检查、熔断、回调重试 | 允许后台补偿，换取任务不丢和状态可解释 |
+| 高性能 | 默认全局负载均衡、`weighted-idle`、节点 `maxConcurrency`、线程池隔离、配置级 LLM 并发 | 不简单放大线程，按真实瓶颈分层限流 |
 
-| 层级 | 控制对象 | 等待位置 | 交付意义 |
+高并发靠分层削峰。上传入口只做必要校验和落库；文档准备默认并发为 6；PDF/Word/图片再拆成页任务；
+页任务执行并发优先按 OCR 节点总并发派生；每个 OCR 节点再用自己的 `maxConcurrency` 保护下游。
+
+高可用靠持久化进度。批次、文档、页任务、页结果、回调任务都可查询；进程重启后恢复服务会重新调度未完成批次；
+页任务锁过期后会判断页结果是否存在，存在则补完成，不存在则重新排队。
+
+高性能靠容量匹配。OCR 调度默认不是固定两个请求慢慢跑，而是优先使用页面/节点配置派生出的总并发。
+如果配置了 3 个 OCR 节点且每个 `maxConcurrency=10`，页任务执行池会优先按 30 的容量补位；
+每个节点内部仍按自身槽位控制真实下游压力。
+
+## 并发层级
+
+| 层级 | 当前机制 | 默认或来源 | 观测方式 |
 | --- | --- | --- | --- |
-| 上传接入 | HTTP 请求 | 无，快速返回 `batch_id` | 避免慢 OCR 持有请求线程 |
-| 文档处理 | 批次内文档准备 | `documentProcessingExecutor` 队列 | 默认 core/max 为 `6`，控制批次内准备压力 |
-| 页级任务 | PDF/Word/图片页 | `ocr_document_page_tasks` 的 `QUEUED` 状态 | 任务可恢复、可观察、可重试 |
-| Worker 抢占 | 待执行页任务 | 下一轮扫描 | 用 `locked_by`/`locked_until` 防止多 worker 重复消费 |
-| OCR 执行 | 单页 OCR 请求 | `pageTaskExecutor` 队列和 OCR pending queue | 本地执行池与远端节点容量分离 |
-| 节点槽位 | OCR 节点真实并发 | `OcrDispatchCoordinator` pending queue | 按节点 `maxConcurrency` 控制下游压力 |
-| LLM 分片 | OCR 后 Markdown 后处理 | 独立 chunk executor | 大文本后处理不阻塞页级 OCR 调度 |
+| 上传入口 | 文件数量和体积限制 | 前端 30 个文件 / 500 MB，后端 500 MB multipart | 上传页错误提示、HTTP `413` detail |
+| 文档准备 | `documentProcessingExecutor` | 默认 6 | Dashboard 线程池指标 |
+| 页任务扫描 | `PageTaskWorkerScheduler` | 默认 500ms 间隔 | Dashboard worker 设置和页任务状态 |
+| 页任务执行 | `doclensPageTaskExecutor` | 页面/节点 OCR 总并发优先，配置文件兜底 | Dashboard 实时 OCR 图片任务 |
+| OCR 节点 | 节点 `maxConcurrency` | OCR 节点页面配置或启动节点配置 | OCR 资源页、批次 OCR 路由面板 |
+| OCR 请求线程 | `doclens-ocr-request-*` | 默认 core 2 / max 4 | 线程池指标 |
+| LLM chunk | `doclensLlmMarkdownChunkExecutor` | LLM 运行时配置和线程池 | 文档结果 LLM 状态、线程池指标 |
+| 回调 | callback 线程池和回调任务表 | 默认并发 3、重试 3 次 | 批次详情 callback_jobs |
 
-例如一次上传 100 个多页 PDF，默认最多 6 个文档先进入文档准备线程，其余 94 个文档留在
-`documentProcessingExecutor` 队列。当前 6 个文档中任意一个完成“页图片准备并写入页任务”后，
-线程池立即释放 1 个 slot，并从等待队列取下一个文档继续准备。每个 PDF 会拆出多条页任务；
-未被 worker 抢占的页任务保持 `QUEUED`，抢占后如果 OCR 节点槽位不足，请求会进入 OCR pending queue。
-最终，所有页完成后才聚合为文档结果；100 个文档全部完成或失败后，批次才进入最终状态。
+调优原则是先看瓶颈在哪一层，再调整对应配置。直接把所有线程池调大，可能只会把压力转移到 OCR 服务、
+数据库连接、LLM 服务或回调目标。
 
-## 负载均衡能力
+## OCR 路由和负载均衡
 
-默认路由模式是 `GLOBAL_LOAD_BALANCE`，默认策略是 `weighted-idle`。它不是简单轮询，而是同时考虑：
+默认路由模式是 `GLOBAL_LOAD_BALANCE`，默认策略是 `weighted-idle`。上传页也默认选择全局负载均衡。
 
-- 节点是否启用、健康、参与全局调度。
-- 节点当前 `inflightImages` 和 `availableSlots`。
-- 节点配置权重。
-- 路由策略是否指定模型或指定节点。
+路由决策会考虑：
 
-负载均衡的核心取舍是“利用率”和“隔离性”之间的平衡。全局负载均衡适合通用吞吐；指定模型路由适合
-模型能力差异；指定节点适合灰度、调试或专用节点。指定节点失败后是否允许回退由
-`doclens.ocr.specific-node-fallback-enabled` 控制，默认关闭，避免专用路由被静默转移到不符合预期的节点。
+- 节点是否启用；
+- 节点健康状态和熔断状态；
+- 节点是否参与全局调度；
+- 当前 `inflightImages`、`queuedImages`、`availableSlots`；
+- 节点权重；
+- 上传时是否指定模型或指定节点；
+- 指定节点失败后是否允许 fallback。
 
-## 高可用设计
+`weighted-idle` 适合大部分通用吞吐场景。指定模型适合不同 OCR 模型能力不同的场景。指定节点适合灰度、
+调试或专用资源；默认不自动回退，避免用户选择的专用节点被静默替换。
 
-DocLens-j 的高可用由持久化任务、节点治理和恢复机制共同构成：
+## 宕机恢复
 
-| 风险 | 设计 | 结果 |
+DocLens 的恢复分为批次恢复和页任务恢复。
+
+批次恢复发生在服务启动后。系统会扫描仍未终态的批次和文档，重新进入后台处理。这样上传完成但服务马上重启时，
+批次不会长期停在等待状态。
+
+页任务恢复发生在 worker 每轮扫描前。worker 抢占页任务时写入 `locked_by` 和 `locked_until`：
+
+- `locked_until` 未过期时，其他 worker 不会重复消费。
+- `locked_until` 过期后，恢复服务会检查同一 `document_id + page_no` 是否已有页结果。
+- 已有页结果：把页任务补成 `COMPLETED`，继续触发文档聚合。
+- 没有页结果：清理锁并回到 `QUEUED`，等待重新执行 OCR。
+
+这个设计避免了“重启后整篇文档从头解析”的问题。OCR 页结果已经落库的页不会重复产生结果；
+没有完成的页可以重新分配给任意健康 OCR 节点。
+
+## LLM Markdown chunk checkpoint
+
+LLM Markdown 是 OCR 完成后的可选后处理。大文本会按 chunk 拆分，并行提交到 chunk executor。
+为了避免服务在第 90 个 chunk 左右宕机后从头调用 LLM，系统会把每个已完成 chunk 持久化到磁盘：
+
+```text
+<storage-root>/llm-markdown-chunks/<documentId>/
+  manifest.json
+  01/
+    README.md
+    meta.json
+  02/
+    README.md
+    meta.json
+```
+
+恢复时会校验：
+
+- `manifest.json` 的 `documentId`、`chunkCount`、`planFingerprint` 是否匹配当前计划；
+- `meta.json` 的 chunk 编号和 `README.md` 的 SHA-256 是否匹配；
+- `README.md` 是否存在且非空。
+
+校验通过的 chunk 会直接复用，未完成或校验失败的 chunk 才会重新处理。checkpoint 写入使用临时文件和原子移动，
+尽量保证文件完整性，同时写入动作通过独立 executor 参与调度，避免把所有性能成本压到主流程。
+
+## LLM 配置优先级和直通语义
+
+LLM Markdown 配置由页面和 API 管理。运行时选择逻辑是：
+
+- 只选择配置完整、启用、可用于 Markdown 后处理的配置。
+- 多个可用配置按用途、优先级和 ID 稳定轮询。
+- 配置级 `maxConcurrency` 控制同一 LLM 配置的并发请求数。
+- 所有完整配置都暂停时，结果直通 OCR 原文并标记 `llm_markdown_paused`。
+- 没有可用配置时，结果直通 OCR 原文并标记 `no_available_llm_config`。
+- 配置记录保存环境变量名；真实密钥必须存在于服务进程环境变量中。
+
+这意味着 LLM 失败或暂停不会让 OCR 主结果消失。用户仍可以在结果抽屉看到 OCR 原文、Markdown 主结果、
+LLM 状态和友好失败原因。
+
+## 上传限制和失败语义
+
+上传限制在两层生效：
+
+| 层级 | 限制 | 用户反馈 |
 | --- | --- | --- |
-| 上传量突然增大 | 上传只落库，后续由多层队列消化 | 接口快速返回，后台逐步处理 |
-| OCR 节点过载 | 节点 `maxConcurrency` 和 pending queue | 请求等待槽位，不无限打下游 |
-| OCR 节点失败 | 请求重试、故障转移、健康探测 | 单节点异常不直接拖垮整个批次 |
-| 节点持续失败 | failure threshold 后打开熔断 | 熔断节点不再进入候选集 |
-| 进程在页任务中途退出 | `locked_until` 过期恢复 | 已落库结果补完成，未完成任务回队列 |
-| 页结果重复写入 | `(document_id, page_no)` 唯一约束和 upsert | 重复执行不会产生重复页结果 |
-| 文档重复聚合回调 | 文档完成后跳过重复页成功通知 | 已完成文档不会被重复收口 |
+| Dashboard | 单批最多 30 个文件，总大小最多 500 MB | 阻止提交并提示拆分上传 |
+| Server | multipart `max-file-size=500MB`、`max-request-size=500MB` | 返回 `413` 和结构化 `detail` |
 
-这套设计让系统具备“可恢复的最终完成”能力。它不承诺所有请求立即完成，而是优先保证任务不丢、节点不过载、
-异常可恢复、状态可解释。
+服务端还会校验 `files` 必填、`callback_url` 必须是 HTTP/HTTPS URL、metadata 必须能解析为 JSON。
+失败响应优先返回 `detail`，Dashboard 会直接展示该 detail，而不是只显示模糊的 HTTP 状态。
 
-## 重试、熔断与恢复
+## 幂等和防重复消费
 
-OCR 请求的重试由 `doclens.ocr.request-retry-times` 控制，默认同一节点尝试 `3` 次。当前节点多次失败后，
-路由层可以排除该节点并尝试其他健康候选节点。健康检查会持续更新节点状态，失败次数达到阈值后打开熔断；
-熔断窗口内节点不参与调度，恢复需要连续成功达到 `recovery-success-threshold`。
+| 场景 | 机制 |
+| --- | --- |
+| 调用方对账 | `idempotency_key` 作为透传关联键，不阻止重复上传 |
+| 页任务创建 | 同一文档同一页只能有一条页任务 |
+| 页结果保存 | `(document_id, page_no)` 唯一约束和 upsert |
+| worker 抢占 | 条件更新 `QUEUED -> PROCESSING` |
+| 过期 worker | 校验锁归属和状态后才完成任务 |
+| 文档聚合 | 文档已终态时跳过重复收口 |
+| checkpoint | manifest、meta、chunk SHA-256 三重校验 |
 
-页任务层的恢复更偏向数据一致性：worker 抢占任务时写入 `locked_by` 和 `locked_until`。每轮扫描先查找
-过期 `PROCESSING` 任务；如果页结果已经存在，就把任务补成 `COMPLETED` 并触发聚合；如果页结果不存在，
-就清理锁并回到 `QUEUED` 等待重新执行。
+批次级 `idempotency_key` 保持第三方对账语义。真正防重复消费依赖页任务状态机、数据库唯一约束和 checkpoint 校验。
 
-## 幂等与防重复消费
+## 可观测性
 
-DocLens-j 对不同层次使用不同的幂等策略：
+Dashboard 重点展示这些运维信号：
 
-| 层级 | 机制 | 说明 |
-| --- | --- | --- |
-| 批次接入 | `idempotency_key` 透传和查询 | 用于调用方对账，不用于服务端拒绝重复上传 |
-| 页任务创建 | `(document_id, page_no)` 唯一约束 | 同一文档同一页不能重复建任务 |
-| 页结果保存 | `(document_id, page_no)` 唯一约束和 upsert | 重复页执行只更新同一页结果 |
-| Worker 消费 | 条件更新 `QUEUED -> PROCESSING` | 只有抢占成功的 worker 执行 OCR |
-| 页任务完成 | 校验 worker 归属和状态 | 避免过期 worker 覆盖新状态 |
-| 文档聚合 | 已完成文档跳过重复成功通知 | 防止重复聚合和重复回调 |
+- 批次：总文件数、完成数、失败数、阶段、事件轨迹。
+- 文档：处理阶段、页数、失败原因、结果下载、重试和删除。
+- OCR 路由：上传策略、当前文件运行中分配、最终分配结果、批次级命中节点。
+- 实时 OCR 图片任务：页码、OCR 节点、worker、线程名、运行耗时。
+- OCR 资源：模型、节点、健康、最大并发、运行中、排队、平均耗时。
+- 线程池：文档处理、页任务 OCR、OCR 请求、OCR 健康检查、LLM chunk、回调。
+- 回调：状态、失败原因、失败详情、重试次数、手动重试。
 
-这个设计避免把所有幂等问题都压到一个字段上。批次级 `idempotency_key` 保持对账语义，任务级和结果级
-幂等由数据库约束与状态机承担。
+定位慢批次时建议按顺序看：上传是否被限制、文档准备是否排队、页任务是否大量 `QUEUED`、
+OCR 节点是否无空闲槽位、节点是否熔断、LLM chunk 是否积压、回调是否持续失败。
+
+## 配置和运维入口
+
+常用配置入口：
+
+- OCR 默认路由：`doclens.ocr.default-routing-mode`
+- OCR 策略：`doclens.ocr.load-balance-strategy`
+- OCR 请求重试：`doclens.ocr.request-retry-times`
+- 指定节点 fallback：`doclens.ocr.specific-node-fallback-enabled`
+- 页任务 worker：`doclens.page-task-worker.*`
+- 文档准备线程池：`doclens.thread-pools.document-processing-thread-pool.*`
+- 回调：`doclens.callback.*`
+- 存储根目录：`doclens.storage-root`
+
+详细字段见 [配置说明](configuration.md)。HTTP 端点见 [HTTP API 参考](api.md)。
 
 ## 技术取舍
 
-| 取舍点 | 当前选择 | 原因 | 代价 |
+| 取舍 | 当前选择 | 原因 | 代价 |
 | --- | --- | --- | --- |
-| 上传是否同步 OCR | 不同步，只落库并调度 | 保护 HTTP 线程，降低调用方超时风险 | 调用方需要通过查询或回调获取结果 |
-| 页任务存储 | 使用数据库页任务表 | 可恢复、可查询、可和业务事务对齐 | 吞吐上限受数据库和索引设计影响 |
-| OCR dispatch queue | 使用进程内 pending queue | 实现简单，延迟低，适合单服务或轻量部署 | 多实例下需要依赖页任务层协调，dispatch queue 本身不跨实例 |
-| 调度粒度 | 按页调度而不是整文档调度 | 多页文档可以并行，失败页可恢复 | 聚合逻辑更复杂 |
-| 负载均衡 | 权重 + 空闲槽位 | 兼顾节点能力和实时压力 | 需要持续维护节点健康与权重 |
-| 幂等语义 | 批次对账 + 页级硬约束 | 避免误把调用方 key 当作全局唯一业务事实 | 调用方仍需决定重复上传是否接受 |
-| LLM Markdown | OCR 后独立分片处理 | 不阻塞 OCR 主链路，支持大文本 | LLM 质量和成本需要单独治理 |
+| 上传是否同步 OCR | 不同步，返回 `batch_id` 后后台处理 | 释放 HTTP 线程，降低调用方超时风险 | 调用方需要查询或回调获取结果 |
+| 页任务存储 | 数据库页任务表 | 可恢复、可查询、可幂等 | 数据库索引和扫描效率变重要 |
+| OCR dispatch queue | 进程内 pending queue + 持久化页任务 | 延迟低，实现简单 | 多实例下 dispatch queue 本身不跨进程 |
+| 调度粒度 | 按页调度 | 多页文档可以并行，失败页可恢复 | 聚合逻辑更复杂 |
+| 负载均衡 | 全局负载均衡 + 加权空闲优先 | 同时考虑节点能力和实时空闲 | 需要维护健康、权重和并发配置 |
+| LLM checkpoint | 磁盘 checkpoint | 宕机后复用已完成 chunk | 需要清理策略和存储容量治理 |
+| 密钥管理 | 配置保存环境变量名 | 避免密钥落库 | 部署时必须保证进程环境变量完整 |
 
-这些选择的共同目标是：先保证工程可靠性和可解释性，再逐步增强吞吐上限。对于更高规模部署，可以继续演进为
-持久化 MQ、分布式限流、跨实例 dispatch queue 和模型质量评测体系。
+## 后续演进边界
 
-## 可观测性与运维
+当前交付已经覆盖单服务和轻量多实例场景下的批量 OCR、恢复、负载均衡和可观测性。更高规模场景可以继续演进：
 
-交付后的日常运维重点不是只看“批次成功/失败”，而是拆开看瓶颈在哪里：
+- 将页任务扫描迁移到持久化 MQ 或数据库 outbox。
+- 引入跨实例 dispatch queue 和分布式节点槽位治理。
+- 为 LLM checkpoint 增加自动清理和容量水位。
+- 增加 OCR/LLM 质量评测和模型选择反馈。
+- 将 Dashboard 的运行中任务扩展为历史时间线。
 
-- 批次维度：总文件数、完成数、失败数、阶段和事件轨迹。
-- 文档维度：当前处理阶段、页数、失败原因、重试状态。
-- OCR 节点维度：健康状态、命中次数、`inflightImages`、`queuedImages`、平均耗时。
-- 线程池维度：文档处理、OCR 请求、OCR 健康检查、回调、LLM chunk executor 的活跃数和队列长度。
-- 回调维度：投递状态、失败原因、失败详情、重试次数。
-
-定位瓶颈时可以按顺序判断：文档线程池是否排队、页任务是否大量 `QUEUED`、OCR 节点是否无空闲槽位、
-节点是否熔断、LLM chunk executor 是否积压、回调是否持续失败。
-
-## 容量规划与调优建议
-
-| 场景 | 关注参数 | 调优方向 |
-| --- | --- | --- |
-| 小文件高频上传 | `documentProcessingExecutor`、调用方限流 | 控制上传侧并发，避免批次过多导致队列抖动 |
-| 多页 PDF | `pageTaskWorker.batchSize`、`pageTaskExecutor.poolSize`、节点 `maxConcurrency` | 让页任务扫描量、执行线程和节点槽位匹配 |
-| OCR 节点能力不同 | 节点 weight、`maxConcurrency`、`weighted-idle` 因子 | 强节点给更高权重，弱节点限制并发 |
-| 节点不稳定 | failure threshold、circuit open seconds、recovery success threshold | 更快摘除异常节点，避免反复打失败节点 |
-| 大文本 Markdown | LLM chunk executor、LLM 配置并发、上下文窗口 | 控制 LLM 成本和超时风险 |
-| 回调压力高 | callback 线程池、回调重试参数 | 避免下游回调失败拖慢主处理观测 |
-
-调优原则是先找到最窄资源，再调整对应层级。直接把所有线程池调大通常不是最佳方案，因为 OCR 下游节点、
-数据库连接、LLM 服务和回调目标都可能成为新的瓶颈。
-
-## 交付边界与后续演进
-
-当前交付重点是“可嵌入、可部署、可恢复、可诊断”的文档解析基础设施。它已经具备批量接入、页级调度、
-OCR 节点治理、回调交付和 Dashboard 观测能力，但仍保留清晰边界：
-
-- 不接管终端用户登录、组织、RBAC 或业务权限。
-- 不把 `idempotency_key` 作为服务端重复上传拒绝机制。
-- 不承诺固定吞吐数字，吞吐取决于 OCR 节点、数据库、线程池和部署资源。
-- 多实例部署时，页任务数据库锁能协调任务消费，但进程内 OCR pending queue 不跨实例共享。
-
-后续演进可以围绕四个方向推进：持久化消息队列、分布式限流与租户隔离、OCR/LLM 质量评测集、场景化模板和
-结构化输出。这些能力应该在现有边界上增量建设，而不是牺牲当前交付的可解释性和可运维性。
+这些演进不改变当前核心原则：上传轻量化、任务持久化、OCR 按容量调度、异常可恢复、状态可解释。
