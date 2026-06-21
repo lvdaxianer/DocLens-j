@@ -1,6 +1,6 @@
 # dashboard-batch-detail Specification Delta
 
-## Modified Requirements
+## Added Requirements
 
 ### Requirement: Batch detail exposes OCR allocation attribution from persisted calls
 

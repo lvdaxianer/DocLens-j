@@ -1,6 +1,6 @@
 # ocr-route-capacity-clarity Specification Delta
 
-## Modified Requirements
+## Added Requirements
 
 ### Requirement: Dashboard OCR health exposes configured OCR node capacity
 
