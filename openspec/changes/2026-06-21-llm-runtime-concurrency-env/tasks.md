@@ -6,9 +6,9 @@
 
 ## 2. LLM chunk concurrency limiter
 
-- [ ] 2.1 Add failing limiter tests for per-slot request intervals and changed concurrency on the same config ID.
-- [ ] 2.2 Implement per-slot request interval tracking and limiter state refresh on config limit changes.
-- [ ] 2.3 Run focused limiter and chunk Markdown tests.
+- [x] 2.1 Add failing limiter tests for per-slot request intervals and changed concurrency on the same config ID.
+- [x] 2.2 Implement per-slot request interval tracking and limiter state refresh on config limit changes.
+- [x] 2.3 Run focused limiter and chunk Markdown tests.
 
 ## 3. Dashboard failure wording and upload defaults
 

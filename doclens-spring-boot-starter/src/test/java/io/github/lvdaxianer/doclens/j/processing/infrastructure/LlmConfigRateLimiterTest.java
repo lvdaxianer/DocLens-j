@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.LlmMarkdownConfig;
 import io.github.lvdaxianer.doclens.j.processing.domain.LlmUsageType;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -25,9 +26,11 @@ import org.junit.jupiter.api.Test;
 class LlmConfigRateLimiterTest {
 
     private static final int SINGLE_CONCURRENCY = 1;
+    private static final int DOUBLE_CONCURRENCY = 2;
     private static final int NO_INTERVAL_MILLIS = 0;
     private static final int ONE_SECOND_INTERVAL_MILLIS = 1000;
     private static final int INTERVAL_ASSERTION_MILLIS = 900;
+    private static final int PARALLEL_ASSERTION_MILLIS = 250;
     private static final int FUTURE_TIMEOUT_SECONDS = 1;
 
     /**
@@ -76,6 +79,59 @@ class LlmConfigRateLimiterTest {
         try (LlmConfigRateLimiter.Permit ignored = limiter.acquire(config)) {
             assertThat(Duration.between(start, Instant.now()))
                     .isGreaterThanOrEqualTo(Duration.ofMillis(INTERVAL_ASSERTION_MILLIS));
+        }
+    }
+
+    /**
+     * 请求间隔应按并发槽位生效，不应串行化所有可用槽位。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void requestIntervalDoesNotSerializeAvailableConcurrencySlots() {
+        LlmConfigRateLimiter limiter = new LlmConfigRateLimiter();
+        LlmMarkdownConfig config = config("llm-a", DOUBLE_CONCURRENCY, ONE_SECOND_INTERVAL_MILLIS);
+
+        Instant start = Instant.now();
+        try (LlmConfigRateLimiter.Permit first = limiter.acquire(config);
+                LlmConfigRateLimiter.Permit second = limiter.acquire(config)) {
+            assertThat(Duration.between(start, Instant.now()))
+                    .isLessThan(Duration.ofMillis(PARALLEL_ASSERTION_MILLIS));
+        }
+    }
+
+    /**
+     * 同一配置 ID 的并发配置变化后，限流器应使用新的并发值。
+     *
+     * @throws Exception 等待异步结果失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void refreshesConcurrencyWhenConfigLimitChangesForSameId() throws Exception {
+        LlmConfigRateLimiter limiter = new LlmConfigRateLimiter();
+        LlmMarkdownConfig singleSlot = config("llm-a", SINGLE_CONCURRENCY, NO_INTERVAL_MILLIS);
+        LlmMarkdownConfig doubleSlot = config("llm-a", DOUBLE_CONCURRENCY, NO_INTERVAL_MILLIS);
+        ExecutorService executor = singleThreadExecutor();
+        CountDownLatch acquiredLatch = new CountDownLatch(1);
+        CountDownLatch releaseLatch = new CountDownLatch(1);
+
+        try (LlmConfigRateLimiter.Permit first = limiter.acquire(singleSlot)) {
+            Future<Boolean> acquired = executor.submit(() -> {
+                try (LlmConfigRateLimiter.Permit ignored = limiter.acquire(doubleSlot)) {
+                    acquiredLatch.countDown();
+                    releaseLatch.await(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    return true;
+                }
+            });
+
+            assertThat(acquiredLatch.await(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+            assertThat(limiter.availablePermitsForTesting(doubleSlot)).isZero();
+            releaseLatch.countDown();
+            assertThat(acquired.get(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            executor.shutdownNow();
         }
     }
 
