@@ -57,6 +57,34 @@ class OcrRoutingRuntimeHitTest {
     }
 
     /**
+     * 路由执行期间应把已派发节点同步到图片页任务快照。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void routingServicePublishesPageTaskAssignmentWhileRequestIsStillRunning() throws Exception {
+        RuntimeHitContext context = runtimeHitContext();
+        OcrRunningPageTaskCommand command = new OcrRunningPageTaskCommand("task-1", "batch-test",
+                "doc-test", 1, "worker-a", "doclens-page-task-ocr-1", java.time.OffsetDateTime.now());
+        context.runningPageTaskTracker().recordStart(command);
+        AtomicReference<OcrRouteExecutionResult> resultRef = new AtomicReference<>();
+        Thread worker = workerThread(context.service(), resultRef);
+
+        worker.start();
+        assertThat(context.executor().awaitStarted()).isTrue();
+
+        assertThat(context.runningPageTaskTracker().snapshotByBatch("batch-test"))
+                .singleElement()
+                .satisfies(task -> {
+                    assertThat(task.modelKey()).contains("paddle_ocr");
+                    assertThat(task.nodeId()).contains("paddle-1");
+                });
+        context.executor().release();
+        worker.join(TimeUnit.SECONDS.toMillis(2));
+    }
+
+    /**
      * 创建运行时命中测试上下文。
      *
      * @return 运行时命中测试上下文
@@ -68,8 +96,10 @@ class OcrRoutingRuntimeHitTest {
         InMemoryRuntimeNodeProvider nodeProvider = new InMemoryRuntimeNodeProvider(List.of(node()));
         InMemoryCallRepository callRepository = new InMemoryCallRepository();
         InMemoryBatchHitTracker batchHitTracker = new InMemoryBatchHitTracker();
-        OcrRoutingService service = service(nodeProvider, executor, callRepository, batchHitTracker);
-        return new RuntimeHitContext(service, executor, callRepository, batchHitTracker);
+        InMemoryOcrRunningPageTaskTracker runningPageTaskTracker = new InMemoryOcrRunningPageTaskTracker();
+        OcrRoutingService service = service(nodeProvider, executor, callRepository, batchHitTracker,
+                runningPageTaskTracker);
+        return new RuntimeHitContext(service, executor, callRepository, batchHitTracker, runningPageTaskTracker);
     }
 
     /**
@@ -120,7 +150,8 @@ class OcrRoutingRuntimeHitTest {
             InMemoryRuntimeNodeProvider nodeProvider,
             OcrNodeImageExecutor executor,
             InMemoryCallRepository callRepository,
-            InMemoryBatchHitTracker batchHitTracker
+            InMemoryBatchHitTracker batchHitTracker,
+            OcrRunningPageTaskTracker runningPageTaskTracker
     ) {
         LeastInflightOcrNodeSelector selector = new LeastInflightOcrNodeSelector();
         return new OcrRoutingService(new OcrRoutingDependencies(
@@ -131,7 +162,9 @@ class OcrRoutingRuntimeHitTest {
                 callRepository,
                 new FixedCallIdGenerator(),
                 batchHitTracker,
-                new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false)
+                new OcrRoutingServiceProperties(OcrRoutePolicy.globalLoadBalance("least-inflight"), 3, false),
+                new InMemoryOcrDocumentAffinityTracker(),
+                runningPageTaskTracker
         ));
     }
 
@@ -143,7 +176,8 @@ class OcrRoutingRuntimeHitTest {
      * @date 2026-06-11
      */
     private ImageOcrRequest request() {
-        return new ImageOcrRequest("batch-test", "doc-test", "page.png", 1, "image".getBytes(), JsonPayload.empty());
+        return new ImageOcrRequest("batch-test", "task-1", "doc-test", "page.png", 1,
+                "image".getBytes(), JsonPayload.empty());
     }
 
     /**
@@ -171,7 +205,8 @@ class OcrRoutingRuntimeHitTest {
             OcrRoutingService service,
             BlockingNodeExecutor executor,
             InMemoryCallRepository callRepository,
-            InMemoryBatchHitTracker batchHitTracker
+            InMemoryBatchHitTracker batchHitTracker,
+            OcrRunningPageTaskTracker runningPageTaskTracker
     ) {
     }
 

@@ -211,6 +211,7 @@ useAutoRefresh(refresh)
       :current-document-name="currentRouteDocument?.file_name"
       :current-document-running-hit-nodes="currentRouteDocument?.ocr_running_hit_nodes ?? []"
       :current-document-final-hit-nodes="currentRouteDocument?.ocr_final_hit_nodes ?? []"
+      :running-page-tasks="selectedBatch.ocr_running_page_tasks ?? []"
       :hit-nodes="selectedBatch.batch_dispatch_hit_nodes"
     />
 

@@ -5,6 +5,11 @@ import static org.assertj.core.groups.Tuple.tuple;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRouteExecutionResult;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
+import io.github.lvdaxianer.doclens.j.adapter.application.InMemoryOcrRunningPageTaskTracker;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTask;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskAssignment;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskCommand;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrBlock;
@@ -116,6 +121,58 @@ class DocumentPageTaskExecutionServiceTest {
         int submittedCount = service.runOnce();
 
         assertThat(submittedCount).isEqualTo(1);
+        assertThat(resultRepository.findByDocumentIdAndPageNo("doc-1", 1)).isPresent();
+        assertThat(taskRepository.listByDocumentId("doc-1"))
+                .extracting(DocumentPageTask::status)
+                .containsExactly(DocumentPageTaskStatus.COMPLETED);
+    }
+
+    /**
+     * 执行器应在 OCR 调用期间暴露页码和线程名，并在调用结束后清理运行中行。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void runOncePublishesRunningPageTaskDuringOcrAndClearsItAfterCompletion() {
+        InMemoryDocumentPageTaskRepository taskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository resultRepository =
+                new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository();
+        InMemoryOcrRunningPageTaskTracker runningTracker = new InMemoryOcrRunningPageTaskTracker();
+        InspectingOcrRoutingService routingService = new InspectingOcrRoutingService(runningTracker);
+        seedDocuments(documentRepository);
+        taskRepository.saveAll(List.of(task("task-1", "doc-1", 1)));
+        DocumentPageTaskExecutionService service = service(new DocumentPageTaskExecutionDependencies(taskRepository,
+                documentRepository, resultRepository, new DocumentPageTaskExecutionTestDoubles.RecordingObjectStorage(),
+                routingService, runningTracker), new DirectExecutor());
+
+        service.runOnce();
+
+        assertThat(routingService.sawRunningPage).isTrue();
+        assertThat(runningTracker.snapshotByBatch("batch-test")).isEmpty();
+    }
+
+    /**
+     * 运行态追踪失败不应阻断页任务 OCR 成功处理。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void runOnceCompletesPageWhenRunningTrackerFails() {
+        InMemoryDocumentPageTaskRepository taskRepository = new InMemoryDocumentPageTaskRepository();
+        InMemoryDocumentJobRepository documentRepository = new InMemoryDocumentJobRepository();
+        DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository resultRepository =
+                new DocumentPageTaskExecutionTestDoubles.InMemoryDocumentPageResultRepository();
+        seedDocuments(documentRepository);
+        taskRepository.saveAll(List.of(task("task-1", "doc-1", 1)));
+        DocumentPageTaskExecutionService service = service(new DocumentPageTaskExecutionDependencies(taskRepository,
+                documentRepository, resultRepository, new DocumentPageTaskExecutionTestDoubles.RecordingObjectStorage(),
+                new RecordingOcrRoutingService(), new FailingRunningPageTaskTracker()), new DirectExecutor());
+
+        service.runOnce();
+
         assertThat(resultRepository.findByDocumentIdAndPageNo("doc-1", 1)).isPresent();
         assertThat(taskRepository.listByDocumentId("doc-1"))
                 .extracting(DocumentPageTask::status)
@@ -281,6 +338,48 @@ class DocumentPageTaskExecutionServiceTest {
     }
 
     /**
+     * OCR 调用期间检查运行中图片页任务的路由服务。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private static class InspectingOcrRoutingService extends RecordingOcrRoutingService {
+
+        private final OcrRunningPageTaskTracker runningTracker;
+        private boolean sawRunningPage;
+
+        /**
+         * 创建检查型 OCR 路由服务。
+         *
+         * @param runningTracker 运行中图片页任务追踪器
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        InspectingOcrRoutingService(OcrRunningPageTaskTracker runningTracker) {
+            this.runningTracker = runningTracker;
+        }
+
+        /**
+         * 在 OCR 调用期间检查运行中快照。
+         *
+         * @param request 图片 OCR 请求
+         * @param requestedPolicy 请求路由策略
+         * @return OCR 路由执行结果
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public OcrRouteExecutionResult recognize(ImageOcrRequest request, OcrRoutePolicy requestedPolicy) {
+            sawRunningPage = runningTracker.snapshotByBatch(request.batchId()).stream()
+                    .anyMatch(task -> task.pageNo() == request.pageNo()
+                            && task.documentId().equals(request.documentId())
+                            && task.workerId().equals("worker-test")
+                            && task.threadName().equals(Thread.currentThread().getName()));
+            return super.recognize(request, requestedPolicy);
+        }
+    }
+
+    /**
      * 直接执行任务的测试执行器。
      *
      * @author lvdaxianerplus
@@ -321,6 +420,64 @@ class DocumentPageTaskExecutionServiceTest {
         @Override
         public void execute(Runnable command) {
             pendingTasks.add(command);
+        }
+    }
+
+    /**
+     * 总是失败的运行态追踪器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private static class FailingRunningPageTaskTracker implements OcrRunningPageTaskTracker {
+
+        /**
+         * 模拟记录开始失败。
+         *
+         * @param command 运行中图片页任务命令
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public void recordStart(OcrRunningPageTaskCommand command) {
+            throw new IllegalStateException("tracker failed");
+        }
+
+        /**
+         * 模拟记录分配失败。
+         *
+         * @param assignment OCR 节点分配
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public void recordAssignment(OcrRunningPageTaskAssignment assignment) {
+            throw new IllegalStateException("tracker failed");
+        }
+
+        /**
+         * 模拟记录完成失败。
+         *
+         * @param taskId 页任务 ID
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public void recordCompletion(String taskId) {
+            throw new IllegalStateException("tracker failed");
+        }
+
+        /**
+         * 返回空快照。
+         *
+         * @param batchId 批次 ID
+         * @return 空快照
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public List<OcrRunningPageTask> snapshotByBatch(String batchId) {
+            return List.of();
         }
     }
 

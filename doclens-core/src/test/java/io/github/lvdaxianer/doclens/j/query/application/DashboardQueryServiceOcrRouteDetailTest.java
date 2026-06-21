@@ -108,6 +108,35 @@ class DashboardQueryServiceOcrRouteDetailTest {
     }
 
     /**
+     * 批次详情应返回运行中的图片页任务，方便确认页码与线程级并发。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Test
+    void batchDetailExposesRunningPageTasksWithThreadNames() {
+        DashboardQueryService service = new DashboardQueryService(new InMemoryBatchRepository(List.of(batch())),
+                new InMemoryDocumentJobRepository(List.of(processingDocument("doc-running", DocumentType.PDF, 0))),
+                new InMemoryOcrEventRepository(), new RunningPageTaskDashboardOcrMetricsProvider());
+
+        Map<String, Object> detail = service.batchDetail("batch-test");
+
+        assertThat(detail.get("ocr_running_page_tasks"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .hasSize(2)
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("document_id", "doc-running")
+                        .containsEntry("page_no", 1)
+                        .containsEntry("worker_id", "worker-a")
+                        .containsEntry("thread_name", "doclens-page-task-ocr-1")
+                        .containsEntry("model_key", "paddle_ocr")
+                        .containsEntry("node_id", "node-1"))
+                .anySatisfy(row -> assertThat(row).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                        .containsEntry("page_no", 2)
+                        .containsEntry("thread_name", "doclens-page-task-ocr-2"));
+    }
+
+    /**
      * 从详情结果中取出文档列表。
      *
      * @param detail 批次详情
@@ -327,6 +356,37 @@ class DashboardQueryServiceOcrRouteDetailTest {
                             "image_count", 2L)),
                     "doc-done", List.of(Map.of("model_key", "paddle_ocr", "node_id", "node-done",
                             "image_count", 1L))
+            );
+        }
+    }
+
+    /**
+     * 提供运行中图片页任务的测试指标提供器。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private static class RunningPageTaskDashboardOcrMetricsProvider extends TestDashboardOcrMetricsProvider {
+
+        /**
+         * 返回运行中图片页任务。
+         *
+         * @param batchId 批次 ID
+         * @return 运行中图片页任务
+         * @author lvdaxianerplus
+         * @date 2026-06-21
+         */
+        @Override
+        public List<Map<String, Object>> runningPageTasksByBatch(String batchId) {
+            return List.of(
+                    Map.of("task_id", "task-1", "document_id", "doc-running", "page_no", 1,
+                            "worker_id", "worker-a", "thread_name", "doclens-page-task-ocr-1",
+                            "started_at", "2026-06-21T10:15:30+08:00", "running_ms", 1000L,
+                            "model_key", "paddle_ocr", "node_id", "node-1"),
+                    Map.of("task_id", "task-2", "document_id", "doc-running", "page_no", 2,
+                            "worker_id", "worker-a", "thread_name", "doclens-page-task-ocr-2",
+                            "started_at", "2026-06-21T10:15:31+08:00", "running_ms", 900L,
+                            "model_key", "paddle_ocr", "node_id", "node-1")
             );
         }
     }

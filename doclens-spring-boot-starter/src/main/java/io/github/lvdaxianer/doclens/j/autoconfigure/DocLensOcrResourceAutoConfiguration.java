@@ -5,10 +5,13 @@ import io.github.lvdaxianer.doclens.j.adapter.application.OcrCallIdGenerator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrDispatchCoordinator;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrGovernanceConfigService;
+import io.github.lvdaxianer.doclens.j.adapter.application.InMemoryOcrDocumentAffinityTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeImageExecutor;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrNodeSelector;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrPendingRequestQueue;
+import io.github.lvdaxianer.doclens.j.adapter.application.InMemoryOcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingDependencies;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
@@ -58,6 +61,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @param callRepository OCR 调用记录仓储
      * @param callIdGenerator OCR 调用记录 ID 生成器
      * @param batchHitTracker 批次运行时命中跟踪器
+     * @param runningPageTaskTracker OCR 运行中图片页任务追踪器
      * @return OCR 路由自动配置依赖
      * @author lvdaxianerplus
      * @date 2026-06-08
@@ -72,11 +76,12 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
             OcrCallIdGenerator callIdGenerator,
-            OcrBatchHitTracker batchHitTracker
+            OcrBatchHitTracker batchHitTracker,
+            OcrRunningPageTaskTracker runningPageTaskTracker
     ) {
         return new OcrRoutingAutoConfigurationDependencies(nodePool, nodeSelector,
                 new OcrDispatchCoordinator(nodePool, nodeSelector, pendingRequestQueue), nodeExecutor,
-                callRepository, callIdGenerator, batchHitTracker);
+                callRepository, callIdGenerator, batchHitTracker, runningPageTaskTracker);
     }
 
     /**
@@ -97,7 +102,8 @@ public class DocLensOcrResourceAutoConfiguration {
         return new OcrRoutingService(new OcrRoutingDependencies(dependencies.nodePool(),
                 dependencies.nodeSelector(), dependencies.dispatchCoordinator(), dependencies.nodeExecutor(),
                 dependencies.callRepository(), dependencies.callIdGenerator(), dependencies.batchHitTracker(),
-                routingProperties(properties.ocr())));
+                routingProperties(properties.ocr()), new InMemoryOcrDocumentAffinityTracker(),
+                dependencies.runningPageTaskTracker()));
     }
 
     /**
@@ -111,6 +117,19 @@ public class DocLensOcrResourceAutoConfiguration {
     @ConditionalOnMissingBean
     OcrBatchHitTracker ocrBatchHitTracker() {
         return new InMemoryOcrBatchHitTracker();
+    }
+
+    /**
+     * 创建进程内 OCR 运行中图片页任务追踪器。
+     *
+     * @return OCR 运行中图片页任务追踪器
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrRunningPageTaskTracker ocrRunningPageTaskTracker() {
+        return new InMemoryOcrRunningPageTaskTracker();
     }
 
     /**
@@ -299,6 +318,7 @@ public class DocLensOcrResourceAutoConfiguration {
      * @param callRepository OCR 调用记录仓储
      * @param callIdGenerator OCR 调用记录 ID 生成器
      * @param batchHitTracker 批次运行时命中跟踪器
+     * @param runningPageTaskTracker OCR 运行中图片页任务追踪器
      * @author lvdaxianerplus
      * @date 2026-06-08
      */
@@ -309,7 +329,8 @@ public class DocLensOcrResourceAutoConfiguration {
             OcrNodeImageExecutor nodeExecutor,
             OcrNodeCallRepository callRepository,
             OcrCallIdGenerator callIdGenerator,
-            OcrBatchHitTracker batchHitTracker
+            OcrBatchHitTracker batchHitTracker,
+            OcrRunningPageTaskTracker runningPageTaskTracker
     ) {
     }
 }

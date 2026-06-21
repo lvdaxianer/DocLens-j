@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrModelRegistry;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
@@ -120,6 +121,7 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * 创建 Dashboard OCR 路由归因依赖集合。
      *
      * @param batchHitTracker 批次运行时命中跟踪器
+     * @param runningPageTaskTracker 运行中图片页任务追踪器
      * @param modelRegistry OCR 模型注册表
      * @return Dashboard OCR 路由归因依赖集合
      * @author lvdaxianerplus
@@ -129,9 +131,10 @@ public class DocLensDashboardMetricsAutoConfiguration {
     @ConditionalOnMissingBean
     OcrDashboardAttributionSources dashboardOcrAttributionSources(
             OcrBatchHitTracker batchHitTracker,
+            OcrRunningPageTaskTracker runningPageTaskTracker,
             OcrModelRegistry modelRegistry
     ) {
-        return new OcrDashboardAttributionSources(batchHitTracker, modelRegistry);
+        return new OcrDashboardAttributionSources(batchHitTracker, runningPageTaskTracker, modelRegistry);
     }
 
     /**

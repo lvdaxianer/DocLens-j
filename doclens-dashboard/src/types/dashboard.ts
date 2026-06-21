@@ -218,6 +218,21 @@ export interface BatchOcrHitNode {
   image_count: number
 }
 
+export interface BatchOcrRunningPageTask {
+  task_id: string
+  batch_id?: string
+  document_id: string
+  page_no: number
+  worker_id: string
+  thread_name: string
+  started_at: string
+  running_ms: number
+  model_key?: string
+  model_name?: string
+  node_id?: string
+  node_name?: string
+}
+
 export interface BatchListResponse {
   items: BatchRow[]
   total: number
@@ -237,6 +252,7 @@ export interface BatchDetailResponse {
     nodes: DashboardOcrResourceNode[]
   }
   batch_dispatch_hit_nodes: BatchOcrHitNode[]
+  ocr_running_page_tasks: BatchOcrRunningPageTask[]
   failure_summary: Record<string, number>
 }
 

@@ -2,6 +2,8 @@ package io.github.lvdaxianer.doclens.j.query.infrastructure;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchHitTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrBatchNodeHit;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTask;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCall;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallRepository;
@@ -11,6 +13,8 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardOcrMetricsProvider;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,6 +54,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private final ThreadPoolMetricsReader threadPoolMetricsReader;
     private final OcrNodeMetricsAggregator metricsAggregator;
     private final OcrBatchHitTracker batchHitTracker;
+    private final OcrRunningPageTaskTracker runningPageTaskTracker;
     private final OcrDashboardHitNodeRows hitNodeRows;
     private final OcrDashboardResourceRows resourceRows;
     private final OcrDashboardDocumentHitRows documentHitRows;
@@ -69,6 +74,7 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
         this.threadPoolMetricsReader = new ThreadPoolMetricsReader();
         this.metricsAggregator = new OcrNodeMetricsAggregator(callRepository, dependencies.runtimeSources().nodePool());
         this.batchHitTracker = dependencies.attributionSources().batchHitTracker();
+        this.runningPageTaskTracker = dependencies.attributionSources().runningPageTaskTracker();
         this.hitNodeRows = new OcrDashboardHitNodeRows(dependencies.attributionSources().modelRegistry());
         this.resourceRows = new OcrDashboardResourceRows(dependencies.attributionSources().modelRegistry(), nodePool);
         this.documentHitRows = new OcrDashboardDocumentHitRows(hitNodeRows);
@@ -132,6 +138,23 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     }
 
     /**
+     * 获取批次内正在执行 OCR 的图片页任务明细。
+     *
+     * @param batchId 批次 ID
+     * @return 运行中图片页任务列表
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Override
+    public List<Map<String, Object>> runningPageTasksByBatch(String batchId) {
+        Map<String, OcrNode> nodesById = nodeRepository.listAll().stream()
+                .collect(Collectors.toMap(OcrNode::id, node -> node));
+        return runningPageTaskTracker.snapshotByBatch(batchId).stream()
+                .map(task -> runningPageTaskRow(task, nodesById))
+                .toList();
+    }
+
+    /**
      * 获取批次内各文档最终成功分配到的 OCR 节点。
      *
      * @param batchId 批次 ID
@@ -160,6 +183,47 @@ public class OcrDashboardMetricsProvider implements DashboardOcrMetricsProvider 
     private void mergeRuntimeHits(Map<OcrDashboardHitNodeKey, Long> hitCounts, List<OcrBatchNodeHit> runtimeHits) {
         runtimeHits.forEach(hit -> hitCounts.merge(new OcrDashboardHitNodeKey(hit.modelKey(), hit.nodeId()),
                 hit.imageCount(), Long::sum));
+    }
+
+    /**
+     * 创建运行中图片页任务行。
+     *
+     * @param task 运行中图片页任务
+     * @param nodesById 节点索引
+     * @return 运行中图片页任务行
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private Map<String, Object> runningPageTaskRow(OcrRunningPageTask task, Map<String, OcrNode> nodesById) {
+        Map<String, Object> row = new LinkedHashMap<>(13);
+        row.put("task_id", task.taskId());
+        row.put("batch_id", task.batchId());
+        row.put("document_id", task.documentId());
+        row.put("page_no", task.pageNo());
+        row.put("worker_id", task.workerId());
+        row.put("thread_name", task.threadName());
+        row.put("started_at", task.startedAt().toString());
+        row.put("running_ms", Math.max(0L, Duration.between(task.startedAt(), OffsetDateTime.now()).toMillis()));
+        task.modelKey().ifPresent(modelKey -> row.put("model_key", modelKey));
+        task.nodeId().ifPresent(nodeId -> addNodeFields(row, nodeId, nodesById));
+        return Map.copyOf(row);
+    }
+
+    /**
+     * 补充运行中图片页任务的节点展示字段。
+     *
+     * @param row 运行中图片页任务行
+     * @param nodeId 节点 ID
+     * @param nodesById 节点索引
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void addNodeFields(Map<String, Object> row, String nodeId, Map<String, OcrNode> nodesById) {
+        row.put("node_id", nodeId);
+        OcrNode node = nodesById.get(nodeId);
+        if (node != null) {
+            row.put("node_name", node.name());
+        }
     }
 
     /**

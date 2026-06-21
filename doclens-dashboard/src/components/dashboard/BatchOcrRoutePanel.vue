@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BatchOcrHitNode, BatchOcrRoutePolicy } from '@/types/dashboard'
+import type { BatchOcrHitNode, BatchOcrRoutePolicy, BatchOcrRunningPageTask } from '@/types/dashboard'
 import {
   displayLoadBalanceStrategy,
   displayModelName,
@@ -13,6 +13,7 @@ defineProps<{
   currentDocumentName?: string
   currentDocumentRunningHitNodes: BatchOcrHitNode[]
   currentDocumentFinalHitNodes: BatchOcrHitNode[]
+  runningPageTasks?: BatchOcrRunningPageTask[]
   hitNodes: BatchOcrHitNode[]
 }>()
 </script>
@@ -93,6 +94,34 @@ defineProps<{
       </div>
       <p v-else class="batch-ocr-route__empty">当前文件尚未完成 OCR，暂无最终分配结果</p>
       </div>
+    </section>
+
+    <section class="batch-ocr-route__section">
+      <div class="batch-ocr-route__section-header">
+        <h3>实时 OCR 图片任务</h3>
+        <span>展示当前正在被 worker 线程消费的图片页</span>
+      </div>
+      <div v-if="(runningPageTasks?.length ?? 0) > 0" class="batch-ocr-route__live-table">
+        <div class="batch-ocr-route__live-head">
+          <span>页码</span>
+          <span>OCR 节点</span>
+          <span>Worker</span>
+          <span>线程</span>
+          <span>耗时</span>
+        </div>
+        <div
+          v-for="task in runningPageTasks"
+          :key="task.task_id"
+          class="batch-ocr-route__live-row"
+        >
+          <span>第 {{ task.page_no }} 页</span>
+          <span>{{ displayNodeName({ nodeId: task.node_id, nodeName: task.node_name }) }}</span>
+          <span>{{ task.worker_id }}</span>
+          <span>{{ task.thread_name }}</span>
+          <span>{{ Math.max(0, Math.round(task.running_ms / 1000)) }} 秒</span>
+        </div>
+      </div>
+      <p v-else class="batch-ocr-route__empty">当前没有正在执行的 OCR 图片页任务</p>
     </section>
 
     <section class="batch-ocr-route__section">
@@ -202,6 +231,39 @@ defineProps<{
   gap: 8px;
 }
 
+.batch-ocr-route__live-table {
+  overflow: hidden;
+  border: 1px solid var(--rail-border);
+  border-radius: 8px;
+  background: var(--surface-inset);
+}
+
+.batch-ocr-route__live-head,
+.batch-ocr-route__live-row {
+  display: grid;
+  grid-template-columns: 80px minmax(150px, 1fr) minmax(110px, 0.8fr) minmax(180px, 1.2fr) 80px;
+  gap: 8px;
+  padding: 9px 10px;
+  align-items: center;
+}
+
+.batch-ocr-route__live-head {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.batch-ocr-route__live-row {
+  border-top: 1px solid var(--rail-border);
+  color: var(--ink-strong);
+  font-size: 12px;
+}
+
+.batch-ocr-route__live-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .batch-ocr-route__hit {
   display: flex;
   min-width: 0;
@@ -221,6 +283,11 @@ defineProps<{
   .batch-ocr-route__section-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .batch-ocr-route__live-head,
+  .batch-ocr-route__live-row {
+    grid-template-columns: 70px minmax(0, 1fr);
   }
 }
 </style>

@@ -107,4 +107,54 @@ describe('BatchOcrRoutePanel', () => {
     expect(wrapper.text()).toContain('OCR 模型：Ollama')
     expect(wrapper.text()).not.toContain('OCR 模型：deepseek-ocr')
   })
+
+  it('shows live OCR page tasks with worker threads', () => {
+    const wrapper = mount(BatchOcrRoutePanel, {
+      props: {
+        routePolicy: {
+          routing_mode: 'GLOBAL_LOAD_BALANCE',
+          model_key: 'paddle_ocr',
+          node_id: '',
+          load_balance_strategy: 'least-inflight'
+        },
+        currentDocumentName: 'parallel.pdf',
+        currentDocumentRunningHitNodes: [],
+        currentDocumentFinalHitNodes: [],
+        runningPageTasks: [
+          {
+            task_id: 'task-1',
+            document_id: 'doc-running',
+            page_no: 1,
+            worker_id: 'worker-a',
+            thread_name: 'doclens-page-task-ocr-1',
+            started_at: '2026-06-21T10:15:30+08:00',
+            running_ms: 1200,
+            model_key: 'paddle_ocr',
+            node_id: 'node-1',
+            node_name: '节点一'
+          },
+          {
+            task_id: 'task-2',
+            document_id: 'doc-running',
+            page_no: 2,
+            worker_id: 'worker-a',
+            thread_name: 'doclens-page-task-ocr-2',
+            started_at: '2026-06-21T10:15:31+08:00',
+            running_ms: 900,
+            model_key: 'paddle_ocr',
+            node_id: 'node-1',
+            node_name: '节点一'
+          }
+        ],
+        hitNodes: []
+      }
+    })
+
+    expect(wrapper.text()).toContain('实时 OCR 图片任务')
+    expect(wrapper.text()).toContain('第 1 页')
+    expect(wrapper.text()).toContain('第 2 页')
+    expect(wrapper.text()).toContain('doclens-page-task-ocr-1')
+    expect(wrapper.text()).toContain('doclens-page-task-ocr-2')
+    expect(wrapper.text()).toContain('worker-a')
+  })
 })

@@ -58,6 +58,19 @@ public class EmptyDashboardOcrMetricsProvider implements DashboardOcrMetricsProv
     }
 
     /**
+     * 获取空批次运行中图片页任务。
+     *
+     * @param batchId 批次 ID
+     * @return 空运行中图片页任务列表
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    @Override
+    public List<Map<String, Object>> runningPageTasksByBatch(String batchId) {
+        return List.of();
+    }
+
+    /**
      * 获取空批次文档最终分配节点映射。
      *
      * @param batchId 批次 ID

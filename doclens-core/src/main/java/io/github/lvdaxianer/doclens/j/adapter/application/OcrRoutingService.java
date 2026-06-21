@@ -30,6 +30,7 @@ public class OcrRoutingService {
     private final OcrBatchHitTracker batchHitTracker;
     private final OcrRoutingServiceProperties properties;
     private final OcrDocumentAffinityTracker documentAffinityTracker;
+    private final OcrRunningPageTaskTracker runningPageTaskTracker;
 
     /**
      * 创建 OCR 路由服务。
@@ -45,6 +46,7 @@ public class OcrRoutingService {
         this.batchHitTracker = dependencies.batchHitTracker();
         this.properties = dependencies.properties();
         this.documentAffinityTracker = dependencies.documentAffinityTracker();
+        this.runningPageTaskTracker = dependencies.runningPageTaskTracker();
     }
 
     /**
@@ -147,6 +149,7 @@ public class OcrRoutingService {
     ) {
         OcrBatchNodeHitCommand hitCommand = hitCommand(request, node);
         batchHitTracker.recordDispatch(hitCommand);
+        recordRunningPageAssignment(request, node);
         try {
             NodeAttemptResult result = executeWithRetry(request, effectivePolicy, node, accumulator);
             if (result.result().isPresent()) {
@@ -174,6 +177,24 @@ public class OcrRoutingService {
      */
     private OcrBatchNodeHitCommand hitCommand(ImageOcrRequest request, OcrRuntimeNodeView node) {
         return new OcrBatchNodeHitCommand(request.batchId(), request.documentId(), node.modelKey(), node.nodeId());
+    }
+
+    /**
+     * 记录运行中图片页任务的实际 OCR 节点分配。
+     *
+     * @param request 图片 OCR 请求
+     * @param node 选中节点
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void recordRunningPageAssignment(ImageOcrRequest request, OcrRuntimeNodeView node) {
+        try {
+            runningPageTaskTracker.recordAssignment(new OcrRunningPageTaskAssignment(request.taskId(),
+                    node.modelKey(), node.nodeId()));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("[OCR路由] 记录运行中页任务节点分配失败 taskId={}, documentId={}, pageNo={}, nodeId={}",
+                    request.taskId(), request.documentId(), request.pageNo(), node.nodeId(), ex);
+        }
     }
 
     /**

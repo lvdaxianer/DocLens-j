@@ -15,6 +15,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventFactory;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrEventRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.OcrResultRepository;
@@ -241,7 +242,8 @@ public class DocLensPageTaskWorkerAutoConfiguration {
     DocumentPageTaskExecutionDependencies documentPageTaskExecutionDependencies(ApplicationContext context) {
         return new DocumentPageTaskExecutionDependencies(context.getBean(DocumentPageTaskRepository.class),
                 context.getBean(DocumentJobRepository.class), context.getBean(DocumentPageResultRepository.class),
-                context.getBean(ObjectStorage.class), context.getBean(OcrRoutingService.class));
+                context.getBean(ObjectStorage.class), context.getBean(OcrRoutingService.class),
+                context.getBean(OcrRunningPageTaskTracker.class));
     }
 
     /**

@@ -1,6 +1,8 @@
 package io.github.lvdaxianer.doclens.j.processing.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRouteExecutionResult;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskCommand;
+import io.github.lvdaxianer.doclens.j.adapter.application.OcrRunningPageTaskTracker;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingService;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrResult;
@@ -38,6 +40,7 @@ public class DocumentPageTaskExecutionService {
     private final DocumentPageResultRepository pageResultRepository;
     private final ObjectStorage objectStorage;
     private final OcrRoutingService routingService;
+    private final OcrRunningPageTaskTracker runningPageTaskTracker;
     private final TransactionRunner transactionRunner;
     private final String workerId;
     private final int workerBatchSize;
@@ -64,6 +67,7 @@ public class DocumentPageTaskExecutionService {
         this.pageResultRepository = dependencies.pageResultRepository();
         this.objectStorage = dependencies.objectStorage();
         this.routingService = dependencies.routingService();
+        this.runningPageTaskTracker = dependencies.runningPageTaskTracker();
         this.transactionRunner = transactionRunner;
         this.workerId = options.workerId();
         this.workerBatchSize = options.workerBatchSize();
@@ -143,9 +147,47 @@ public class DocumentPageTaskExecutionService {
     private void executeOcr(DocumentPageTask task) {
         DocumentJob document = document(task);
         ImageOcrRequest request = imageRequest(document, task);
-        OcrRouteExecutionResult routeResult = routingService.recognize(request, document.ocrRoutePolicy());
-        transactionRunner.requiredVoid(() -> completeTask(task, routeResult));
-        notifyPageSuccess(task);
+        recordRunningPageStart(task);
+        try {
+            OcrRouteExecutionResult routeResult = routingService.recognize(request, document.ocrRoutePolicy());
+            transactionRunner.requiredVoid(() -> completeTask(task, routeResult));
+            notifyPageSuccess(task);
+        } finally {
+            recordRunningPageCompletion(task);
+        }
+    }
+
+    /**
+     * 记录运行中的图片页任务。
+     *
+     * @param task 页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void recordRunningPageStart(DocumentPageTask task) {
+        try {
+            runningPageTaskTracker.recordStart(new OcrRunningPageTaskCommand(task.taskId(), task.batchId(),
+                    task.documentId(), task.pageNo(), workerId, Thread.currentThread().getName(), OffsetDateTime.now()));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("[页任务OCR] 记录运行中页任务失败 taskId={}, documentId={}, pageNo={}", task.taskId(),
+                    task.documentId(), task.pageNo(), ex);
+        }
+    }
+
+    /**
+     * 清理运行中的图片页任务。
+     *
+     * @param task 页任务
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    private void recordRunningPageCompletion(DocumentPageTask task) {
+        try {
+            runningPageTaskTracker.recordCompletion(task.taskId());
+        } catch (RuntimeException ex) {
+            LOGGER.warn("[页任务OCR] 清理运行中页任务失败 taskId={}, documentId={}, pageNo={}", task.taskId(),
+                    task.documentId(), task.pageNo(), ex);
+        }
     }
 
     /**
@@ -172,7 +214,7 @@ public class DocumentPageTaskExecutionService {
      */
     private ImageOcrRequest imageRequest(DocumentJob document, DocumentPageTask task) {
         byte[] imageContent = objectStorage.readBytes(task.imageStorageUri());
-        return new ImageOcrRequest(task.batchId(), task.documentId(), document.fileName(), task.pageNo(),
+        return new ImageOcrRequest(task.batchId(), task.taskId(), task.documentId(), document.fileName(), task.pageNo(),
                 imageContent, document.metadata());
     }
 

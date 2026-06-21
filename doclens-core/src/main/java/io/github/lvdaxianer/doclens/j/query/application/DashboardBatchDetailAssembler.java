@@ -76,6 +76,7 @@ class DashboardBatchDetailAssembler {
                 Map.entry("ocr_route_policy", routePolicy),
                 Map.entry("ocr_runtime_capacity", ocrRuntimeCapacity(routePolicy)),
                 Map.entry("batch_dispatch_hit_nodes", dependencies.ocrMetricsProvider().dispatchHitNodesByBatch(batchId)),
+                Map.entry("ocr_running_page_tasks", dependencies.ocrMetricsProvider().runningPageTasksByBatch(batchId)),
                 Map.entry("failure_summary", rowAssembler.failureSummary(rows.documents()))
         );
     }

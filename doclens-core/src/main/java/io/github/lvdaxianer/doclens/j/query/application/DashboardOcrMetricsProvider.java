@@ -41,6 +41,18 @@ public interface DashboardOcrMetricsProvider {
     Map<String, List<Map<String, Object>>> runningHitNodesByBatch(String batchId);
 
     /**
+     * 获取批次内正在执行 OCR 的图片页任务明细。
+     *
+     * @param batchId 批次 ID
+     * @return 运行中图片页任务列表
+     * @author lvdaxianerplus
+     * @date 2026-06-21
+     */
+    default List<Map<String, Object>> runningPageTasksByBatch(String batchId) {
+        return List.of();
+    }
+
+    /**
      * 获取批次内各文档最终成功分配到的 OCR 节点。
      *
      * @param batchId 批次 ID
