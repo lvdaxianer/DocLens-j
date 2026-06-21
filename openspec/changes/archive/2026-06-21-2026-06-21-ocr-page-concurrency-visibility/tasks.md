@@ -21,4 +21,4 @@
 
 - [x] 4.1 Run broader backend and Dashboard verification for touched areas.
 - [x] 4.2 Run plan-implementation consistency audit and code-review-spec.
-- [ ] 4.3 Archive the completed OpenSpec change after all tasks pass.
+- [x] 4.3 Archive the completed OpenSpec change after all tasks pass.
