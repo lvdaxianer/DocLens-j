@@ -35,6 +35,7 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration(after = {
         DocLensAutoConfiguration.class,
         DocLensOcrThreadPoolAutoConfiguration.class,
+        DocLensOcrNodeManagementAutoConfiguration.class,
         DocLensOcrResourceAutoConfiguration.class
 })
 public class DocLensDashboardMetricsAutoConfiguration {
