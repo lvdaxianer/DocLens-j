@@ -9,19 +9,24 @@ development, packaging, and integration references stay discoverable.
 
 The project SHALL provide Chinese and English README entry points that describe
 DocLens Java at a project overview level and link to focused reference
-documents for details.
+documents for details. The canonical English README path SHALL be
+`README-en.md`.
 
 #### Scenario: Reader starts from the Chinese README
 
 - **WHEN** a reader opens `README.md`
-- **THEN** they can understand the project purpose, modules, quick start path,
-  and where to find API, SDK, configuration, development, packaging, and
-  integration details
+- **THEN** they can understand the project purpose, deployment modes, modules,
+  quick start path, dashboard entry, supported document pipeline, OCR
+  concurrency model, global load balancing preference, restart recovery model,
+  LLM Markdown checkpoint behavior, upload guardrails, observability surface,
+  and where to find API, SDK, configuration, development, packaging,
+  integration, and technical delivery details
 
 #### Scenario: Reader starts from the English README
 
-- **WHEN** a reader opens the English README
-- **THEN** they can access equivalent overview and reference links in English
+- **WHEN** a reader opens `README-en.md`
+- **THEN** they can access equivalent overview, current capability summary, and
+  reference links in English
 
 ### Requirement: Focused HTTP API Reference
 
@@ -69,22 +74,16 @@ configuration, local development workflows, and technical delivery.
 - **WHEN** a reader needs to evaluate DocLens-j as a delivered technical system
 - **THEN** they can find a technical delivery document that explains system
   positioning, architecture, high-volume concurrency, OCR load balancing,
-  high-availability controls, duplicate-consumption protection, observability,
-  capacity tuning, and deliberate technical trade-offs
-
-#### Scenario: Reader wants a three-high delivery capability summary
-
-- **WHEN** a reader needs to evaluate how DocLens-j supports high concurrency,
-  high availability, and high performance
-- **THEN** the technical delivery document includes a dedicated three-high
-  section that maps those delivery goals to implementation mechanisms and
-  deliberate technical trade-offs
+  restart recovery, chunk checkpoint persistence, duplicate-consumption
+  protection, upload guardrails, observability, capacity tuning, and deliberate
+  technical trade-offs
 
 #### Scenario: Reader wants a full high-volume processing flow
 
-- **WHEN** a reader needs to understand what happens after 100 documents are
+- **WHEN** a reader needs to understand what happens after many documents are
   uploaded at the same time
-- **THEN** the technical delivery document includes a flowchart that follows the
-  documents from upload acknowledgement through document executor queueing,
-  page-task persistence, OCR slot scheduling, retry or failure handling,
-  aggregation, optional LLM processing, and final batch completion
+- **THEN** the technical delivery document includes a flowchart or equivalent
+  structured explanation that follows documents from upload acknowledgement
+  through document executor queueing, page-task persistence, OCR slot
+  scheduling, retry or failure handling, aggregation, optional LLM processing,
+  and final batch completion
