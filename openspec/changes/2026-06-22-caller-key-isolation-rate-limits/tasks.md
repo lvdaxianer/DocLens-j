@@ -1,6 +1,6 @@
 ## 1. Planning
 
-- [ ] 1.1 Create OpenSpec proposal, design, requirements, and task checklist for
+- [x] 1.1 Create OpenSpec proposal, design, requirements, and task checklist for
   caller key isolation and rate-limit stop-loss.
 - [ ] 1.2 Validate the OpenSpec change strictly and commit the planning asset.
 
