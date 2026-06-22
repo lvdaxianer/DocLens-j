@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fetchDashboardSummary } from '@/api/dashboard'
 
-const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
+const CALLER_CREDENTIAL_STORAGE_KEY = 'X-Recall-Key'
+const DOC_LENS_CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
 const LEGACY_CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
-const CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
+const CALLER_PARTITION_HEADER = 'X-Recall-Key'
+const DOC_LENS_CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
 const BEARER_PREFIX = 'Bearer '
 const JSON_CONTENT_TYPE = 'application/json'
 
@@ -29,7 +31,7 @@ describe('dashboard caller credential headers', () => {
     vi.restoreAllMocks()
   })
 
-  it('attaches raw X-DocLens-Credential-Key when sessionStorage provides caller key', async () => {
+  it('attaches raw X-Recall-Key when sessionStorage provides caller key', async () => {
     sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
@@ -44,7 +46,7 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('omits caller credential headers when sessionStorage does not provide X-DocLens-Credential-Key', async () => {
+  it('omits caller credential headers when sessionStorage does not provide X-Recall-Key', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
     await fetchDashboardSummary()
@@ -86,7 +88,7 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('ignores X-DocLens-Credential-Key when it only exists in localStorage', async () => {
+  it('ignores X-Recall-Key when it only exists in localStorage', async () => {
     localStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'persistent-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
@@ -98,5 +100,29 @@ describe('dashboard caller credential headers', () => {
         Accept: JSON_CONTENT_TYPE
       }
     })
+  })
+
+  it('ignores legacy X-DocLens-Credential-Key in sessionStorage', async () => {
+    sessionStorage.setItem(DOC_LENS_CALLER_CREDENTIAL_STORAGE_KEY, 'legacy-partition-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
+
+    await fetchDashboardSummary()
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/dashboard/summary', {
+      method: 'GET',
+      headers: {
+        Accept: JSON_CONTENT_TYPE
+      }
+    })
+  })
+
+  it('does not emit legacy X-DocLens-Credential-Key when X-Recall-Key exists', async () => {
+    sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'recall-partition-key')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
+
+    await fetchDashboardSummary()
+
+    const [, init] = fetchSpy.mock.calls[0] ?? []
+    expect(init?.headers).not.toHaveProperty(DOC_LENS_CALLER_PARTITION_HEADER)
   })
 })

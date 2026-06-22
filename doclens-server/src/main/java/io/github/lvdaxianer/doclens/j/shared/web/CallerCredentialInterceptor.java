@@ -24,7 +24,7 @@ public class CallerCredentialInterceptor implements HandlerInterceptor {
     public static final String RESOLVED_CREDENTIAL_ATTRIBUTE = CallerCredentialInterceptor.class.getName()
             + ".resolvedCredential";
 
-    private static final String CALLER_PARTITION_HEADER = "X-DocLens-Credential-Key";
+    private static final String CALLER_PARTITION_HEADER = "X-Recall-Key";
 
     private final CallerCredentialResolver callerCredentialResolver;
 

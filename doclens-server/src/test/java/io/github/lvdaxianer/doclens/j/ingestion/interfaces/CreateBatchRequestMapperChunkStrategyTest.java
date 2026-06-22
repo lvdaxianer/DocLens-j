@@ -25,7 +25,7 @@ import org.springframework.mock.web.MockMultipartFile;
 class CreateBatchRequestMapperChunkStrategyTest {
 
     /** 测试 caller 分区键请求头。 */
-    private static final String CALLER_PARTITION_HEADER = "X-DocLens-Credential-Key";
+    private static final String CALLER_PARTITION_HEADER = "X-Recall-Key";
     /** 测试 caller 分区键。 */
     private static final String CALLER_PARTITION_KEY = "tenant-east";
     /** 默认来源应用。 */

@@ -14,9 +14,9 @@
 
 ## 2a. Recall Header Rename
 
-- [ ] 2a.1 Add failing frontend and backend tests proving `X-Recall-Key` is the
+- [x] 2a.1 Add failing frontend and backend tests proving `X-Recall-Key` is the
   only caller partition header.
-- [ ] 2a.2 Rename Dashboard storage/header usage and backend request parsing to
+- [x] 2a.2 Rename Dashboard storage/header usage and backend request parsing to
   `X-Recall-Key` without legacy header compatibility.
 
 ## 3. Backend Partition Key Resolution
@@ -28,9 +28,9 @@
 
 ## 4. Data Isolation
 
-- [ ] 4.1 Add failing query tests proving resources owned by another partition
+- [x] 4.1 Add failing query tests proving resources owned by another partition
   key are not visible.
-- [ ] 4.2 Preserve batch, document, result, event, retry, and delete access
+- [x] 4.2 Preserve batch, document, result, event, retry, and delete access
   within the resolved partition key only.
 
 ## 5. Rate-Limit Stop-Loss

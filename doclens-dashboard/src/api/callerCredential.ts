@@ -1,5 +1,5 @@
-const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
-const CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
+const CALLER_CREDENTIAL_STORAGE_KEY = 'X-Recall-Key'
+const CALLER_PARTITION_HEADER = 'X-Recall-Key'
 
 /**
  * 读取 Dashboard 当前缓存的 caller 凭证。
