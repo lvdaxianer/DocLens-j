@@ -35,9 +35,9 @@
 
 ## 5. Rate-Limit Stop-Loss
 
-- [ ] 5.1 Add or adjust rate limiter tests proving different partition keys do
+- [x] 5.1 Add or adjust rate limiter tests proving different partition keys do
   not share interface-group buckets.
-- [ ] 5.2 Keep caller traffic enforcement based on partition key plus traffic
+- [x] 5.2 Keep caller traffic enforcement based on partition key plus traffic
   group, with global protection as the cross-key fallback.
 
 ## 6. Documentation And Configuration

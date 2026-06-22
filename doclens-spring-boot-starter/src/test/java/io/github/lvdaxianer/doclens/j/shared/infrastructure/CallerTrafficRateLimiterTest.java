@@ -55,6 +55,23 @@ class CallerTrafficRateLimiterTest {
     }
 
     /**
+     * 不同 caller 分区键访问同一接口组时应拥有独立令牌桶。
+     *
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    @Test
+    void isolatesInterfaceGroupBucketsAcrossPartitionKeys() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-06-17T00:00:00Z"));
+        CallerTrafficRateLimiter limiter = new CallerTrafficRateLimiter(clock::millis);
+        RateLimitProperties limit = new RateLimitProperties(1.0D, 1);
+
+        assertThat(limiter.tryAcquire(caller("tenant-east", "tenant-east"), UPLOAD_WRITE_GROUP, limit)).isTrue();
+        assertThat(limiter.tryAcquire(caller("tenant-east", "tenant-east"), UPLOAD_WRITE_GROUP, limit)).isFalse();
+        assertThat(limiter.tryAcquire(caller("tenant-west", "tenant-west"), UPLOAD_WRITE_GROUP, limit)).isTrue();
+    }
+
+    /**
      * 小数 QPS 应按时间补充令牌，而不是只支持整数频率。
      *
      * @author lvdaxianerplus
