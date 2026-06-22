@@ -1,6 +1,6 @@
 package io.github.lvdaxianer.doclens.j.integration.interfaces;
 
-import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
+import io.github.lvdaxianer.doclens.j.query.interfaces.OcrQueryHttpFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,25 +18,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/integrations/open-webui/ocr")
 public class OpenWebuiOcrQueryIntegrationController {
 
-    private final DocLensEngine docLensEngine;
+    private final OcrQueryHttpFacade ocrQueryHttpFacade;
     private final OpenWebuiAuthGuard authGuard;
     private final OpenWebuiResponseMapper responseMapper;
 
     /**
      * 创建 Open WebUI OCR 查询集成适配器控制器。
      *
-     * @param docLensEngine DocLens 引擎
+     * @param ocrQueryHttpFacade OCR 查询 HTTP 门面
      * @param authGuard Open WebUI 鉴权守卫
      * @param responseMapper 响应映射器
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
     public OpenWebuiOcrQueryIntegrationController(
-            DocLensEngine docLensEngine,
+            OcrQueryHttpFacade ocrQueryHttpFacade,
             OpenWebuiAuthGuard authGuard,
             OpenWebuiResponseMapper responseMapper
     ) {
-        this.docLensEngine = docLensEngine;
+        this.ocrQueryHttpFacade = ocrQueryHttpFacade;
         this.authGuard = authGuard;
         this.responseMapper = responseMapper;
     }
@@ -53,7 +53,7 @@ public class OpenWebuiOcrQueryIntegrationController {
     @GetMapping("/batches/{batchId}")
     public Map<String, Object> getBatch(@PathVariable String batchId, HttpServletRequest request) {
         authGuard.requireIdentity(request);
-        return responseMapper.batch(docLensEngine.getBatch(batchId));
+        return responseMapper.batch(ocrQueryHttpFacade.getBatch(request, batchId));
     }
 
     /**
@@ -68,6 +68,6 @@ public class OpenWebuiOcrQueryIntegrationController {
     @GetMapping("/batches/{batchId}/events")
     public Map<String, Object> getEvents(@PathVariable String batchId, HttpServletRequest request) {
         authGuard.requireIdentity(request);
-        return responseMapper.events(docLensEngine.getEvents(batchId));
+        return responseMapper.events(ocrQueryHttpFacade.getEvents(request, batchId));
     }
 }

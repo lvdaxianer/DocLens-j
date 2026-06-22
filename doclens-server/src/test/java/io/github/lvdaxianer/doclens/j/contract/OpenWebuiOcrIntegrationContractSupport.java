@@ -16,6 +16,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * Open WebUI OCR 集成适配器契约测试支持。
@@ -31,6 +32,16 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
     protected static final String OPENWEBUI_OCR_PATH = "/api/v1/integrations/open-webui/ocr";
     /** Open WebUI 测试内部 token。 */
     protected static final String OPENWEBUI_TOKEN = "test-openwebui-token";
+    /** Open WebUI 鉴权头名称。 */
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    /** Open WebUI 用户 ID 头名称。 */
+    private static final String OPENWEBUI_USER_ID_HEADER = "X-OpenWebUI-User-Id";
+    /** Open WebUI 请求 ID 头名称。 */
+    private static final String OPENWEBUI_REQUEST_ID_HEADER = "X-OpenWebUI-Request-Id";
+    /** Open WebUI 测试用户 ID。 */
+    private static final String OPENWEBUI_USER_ID = "user_123";
+    /** Open WebUI 测试请求 ID。 */
+    private static final String OPENWEBUI_REQUEST_ID = "req_123";
     /** Open WebUI 后台处理等待次数。 */
     private static final int OPENWEBUI_WAIT_ATTEMPTS = 20;
     /** Open WebUI 后台处理单次等待毫秒数。 */
@@ -210,7 +221,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
                     client_id, source_app, tenant_key
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, batchId, "failed", 1, 0, 1, documentId, "retry.md", "ocr_images", "{}",
-                null, null, now, now, "open-webui", "open-webui", "");
+                null, null, now, now, TEST_CLIENT_ID, TEST_SOURCE_APP, TEST_TENANT_KEY);
     }
 
     /**
@@ -247,11 +258,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
             String uriTemplate,
             Object... uriVars
     ) {
-        return get(uriTemplate, uriVars)
-                .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
-                .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123");
+        return attachOpenwebuiHeaders(get(uriTemplate, uriVars), TEST_CALLER_PARTITION_KEY);
     }
 
     /**
@@ -267,10 +274,57 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
             String uriTemplate,
             Object... uriVars
     ) {
-        return post(uriTemplate, uriVars)
-                .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
-                .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
-                .header("X-OpenWebUI-User-Id", "user_123")
-                .header("X-OpenWebUI-Request-Id", "req_123");
+        return attachOpenwebuiHeaders(post(uriTemplate, uriVars), TEST_CALLER_PARTITION_KEY);
+    }
+
+    /**
+     * 创建携带外部 caller 分区键和 Open WebUI 鉴权头的 GET 请求。
+     *
+     * @param uriTemplate URI 模板
+     * @param uriVars URI 参数
+     * @return GET 请求构建器
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    public org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder foreignAuthenticatedGet(
+            String uriTemplate,
+            Object... uriVars
+    ) {
+        return attachOpenwebuiHeaders(get(uriTemplate, uriVars), FOREIGN_CALLER_PARTITION_KEY);
+    }
+
+    /**
+     * 创建携带外部 caller 分区键和 Open WebUI 鉴权头的 POST 请求。
+     *
+     * @param uriTemplate URI 模板
+     * @param uriVars URI 参数
+     * @return POST 请求构建器
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    public org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder foreignAuthenticatedPost(
+            String uriTemplate,
+            Object... uriVars
+    ) {
+        return attachOpenwebuiHeaders(post(uriTemplate, uriVars), FOREIGN_CALLER_PARTITION_KEY);
+    }
+
+    /**
+     * 追加 Open WebUI 鉴权与分区请求头。
+     *
+     * @param builder 请求构建器
+     * @param callerPartitionKey caller 分区键
+     * @return 请求构建器
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    private MockHttpServletRequestBuilder attachOpenwebuiHeaders(
+            MockHttpServletRequestBuilder builder,
+            String callerPartitionKey
+    ) {
+        return builder.header(CALLER_PARTITION_HEADER, callerPartitionKey)
+                .header(AUTHORIZATION_HEADER, "Bearer " + OPENWEBUI_TOKEN)
+                .header(OPENWEBUI_USER_ID_HEADER, OPENWEBUI_USER_ID)
+                .header(OPENWEBUI_REQUEST_ID_HEADER, OPENWEBUI_REQUEST_ID);
     }
 }

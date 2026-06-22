@@ -125,6 +125,73 @@ class OpenWebuiOcrIntegrationContractTest extends OpenWebuiOcrIntegrationContrac
     }
 
     /**
+     * 验证 Open WebUI 文档入口不能跨 caller 分区访问资源。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    @Test
+    void openWebuiDocumentEndpointsReturnNotFoundForForeignCaller() throws Exception {
+        CreatedOpenwebuiResource resource = createOpenwebuiResource();
+
+        assertForeignOpenwebuiBatchNotFound(resource.batchId());
+        assertForeignOpenwebuiDocumentNotFound(resource.documentId());
+    }
+
+    /**
+     * 断言外部 caller 不能访问 Open WebUI 批次入口。
+     *
+     * @param batchId 批次 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    private void assertForeignOpenwebuiBatchNotFound(String batchId) throws Exception {
+        mockMvc.perform(foreignAuthenticatedGet(OPENWEBUI_OCR_PATH + "/batches/{batchId}", batchId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(foreignAuthenticatedGet(OPENWEBUI_OCR_PATH + "/batches/{batchId}/events", batchId))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * 断言外部 caller 不能访问 Open WebUI 文档入口。
+     *
+     * @param documentId 文档 ID
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    private void assertForeignOpenwebuiDocumentNotFound(String documentId) throws Exception {
+        mockMvc.perform(foreignAuthenticatedGet(OPENWEBUI_OCR_PATH + "/documents/{documentId}", documentId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(foreignAuthenticatedGet(
+                        OPENWEBUI_OCR_PATH + "/documents/{documentId}/result",
+                        documentId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(foreignAuthenticatedPost(OPENWEBUI_OCR_PATH + "/documents/{documentId}/retry",
+                        documentId))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * 创建默认 Open WebUI 资源并返回批次和文档 ID。
+     *
+     * @return Open WebUI 测试资源
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    private CreatedOpenwebuiResource createOpenwebuiResource() throws Exception {
+        MvcResult created = createOpenwebuiBatch(openwebuiMarkdownFile()).andReturn();
+        JsonNode body = objectMapper.readTree(created.getResponse().getContentAsString());
+        String batchId = body.get("batch_id").asText();
+        String documentId = body.get("documents").get(0).get("document_id").asText();
+        waitForOpenwebuiBatchCompleted(batchId);
+        return new CreatedOpenwebuiResource(batchId, documentId);
+    }
+
+    /**
      * 断言 Open WebUI 批次查询响应。
      *
      * @param batchId 批次 ID
@@ -204,5 +271,16 @@ class OpenWebuiOcrIntegrationContractTest extends OpenWebuiOcrIntegrationContrac
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.service").value("doclens-j"))
                 .andExpect(jsonPath("$.time").isString());
+    }
+
+    /**
+     * Open WebUI 契约测试创建出的资源标识。
+     *
+     * @param batchId 批次 ID
+     * @param documentId 文档 ID
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    private record CreatedOpenwebuiResource(String batchId, String documentId) {
     }
 }
