@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequ
 interface CallerCredentialContractSupport {
 
     /** 测试 caller 分区键请求头。 */
-    String CALLER_PARTITION_HEADER = "X-Recall-Key";
+    String CALLER_PARTITION_HEADER = "X-Doclens-Key";
     /** 测试 caller 分区键。 */
     String TEST_CALLER_PARTITION_KEY = "tenant-east";
     /** 测试 caller client id。 */

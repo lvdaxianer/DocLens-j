@@ -24,6 +24,8 @@ class DocLensOcrUploadCredentialContractTest extends DocLensOcrApiContractSuppor
     private static final String FILES_PART_NAME = "files";
     /** 批次创建接口路径。 */
     private static final String BATCHES_PATH = "/api/v1/batches";
+    /** 旧的错误 caller 分区键请求头。 */
+    private static final String OLD_CALLER_PARTITION_HEADER = "X-Recall-Key";
     /** 测试 caller 分区键。 */
     private static final String PARTITION_KEY = "tenant-east";
     /** 另一个合法 caller 分区键。 */
@@ -80,6 +82,27 @@ class DocLensOcrUploadCredentialContractTest extends DocLensOcrApiContractSuppor
                         .file(uploadFile())
                         .param("metadata", "{\"bizId\":\"CRED-MISSING\"}")
                         .param("idempotency_key", "idem-credential-missing-" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value(MISSING_CALLER_PARTITION_KEY_MESSAGE))
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString()).doesNotContain(PARTITION_KEY);
+    }
+
+    /**
+     * 验证旧的错误请求头不会被当作 caller 分区键。
+     *
+     * @throws Exception 请求执行失败时抛出
+     * @author lvdaxianerplus
+     * @date 2026-06-22
+     */
+    @Test
+    void batchUploadRejectsOldRecallCallerPartitionHeader() throws Exception {
+        MvcResult result = mockMvc.perform(multipart(BATCHES_PATH)
+                        .file(uploadFile())
+                        .header(OLD_CALLER_PARTITION_HEADER, PARTITION_KEY)
+                        .param("metadata", "{\"bizId\":\"CRED-OLD-HEADER\"}")
+                        .param("idempotency_key", "idem-credential-old-header-" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value(MISSING_CALLER_PARTITION_KEY_MESSAGE))
                 .andReturn();

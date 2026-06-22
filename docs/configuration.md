@@ -70,7 +70,7 @@ batch detail API as `callback_jobs`.
 
 ## Caller Partition And Traffic Limits
 
-Dashboard and API callers must send `X-Recall-Key` on upload, query,
+Dashboard and API callers must send `X-Doclens-Key` on upload, query,
 mutation, and Dashboard data requests. DocLens treats this value as an opaque
 caller partition key. It is not an authentication token, is not matched against
 a server-side list, and is not used to prove who the caller is.

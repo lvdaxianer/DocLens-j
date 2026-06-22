@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Treat `X-Recall-Key` as an opaque caller partition key for data isolation and traffic shaping, while removing backend ownership checks for that key and keeping the existing stop-loss layers.
+**Goal:** Treat `X-Doclens-Key` as an opaque caller partition key for data isolation and traffic shaping, while removing backend ownership checks for that key and keeping the existing stop-loss layers.
 
 **Architecture:** The Dashboard forwards one raw caller key on every request. The server reads that key as an opaque partition key, stores and queries batch data with it, and feeds it into caller-scoped rate limiting plus global protection. There is no backend key ownership lookup or user-account layer; the only trust boundary is the per-key isolation boundary and service-side limits.
 
@@ -12,7 +12,7 @@
 
 ## Confirmed Requirements
 
-- `X-Recall-Key` is the caller header the Dashboard sends.
+- `X-Doclens-Key` is the caller header the Dashboard sends.
 - Backend must not compare the key against a configured ownership registry.
 - Different keys must isolate batch, document, query, and dashboard visibility.
 - Different keys must also land in separate traffic-limit buckets.
@@ -23,13 +23,13 @@
 ## File Structure
 
 - Modify: `doclens-dashboard/src/api/callerCredential.ts`
-  - Stop translating the stored key into legacy auth headers; forward the raw key as `X-Recall-Key`.
+  - Stop translating the stored key into legacy auth headers; forward the raw key as `X-Doclens-Key`.
 - Modify: `doclens-dashboard/src/api/__tests__/dashboard.test.ts`
   - Prove the Dashboard client keeps emitting the raw caller key header and no legacy auth headers.
 - Modify: `doclens-dashboard/src/api/__tests__/upload.test.ts`
   - Prove upload requests use the same raw caller key header.
 - Modify: `doclens-server/src/main/java/io/github/lvdaxianer/doclens/j/shared/web/CallerCredentialInterceptor.java`
-  - Read `X-Recall-Key` and treat it as the partition key input.
+  - Read `X-Doclens-Key` and treat it as the partition key input.
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/ingestion/infrastructure/CallerCredentialResolver.java`
   - Remove key ownership matching and map any non-blank raw key to a trusted in-process caller partition.
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/ingestion/domain/CallerIdentity.java`
@@ -39,7 +39,7 @@
 - Modify: `doclens-core/src/main/java/io/github/lvdaxianer/doclens/j/query/application/OcrQueryService.java`
   - Keep every read path caller-scoped and make foreign resources look not found.
 - Modify: `doclens-spring-boot-starter/src/main/java/io/github/lvdaxianer/doclens/j/ingestion/infrastructure/MybatisPlusBatchRepository.java`
-  - Persist and query by the caller partition key that comes from `X-Recall-Key`.
+  - Persist and query by the caller partition key that comes from `X-Doclens-Key`.
 - Modify: `doclens-server/src/main/resources/application.yml`
   - Remove wording that implies caller key ownership checks and keep the sample configuration focused on partitioning and rate limits.
 - Modify: `docs/configuration.md`
@@ -55,12 +55,12 @@
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-it('attaches X-Recall-Key without translating the value', async () => {
-  sessionStorage.setItem('X-Recall-Key', 'tenant-a')
+it('attaches X-Doclens-Key without translating the value', async () => {
+  sessionStorage.setItem('X-Doclens-Key', 'tenant-a')
 
   const headers = withCallerCredentialHeaders({})
 
-  expect(headers).toEqual({ 'X-Recall-Key': 'tenant-a' })
+  expect(headers).toEqual({ 'X-Doclens-Key': 'tenant-a' })
   expect(headers).not.toHaveProperty('X-DocLens-Api-Key')
   expect(headers).not.toHaveProperty('Authorization')
 })
@@ -75,8 +75,8 @@ Expected: FAIL because the client still maps the stored value to `X-DocLens-Api-
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-const CALLER_CREDENTIAL_STORAGE_KEY = 'X-Recall-Key'
-const CALLER_HEADER = 'X-Recall-Key'
+const CALLER_CREDENTIAL_STORAGE_KEY = 'X-Doclens-Key'
+const CALLER_HEADER = 'X-Doclens-Key'
 
 function callerCredentialHeaders(): Record<string, string> {
   const credential = readCallerCredential()
@@ -289,7 +289,7 @@ Expected: FAIL because at least one file still uses the old security wording.
 - [ ] **Step 3: Write minimal implementation**
 
 ```md
-- `X-Recall-Key` is a caller partition key, not an identity proof.
+- `X-Doclens-Key` is a caller partition key, not an identity proof.
 - The backend does not compare it against a stored ownership list.
 - Isolation comes from partitioned reads plus caller-scoped rate limits.
 ```
@@ -316,4 +316,4 @@ git commit -m "📝 docs: describe caller key as partition key"
 - Every test step names a concrete command and an expected failure or pass.
 - The plan does not ask for RBAC, user accounts, or a key ownership list.
 - The plan keeps the isolation key and the limiters aligned.
-- The plan leaves the Dashboard on the raw `X-Recall-Key` header.
+- The plan leaves the Dashboard on the raw `X-Doclens-Key` header.
