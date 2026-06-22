@@ -1,0 +1,40 @@
+## 1. Planning
+
+- [ ] 1.1 Create OpenSpec proposal, design, requirements, and task checklist for
+  caller key isolation and rate-limit stop-loss.
+- [ ] 1.2 Validate the OpenSpec change strictly and commit the planning asset.
+
+## 2. Dashboard Header
+
+- [ ] 2.1 Add failing frontend API tests proving
+  `X-DocLens-Credential-Key` is forwarded raw and legacy auth headers are not
+  emitted.
+- [ ] 2.2 Update the Dashboard request layer to send the raw partition key
+  header.
+
+## 3. Backend Partition Key Resolution
+
+- [ ] 3.1 Add failing backend resolver tests proving any non-blank raw key is
+  accepted and blank keys are rejected.
+- [ ] 3.2 Update HTTP caller resolution to use `X-DocLens-Credential-Key`
+  without allowlist matching.
+
+## 4. Data Isolation
+
+- [ ] 4.1 Add failing query tests proving resources owned by another partition
+  key are not visible.
+- [ ] 4.2 Preserve batch, document, result, event, retry, and delete access
+  within the resolved partition key only.
+
+## 5. Rate-Limit Stop-Loss
+
+- [ ] 5.1 Add or adjust rate limiter tests proving different partition keys do
+  not share interface-group buckets.
+- [ ] 5.2 Keep caller traffic enforcement based on partition key plus traffic
+  group, with global protection as the cross-key fallback.
+
+## 6. Documentation And Configuration
+
+- [ ] 6.1 Update configuration and roadmap wording so the key is described as
+  an opaque partition key, not a secret credential.
+- [ ] 6.2 Run focused backend, frontend, OpenSpec, and diff checks.
