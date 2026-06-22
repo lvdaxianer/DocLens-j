@@ -1,7 +1,5 @@
 const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
-const CALLER_API_KEY_HEADER = 'X-DocLens-Api-Key'
-const AUTHORIZATION_HEADER = 'Authorization'
-const BEARER_PREFIX = 'Bearer '
+const CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
 
 /**
  * 读取 Dashboard 当前缓存的 caller 凭证。
@@ -29,11 +27,11 @@ function readCallerCredential(): string {
 function callerCredentialHeaders(): Record<string, string> {
   const credential = readCallerCredential()
   if (!credential) {
+    // 当前会话没有 caller 分区键时，不附加隔离头。
     return {}
-  } else if (credential.startsWith(BEARER_PREFIX)) {
-    return { [AUTHORIZATION_HEADER]: credential }
   } else {
-    return { [CALLER_API_KEY_HEADER]: credential }
+    // caller 分区键只做数据隔离，必须原样透传给后端。
+    return { [CALLER_PARTITION_HEADER]: credential }
   }
 }
 

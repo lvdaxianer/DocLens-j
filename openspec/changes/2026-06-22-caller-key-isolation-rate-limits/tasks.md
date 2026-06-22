@@ -6,10 +6,10 @@
 
 ## 2. Dashboard Header
 
-- [ ] 2.1 Add failing frontend API tests proving
+- [x] 2.1 Add failing frontend API tests proving
   `X-DocLens-Credential-Key` is forwarded raw and legacy auth headers are not
   emitted.
-- [ ] 2.2 Update the Dashboard request layer to send the raw partition key
+- [x] 2.2 Update the Dashboard request layer to send the raw partition key
   header.
 
 ## 3. Backend Partition Key Resolution

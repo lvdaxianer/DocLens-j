@@ -5,7 +5,7 @@ import type { UploadBatchOptions } from '@/types/upload'
 
 const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
 const LEGACY_CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
-const CALLER_API_KEY_HEADER = 'X-DocLens-Api-Key'
+const CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
 
 /**
  * 创建上传测试参数。
@@ -68,7 +68,7 @@ describe('uploadBatch caller credential headers', () => {
     expect(formData.get('chunkStrategy')).toBe('TECHNICAL')
   })
 
-  it('attaches X-DocLens-Api-Key when sessionStorage provides X-DocLens-Credential-Key', async () => {
+  it('attaches raw X-DocLens-Credential-Key when sessionStorage provides caller key', async () => {
     sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }))
 
@@ -76,7 +76,7 @@ describe('uploadBatch caller credential headers', () => {
 
     const [, init] = fetchSpy.mock.calls[0] ?? []
     expect(init?.method).toBe('POST')
-    expect(init?.headers).toEqual({ [CALLER_API_KEY_HEADER]: 'test-api-key' })
+    expect(init?.headers).toEqual({ [CALLER_PARTITION_HEADER]: 'test-api-key' })
     expect(init?.body).toBeInstanceOf(FormData)
   })
 

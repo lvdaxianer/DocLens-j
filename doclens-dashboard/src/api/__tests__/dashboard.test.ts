@@ -4,8 +4,7 @@ import { fetchDashboardSummary } from '@/api/dashboard'
 
 const CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential-Key'
 const LEGACY_CALLER_CREDENTIAL_STORAGE_KEY = 'X-DocLens-Credential'
-const CALLER_API_KEY_HEADER = 'X-DocLens-Api-Key'
-const AUTHORIZATION_HEADER = 'Authorization'
+const CALLER_PARTITION_HEADER = 'X-DocLens-Credential-Key'
 const BEARER_PREFIX = 'Bearer '
 const JSON_CONTENT_TYPE = 'application/json'
 
@@ -30,7 +29,7 @@ describe('dashboard caller credential headers', () => {
     vi.restoreAllMocks()
   })
 
-  it('attaches X-DocLens-Api-Key when sessionStorage provides X-DocLens-Credential-Key', async () => {
+  it('attaches raw X-DocLens-Credential-Key when sessionStorage provides caller key', async () => {
     sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, 'test-api-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
@@ -40,7 +39,7 @@ describe('dashboard caller credential headers', () => {
       method: 'GET',
       headers: {
         Accept: JSON_CONTENT_TYPE,
-        [CALLER_API_KEY_HEADER]: 'test-api-key'
+        [CALLER_PARTITION_HEADER]: 'test-api-key'
       }
     })
   })
@@ -58,7 +57,7 @@ describe('dashboard caller credential headers', () => {
     })
   })
 
-  it('attaches Authorization when sessionStorage provides a Bearer token', async () => {
+  it('does not translate Bearer-like caller key to Authorization', async () => {
     sessionStorage.setItem(CALLER_CREDENTIAL_STORAGE_KEY, `${BEARER_PREFIX}test-bearer-token`)
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockDashboardResponse())
 
@@ -68,7 +67,7 @@ describe('dashboard caller credential headers', () => {
       method: 'GET',
       headers: {
         Accept: JSON_CONTENT_TYPE,
-        [AUTHORIZATION_HEADER]: `${BEARER_PREFIX}test-bearer-token`
+        [CALLER_PARTITION_HEADER]: `${BEARER_PREFIX}test-bearer-token`
       }
     })
   })
