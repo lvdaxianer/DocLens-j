@@ -12,6 +12,13 @@
 - [x] 2.2 Update the Dashboard request layer to send the raw partition key
   header.
 
+## 2a. Recall Header Rename
+
+- [ ] 2a.1 Add failing frontend and backend tests proving `X-Recall-Key` is the
+  only caller partition header.
+- [ ] 2a.2 Rename Dashboard storage/header usage and backend request parsing to
+  `X-Recall-Key` without legacy header compatibility.
+
 ## 3. Backend Partition Key Resolution
 
 - [x] 3.1 Add failing backend resolver tests proving any non-blank raw key is

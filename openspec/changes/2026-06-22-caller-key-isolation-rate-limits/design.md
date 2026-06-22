@@ -2,7 +2,7 @@
 
 现有实现通过 `doclens.clients.credentials` 配置 API Key / Bearer Token，
 再把请求解析为 `CallerIdentity`。这适合“可信 caller 凭证”模型，但用户
-已经明确选择另一种模型：`X-DocLens-Credential-Key` 只是隔离键。
+已经明确选择另一种模型：`X-Recall-Key` 只是隔离键。
 
 DocLens 不知道这个 key 表示用户、系统、项目、知识库、部门还是会话。
 它只承诺同 key 共享、不同 key 隔离，并使用限流降低伪造 key 的损失。
@@ -11,7 +11,7 @@ DocLens 不知道这个 key 表示用户、系统、项目、知识库、部门�
 
 **Goals:**
 
-- 使用 `X-DocLens-Credential-Key` 作为唯一 caller partition header。
+- 使用 `X-Recall-Key` 作为唯一 caller partition header。
 - 任意非空 key 都能解析成 caller partition。
 - 查询、上传、删除、重试和 Dashboard 读模型按 partition key 隔离。
 - 限流按 partition key 和接口组分桶。
@@ -26,8 +26,8 @@ DocLens 不知道这个 key 表示用户、系统、项目、知识库、部门�
 
 ## Decisions
 
-- 前端只发送 `X-DocLens-Credential-Key`。
-- 后端拦截器只读取 `X-DocLens-Credential-Key`。
+- 前端只发送 `X-Recall-Key`。
+- 后端拦截器只读取 `X-Recall-Key`。
 - `CallerCredentialResolver` 退化为 partition key resolver：空值拒绝，
   非空值 trim 后进入 `CallerIdentity`。
 - `CallerIdentity.clientId` 和 `tenantKey` 都使用 partition key；
@@ -38,7 +38,7 @@ DocLens 不知道这个 key 表示用户、系统、项目、知识库、部门�
 
 ## Data Flow
 
-1. 调用方决定共享边界并传入 `X-DocLens-Credential-Key`。
+1. 调用方决定共享边界并传入 `X-Recall-Key`。
 2. Dashboard 原样透传该 header。
 3. HTTP 拦截器解析非空 key 为 `CallerIdentity`。
 4. 上传批次写入该 caller partition。
