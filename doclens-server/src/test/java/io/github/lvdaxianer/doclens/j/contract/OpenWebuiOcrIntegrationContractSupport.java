@@ -84,7 +84,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
     protected org.springframework.test.web.servlet.ResultActions createOpenwebuiBatch(MockMultipartFile file)
             throws Exception {
         return mockMvc.perform(multipart(OPENWEBUI_BATCHES_PATH).file(file)
-                        .header(API_KEY_HEADER, TEST_API_KEY)
+                        .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
                         .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                         .header("X-OpenWebUI-User-Id", "user_123")
                         .header("X-OpenWebUI-User-Email", "user@example.com")
@@ -248,7 +248,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
             Object... uriVars
     ) {
         return get(uriTemplate, uriVars)
-                .header(API_KEY_HEADER, TEST_API_KEY)
+                .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
                 .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                 .header("X-OpenWebUI-User-Id", "user_123")
                 .header("X-OpenWebUI-Request-Id", "req_123");
@@ -268,7 +268,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
             Object... uriVars
     ) {
         return post(uriTemplate, uriVars)
-                .header(API_KEY_HEADER, TEST_API_KEY)
+                .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
                 .header("Authorization", "Bearer " + OPENWEBUI_TOKEN)
                 .header("X-OpenWebUI-User-Id", "user_123")
                 .header("X-OpenWebUI-Request-Id", "req_123");

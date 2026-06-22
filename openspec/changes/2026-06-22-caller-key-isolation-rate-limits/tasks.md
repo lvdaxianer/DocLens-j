@@ -14,9 +14,9 @@
 
 ## 3. Backend Partition Key Resolution
 
-- [ ] 3.1 Add failing backend resolver tests proving any non-blank raw key is
+- [x] 3.1 Add failing backend resolver tests proving any non-blank raw key is
   accepted and blank keys are rejected.
-- [ ] 3.2 Update HTTP caller resolution to use `X-DocLens-Credential-Key`
+- [x] 3.2 Update HTTP caller resolution to use `X-DocLens-Credential-Key`
   without allowlist matching.
 
 ## 4. Data Isolation

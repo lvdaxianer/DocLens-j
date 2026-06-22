@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class CallerIdentityRequestResolver {
 
-    private static final String MISSING_CALLER_MESSAGE = "unauthorized caller credential";
+    private static final String MISSING_CALLER_MESSAGE = "missing caller partition key";
 
     /**
      * 读取当前请求的 caller 身份。
@@ -27,10 +27,10 @@ public class CallerIdentityRequestResolver {
     public CallerIdentity resolve(HttpServletRequest request) {
         Object caller = request.getAttribute(CallerCredentialInterceptor.CALLER_IDENTITY_ATTRIBUTE);
         if (caller instanceof CallerIdentity callerIdentity) {
-            // 拦截器已完成凭证解析时直接复用可信身份。
+            // 拦截器已完成分区键解析时直接复用当前请求身份。
             return callerIdentity;
         } else {
-            // 缺少拦截器结果时按未授权处理，避免落回匿名访问。
+            // 缺少拦截器结果时拒绝请求，避免落回匿名共享空间。
             throw new CallerCredentialException(MISSING_CALLER_MESSAGE);
         }
     }

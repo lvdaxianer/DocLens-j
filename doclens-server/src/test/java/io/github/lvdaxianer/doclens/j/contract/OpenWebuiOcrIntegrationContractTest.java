@@ -31,7 +31,7 @@ class OpenWebuiOcrIntegrationContractTest extends OpenWebuiOcrIntegrationContrac
     void openWebuiCreateBatchRejectsMissingInternalToken() throws Exception {
         mockMvc.perform(multipart(OPENWEBUI_BATCHES_PATH)
                         .file(openwebuiPdfFile())
-                        .header(API_KEY_HEADER, TEST_API_KEY)
+                        .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY)
                         .param("metadata", openwebuiMetadata())
                         .param("idempotency_key", openwebuiIdempotencyKey())
                         .param("pdf_mode", "page_image_fallback"))
@@ -51,7 +51,7 @@ class OpenWebuiOcrIntegrationContractTest extends OpenWebuiOcrIntegrationContrac
     @Test
     void openWebuiCreateBatchRejectsPlainPostBeforeMultipartParsing() throws Exception {
         mockMvc.perform(post(OPENWEBUI_BATCHES_PATH)
-                        .header(API_KEY_HEADER, TEST_API_KEY))
+                        .header(CALLER_PARTITION_HEADER, TEST_CALLER_PARTITION_KEY))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED_INTERNAL_CALLER"))
                 .andExpect(jsonPath("$.message").value("unauthorized internal caller"));

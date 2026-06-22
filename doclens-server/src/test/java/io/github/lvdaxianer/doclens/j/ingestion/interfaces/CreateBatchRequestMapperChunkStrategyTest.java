@@ -24,6 +24,31 @@ import org.springframework.mock.web.MockMultipartFile;
  */
 class CreateBatchRequestMapperChunkStrategyTest {
 
+    /** 测试 caller 分区键请求头。 */
+    private static final String CALLER_PARTITION_HEADER = "X-DocLens-Credential-Key";
+    /** 测试 caller 分区键。 */
+    private static final String CALLER_PARTITION_KEY = "tenant-east";
+    /** 默认来源应用。 */
+    private static final String DEFAULT_SOURCE_APP = "dashboard";
+    /** 文件表单字段名。 */
+    private static final String FILES_PART_NAME = "files";
+    /** 测试文件名。 */
+    private static final String TEST_FILE_NAME = "demo.txt";
+    /** 测试文件内容类型。 */
+    private static final String TEST_CONTENT_TYPE = "text/plain";
+    /** 测试文件内容。 */
+    private static final String TEST_CONTENT = "demo";
+    /** metadata 参数名。 */
+    private static final String METADATA_PARAM = "metadata";
+    /** 空 JSON 对象。 */
+    private static final String EMPTY_JSON_OBJECT = "{}";
+    /** chunkStrategy 参数名。 */
+    private static final String CHUNK_STRATEGY_PARAM = "chunkStrategy";
+    /** 通用分块策略。 */
+    private static final String GENERAL_CHUNK_STRATEGY = "GENERAL";
+    /** 技术文档分块策略。 */
+    private static final String TECHNICAL_CHUNK_STRATEGY = "TECHNICAL";
+
     private JsonCodec jsonCodec;
     private CallerCredentialResolver callerCredentialResolver;
     private CreateBatchRequestMapper mapper;
@@ -39,9 +64,10 @@ class CreateBatchRequestMapperChunkStrategyTest {
         jsonCodec = mock(JsonCodec.class);
         callerCredentialResolver = mock(CallerCredentialResolver.class);
         mapper = new CreateBatchRequestMapper(jsonCodec, callerCredentialResolver);
-        when(callerCredentialResolver.resolve(null, null))
-                .thenReturn(new CallerIdentity("client-1", "dashboard", Optional.empty()));
-        when(jsonCodec.parseObject("{}")).thenReturn(Map.of());
+        when(callerCredentialResolver.resolve(CALLER_PARTITION_KEY, ""))
+                .thenReturn(new CallerIdentity(CALLER_PARTITION_KEY, DEFAULT_SOURCE_APP,
+                        Optional.of(CALLER_PARTITION_KEY)));
+        when(jsonCodec.parseObject(EMPTY_JSON_OBJECT)).thenReturn(Map.of());
     }
 
     /**
@@ -54,7 +80,7 @@ class CreateBatchRequestMapperChunkStrategyTest {
     void exposesChunkStrategyOnMappedRequestByDefault() throws Exception {
         CreateBatchRequest request = mapper.toRequest(List.of(file()), request(null));
 
-        assertThat(request.chunkStrategy()).isEqualTo("GENERAL");
+        assertThat(request.chunkStrategy()).isEqualTo(GENERAL_CHUNK_STRATEGY);
     }
 
     /**
@@ -65,9 +91,9 @@ class CreateBatchRequestMapperChunkStrategyTest {
      */
     @Test
     void preservesExplicitChunkStrategyOnMappedRequest() throws Exception {
-        CreateBatchRequest request = mapper.toRequest(List.of(file()), request("TECHNICAL"));
+        CreateBatchRequest request = mapper.toRequest(List.of(file()), request(TECHNICAL_CHUNK_STRATEGY));
 
-        assertThat(request.chunkStrategy()).isEqualTo("TECHNICAL");
+        assertThat(request.chunkStrategy()).isEqualTo(TECHNICAL_CHUNK_STRATEGY);
     }
 
     /**
@@ -78,7 +104,7 @@ class CreateBatchRequestMapperChunkStrategyTest {
      * @date 2026-06-19
      */
     private MockMultipartFile file() {
-        return new MockMultipartFile("files", "demo.txt", "text/plain", "demo".getBytes());
+        return new MockMultipartFile(FILES_PART_NAME, TEST_FILE_NAME, TEST_CONTENT_TYPE, TEST_CONTENT.getBytes());
     }
 
     /**
@@ -91,9 +117,10 @@ class CreateBatchRequestMapperChunkStrategyTest {
      */
     private MockHttpServletRequest request(String chunkStrategy) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setParameter("metadata", "{}");
+        request.addHeader(CALLER_PARTITION_HEADER, CALLER_PARTITION_KEY);
+        request.setParameter(METADATA_PARAM, EMPTY_JSON_OBJECT);
         if (chunkStrategy != null) {
-            request.setParameter("chunkStrategy", chunkStrategy);
+            request.setParameter(CHUNK_STRATEGY_PARAM, chunkStrategy);
         } else {
             // 默认情况下不传 chunkStrategy，验证服务端兜底。
         }

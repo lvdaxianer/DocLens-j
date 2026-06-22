@@ -4,11 +4,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 调用方身份值对象，用于把批次归因到接入系统而非个人用户。
+ * 调用方身份值对象，用于把批次归因到调用方分区键而非认证用户。
  *
- * @param clientId 接入方标识
+ * @param clientId 调用方分区标识
  * @param sourceApp 来源应用
- * @param tenantKey 租户或业务分区键
+ * @param tenantKey 调用方业务分区键
  * @author lvdaxianerplus
  * @date 2026-06-17
  */

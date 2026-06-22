@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 为所有 API 请求解析并校验 caller 凭证。
+ * 为所有 API 请求解析 caller 分区键。
  *
  * @author lvdaxianerplus
  * @date 2026-06-17
@@ -20,19 +20,18 @@ public class CallerCredentialInterceptor implements HandlerInterceptor {
     /** Request attribute 中保存的 caller identity 键。 */
     public static final String CALLER_IDENTITY_ATTRIBUTE = CallerCredentialInterceptor.class.getName()
             + ".callerIdentity";
-    /** Request attribute 中保存的 caller 凭证解析结果键。 */
+    /** Request attribute 中保存的 caller 分区键解析结果键。 */
     public static final String RESOLVED_CREDENTIAL_ATTRIBUTE = CallerCredentialInterceptor.class.getName()
             + ".resolvedCredential";
 
-    private static final String API_KEY_HEADER = "X-DocLens-Api-Key";
-    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String CALLER_PARTITION_HEADER = "X-DocLens-Credential-Key";
 
     private final CallerCredentialResolver callerCredentialResolver;
 
     /**
-     * 创建 caller 凭证拦截器。
+     * 创建 caller 分区键拦截器。
      *
-     * @param callerCredentialResolver caller 凭证解析器
+     * @param callerCredentialResolver caller 分区键解析器
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
@@ -53,7 +52,7 @@ public class CallerCredentialInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         ResolvedCallerCredential resolvedCredential = callerCredentialResolver.resolveWithCredential(
-                request.getHeader(API_KEY_HEADER), request.getHeader(AUTHORIZATION_HEADER));
+                request.getHeader(CALLER_PARTITION_HEADER), "");
         CallerIdentity caller = resolvedCredential.callerIdentity();
         request.setAttribute(CALLER_IDENTITY_ATTRIBUTE, caller);
         request.setAttribute(RESOLVED_CREDENTIAL_ATTRIBUTE, resolvedCredential);

@@ -37,8 +37,7 @@ public class CreateBatchRequestMapper {
     private static final String OCR_LOAD_BALANCE_STRATEGY_SNAKE_PARAM = "ocr_load_balance_strategy";
     private static final String LLM_ORCHESTRATED_PARAM = "llmOrchestrated";
     private static final String LLM_ORCHESTRATED_SNAKE_PARAM = "llm_orchestrated";
-    private static final String API_KEY_HEADER = "X-DocLens-Api-Key";
-    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String CALLER_PARTITION_HEADER = "X-DocLens-Credential-Key";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
     private final JsonCodec jsonCodec;
@@ -72,8 +71,7 @@ public class CreateBatchRequestMapper {
         List<DocumentInput> uploadFiles = form.files().stream()
                 .map(this::toDocumentInput)
                 .toList();
-        CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(API_KEY_HEADER),
-                request.getHeader(AUTHORIZATION_HEADER));
+        CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(CALLER_PARTITION_HEADER), "");
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
                 form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.chunkStrategy(),
                 Boolean.parseBoolean(form.llmOrchestrated()), form.ocrRoutingMode(), form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(),

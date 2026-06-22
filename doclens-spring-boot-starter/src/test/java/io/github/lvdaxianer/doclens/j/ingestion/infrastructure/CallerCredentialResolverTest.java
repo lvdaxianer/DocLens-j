@@ -3,11 +3,9 @@ package io.github.lvdaxianer.doclens.j.ingestion.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.CallerCredentialProperties;
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.ClientsProperties;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -18,105 +16,54 @@ import org.junit.jupiter.api.Test;
  */
 class CallerCredentialResolverTest {
 
-    /** API Key 测试值。 */
-    private static final String API_KEY = "api-secret";
-    /** Bearer Token 测试值。 */
-    private static final String BEARER_TOKEN = "bearer-secret";
-    /** 测试接入方标识。 */
-    private static final String CLIENT_ID = "rag-flow";
-    /** 测试来源应用。 */
-    private static final String SOURCE_APP = "knowledge-base";
-    /** 测试租户键。 */
-    private static final String TENANT_KEY = "tenant-east";
-    /** Bearer 认证头测试值。 */
-    private static final String AUTHORIZATION = "Bearer " + BEARER_TOKEN;
+    /** 测试 caller 分区键。 */
+    private static final String PARTITION_KEY = "tenant-east";
+    /** 默认来源应用。 */
+    private static final String SOURCE_APP = "dashboard";
 
     /**
-     * 验证未配置凭证时会拒绝访问，而不是回退到匿名调用方。
+     * 验证空 caller 分区键会被拒绝，避免落入匿名共享空间。
      *
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
     @Test
-    void rejectsMissingCredentialWhenNoCredentialsConfigured() {
+    void rejectsBlankCallerPartitionKey() {
         assertThatThrownBy(() -> new CallerCredentialResolver(new ClientsProperties(List.of()))
-                .resolve("", ""))
+                .resolve("  ", ""))
                 .isInstanceOf(CallerCredentialException.class)
-                .hasMessage("unauthorized caller credential");
+                .hasMessage("missing caller partition key");
     }
 
     /**
-     * 验证 API Key 匹配时返回配置调用方。
+     * 验证任意非空 caller 分区键都能解析为隔离身份。
      *
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
     @Test
-    void resolvesCallerByApiKeyCredential() {
-        CallerIdentity caller = resolver().resolve(API_KEY, "");
+    void resolvesAnyNonBlankRawKeyAsPartitionKey() {
+        CallerIdentity caller = new CallerCredentialResolver(new ClientsProperties(List.of()))
+                .resolve(PARTITION_KEY, "");
 
         assertThat(caller.toMap())
-                .containsEntry(CallerIdentity.CLIENT_ID_FIELD, CLIENT_ID)
+                .containsEntry(CallerIdentity.CLIENT_ID_FIELD, PARTITION_KEY)
                 .containsEntry(CallerIdentity.SOURCE_APP_FIELD, SOURCE_APP)
-                .containsEntry(CallerIdentity.TENANT_KEY_FIELD, TENANT_KEY);
+                .containsEntry(CallerIdentity.TENANT_KEY_FIELD, PARTITION_KEY);
     }
 
     /**
-     * 验证 Bearer Token 匹配时返回配置调用方。
+     * 验证 caller 分区键会被清理空白字符后使用。
      *
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
     @Test
-    void resolvesCallerByBearerCredential() {
-        CallerIdentity caller = resolver().resolve("", AUTHORIZATION);
+    void trimsCallerPartitionKey() {
+        CallerIdentity caller = new CallerCredentialResolver(new ClientsProperties(List.of()))
+                .resolve("  " + PARTITION_KEY + "  ", "");
 
-        assertThat(caller.toMap())
-                .containsEntry(CallerIdentity.CLIENT_ID_FIELD, CLIENT_ID)
-                .containsEntry(CallerIdentity.SOURCE_APP_FIELD, SOURCE_APP)
-                .containsEntry(CallerIdentity.TENANT_KEY_FIELD, TENANT_KEY);
-    }
-
-    /**
-     * 验证配置凭证后缺失匹配凭证会拒绝调用。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-17
-     */
-    @Test
-    void rejectsMissingCredentialWhenCredentialsConfigured() {
-        assertThatThrownBy(() -> resolver().resolve("", ""))
-                .isInstanceOf(CallerCredentialException.class)
-                .hasMessage("unauthorized caller credential");
-    }
-
-    /**
-     * 验证空密钥占位凭证不会阻塞启动，也不会创建可用 caller。
-     *
-     * @author lvdaxianerplus
-     * @date 2026-06-17
-     */
-    @Test
-    void ignoresCredentialWithoutAnySecret() {
-        CallerCredentialResolver resolver = new CallerCredentialResolver(new ClientsProperties(List.of(
-                new CallerCredentialProperties("local-demo", "dashboard", "local", "", "", Map.of())
-        )));
-
-        assertThatThrownBy(() -> resolver.resolve("", ""))
-                .isInstanceOf(CallerCredentialException.class)
-                .hasMessage("unauthorized caller credential");
-    }
-
-    /**
-     * 创建测试解析器。
-     *
-     * @return 接入方凭证解析器
-     * @author lvdaxianerplus
-     * @date 2026-06-17
-     */
-    private CallerCredentialResolver resolver() {
-        return new CallerCredentialResolver(new ClientsProperties(List.of(
-                new CallerCredentialProperties(CLIENT_ID, SOURCE_APP, TENANT_KEY, API_KEY, BEARER_TOKEN, Map.of())
-        )));
+        assertThat(caller.clientId()).isEqualTo(PARTITION_KEY);
+        assertThat(caller.tenantKey()).contains(PARTITION_KEY);
     }
 }
