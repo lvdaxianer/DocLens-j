@@ -42,6 +42,6 @@
 
 ## 6. Documentation And Configuration
 
-- [ ] 6.1 Update configuration and roadmap wording so the key is described as
-  an opaque partition key, not a secret credential.
-- [ ] 6.2 Run focused backend, frontend, OpenSpec, and diff checks.
+- [x] 6.1 Update configuration and roadmap wording so the key is described as
+  an opaque partition key, not identity proof.
+- [x] 6.2 Run focused backend, frontend, OpenSpec, and diff checks.

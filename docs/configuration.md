@@ -68,14 +68,41 @@ Failures record both `failure_reason` and `failure_detail`, then retry until
 30-second retry backoff and exposes callback job status through the dashboard
 batch detail API as `callback_jobs`.
 
-## Secrets And Environment Variables
+## Caller Partition And Traffic Limits
+
+Dashboard and API callers must send `X-Recall-Key` on upload, query,
+mutation, and Dashboard data requests. DocLens treats this value as an opaque
+caller partition key. It is not an authentication token, is not matched against
+a server-side list, and is not used to prove who the caller is.
+
+The same key shares batches, documents, results, events, retries, deletes, and
+Dashboard visibility. Different keys are isolated from each other and foreign
+resources are returned as not found. Missing or blank keys are rejected so that
+requests do not fall into an anonymous shared partition.
+
+Traffic stop-loss is configured globally by interface group under
+`doclens.traffic.default-limits`. Each bucket is keyed by caller partition plus
+interface group, so one key exhausting `dashboard-read` does not consume another
+key's `dashboard-read` allowance. `doclens.traffic.global-protection` remains
+the cross-key fallback when callers rotate keys to avoid per-key buckets.
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `doclens.traffic.enabled` | `true` | Enable caller-partition rate limiting |
+| `doclens.traffic.anonymous-enabled` | `false` | Keep anonymous shared partitions disabled |
+| `doclens.traffic.default-limits.<group>.qps` | varies | Token refill rate for an interface group |
+| `doclens.traffic.default-limits.<group>.burst` | varies | Initial and maximum burst tokens |
+| `doclens.traffic.global-protection.enabled` | `true` | Enable service-wide in-flight protection |
+| `doclens.traffic.global-protection.max-in-flight` | `100` | Maximum concurrent in-flight requests |
+
+## Environment Variables
 
 LLM Markdown configurations and online OCR nodes store environment variable
-names, not real API keys. Set the real secrets before starting the service:
+names, not real API keys. Set the real values before starting the service:
 
 ```bash
-export MINIMAX_API_KEY=replace-with-real-secret
-export DASHSCOPE_API_KEY=replace-with-real-secret
+export MINIMAX_API_KEY=replace-with-real-value
+export DASHSCOPE_API_KEY=replace-with-real-value
 ```
 
 OpenWebUI integration uses:
