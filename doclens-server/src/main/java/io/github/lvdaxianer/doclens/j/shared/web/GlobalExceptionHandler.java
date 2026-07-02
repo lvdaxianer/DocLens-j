@@ -5,6 +5,7 @@ import io.github.lvdaxianer.doclens.j.shared.domain.ResourceNotFoundException;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +27,21 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String CODE_KEY = "code";
+    private static final String DETAIL_KEY = "detail";
+    private static final String BAD_REQUEST_CODE = "VALIDATION_FAILED";
+    private static final String MISSING_PARTITION_CODE = "MISSING_PARTITION";
+    private static final String TRUSTED_GATEWAY_UNAUTHORIZED_CODE = "TRUSTED_GATEWAY_UNAUTHORIZED";
+    private static final String PARTITION_FORBIDDEN_CODE = "PARTITION_FORBIDDEN";
+    private static final String RATE_LIMITED_CODE = "RATE_LIMITED";
+    private static final String GLOBAL_PROTECTION_CODE = "GLOBAL_PROTECTION";
+    private static final String PAYLOAD_TOO_LARGE_CODE = "PAYLOAD_TOO_LARGE";
+    private static final String NOT_FOUND_CODE = "NOT_FOUND";
+    private static final String CONFLICT_CODE = "CONFLICT";
+    private static final String INTERNAL_ERROR_CODE = "INTERNAL_ERROR";
+    private static final String BAD_REQUEST_FALLBACK_DETAIL = "请求参数不合法";
+    private static final String ERROR_FALLBACK_DETAIL = "请求处理失败";
+    private static final String INTERNAL_ERROR_DETAIL = "服务器暂时不可用，请稍后重试";
     private static final String UPLOAD_SIZE_LIMIT_DETAIL = "上传文件总大小不能超过 500MB，请拆分后再上传";
 
     /**
@@ -42,7 +58,8 @@ public class GlobalExceptionHandler {
             MissingServletRequestPartException.class
     })
     public ResponseEntity<Map<String, String>> handleBadRequest(Exception ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(body(BAD_REQUEST_CODE, detail(ex, BAD_REQUEST_FALLBACK_DETAIL)));
     }
 
     /**
@@ -60,7 +77,8 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("[调用方分区] 未授权, 分区键缺失或无效, path={}, detail={}", request.getRequestURI(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(body(MISSING_PARTITION_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -78,7 +96,8 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("[可信网关] 请求未通过可信网关认证, path={}, detail={}", request.getRequestURI(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(body(TRUSTED_GATEWAY_UNAUTHORIZED_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -97,7 +116,8 @@ public class GlobalExceptionHandler {
     ) {
         log.warn("[可信网关授权] 请求未通过 principal 分区授权, path={}, detail={}",
                 request.getRequestURI(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(body(PARTITION_FORBIDDEN_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -121,7 +141,7 @@ public class GlobalExceptionHandler {
         headers.add("X-DocLens-RateLimit-Limit", String.valueOf(ex.limit()));
         headers.add("X-DocLens-RateLimit-Remaining", String.valueOf(ex.remaining()));
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).headers(headers)
-                .body(Map.of("detail", ex.getMessage()));
+                .body(body(RATE_LIMITED_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -141,7 +161,7 @@ public class GlobalExceptionHandler {
         HttpHeaders headers = new HttpHeaders();
         headers.add(GlobalProtectionInterceptor.headerName(), "enabled");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).headers(headers)
-                .body(Map.of("detail", ex.getMessage()));
+                .body(body(GLOBAL_PROTECTION_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -159,7 +179,8 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("[上传大小] 上传大小超限, path={}, detail={}", request.getRequestURI(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of("detail", UPLOAD_SIZE_LIMIT_DETAIL));
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(body(PAYLOAD_TOO_LARGE_CODE, UPLOAD_SIZE_LIMIT_DETAIL));
     }
 
     /**
@@ -172,7 +193,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(NOT_FOUND_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
     }
 
     /**
@@ -185,6 +206,49 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<Map<String, String>> handleConflict(DuplicateResourceException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("detail", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body(CONFLICT_CODE, detail(ex, ERROR_FALLBACK_DETAIL)));
+    }
+
+    /**
+     * 处理未预期异常。
+     *
+     * @param ex 未预期异常
+     * @param request HTTP 请求
+     * @return 错误响应
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, String>> handleInternalError(RuntimeException ex, HttpServletRequest request) {
+        log.error("[全局异常] 未预期异常, path={}, exceptionType={}",
+                request.getRequestURI(), ex.getClass().getName());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(body(INTERNAL_ERROR_CODE, INTERNAL_ERROR_DETAIL));
+    }
+
+    /**
+     * 创建稳定错误响应体。
+     *
+     * @param code 稳定错误码
+     * @param detail 错误详情
+     * @return 错误响应体
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private Map<String, String> body(String code, String detail) {
+        return Map.of(CODE_KEY, code, DETAIL_KEY, detail);
+    }
+
+    /**
+     * 读取非空错误详情。
+     *
+     * @param ex 异常对象
+     * @param fallbackDetail 兜底错误详情
+     * @return 非空错误详情
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private String detail(Exception ex, String fallbackDetail) {
+        return Optional.ofNullable(ex.getMessage()).orElse(fallbackDetail);
     }
 }
