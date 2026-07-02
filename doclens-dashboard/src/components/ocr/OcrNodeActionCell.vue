@@ -4,6 +4,7 @@ import { Eye, FlaskConical, Link2, Pencil, Power, Trash2 } from '@lucide/vue'
 import { NButton, NIcon, NPopconfirm } from 'naive-ui'
 
 import type { OcrNode, OcrNodeActionKind } from '@/types/ocrResources'
+import { ocrNodeDeleteConfirmMessage } from '@/utils/destructiveConfirmMessages'
 import { summarizeOcrNode } from '@/utils/ocrDisplayRules'
 
 // OcrNodeActionCell 只负责单行操作按钮和动作中状态。
@@ -39,6 +40,7 @@ const NODE_ACTION_LABELS: Record<OcrNodeActionKind, string> = {
 }
 
 const governanceSummary = computed(() => summarizeOcrNode(props.node))
+const deleteConfirmMessage = computed(() => ocrNodeDeleteConfirmMessage(props.node.name, props.node.id))
 
 /**
  * 判断节点是否正在执行行级动作。
@@ -151,7 +153,7 @@ function nodeActionLabel(): string {
           </template>
         </NButton>
       </template>
-      删除该 OCR 节点？
+      {{ deleteConfirmMessage }}
     </NPopconfirm>
   </div>
 </template>

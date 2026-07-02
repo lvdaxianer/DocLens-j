@@ -3,11 +3,11 @@ import type { DataTableColumns } from 'naive-ui'
 import { NButton, NPopconfirm } from 'naive-ui'
 
 import type { DocumentRow } from '@/types/dashboard'
+import { documentDeleteConfirmMessage } from '@/utils/destructiveConfirmMessages'
 
 const COMPLETED_STATUS = 'completed'
 const FAILED_STATUS = 'failed'
 const STALLED_STATUS = 'stalled'
-const DELETE_CONFIRM_MESSAGE = '删除后将同步清理文档结果与关联存储，是否继续？'
 
 /**
  * 文档表格动作配置，统一承接父组件传入的加载态与事件回调。
@@ -226,7 +226,7 @@ function deleteConfirmSlots(
 ): Record<string, () => unknown> {
   return {
     trigger: () => h(NButton, deleteButtonProps(row, options), { default: () => '删除' }),
-    default: () => DELETE_CONFIRM_MESSAGE
+    default: () => documentDeleteConfirmMessage(row.file_name, row.document_id)
   }
 }
 

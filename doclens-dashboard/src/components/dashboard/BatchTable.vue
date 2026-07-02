@@ -6,6 +6,7 @@ import { NButton, NDataTable, NPopconfirm, NProgress, NSpace } from 'naive-ui'
 
 import StatusTag from '@/components/dashboard/StatusTag.vue'
 import type { BatchRow } from '@/types/dashboard'
+import { batchDeleteConfirmMessage } from '@/utils/destructiveConfirmMessages'
 import { formatDateTime, formatDuration, formatPercent } from '@/utils/formatters'
 
 const props = defineProps<{
@@ -108,7 +109,7 @@ const columns: DataTableColumns<BatchRow> = [
               type: 'error',
               loading: row.batch_id === props.deletingBatchId
             }, () => '删除'),
-            default: () => '删除后将同步清理批次内文档、结果与关联存储，是否继续？'
+            default: () => batchDeleteConfirmMessage(row.batch_id)
           })
         ]
       })

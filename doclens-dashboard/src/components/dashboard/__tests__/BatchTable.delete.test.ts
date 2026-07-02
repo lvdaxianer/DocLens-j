@@ -51,6 +51,8 @@ describe('BatchTable batch delete', () => {
 
     expect(deleteButton).toBeDefined()
     await deleteButton?.trigger('click')
+    expect(document.body.textContent).toContain('批次 batch-test')
+    expect(document.body.textContent).toContain('不可恢复')
     const confirmButtons = Array.from(document.body.querySelectorAll('button'))
       .filter((candidate) => candidate.textContent?.trim() === '确认删除')
     expect(confirmButtons.length).toBeGreaterThan(0)

@@ -9,6 +9,7 @@ import {
 import { NButton, NIcon, NPopconfirm, NTag, type DataTableColumns } from 'naive-ui'
 
 import type { LlmMarkdownConfigRow } from '@/utils/llmMarkdownConfigRules'
+import { llmConfigDeleteConfirmMessage } from '@/utils/destructiveConfirmMessages'
 import { formatDateTime } from '@/utils/formatters'
 
 export interface LlmMarkdownConfigTableActions {
@@ -179,6 +180,6 @@ function isActionDisabled(actions: LlmMarkdownConfigTableActions, disabled: bool
 function deleteButton(row: LlmMarkdownConfigRow, actions: LlmMarkdownConfigTableActions) {
   return h(NPopconfirm, { onPositiveClick: () => actions.removeConfig(row) }, {
     trigger: () => actionButton('删除', Trash2, () => undefined, actions),
-    default: () => '确认删除该 LLM 配置？'
+    default: () => llmConfigDeleteConfirmMessage(row.name, row.id)
   })
 }

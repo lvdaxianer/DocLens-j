@@ -29,6 +29,21 @@ describe('LlmMarkdownConfigTableColumns', () => {
 
     expect(renderedActions[0].props?.disabled).toBe(true)
   })
+
+  it('names the target and consequence in delete confirmation', () => {
+    const columns = createLlmMarkdownConfigColumns({
+      actingId: '',
+      editConfig: vi.fn(),
+      toggleEnabled: vi.fn(),
+      makeDefault: vi.fn(),
+      removeConfig: vi.fn()
+    })
+    const actionColumn = columns.find(isActionColumn) as ActionColumn | undefined
+    const renderedActions = actionColumn?.render(row(), 0) as VNode[]
+
+    expect(slotText(renderedActions[3])).toContain('LLM 配置 默认配置（llm-config-1）')
+    expect(slotText(renderedActions[3])).toContain('不可恢复')
+  })
 })
 
 /**
@@ -77,4 +92,18 @@ function row(): LlmMarkdownConfigRow {
     lastHealthAt: '2026-07-02T10:00:00+08:00',
     statusLabel: '可用'
   }
+}
+
+/**
+ * 读取确认弹窗默认插槽文本。
+ *
+ * @param vnode - 弹窗虚拟节点
+ * @returns 默认插槽文本
+ * @author lvdaxianer@yeah.net
+ * @date 2026-07-02
+ */
+function slotText(vnode: VNode): string {
+  const slots = vnode.children as { default?: () => unknown }
+  const content = slots.default?.()
+  return typeof content === 'string' ? content : ''
 }
