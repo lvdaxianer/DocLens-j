@@ -23,6 +23,7 @@ const STRUCTURE_CHECKED_FILES = [
   'components/dashboard/UploadDropzone.vue',
   'components/dashboard/UploadFilePicker.vue',
   'components/dashboard/UploadFileList.vue',
+  'components/dashboard/PrincipalPartitionStatus.vue',
   'composables/useOcrResources.ts',
   'composables/useOcrNodeActions.ts'
 ]

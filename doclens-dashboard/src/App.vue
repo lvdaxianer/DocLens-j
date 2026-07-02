@@ -8,6 +8,7 @@ import {
   NMessageProvider
 } from 'naive-ui'
 import { createDashboardThemeOverrides } from '@/theme/dashboardTheme'
+import PrincipalPartitionStatus from '@/components/dashboard/PrincipalPartitionStatus.vue'
 
 const route = useRoute()
 
@@ -22,6 +23,15 @@ const navigationItems = [
 const activeTitle = computed(() => route.meta.title ?? 'DocLens 控制台')
 
 const themeOverrides = createDashboardThemeOverrides()
+
+/*
+ * 顶栏上下文区只承载只读运行状态：
+ * - App 继续保持应用壳职责，不读取或修改分区值。
+ * - 分区和 principal 由独立组件处理，避免根组件膨胀。
+ * - 状态展示放在实时读模型旁边，形成统一运行上下文。
+ * - 窄屏布局允许换行，优先保证标题和状态都可读。
+ * - 这里不提供切换入口，避免把分区键误当作登录凭证。
+ */
 </script>
 
 <template>
@@ -58,10 +68,14 @@ const themeOverrides = createDashboardThemeOverrides()
               <p class="app-shell__eyebrow">Pipeline Console</p>
               <h1 class="app-shell__title">{{ activeTitle }}</h1>
             </div>
-            <span class="app-shell__live">
-              <NIcon :component="Radio" />
-              实时读模型
-            </span>
+            <div class="app-shell__topbar-actions">
+              <!-- 当前请求上下文状态保持只读，真实授权仍以后端校验为准。 -->
+              <PrincipalPartitionStatus />
+              <span class="app-shell__live">
+                <NIcon :component="Radio" />
+                实时读模型
+              </span>
+            </div>
           </header>
           <RouterView />
         </main>
@@ -179,6 +193,20 @@ const themeOverrides = createDashboardThemeOverrides()
   margin-bottom: 14px;
 }
 
+.app-shell__topbar-actions {
+  /*
+   * 顶栏右侧同时容纳 principal/分区状态和实时读模型状态。
+   * max-width 防止长分区值挤压标题，组件自身再做省略。
+   * flex-wrap 让窄屏和长文本都能自然换行。
+   */
+  display: inline-flex;
+  max-width: 58%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .app-shell__eyebrow {
   margin: 0 0 4px;
   color: var(--ink-muted);
@@ -234,6 +262,17 @@ const themeOverrides = createDashboardThemeOverrides()
 
   .app-shell__main {
     padding: 18px;
+  }
+
+  .app-shell__topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-shell__topbar-actions {
+    /* 移动端状态区回到左对齐，减少横向空间争抢。 */
+    max-width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>
