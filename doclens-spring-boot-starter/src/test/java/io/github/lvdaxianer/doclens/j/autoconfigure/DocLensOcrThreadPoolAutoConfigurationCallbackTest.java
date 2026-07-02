@@ -124,7 +124,7 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
      * @date 2026-06-16
      */
     private DocLensSpringProperties defaultProperties() {
-        return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null,
+        return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null);
     }
 
@@ -147,7 +147,7 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
         DocLensSpringProperties.ThreadPoolsProperties threadPools =
                 new DocLensSpringProperties.ThreadPoolsProperties(defaultPool, explicitOcrRequestPool,
                         defaultPool, defaultPool);
-        return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null,
+        return new DocLensSpringProperties(null, true, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, threadPools, null);
     }
 }

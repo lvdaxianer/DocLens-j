@@ -36,6 +36,7 @@ class DocLensSpringPropertiesHealthGovernanceTest {
                 null,
                 null,
                 null,
+                null,
                 null);
 
         assertThat(properties.ocr().loadBalanceStrategy()).isEqualTo("weighted-idle");

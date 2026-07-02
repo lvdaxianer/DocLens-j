@@ -17,6 +17,7 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  * @param autoProcessOnUpload 自动处理标志
  * @param workerId Worker 标识
  * @param clients 接入方配置
+ * @param gatewayAuth 可信网关认证配置
  * @param callback 回调配置
  * @param adapter 适配器配置
  * @param ocr OCR 路由配置
@@ -38,6 +39,7 @@ public record DocLensSpringProperties(
         boolean autoProcessOnUpload,
         String workerId,
         ClientsProperties clients,
+        GatewayAuthProperties gatewayAuth,
         CallbackProperties callback,
         AdapterProperties adapter,
         OcrProperties ocr,
@@ -69,10 +71,10 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_PAGE_TASK_WORKER_POOL_SIZE = 0;
     private static final int DEFAULT_PAGE_TASK_WORKER_QUEUE_CAPACITY = 200;
     private static final int DEFAULT_PAGE_TASK_RECOVERY_LIMIT = 32;
-
     @ConstructorBinding
     public DocLensSpringProperties {
         clients = clients == null ? new ClientsProperties(List.of()) : clients;
+        gatewayAuth = gatewayAuth == null ? GatewayAuthProperties.defaults() : gatewayAuth;
         callback = callback == null ? new CallbackProperties(3, 10) : callback;
         adapter = adapter == null ? new AdapterProperties("paddle_ocr") : adapter;
         ocr = ocr == null ? defaultOcrProperties() : ocr;

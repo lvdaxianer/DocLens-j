@@ -90,7 +90,7 @@ class OcrRuntimeConcurrencyResolverTest {
                         .mapToObj(index -> new DocLensSpringProperties.PaddleOcrNodeProperties("bootstrap-" + index,
                                 TEST_HOST, TEST_BASE_PORT + index, true, true, TEST_WEIGHT, BOOTSTRAP_CONCURRENCY))
                         .toList();
-        return new DocLensSpringProperties(null, true, "local-worker", null, null, null, null,
+        return new DocLensSpringProperties(null, true, "local-worker", null, null, null, null, null,
                 new DocLensSpringProperties.PaddleOcrProperties(true, TEST_ENDPOINT, TEST_TIMEOUT_SECONDS, false, nodes),
                 null, null, null, null, null, null, null, null);
     }

@@ -169,7 +169,7 @@ class DocLensPageTaskWorkerAutoConfigurationTest {
      * @date 2026-06-19
      */
     private DocLensSpringProperties defaultPropertiesWithPaddleTimeout(int timeoutSeconds) {
-        return new DocLensSpringProperties(null, true, LOCAL_WORKER_ID, null, null, null, null,
+        return new DocLensSpringProperties(null, true, LOCAL_WORKER_ID, null, null, null, null, null,
                 new DocLensSpringProperties.PaddleOcrProperties(true, TEST_PADDLE_ENDPOINT,
                         timeoutSeconds, false, List.of(DocLensSpringProperties.defaultPaddleNode())),
                 null, null, null, null, null, null, null, null);
@@ -200,7 +200,7 @@ class DocLensPageTaskWorkerAutoConfigurationTest {
             DocLensSpringProperties.PageTaskWorkerProperties worker,
             DocLensSpringProperties.PaddleOcrNodeProperties... nodes
     ) {
-        return new DocLensSpringProperties(null, true, LOCAL_WORKER_ID, null, null, null, null,
+        return new DocLensSpringProperties(null, true, LOCAL_WORKER_ID, null, null, null, null, null,
                 new DocLensSpringProperties.PaddleOcrProperties(true, TEST_PADDLE_ENDPOINT,
                         DEFAULT_PADDLE_TIMEOUT_SECONDS, false, List.of(nodes)),
                 null, null, null, null, null, worker, null, null);
