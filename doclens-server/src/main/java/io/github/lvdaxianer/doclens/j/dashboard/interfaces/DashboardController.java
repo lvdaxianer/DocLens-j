@@ -1,6 +1,5 @@
 package io.github.lvdaxianer.doclens.j.dashboard.interfaces;
 
-import io.github.lvdaxianer.doclens.j.processing.infrastructure.CallbackDeliveryWorker;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,22 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
 
     private final DashboardHttpFacade dashboardHttpFacade;
-    private final CallbackDeliveryWorker callbackDeliveryWorker;
+    private final DashboardCallbackRetryFacade dashboardCallbackRetryFacade;
 
     /**
      * 创建 Dashboard 控制器。
      *
      * @param dashboardHttpFacade Dashboard HTTP 查询门面
-     * @param callbackDeliveryWorker 回调投递 worker
+     * @param dashboardCallbackRetryFacade callback 重试门面
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
     public DashboardController(
             DashboardHttpFacade dashboardHttpFacade,
-            CallbackDeliveryWorker callbackDeliveryWorker
+            DashboardCallbackRetryFacade dashboardCallbackRetryFacade
     ) {
         this.dashboardHttpFacade = dashboardHttpFacade;
-        this.callbackDeliveryWorker = callbackDeliveryWorker;
+        this.dashboardCallbackRetryFacade = dashboardCallbackRetryFacade;
     }
 
     /**
@@ -84,9 +83,8 @@ public class DashboardController {
      * @date 2026-06-16
      */
     @PostMapping("/callback-jobs/{callbackJobId}/retry")
-    public Map<String, Object> retryCallbackJob(@PathVariable String callbackJobId) {
-        int deliveredCount = callbackDeliveryWorker.retryNow(callbackJobId);
-        return Map.of("callback_job_id", callbackJobId, "delivered_count", deliveredCount);
+    public Map<String, Object> retryCallbackJob(@PathVariable String callbackJobId, HttpServletRequest request) {
+        return dashboardCallbackRetryFacade.retryCallbackJob(request, callbackJobId);
     }
 
     /**
