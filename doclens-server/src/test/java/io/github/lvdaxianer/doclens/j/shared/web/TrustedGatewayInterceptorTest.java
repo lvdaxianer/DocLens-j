@@ -31,16 +31,22 @@ class TrustedGatewayInterceptorTest {
     private static final String ADMIN_ROLE = "admin";
     /** 测试 principal。 */
     private static final String ALICE_PRINCIPAL = "alice";
+    /** 测试管理员 principal。 */
+    private static final String ADMIN_PRINCIPAL = "ops-admin";
     /** Alice 允许访问的分区。 */
     private static final String ALICE_PARTITION = "alice-workspace";
     /** Alice 不允许访问的分区。 */
     private static final String BOB_PARTITION = "bob-workspace";
+    /** admin 策略覆盖的测试路由。 */
+    private static final String ADMIN_ROUTE = "/api/v1/ocr-nodes/node-1";
     /** 缺失网关证明错误消息。 */
     private static final String MISSING_GATEWAY_PROOF_MESSAGE = "trusted gateway proof is missing or invalid";
     /** 缺失 principal 错误消息。 */
     private static final String MISSING_PRINCIPAL_MESSAGE = "trusted principal is missing";
     /** principal 分区授权失败错误消息。 */
     private static final String PARTITION_DENIED_MESSAGE = "trusted principal is not allowed for partition";
+    /** principal 角色授权失败错误消息。 */
+    private static final String ROLE_DENIED_MESSAGE = "trusted principal does not have required role";
 
     /**
      * 缺少可信网关证明时应拒绝请求。
@@ -156,6 +162,44 @@ class TrustedGatewayInterceptorTest {
     }
 
     /**
+     * 普通 principal 访问 admin 路由时应拒绝请求。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @Test
+    void rejectsAdminRouteWhenPrincipalDoesNotHaveAdminRole() {
+        TrustedGatewayInterceptor interceptor = interceptor();
+        MockHttpServletRequest request = request(ADMIN_ROUTE);
+        request.addHeader(GATEWAY_SECRET_HEADER, GATEWAY_SECRET_VALUE);
+        request.addHeader(PRINCIPAL_HEADER, ALICE_PRINCIPAL);
+        request.addHeader(CallerPartitionInterceptor.headerName(), ALICE_PARTITION);
+
+        assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
+                .isInstanceOf(TrustedGatewayAuthorizationException.class)
+                .hasMessage(ROLE_DENIED_MESSAGE);
+    }
+
+    /**
+     * admin principal 访问 admin 路由时应继续处理请求。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @Test
+    void continuesAdminRouteWhenPrincipalHasAdminRole() {
+        TrustedGatewayInterceptor interceptor = interceptor();
+        MockHttpServletRequest request = request(ADMIN_ROUTE);
+        request.addHeader(GATEWAY_SECRET_HEADER, GATEWAY_SECRET_VALUE);
+        request.addHeader(PRINCIPAL_HEADER, ADMIN_PRINCIPAL);
+        request.addHeader(CallerPartitionInterceptor.headerName(), ALICE_PARTITION);
+
+        boolean shouldContinue = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+        assertThat(shouldContinue).isTrue();
+    }
+
+    /**
      * 创建可信网关拦截器。
      *
      * @return 可信网关拦截器
@@ -178,7 +222,9 @@ class TrustedGatewayInterceptorTest {
                 new GatewayAuthProperties.TrustedGatewayProperties(GATEWAY_SECRET_HEADER, GATEWAY_SECRET_VALUE),
                 new GatewayAuthProperties.PrincipalHeadersProperties(PRINCIPAL_HEADER, ROLES_HEADER),
                 List.of(new GatewayAuthProperties.PrincipalProperties(ALICE_PRINCIPAL, List.of(USER_ROLE),
-                        List.of(ALICE_PARTITION))),
+                        List.of(ALICE_PARTITION)),
+                        new GatewayAuthProperties.PrincipalProperties(ADMIN_PRINCIPAL, List.of(USER_ROLE, ADMIN_ROLE),
+                                List.of(ALICE_PARTITION))),
                 GatewayAuthProperties.RoutePolicyProperties.defaults());
     }
 
@@ -190,8 +236,20 @@ class TrustedGatewayInterceptorTest {
      * @date 2026-07-02
      */
     private MockHttpServletRequest request() {
+        return request("/api/v1/batches");
+    }
+
+    /**
+     * 创建指定路径的测试请求。
+     *
+     * @param requestUri 请求路径
+     * @return 测试请求
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private MockHttpServletRequest request(String requestUri) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/v1/batches");
+        request.setRequestURI(requestUri);
         return request;
     }
 }

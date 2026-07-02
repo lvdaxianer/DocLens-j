@@ -3,6 +3,7 @@ package io.github.lvdaxianer.doclens.j.shared.web;
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties;
 import io.github.lvdaxianer.doclens.j.autoconfigure.GatewayAuthProperties;
 import io.github.lvdaxianer.doclens.j.autoconfigure.GatewayAuthProperties.PrincipalProperties;
+import io.github.lvdaxianer.doclens.j.autoconfigure.GatewayAuthProperties.RoutePolicyProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -25,9 +27,12 @@ public class TrustedGatewayInterceptor implements HandlerInterceptor {
     private static final String MISSING_GATEWAY_PROOF_MESSAGE = "trusted gateway proof is missing or invalid";
     private static final String MISSING_PRINCIPAL_MESSAGE = "trusted principal is missing";
     private static final String PARTITION_DENIED_MESSAGE = "trusted principal is not allowed for partition";
+    private static final String ROLE_DENIED_MESSAGE = "trusted principal does not have required role";
+    private static final String ADMIN_ROLE = "admin";
     private static final String ROLE_DELIMITER = ",";
 
     private final GatewayAuthProperties gatewayAuth;
+    private final AntPathMatcher routeMatcher = new AntPathMatcher();
 
     /**
      * 创建可信网关拦截器。
@@ -71,6 +76,7 @@ public class TrustedGatewayInterceptor implements HandlerInterceptor {
         validateGatewayProof(request);
         String principal = principalHeader(request);
         validatePartitionAccess(request, principal);
+        validateAdminRouteAccess(request, principal);
         request.setAttribute(TrustedGatewayPrincipal.REQUEST_ATTRIBUTE,
                 new TrustedGatewayPrincipal(principal, rolesHeader(request)));
         return true;
@@ -140,6 +146,56 @@ public class TrustedGatewayInterceptor implements HandlerInterceptor {
     private boolean isPartitionAllowed(String principal, String partition) {
         return trustedPrincipal(principal)
                 .map(properties -> properties.allowedPartitions().contains(partition))
+                .orElse(false);
+    }
+
+    /**
+     * 校验 admin 路由是否由 admin principal 访问。
+     *
+     * @param request HTTP 请求
+     * @param principal principal 名称
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private void validateAdminRouteAccess(HttpServletRequest request, String principal) {
+        Optional<RoutePolicyProperties> adminPolicy = adminRoutePolicy(request.getRequestURI());
+        // 非 admin 策略路由不在本任务范围内，继续保持原行为。
+        if (adminPolicy.isEmpty()) {
+            return;
+        }
+        // 命中 admin 策略但 principal 不具备 admin 角色时拒绝请求。
+        if (!hasRole(principal, adminPolicy.get().requiredRole())) {
+            throw new TrustedGatewayAuthorizationException(ROLE_DENIED_MESSAGE);
+        }
+    }
+
+    /**
+     * 查找匹配当前路径的 admin 路由策略。
+     *
+     * @param requestUri 请求路径
+     * @return admin 路由策略
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private Optional<RoutePolicyProperties> adminRoutePolicy(String requestUri) {
+        return gatewayAuth.routePolicies().stream()
+                .filter(policy -> routeMatcher.match(policy.pattern(), requestUri))
+                .filter(policy -> ADMIN_ROLE.equals(policy.requiredRole()))
+                .findFirst();
+    }
+
+    /**
+     * 判断 principal 是否具备指定角色。
+     *
+     * @param principal principal 名称
+     * @param requiredRole 必需角色
+     * @return 是否具备角色
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private boolean hasRole(String principal, String requiredRole) {
+        return trustedPrincipal(principal)
+                .map(properties -> properties.roles().contains(requiredRole))
                 .orElse(false);
     }
 
