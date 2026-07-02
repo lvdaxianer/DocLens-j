@@ -22,6 +22,7 @@ import io.github.lvdaxianer.doclens.j.ingestion.application.CreateBatchUseCase;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchRepository;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.BatchMapper;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerPartitionResolver;
 import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.MybatisPlusBatchRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentJobRepository;
@@ -137,17 +138,31 @@ public class DocLensAutoConfiguration {
     }
 
     /**
-     * 创建原生上传接入方凭证解析器。
+     * 创建原生上传 caller 分区键解析器。
      *
      * @param properties 绑定到 Spring 的属性
-     * @return 接入方凭证解析器
-     * @author lvdaxianerplus
-     * @date 2026-06-17
+     * @return caller 分区键解析器
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
      */
     @Bean
     @ConditionalOnMissingBean
-    CallerCredentialResolver callerCredentialResolver(DocLensSpringProperties properties) {
-        return new CallerCredentialResolver(properties.clients());
+    CallerPartitionResolver callerPartitionResolver(DocLensSpringProperties properties) {
+        return new CallerPartitionResolver(properties.clients());
+    }
+
+    /**
+     * 创建旧 caller 凭证解析适配器。
+     *
+     * @param callerPartitionResolver caller 分区键解析器
+     * @return 旧 caller 凭证解析适配器
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    CallerCredentialResolver callerCredentialResolver(CallerPartitionResolver callerPartitionResolver) {
+        return new CallerCredentialResolver(callerPartitionResolver);
     }
 
     /**

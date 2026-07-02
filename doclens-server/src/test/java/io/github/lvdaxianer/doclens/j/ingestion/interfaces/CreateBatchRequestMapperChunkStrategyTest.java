@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
-import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerPartitionResolver;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +50,7 @@ class CreateBatchRequestMapperChunkStrategyTest {
     private static final String TECHNICAL_CHUNK_STRATEGY = "TECHNICAL";
 
     private JsonCodec jsonCodec;
-    private CallerCredentialResolver callerCredentialResolver;
+    private CallerPartitionResolver callerPartitionResolver;
     private CreateBatchRequestMapper mapper;
 
     /**
@@ -62,9 +62,9 @@ class CreateBatchRequestMapperChunkStrategyTest {
     @BeforeEach
     void setUp() {
         jsonCodec = mock(JsonCodec.class);
-        callerCredentialResolver = mock(CallerCredentialResolver.class);
-        mapper = new CreateBatchRequestMapper(jsonCodec, callerCredentialResolver);
-        when(callerCredentialResolver.resolve(CALLER_PARTITION_KEY, ""))
+        callerPartitionResolver = mock(CallerPartitionResolver.class);
+        mapper = new CreateBatchRequestMapper(jsonCodec, callerPartitionResolver);
+        when(callerPartitionResolver.resolve(CALLER_PARTITION_KEY))
                 .thenReturn(new CallerIdentity(CALLER_PARTITION_KEY, DEFAULT_SOURCE_APP,
                         Optional.of(CALLER_PARTITION_KEY)));
         when(jsonCodec.parseObject(EMPTY_JSON_OBJECT)).thenReturn(Map.of());

@@ -1,7 +1,7 @@
 package io.github.lvdaxianer.doclens.j.ingestion.infrastructure;
 
 /**
- * 接入方凭证异常。
+ * caller 分区键异常。
  *
  * @author lvdaxianerplus
  * @date 2026-06-17
@@ -9,7 +9,7 @@ package io.github.lvdaxianer.doclens.j.ingestion.infrastructure;
 public class CallerCredentialException extends RuntimeException {
 
     /**
-     * 创建接入方凭证异常。
+     * 创建 caller 分区键异常。
      *
      * @param message 异常消息
      * @author lvdaxianerplus

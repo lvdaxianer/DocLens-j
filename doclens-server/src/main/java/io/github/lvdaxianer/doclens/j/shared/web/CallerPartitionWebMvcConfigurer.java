@@ -5,46 +5,48 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * 为 API 路由统一注册 caller 凭证拦截器。
+ * 为 API 路由统一注册 caller 分区拦截器。
  *
- * @author lvdaxianerplus
- * @date 2026-06-17
+ * @author lvdaxianer@yeah.net
+ * @date 2026-07-02
  */
 @Configuration
-public class CallerCredentialWebMvcConfigurer implements WebMvcConfigurer {
+public class CallerPartitionWebMvcConfigurer implements WebMvcConfigurer {
 
     private final GlobalProtectionInterceptor globalProtectionInterceptor;
-    private final CallerCredentialInterceptor callerCredentialInterceptor;
+    private final CallerPartitionInterceptor callerPartitionInterceptor;
     private final CallerTrafficInterceptor callerTrafficInterceptor;
 
     /**
      * 创建 Web MVC 配置。
      *
-     * @param callerCredentialInterceptor caller 凭证拦截器
-     * @author lvdaxianerplus
-     * @date 2026-06-17
+     * @param globalProtectionInterceptor 全局保护拦截器
+     * @param callerPartitionInterceptor caller 分区拦截器
+     * @param callerTrafficInterceptor caller 流量拦截器
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
      */
-    public CallerCredentialWebMvcConfigurer(
+    public CallerPartitionWebMvcConfigurer(
             GlobalProtectionInterceptor globalProtectionInterceptor,
-            CallerCredentialInterceptor callerCredentialInterceptor,
+            CallerPartitionInterceptor callerPartitionInterceptor,
             CallerTrafficInterceptor callerTrafficInterceptor
     ) {
         this.globalProtectionInterceptor = globalProtectionInterceptor;
-        this.callerCredentialInterceptor = callerCredentialInterceptor;
+        this.callerPartitionInterceptor = callerPartitionInterceptor;
         this.callerTrafficInterceptor = callerTrafficInterceptor;
     }
 
     /**
-     * 注册需要 caller 凭证的 API 拦截器。
+     * 注册需要 caller 分区键的 API 拦截器。
      *
      * @param registry 拦截器注册表
-     * @author lvdaxianerplus
-     * @date 2026-06-17
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(globalProtectionInterceptor).addPathPatterns("/api/v1/**");
-        registry.addInterceptor(callerCredentialInterceptor).addPathPatterns("/api/v1/**");
+        registry.addInterceptor(callerPartitionInterceptor).addPathPatterns("/api/v1/**");
         registry.addInterceptor(callerTrafficInterceptor).addPathPatterns("/api/v1/**");
     }
 }

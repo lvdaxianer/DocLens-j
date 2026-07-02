@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.ingestion.interfaces;
 import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
-import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerPartitionResolver;
 import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,19 +41,19 @@ public class CreateBatchRequestMapper {
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
 
     private final JsonCodec jsonCodec;
-    private final CallerCredentialResolver callerCredentialResolver;
+    private final CallerPartitionResolver callerPartitionResolver;
 
     /**
      * 创建请求映射器。
      *
      * @param jsonCodec JSON 编解码器
-     * @param callerCredentialResolver 接入方凭证解析器
+     * @param callerPartitionResolver caller 分区键解析器
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
-    public CreateBatchRequestMapper(JsonCodec jsonCodec, CallerCredentialResolver callerCredentialResolver) {
+    public CreateBatchRequestMapper(JsonCodec jsonCodec, CallerPartitionResolver callerPartitionResolver) {
         this.jsonCodec = jsonCodec;
-        this.callerCredentialResolver = callerCredentialResolver;
+        this.callerPartitionResolver = callerPartitionResolver;
     }
 
     /**
@@ -71,7 +71,7 @@ public class CreateBatchRequestMapper {
         List<DocumentInput> uploadFiles = form.files().stream()
                 .map(this::toDocumentInput)
                 .toList();
-        CallerIdentity caller = callerCredentialResolver.resolve(request.getHeader(CALLER_PARTITION_HEADER), "");
+        CallerIdentity caller = callerPartitionResolver.resolve(request.getHeader(CALLER_PARTITION_HEADER));
         return new CreateBatchRequest(uploadFiles, jsonCodec.parseObject(form.metadata()), form.callbackUrl(),
                 form.idempotencyKey(), form.adapterOverride(), form.pdfMode(), form.chunkStrategy(),
                 Boolean.parseBoolean(form.llmOrchestrated()), form.ocrRoutingMode(), form.ocrModelKey(), form.ocrNodeId(), form.ocrLoadBalanceStrategy(),

@@ -46,9 +46,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理接入方凭证失败。
+     * 处理 caller 分区键失败。
      *
-     * @param ex 接入方凭证异常
+     * @param ex caller 分区键异常
+     * @param request HTTP 请求
      * @return 错误响应
      * @author lvdaxianerplus
      * @date 2026-06-17
@@ -58,7 +59,7 @@ public class GlobalExceptionHandler {
             CallerCredentialException ex,
             HttpServletRequest request
     ) {
-        log.warn("[调用方凭证] 未授权访问, path={}, detail={}", request.getRequestURI(), ex.getMessage());
+        log.warn("[调用方分区] 分区键缺失或无效, path={}, detail={}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
     }
 

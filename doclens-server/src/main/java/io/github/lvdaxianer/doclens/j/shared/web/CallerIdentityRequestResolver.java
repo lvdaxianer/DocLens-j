@@ -25,7 +25,7 @@ public class CallerIdentityRequestResolver {
      * @date 2026-06-17
      */
     public CallerIdentity resolve(HttpServletRequest request) {
-        Object caller = request.getAttribute(CallerCredentialInterceptor.CALLER_IDENTITY_ATTRIBUTE);
+        Object caller = request.getAttribute(CallerPartitionInterceptor.CALLER_IDENTITY_ATTRIBUTE);
         if (caller instanceof CallerIdentity callerIdentity) {
             // 拦截器已完成分区键解析时直接复用当前请求身份。
             return callerIdentity;

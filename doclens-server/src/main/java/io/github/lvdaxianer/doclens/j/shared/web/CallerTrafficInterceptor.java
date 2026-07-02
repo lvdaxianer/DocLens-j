@@ -3,7 +3,7 @@ package io.github.lvdaxianer.doclens.j.shared.web;
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties;
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.CallerCredentialProperties;
 import io.github.lvdaxianer.doclens.j.autoconfigure.DocLensSpringProperties.RateLimitProperties;
-import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerCredentialResolver.ResolvedCallerCredential;
+import io.github.lvdaxianer.doclens.j.ingestion.infrastructure.CallerPartitionResolver.ResolvedCallerPartition;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.CallerTrafficLimitPolicy;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.CallerTrafficRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -77,10 +77,10 @@ public class CallerTrafficInterceptor implements HandlerInterceptor {
      * @date 2026-06-17
      */
     private void enforceTrafficLimit(HttpServletRequest request) {
-        ResolvedCallerCredential resolvedCredential = resolvedCredential(request);
+        ResolvedCallerPartition resolvedPartition = resolvedPartition(request);
         TrafficGroup trafficGroup = trafficGroupResolver.resolve(request);
-        RateLimitProperties limit = resolveLimit(resolvedCredential.credential(), trafficGroup);
-        boolean acquired = callerTrafficRateLimiter.tryAcquire(resolvedCredential.callerIdentity(), trafficGroup.value(), limit);
+        RateLimitProperties limit = resolveLimit(resolvedPartition.credential(), trafficGroup);
+        boolean acquired = callerTrafficRateLimiter.tryAcquire(resolvedPartition.callerIdentity(), trafficGroup.value(), limit);
         if (!acquired) {
             throw new RateLimitExceededException(
                     trafficGroup.value(),
@@ -94,26 +94,26 @@ public class CallerTrafficInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 读取请求中已解析的 caller 凭证结果。
+     * 读取请求中已解析的 caller 分区结果。
      *
      * @param request HTTP 请求
-     * @return caller 凭证结果
+     * @return caller 分区结果
      * @author lvdaxianerplus
      * @date 2026-06-17
      */
-    private ResolvedCallerCredential resolvedCredential(HttpServletRequest request) {
-        Object resolved = request.getAttribute(CallerCredentialInterceptor.RESOLVED_CREDENTIAL_ATTRIBUTE);
-        if (resolved instanceof ResolvedCallerCredential credential) {
-            return credential;
+    private ResolvedCallerPartition resolvedPartition(HttpServletRequest request) {
+        Object resolved = request.getAttribute(CallerPartitionInterceptor.RESOLVED_PARTITION_ATTRIBUTE);
+        if (resolved instanceof ResolvedCallerPartition partition) {
+            return partition;
         } else {
-            throw new IllegalStateException("resolved caller credential is required before traffic enforcement");
+            throw new IllegalStateException("resolved caller partition is required before traffic enforcement");
         }
     }
 
     /**
      * 合并当前接口组的最终限额。
      *
-     * @param credential 调用方配置凭证
+     * @param credential 调用方限流配置载体
      * @param trafficGroup 流量接口组
      * @return 最终限额
      * @author lvdaxianerplus
