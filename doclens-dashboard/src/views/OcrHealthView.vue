@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { Cpu, Gauge, Timer, TriangleAlert } from '@lucide/vue'
 import { NAlert, NButton, NIcon } from 'naive-ui'
 
+import AutoRefreshStaleAlert from '@/components/dashboard/AutoRefreshStaleAlert.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -52,12 +53,19 @@ function refresh(): Promise<void> {
   return store.loadOcrHealth()
 }
 
-useAutoRefresh(refresh)
+const autoRefresh = useAutoRefresh(refresh, {
+  failureMessage: () => ocrHealthState.value.error
+})
 </script>
 
 <template>
   <div class="view-stack">
     <NAlert v-if="ocrHealthState.error" type="error" :title="ocrHealthState.error" />
+    <AutoRefreshStaleAlert
+      :show="autoRefresh.isStale.value"
+      subject="OCR 健康数据"
+      :error-message="autoRefresh.lastErrorMessage.value"
+    />
     <NAlert
       v-if="unavailableNodes.length > 0"
       type="warning"
@@ -72,7 +80,7 @@ useAutoRefresh(refresh)
     <section class="health-toolbar">
       <span>最后刷新：{{ formatDateTime(ocrHealthState.lastUpdated) }}</span>
       <span>每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新</span>
-      <NButton size="small" :loading="ocrHealthState.loading" @click="refresh">
+      <NButton size="small" :loading="ocrHealthState.loading" @click="autoRefresh.refreshNow">
         刷新
       </NButton>
     </section>

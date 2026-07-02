@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { NAlert } from 'naive-ui'
 
 import { deleteDocument, retryCallbackJob, retryDocument } from '@/api/dashboard'
+import AutoRefreshStaleAlert from '@/components/dashboard/AutoRefreshStaleAlert.vue'
 import BatchCallbackJobsPanel from '@/components/dashboard/BatchCallbackJobsPanel.vue'
 import BatchDocumentTable from '@/components/dashboard/BatchDocumentTable.vue'
 import BatchIntakeInfoPanel from '@/components/dashboard/BatchIntakeInfoPanel.vue'
@@ -174,7 +175,9 @@ function refresh(): Promise<void> {
 
 watch(batchId, refresh)
 // 自动刷新只注册一次，具体刷新逻辑仍复用 refresh 方法。
-useAutoRefresh(refresh)
+const autoRefresh = useAutoRefresh(refresh, {
+  failureMessage: () => detailState.value.error
+})
 </script>
 
 <template>
@@ -182,6 +185,11 @@ useAutoRefresh(refresh)
   <div class="view-stack">
     <!-- 错误提示放在页面顶部，确保刷新或删除失败时优先被用户看到。 -->
     <NAlert v-if="detailState.error" type="error" :title="detailState.error" />
+    <AutoRefreshStaleAlert
+      :show="autoRefresh.isStale.value"
+      subject="批次详情"
+      :error-message="autoRefresh.lastErrorMessage.value"
+    />
 
     <!-- 顶部指标条只展示批次聚合数据，并通过 refresh 事件回到父级执行请求。 -->
     <!-- selectedBatch 不存在时不渲染摘要，避免展示空指标误导用户。 -->
@@ -193,7 +201,7 @@ useAutoRefresh(refresh)
       :batch="selectedBatch.batch"
       :loading="detailState.loading"
       :refresh-interval-seconds="DEFAULT_REFRESH_INTERVAL_SECONDS"
-      @refresh="refresh"
+      @refresh="autoRefresh.refreshNow"
     />
 
     <!-- 接入信息用于排查第三方上传、幂等透传和 callback_url 回调链路。 -->

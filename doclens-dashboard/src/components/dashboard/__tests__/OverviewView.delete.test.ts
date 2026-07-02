@@ -73,7 +73,11 @@ vi.mock('@/api/dashboard', async () => {
 
 vi.mock('@/composables/useAutoRefresh', () => ({
   DEFAULT_REFRESH_INTERVAL_SECONDS: 5,
-  useAutoRefresh: () => undefined
+  useAutoRefresh: (refresh: () => Promise<void>) => ({
+    isStale: { value: false },
+    lastErrorMessage: { value: '' },
+    refreshNow: refresh
+  })
 }))
 
 import OverviewView from '@/views/OverviewView.vue'

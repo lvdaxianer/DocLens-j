@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { NAlert, NButton, NSpin, useMessage } from 'naive-ui'
 
 import { deleteBatch } from '@/api/dashboard'
+import AutoRefreshStaleAlert from '@/components/dashboard/AutoRefreshStaleAlert.vue'
 import BatchTable from '@/components/dashboard/BatchTable.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
@@ -81,19 +82,26 @@ function isNonDeletableBatchError(error: unknown): boolean {
   return errorMessage.includes('non-deletable') || errorMessage.includes('status queued')
 }
 
-useAutoRefresh(refresh)
+const autoRefresh = useAutoRefresh(refresh, {
+  failureMessage: () => summaryState.value.error
+})
 </script>
 
 <template>
   <div class="view-stack">
     <NAlert v-if="summaryState.error" type="error" :title="summaryState.error" />
+    <AutoRefreshStaleAlert
+      :show="autoRefresh.isStale.value"
+      subject="总览数据"
+      :error-message="autoRefresh.lastErrorMessage.value"
+    />
 
     <section class="overview-toolbar">
       <span class="overview-toolbar__time">
         最后刷新：{{ formatDateTime(summaryState.lastUpdated) }}
       </span>
       <span class="overview-toolbar__auto">每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新</span>
-      <NButton size="small" :loading="summaryState.loading" @click="refresh">
+      <NButton size="small" :loading="summaryState.loading" @click="autoRefresh.refreshNow">
         刷新
       </NButton>
     </section>

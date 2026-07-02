@@ -89,7 +89,11 @@ vi.mock('@/stores/dashboard', () => ({
 
 vi.mock('@/composables/useAutoRefresh', () => ({
   DEFAULT_REFRESH_INTERVAL_SECONDS: 5,
-  useAutoRefresh: () => undefined
+  useAutoRefresh: (refresh: () => Promise<void>) => ({
+    isStale: { value: false },
+    lastErrorMessage: { value: '' },
+    refreshNow: refresh
+  })
 }))
 
 vi.mock('@/composables/useDocumentResultDrawer', () => ({

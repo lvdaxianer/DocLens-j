@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { NAlert, NButton } from 'naive-ui'
 
+import AutoRefreshStaleAlert from '@/components/dashboard/AutoRefreshStaleAlert.vue'
 import BatchTable from '@/components/dashboard/BatchTable.vue'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -21,12 +22,19 @@ function refresh(): Promise<void> {
   return store.loadBatches()
 }
 
-useAutoRefresh(refresh)
+const autoRefresh = useAutoRefresh(refresh, {
+  failureMessage: () => batchesState.value.error
+})
 </script>
 
 <template>
   <div class="view-stack">
     <NAlert v-if="batchesState.error" type="error" :title="batchesState.error" />
+    <AutoRefreshStaleAlert
+      :show="autoRefresh.isStale.value"
+      subject="批次列表"
+      :error-message="autoRefresh.lastErrorMessage.value"
+    />
 
     <section class="panel">
       <div class="panel__header">
@@ -37,7 +45,7 @@ useAutoRefresh(refresh)
             · 每 {{ DEFAULT_REFRESH_INTERVAL_SECONDS }} 秒自动刷新
           </span>
         </div>
-        <NButton size="small" :loading="batchesState.loading" @click="refresh">
+        <NButton size="small" :loading="batchesState.loading" @click="autoRefresh.refreshNow">
           刷新
         </NButton>
       </div>
