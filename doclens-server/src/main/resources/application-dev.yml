@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./var/db/doclens;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+doclens:
+  storage-root: ./var/storage
+  worker-id: local-worker
+  paddle-ocr:
+    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}
+    bootstrap-nodes:
+      - name: paddle-215
+        host: 10.100.30.215
+        port: 8080
+        enabled: true
+        participate-global: true
+        weight: 50
+        max-concurrency: 10
+  word-conversion:
+    command: /opt/homebrew/bin/soffice

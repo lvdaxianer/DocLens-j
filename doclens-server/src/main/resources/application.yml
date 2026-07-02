@@ -1,11 +1,6 @@
 spring:
   application:
     name: doclens-j
-  datasource:
-    url: jdbc:h2:file:./var/db/doclens;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
   flyway:
     enabled: true
   servlet:
@@ -27,9 +22,7 @@ management:
         include: health,info
 
 doclens:
-  storage-root: ./var/storage
   auto-process-on-upload: true
-  worker-id: local-worker
   adapter:
     default-key: paddle_ocr
   ocr:
@@ -48,17 +41,8 @@ doclens:
     specific-node-fallback-enabled: false
   paddle-ocr:
     enabled: true
-    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}
     timeout-seconds: 600
     visualize: false
-    bootstrap-nodes:
-      - name: paddle-215
-        host: 10.100.30.215
-        port: 8080
-        enabled: true
-        participate-global: true
-        weight: 50
-        max-concurrency: 10
   page-task-worker:
     lock-seconds: 630
     queue-capacity: 200
@@ -70,7 +54,6 @@ doclens:
     dpi: 36
     image-format: png
   word-conversion:
-    command: /opt/homebrew/bin/soffice
     timeout-seconds: 60
   callback:
     max-retries: 3

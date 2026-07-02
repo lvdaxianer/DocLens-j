@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: ${DOCLENS_DB_URL}
+    username: ${DOCLENS_DB_USERNAME}
+    password: ${DOCLENS_DB_PASSWORD}
+    driver-class-name: ${DOCLENS_DB_DRIVER}
+
+doclens:
+  storage-root: ${DOCLENS_STORAGE_ROOT}
+  worker-id: ${DOCLENS_WORKER_ID}
+  paddle-ocr:
+    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT}
+    bootstrap-nodes:
+      - name: ${DOCLENS_PADDLE_OCR_NODE_NAME:paddle-primary}
+        host: ${DOCLENS_PADDLE_OCR_NODE_HOST}
+        port: ${DOCLENS_PADDLE_OCR_NODE_PORT:8080}
+        enabled: ${DOCLENS_PADDLE_OCR_NODE_ENABLED:true}
+        participate-global: ${DOCLENS_PADDLE_OCR_NODE_PARTICIPATE_GLOBAL:true}
+        weight: ${DOCLENS_PADDLE_OCR_NODE_WEIGHT:50}
+        max-concurrency: ${DOCLENS_PADDLE_OCR_NODE_MAX_CONCURRENCY:10}
+  word-conversion:
+    command: ${DOCLENS_WORD_CONVERSION_COMMAND}
+  gateway-auth:
+    enabled: true
+    trusted-gateway:
+      header-value: ${DOCLENS_GATEWAY_SECRET}
+    principals:
+      - principal: ${DOCLENS_GATEWAY_PRINCIPAL}
+        roles:
+          - admin
+        allowed-partitions:
+          - ${DOCLENS_GATEWAY_PARTITION}
