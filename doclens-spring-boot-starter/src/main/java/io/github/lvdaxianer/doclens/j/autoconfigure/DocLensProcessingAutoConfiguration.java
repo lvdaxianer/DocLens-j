@@ -308,40 +308,6 @@ public class DocLensProcessingAutoConfiguration {
     }
 
     /**
-     * 批次处理 Bean 自动装配依赖。
-     *
-     * @param documentRepository 文档仓储
-     * @param resultRepository 结果仓储
-     * @param eventRepository 事件仓储
-     * @param batchRepository 批次仓储
-     * @param adapterRegistry 适配器注册表
-     * @param objectStorage 对象存储
-     * @param documentTextExtractor 文档文本提取器
-     * @param idGenerator ID 生成器
-     * @param eventFactory 事件工厂
-     * @param markdownPostProcessor Markdown 后处理器
-     * @param pageTaskPreparationService 页任务预处理服务
-     * @param callbackJobRepository 回调任务仓储
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private record BatchProcessingBeanDependencies(
-            DocumentJobRepository documentRepository,
-            OcrResultRepository resultRepository,
-            OcrEventRepository eventRepository,
-            BatchRepository batchRepository,
-            DefaultAdapterRegistry adapterRegistry,
-            ObjectStorage objectStorage,
-            DocumentTextExtractor documentTextExtractor,
-            IdGenerator idGenerator,
-            OcrEventFactory eventFactory,
-            MarkdownPostProcessor markdownPostProcessor,
-            DocumentPageTaskPreparationService pageTaskPreparationService,
-            CallbackJobRepository callbackJobRepository
-    ) {
-    }
-
-    /**
      * 从 Spring 上下文收集批次创建依赖。
      *
      * @param context Spring 上下文
@@ -357,29 +323,4 @@ public class DocLensProcessingAutoConfiguration {
                 context.getBean(OcrEventFactory.class));
     }
 
-    /**
-     * 批次创建 Bean 自动装配依赖。
-     *
-     * @param batchRepository 批次仓储
-     * @param documentRepository 文档仓储
-     * @param eventRepository 事件仓储
-     * @param objectStorage 对象存储
-     * @param idGenerator ID 生成器
-     * @param properties 运行时属性
-     * @param batchProcessingScheduler 批次处理调度器
-     * @param eventFactory 事件工厂
-     * @author lvdaxianerplus
-     * @date 2026-06-08
-     */
-    private record CreateBatchBeanDependencies(
-            BatchRepository batchRepository,
-            DocumentJobRepository documentRepository,
-            OcrEventRepository eventRepository,
-            ObjectStorage objectStorage,
-            IdGenerator idGenerator,
-            DocLensProperties properties,
-            BatchProcessingScheduler batchProcessingScheduler,
-            OcrEventFactory eventFactory
-    ) {
-    }
 }

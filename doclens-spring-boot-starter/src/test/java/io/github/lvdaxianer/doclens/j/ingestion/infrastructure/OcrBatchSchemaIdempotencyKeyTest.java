@@ -31,6 +31,43 @@ class OcrBatchSchemaIdempotencyKeyTest {
             + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
     private static final String MIGRATED_JDBC_URL = "jdbc:h2:mem:migrated_batch_idempotency_schema;"
             + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+    private static final String LEGACY_BATCH_TABLE_SQL = """
+            CREATE TABLE ocr_batches (
+                batch_id VARCHAR(80) PRIMARY KEY,
+                status VARCHAR(40) NOT NULL,
+                total_files INTEGER NOT NULL,
+                completed_files INTEGER NOT NULL,
+                failed_files INTEGER NOT NULL,
+                current_document_id VARCHAR(80),
+                current_document_name VARCHAR(512),
+                current_stage VARCHAR(80),
+                metadata TEXT NOT NULL,
+                callback_url VARCHAR(2048),
+                idempotency_key VARCHAR(256) UNIQUE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+            )
+            """;
+    private static final String LEGACY_DOCUMENT_TABLE_SQL = """
+            CREATE TABLE ocr_documents (
+                document_id VARCHAR(80) PRIMARY KEY,
+                batch_id VARCHAR(80) NOT NULL,
+                file_name VARCHAR(512) NOT NULL,
+                file_type VARCHAR(40) NOT NULL,
+                file_size BIGINT NOT NULL,
+                page_count INTEGER NOT NULL,
+                storage_uri VARCHAR(2048) NOT NULL,
+                status VARCHAR(40) NOT NULL,
+                stage VARCHAR(80) NOT NULL,
+                progress_percent INTEGER NOT NULL,
+                current_page INTEGER NOT NULL,
+                total_pages INTEGER NOT NULL,
+                metadata TEXT NOT NULL,
+                sort_order INTEGER NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+            )
+            """;
 
     /**
      * V1 迁移文件已经发布，必须保持历史唯一约束文本以稳定 Flyway checksum。
@@ -112,23 +149,36 @@ class OcrBatchSchemaIdempotencyKeyTest {
      */
     private void createLegacySchemaWithUniqueIdempotencyKey() throws SQLException {
         try (Connection connection = DriverManager.getConnection(MIGRATED_JDBC_URL, "sa", "")) {
-            connection.createStatement().execute("""
-                    CREATE TABLE ocr_batches (
-                        batch_id VARCHAR(80) PRIMARY KEY,
-                        status VARCHAR(40) NOT NULL,
-                        total_files INTEGER NOT NULL,
-                        completed_files INTEGER NOT NULL,
-                        failed_files INTEGER NOT NULL,
-                        current_document_id VARCHAR(80),
-                        current_document_name VARCHAR(512),
-                        current_stage VARCHAR(80),
-                        metadata TEXT NOT NULL,
-                        callback_url VARCHAR(2048),
-                        idempotency_key VARCHAR(256) UNIQUE,
-                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
-                    )
-                    """);
+            createLegacyBatchTable(connection);
+            createLegacyDocumentTable(connection);
+        }
+    }
+
+    /**
+     * 创建历史批次表。
+     *
+     * @param connection 数据库连接
+     * @throws SQLException 建表失败时抛出
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private void createLegacyBatchTable(Connection connection) throws SQLException {
+        try (java.sql.Statement statement = connection.createStatement()) {
+            statement.execute(LEGACY_BATCH_TABLE_SQL);
+        }
+    }
+
+    /**
+     * 创建历史文档表。
+     *
+     * @param connection 数据库连接
+     * @throws SQLException 建表失败时抛出
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private void createLegacyDocumentTable(Connection connection) throws SQLException {
+        try (java.sql.Statement statement = connection.createStatement()) {
+            statement.execute(LEGACY_DOCUMENT_TABLE_SQL);
         }
     }
 

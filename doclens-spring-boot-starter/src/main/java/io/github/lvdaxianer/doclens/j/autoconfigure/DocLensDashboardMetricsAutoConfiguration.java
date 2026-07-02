@@ -14,7 +14,6 @@ import io.github.lvdaxianer.doclens.j.query.infrastructure.DashboardPageTaskWork
 import io.github.lvdaxianer.doclens.j.query.infrastructure.DashboardThreadPools;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardAttributionSources;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardDataSources;
-import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProvider;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardMetricsProviderDependencies;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrDashboardRuntimeSources;
 import io.github.lvdaxianer.doclens.j.query.infrastructure.OcrNodeMetricsAggregator;
@@ -44,21 +43,15 @@ public class DocLensDashboardMetricsAutoConfiguration {
     /**
      * 创建 Dashboard OCR 指标提供器。
      *
-     * @param dependencies Dashboard OCR 指标提供器依赖
+     * @param context Spring 上下文
      * @return Dashboard OCR 指标提供器
      * @author lvdaxianerplus
      * @date 2026-06-21
      */
     @Bean
-    @ConditionalOnBean({
-            OcrNodeRepository.class,
-            OcrNodeCallRepository.class,
-            OcrRuntimeNodePool.class,
-            OcrModelRegistry.class
-    })
     @ConditionalOnMissingBean
-    DashboardOcrMetricsProvider dashboardOcrMetricsProvider(OcrDashboardMetricsProviderDependencies dependencies) {
-        return new OcrDashboardMetricsProvider(dependencies);
+    DashboardOcrMetricsProvider dashboardOcrMetricsProvider(ApplicationContext context) {
+        return new DashboardOcrMetricsProviderFactory(context).create();
     }
 
     /**
@@ -72,6 +65,11 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-21
      */
     @Bean
+    @ConditionalOnBean({
+            OcrDashboardDataSources.class,
+            OcrDashboardRuntimeSources.class,
+            OcrDashboardAttributionSources.class
+    })
     @ConditionalOnMissingBean
     OcrDashboardMetricsProviderDependencies dashboardOcrMetricsProviderDependencies(
             OcrDashboardDataSources dataSources,
@@ -91,6 +89,10 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-21
      */
     @Bean
+    @ConditionalOnBean({
+            OcrNodeRepository.class,
+            OcrNodeCallRepository.class
+    })
     @ConditionalOnMissingBean
     OcrDashboardDataSources dashboardOcrDataSources(
             OcrNodeRepository nodeRepository,
@@ -109,6 +111,10 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-21
      */
     @Bean
+    @ConditionalOnBean({
+            OcrRuntimeNodePool.class,
+            DashboardThreadPools.class
+    })
     @ConditionalOnMissingBean
     OcrDashboardRuntimeSources dashboardOcrRuntimeSources(
             OcrRuntimeNodePool nodePool,
@@ -128,6 +134,11 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-21
      */
     @Bean
+    @ConditionalOnBean({
+            OcrBatchHitTracker.class,
+            OcrRunningPageTaskTracker.class,
+            OcrModelRegistry.class
+    })
     @ConditionalOnMissingBean
     OcrDashboardAttributionSources dashboardOcrAttributionSources(
             OcrBatchHitTracker batchHitTracker,
@@ -197,11 +208,30 @@ public class DocLensDashboardMetricsAutoConfiguration {
      * @date 2026-06-21
      */
     private DashboardCoreThreadPools coreThreadPools(ApplicationContext context) {
-        return new DashboardCoreThreadPools(context.getBean("doclensDocumentProcessingExecutor", ExecutorService.class),
-                context.getBean("doclensOcrRequestExecutor", ExecutorService.class),
-                context.getBean("doclensOcrHealthExecutor", ExecutorService.class),
-                context.getBean("doclensCallbackExecutor", ExecutorService.class),
-                context.getBean("doclensLlmMarkdownChunkExecutor", ExecutorService.class));
+        return new DashboardCoreThreadPools(optionalExecutor(context, "doclensDocumentProcessingExecutor").orElse(null),
+                optionalExecutor(context, "doclensOcrRequestExecutor").orElse(null),
+                optionalExecutor(context, "doclensOcrHealthExecutor").orElse(null),
+                optionalExecutor(context, "doclensCallbackExecutor").orElse(null),
+                optionalExecutor(context, "doclensLlmMarkdownChunkExecutor").orElse(null));
+    }
+
+    /**
+     * 获取可选线程池。
+     *
+     * @param context Spring 上下文
+     * @param beanName 线程池 Bean 名称
+     * @return 可选线程池
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    private Optional<ExecutorService> optionalExecutor(ApplicationContext context, String beanName) {
+        if (context.containsBean(beanName)) {
+            // 宿主应用启用对应能力时，读取实际线程池用于 Dashboard 指标。
+            return Optional.of(context.getBean(beanName, ExecutorService.class));
+        } else {
+            // 宿主应用未装配对应能力时，指标保持为空而不是阻断启动。
+            return Optional.empty();
+        }
     }
 
     /**
