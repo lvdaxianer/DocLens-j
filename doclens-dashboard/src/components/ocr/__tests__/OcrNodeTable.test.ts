@@ -21,6 +21,19 @@ describe('OcrNodeTable', () => {
     expect(wrapper.text()).toContain('最大并发')
     expect(wrapper.text()).toContain('10')
   })
+
+  it('shows node action status while an operation is running', () => {
+    const wrapper = mount(OcrNodeTable, {
+      props: {
+        nodes: [node()],
+        nodeActionById: {
+          ocr_node_a: 'test'
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('测试中')
+  })
 })
 
 /**

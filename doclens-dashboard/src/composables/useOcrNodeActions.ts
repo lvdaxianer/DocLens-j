@@ -9,7 +9,7 @@ import {
   updateOcrNode,
   updateOcrNodeEnabled
 } from '@/api/ocrResources'
-import type { OcrNode, OcrNodeSubmitPayload } from '@/types/ocrResources'
+import type { OcrNode, OcrNodeActionById, OcrNodeActionKind, OcrNodeSubmitPayload } from '@/types/ocrResources'
 
 // useOcrNodeActions 只封装 OCR 节点的远程变更动作。
 // 维护边界：
@@ -44,6 +44,7 @@ export interface OcrNodeActionContext {
   editingNode: Ref<OcrNode | null>
   isFormVisible: Ref<boolean>
   isSavingNode: Ref<boolean>
+  nodeActionById: Ref<OcrNodeActionById>
   loadModels: () => Promise<void>
   loadNodes: () => Promise<void>
   toErrorMessage: (error: unknown) => string
@@ -73,6 +74,67 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
     } else {
       // 新增态没有 editingNode，使用当前 payload 的模型归属创建节点。
       return createOcrNode(payload.modelKey, payload.node)
+    }
+  }
+
+  /**
+   * 判断节点是否已有行级远程动作在执行。
+   *
+   * @param node OCR 节点
+   * @returns 是否忙碌
+   * @author lvdaxianer@yeah.net
+   * @date 2026-07-02
+   */
+  function isNodeBusy(node: OcrNode): boolean {
+    return Boolean(context.nodeActionById.value[node.id])
+  }
+
+  /**
+   * 设置节点行级远程动作状态。
+   *
+   * @param node OCR 节点
+   * @param actionKind 节点动作类型
+   * @returns 设置完成信号
+   * @author lvdaxianer@yeah.net
+   * @date 2026-07-02
+   */
+  function setNodeAction(node: OcrNode, actionKind: OcrNodeActionKind): void {
+    context.nodeActionById.value = {
+      ...context.nodeActionById.value,
+      [node.id]: actionKind
+    }
+  }
+
+  /**
+   * 清理节点行级远程动作状态。
+   *
+   * @param node OCR 节点
+   * @returns 清理完成信号
+   * @author lvdaxianer@yeah.net
+   * @date 2026-07-02
+   */
+  function clearNodeAction(node: OcrNode): void {
+    const { [node.id]: _currentAction, ...restActions } = context.nodeActionById.value
+    context.nodeActionById.value = restActions
+  }
+
+  /**
+   * 尝试进入节点行级远程动作。
+   *
+   * @param node OCR 节点
+   * @param actionKind 节点动作类型
+   * @returns 是否成功进入动作
+   * @author lvdaxianer@yeah.net
+   * @date 2026-07-02
+   */
+  function beginNodeAction(node: OcrNode, actionKind: OcrNodeActionKind): boolean {
+    if (isNodeBusy(node)) {
+      // 当前节点已有动作执行中，忽略重复远程请求。
+      return false
+    } else {
+      // 当前节点空闲时记录本次动作，供 UI 展示 loading 状态。
+      setNodeAction(node, actionKind)
+      return true
     }
   }
 
@@ -109,12 +171,20 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
    * @date 2026-06-11
    */
   async function removeNode(node: OcrNode): Promise<void> {
+    if (!beginNodeAction(node, 'delete')) {
+      // 当前节点忙碌时删除动作已经被统一拦截。
+      return
+    } else {
+      // 当前节点进入删除动作后继续调用后端。
+    }
     try {
       await deleteOcrNode(node.id)
       await context.loadModels()
       context.message.success('OCR 节点已删除')
     } catch (error) {
       context.message.error(context.toErrorMessage(error))
+    } finally {
+      clearNodeAction(node)
     }
   }
 
@@ -127,6 +197,12 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
    * @date 2026-06-11
    */
   async function testNode(node: OcrNode): Promise<void> {
+    if (!beginNodeAction(node, 'test')) {
+      // 当前节点忙碌时测试动作已经被统一拦截。
+      return
+    } else {
+      // 当前节点进入测试动作后继续调用后端。
+    }
     try {
       const response = await testOcrNode(node.id)
       if (response.healthy) {
@@ -138,6 +214,8 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
       }
     } catch (error) {
       context.message.error(context.toErrorMessage(error))
+    } finally {
+      clearNodeAction(node)
     }
   }
 
@@ -150,6 +228,12 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
    * @date 2026-06-11
    */
   async function reconnectNode(node: OcrNode): Promise<void> {
+    if (!beginNodeAction(node, 'reconnect')) {
+      // 当前节点忙碌时连接动作已经被统一拦截。
+      return
+    } else {
+      // 当前节点进入连接动作后继续调用后端。
+    }
     try {
       const response = await reconnectOcrNode(node.id)
       await context.loadNodes()
@@ -157,6 +241,8 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
       showReconnectMessage(response.healthy, response.attempts, response.status)
     } catch (error) {
       context.message.error(context.toErrorMessage(error))
+    } finally {
+      clearNodeAction(node)
     }
   }
 
@@ -207,12 +293,20 @@ export function useOcrNodeActions(context: OcrNodeActionContext) {
    * @date 2026-06-11
    */
   async function toggleNodeEnabled(node: OcrNode, enabled: boolean): Promise<void> {
+    if (!beginNodeAction(node, 'toggle')) {
+      // 当前节点忙碌时启停动作已经被统一拦截。
+      return
+    } else {
+      // 当前节点进入启停动作后继续调用后端。
+    }
     try {
       await updateOcrNodeEnabled(node.id, enabled)
       await context.loadNodes()
       context.message.success(enabled ? 'OCR 节点已启用' : 'OCR 节点已停用')
     } catch (error) {
       context.message.error(context.toErrorMessage(error))
+    } finally {
+      clearNodeAction(node)
     }
   }
 

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Activity, Eye, FlaskConical, Link2, Pencil, Power, Trash2 } from '@lucide/vue'
-import { NButton, NIcon, NPopconfirm, NSwitch, NTag } from 'naive-ui'
+import { Activity } from '@lucide/vue'
+import { NIcon, NTag } from 'naive-ui'
 
-import type { OcrNode, OcrNodeStatus } from '@/types/ocrResources'
+import type { OcrNode, OcrNodeActionById, OcrNodeActionKind, OcrNodeStatus } from '@/types/ocrResources'
+import OcrNodeActionCell from '@/components/ocr/OcrNodeActionCell.vue'
+import OcrNodeEnabledSwitch from '@/components/ocr/OcrNodeEnabledSwitch.vue'
 import { formatDateTime, formatDuration, formatNumber } from '@/utils/formatters'
 import { displayModelName, displayNodeName, summarizeOcrNode } from '@/utils/ocrDisplayRules'
 import {
@@ -15,6 +17,7 @@ import {
 const props = defineProps<{
   nodes: OcrNode[]
   loading?: boolean
+  nodeActionById?: OcrNodeActionById
 }>()
 
 const emit = defineEmits<{
@@ -111,6 +114,18 @@ function nodeEndpointLabel(node: OcrNode): string {
 function governanceSummary(node: OcrNode) {
   return summarizeOcrNode(node)
 }
+
+/**
+ * 获取节点当前动作类型。
+ *
+ * @param node - OCR 节点
+ * @returns 当前动作类型
+ * @author lvdaxianer@yeah.net
+ * @date 2026-07-02
+ */
+function nodeActionKind(node: OcrNode): OcrNodeActionKind | undefined {
+  return props.nodeActionById?.[node.id]
+}
 </script>
 
 <template>
@@ -174,14 +189,11 @@ function governanceSummary(node: OcrNode) {
               </div>
             </td>
             <td>
-              <NSwitch size="small" :value="node.enabled" @update:value="toggleEnabled(node, $event)">
-                <template #checked>
-                  开
-                </template>
-                <template #unchecked>
-                  关
-                </template>
-              </NSwitch>
+              <OcrNodeEnabledSwitch
+                :value="node.enabled"
+                :action-kind="nodeActionKind(node)"
+                @update:value="toggleEnabled(node, $event)"
+              />
             </td>
             <td>
               <NTag size="small" :type="node.participate_global ? 'success' : 'default'">
@@ -198,50 +210,16 @@ function governanceSummary(node: OcrNode) {
             <td>{{ formatDuration(node.p95_latency_ms) }}</td>
             <td>{{ formatDateTime(node.last_health_at) }}</td>
             <td :class="{ 'ocr-node-table__action-cell--sticky': isActionColumnSticky }">
-              <div class="ocr-node-table__actions">
-                <NButton quaternary circle size="small" title="详情" @click="emit('detail', node)">
-                  <template #icon>
-                    <NIcon :component="Eye" />
-                  </template>
-                </NButton>
-                <NButton quaternary circle size="small" title="编辑" @click="emit('edit', node)">
-                  <template #icon>
-                    <NIcon :component="Pencil" />
-                  </template>
-                </NButton>
-                <NButton quaternary circle size="small" title="测试" @click="emit('test', node)">
-                  <template #icon>
-                    <NIcon :component="FlaskConical" />
-                  </template>
-                </NButton>
-                <NButton
-                  v-if="governanceSummary(node).canReconnect"
-                  quaternary
-                  circle
-                  size="small"
-                  title="手动连接"
-                  @click="emit('reconnect', node)"
-                >
-                  <template #icon>
-                    <NIcon :component="Link2" />
-                  </template>
-                </NButton>
-                <NButton quaternary circle size="small" title="切换启用" @click="toggleEnabled(node, !node.enabled)">
-                  <template #icon>
-                    <NIcon :component="Power" />
-                  </template>
-                </NButton>
-                <NPopconfirm @positive-click="emit('delete', node)">
-                  <template #trigger>
-                    <NButton quaternary circle size="small" title="删除">
-                      <template #icon>
-                        <NIcon :component="Trash2" />
-                      </template>
-                    </NButton>
-                  </template>
-                  删除该 OCR 节点？
-                </NPopconfirm>
-              </div>
+              <OcrNodeActionCell
+                :node="node"
+                :action-kind="nodeActionKind(node)"
+                @edit="emit('edit', node)"
+                @delete="emit('delete', node)"
+                @detail="emit('detail', node)"
+                @test="emit('test', node)"
+                @reconnect="emit('reconnect', node)"
+                @toggle-enabled="toggleEnabled(node, !node.enabled)"
+              />
             </td>
           </tr>
         </tbody>
@@ -313,13 +291,6 @@ function governanceSummary(node: OcrNode) {
 
 .ocr-node-table__name span {
   overflow-wrap: anywhere;
-}
-
-.ocr-node-table__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ocr-node-action-gap);
 }
 
 .ocr-node-table__action-cell--sticky {

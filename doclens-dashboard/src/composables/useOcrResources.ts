@@ -7,7 +7,7 @@ import {
   fetchOcrNodes
 } from '@/api/ocrResources'
 import { useOcrNodeActions } from '@/composables/useOcrNodeActions'
-import type { OcrModel, OcrNode, OcrNodeCall } from '@/types/ocrResources'
+import type { OcrModel, OcrNode, OcrNodeActionById, OcrNodeCall } from '@/types/ocrResources'
 
 // useOcrResources 是 OCR 资源页的状态编排 composable。
 // 维护边界：
@@ -63,6 +63,7 @@ export function useOcrResources(message: MessageApi) {
   const isLoadingModels = shallowRef(false)
   const isLoadingNodes = shallowRef(false)
   const isSavingNode = shallowRef(false)
+  const nodeActionById = shallowRef<OcrNodeActionById>({})
   const lastUpdated = shallowRef('')
   const errorMessage = shallowRef('')
 
@@ -242,6 +243,7 @@ export function useOcrResources(message: MessageApi) {
     editingNode,
     isFormVisible,
     isSavingNode,
+    nodeActionById,
     loadModels,
     loadNodes,
     toErrorMessage
@@ -259,6 +261,7 @@ export function useOcrResources(message: MessageApi) {
     isLoadingModels,
     isLoadingNodes,
     isSavingNode,
+    nodeActionById,
     lastUpdated,
     errorMessage,
     selectedModel,

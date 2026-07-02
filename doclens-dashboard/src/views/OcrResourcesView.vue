@@ -26,6 +26,7 @@ const {
   isLoadingModels,
   isLoadingNodes,
   isSavingNode,
+  nodeActionById,
   lastUpdated,
   errorMessage,
   selectedModel,
@@ -88,6 +89,7 @@ onMounted(loadModels)
       <OcrNodeTable
         :nodes="nodes"
         :loading="isLoadingNodes"
+        :node-action-by-id="nodeActionById"
         @edit="openEditDrawer"
         @delete="removeNode"
         @detail="openDetailDrawer"

@@ -2,6 +2,8 @@ export type OcrNodeStatus = 'UP' | 'DOWN' | 'RECOVERING' | 'DISABLED'
 export type OcrNodeDeploymentType = 'OFFLINE' | 'ONLINE'
 export type OcrOnlineChannelKey = 'aliyun_bailian_dashscope'
 export type OcrNodeChannelKey = OcrOnlineChannelKey | 'ollama'
+export type OcrNodeActionKind = 'delete' | 'test' | 'reconnect' | 'toggle'
+export type OcrNodeActionById = Partial<Record<string, OcrNodeActionKind>>
 
 export interface OcrModel {
   model_key: string
