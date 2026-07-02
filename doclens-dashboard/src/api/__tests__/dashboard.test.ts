@@ -143,3 +143,18 @@ describe('dashboard caller credential headers', () => {
     expect(init?.headers).not.toHaveProperty(OLD_CALLER_PARTITION_HEADER)
   })
 })
+
+describe('dashboard api error parser', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('shows stable missing partition message from backend code and detail', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+      JSON.stringify({ code: 'MISSING_PARTITION', detail: '缺少 X-Doclens-Key' }),
+      { status: 401, statusText: 'Unauthorized', headers: { 'content-type': JSON_CONTENT_TYPE } }
+    ))
+
+    await expect(fetchDashboardSummary()).rejects.toThrow('缺少分区键：缺少 X-Doclens-Key')
+  })
+})

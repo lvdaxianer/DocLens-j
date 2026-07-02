@@ -46,6 +46,16 @@ describe('uploadBatch errors', () => {
     await expect(uploadBatch(uploadOptions())).rejects.toThrow('file type is not supported')
   })
 
+  it('shows stable payload limit message from backend code and detail', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+      JSON.stringify({ code: 'PAYLOAD_TOO_LARGE', detail: '上传文件总大小不能超过 500MB，请拆分后再上传' }),
+      { status: 413, statusText: 'Payload Too Large', headers: { 'content-type': 'application/json' } }
+    ))
+
+    await expect(uploadBatch(uploadOptions()))
+      .rejects.toThrow('上传文件过大：上传文件总大小不能超过 500MB，请拆分后再上传')
+  })
+
   it('falls back to status text when detail is missing', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', {
       status: 500,

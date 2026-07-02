@@ -7,12 +7,14 @@ import type {
   OcrNodeReconnectResponse,
   OcrNodeTestResponse
 } from '@/types/ocrResources'
+import { apiErrorMessageFromBody } from '@/api/apiError'
 import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
 const OCR_API_BUSINESS = '[OCR 资源 API]'
 const JSON_CONTENT_TYPE = 'application/json'
 const NETWORK_ERROR_STATUS = 'NETWORK_ERROR'
+const DEFAULT_ERROR_MESSAGE = '请求失败'
 
 interface OcrRequestOptions {
   method: string
@@ -156,7 +158,7 @@ async function parseResponse<T>(context: OcrRequestContext, response: Response):
   context.responseBody = await response.text()
   logResponse(context)
   if (!response.ok) {
-    throw new Error(`请求失败：${response.status} ${response.statusText}`)
+    throw new Error(apiErrorMessageFromBody(response, context.responseBody, DEFAULT_ERROR_MESSAGE))
   } else if (context.responseBody) {
     return JSON.parse(context.responseBody) as T
   } else {

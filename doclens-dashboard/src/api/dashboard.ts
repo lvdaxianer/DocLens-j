@@ -5,6 +5,7 @@ import type {
   DocumentResultResponse,
   OcrHealthResponse
 } from '@/types/dashboard'
+import { apiErrorMessageFromBody } from '@/api/apiError'
 import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
@@ -14,6 +15,7 @@ const HTTP_GET_METHOD = 'GET'
 const HTTP_POST_METHOD = 'POST'
 const HTTP_DELETE_METHOD = 'DELETE'
 const NETWORK_ERROR_STATUS = 'NETWORK_ERROR'
+const DEFAULT_ERROR_MESSAGE = '请求失败'
 
 interface DashboardRequestContext {
   method: string
@@ -119,7 +121,7 @@ async function parseResponse<T>(context: DashboardRequestContext, response: Resp
   logResponse(context)
   if (!response.ok) {
     // 响应状态异常时抛出错误，并由 catch 统一记录 WARN 日志。
-    throw new Error(`请求失败：${response.status} ${response.statusText}`)
+    throw new Error(apiErrorMessageFromBody(response, context.responseBody, DEFAULT_ERROR_MESSAGE))
   } else {
     // 响应状态正常时继续解析 JSON 响应体。
     return JSON.parse(context.responseBody) as T

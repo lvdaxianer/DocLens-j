@@ -3,6 +3,7 @@ import type {
   LlmMarkdownConfigResponse,
   LlmMarkdownConfigTestResponse
 } from '@/types/llmMarkdownConfig'
+import { apiErrorMessageFromBody } from '@/api/apiError'
 import { withCallerCredentialHeaders } from '@/api/callerCredential'
 import { logDashboardDebug, logDashboardWarn } from '@/utils/dashboardLogger'
 
@@ -180,29 +181,11 @@ async function parseResponse<T>(context: LlmConfigRequestContext, response: Resp
   const responseBody = await response.text()
   logResponse(context)
   if (!response.ok) {
-    throw new Error(errorMessageFromResponse(response, responseBody))
+    throw new Error(apiErrorMessageFromBody(response, responseBody, DEFAULT_ERROR_MESSAGE))
   } else if (!responseBody) {
     return undefined as T
   } else {
     return JSON.parse(responseBody) as T
-  }
-}
-
-/**
- * 从错误响应中提取可展示消息。
- *
- * @param response - 原始响应
- * @param responseBody - 响应体文本
- * @returns 可展示错误消息
- * @author lvdaxianerplus
- * @date 2026-06-09
- */
-function errorMessageFromResponse(response: Response, responseBody: string): string {
-  try {
-    const parsed = JSON.parse(responseBody) as { detail?: string }
-    return parsed.detail ?? `${DEFAULT_ERROR_MESSAGE}：${response.status} ${response.statusText}`
-  } catch {
-    return `${DEFAULT_ERROR_MESSAGE}：${response.status} ${response.statusText}`
   }
 }
 
