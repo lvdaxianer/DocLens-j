@@ -27,10 +27,12 @@ vi.mock('naive-ui', () => ({
 vi.mock('@/components/dashboard/UploadFilePicker.vue', () => ({
   default: defineComponent({
     name: 'UploadFilePicker',
+    props: { disabled: Boolean },
     emits: ['change'],
-    setup(_, { emit }) {
+    setup(props, { emit }) {
       return () => h('button', {
         class: 'file-picker',
+        disabled: props.disabled,
         type: 'button',
         onClick: () => emit('change', selectedFileList())
       }, '选择文件')
@@ -41,7 +43,7 @@ vi.mock('@/components/dashboard/UploadFilePicker.vue', () => ({
 vi.mock('@/components/dashboard/UploadFileList.vue', () => ({
   default: defineComponent({
     name: 'UploadFileList',
-    props: { files: { type: Array, required: true } },
+    props: { files: { type: Array, required: true }, disabled: Boolean },
     setup(props) {
       return () => h('div', { class: 'file-list' }, String(props.files.length))
     }
@@ -51,6 +53,7 @@ vi.mock('@/components/dashboard/UploadFileList.vue', () => ({
 vi.mock('@/components/upload/UploadAdvancedOptions.vue', () => ({
   default: defineComponent({
     name: 'UploadAdvancedOptions',
+    props: { disabled: Boolean },
     setup() {
       return () => h('div', { class: 'advanced-options' })
     }
@@ -60,6 +63,7 @@ vi.mock('@/components/upload/UploadAdvancedOptions.vue', () => ({
 vi.mock('@/components/upload/UploadChunkStrategySelector.vue', () => ({
   default: defineComponent({
     name: 'UploadChunkStrategySelector',
+    props: { disabled: Boolean },
     setup() {
       return () => h('div', { class: 'chunk-strategy' })
     }
@@ -69,6 +73,7 @@ vi.mock('@/components/upload/UploadChunkStrategySelector.vue', () => ({
 vi.mock('@/components/upload/OcrRoutingSelector.vue', () => ({
   default: defineComponent({
     name: 'OcrRoutingSelector',
+    props: { disabled: Boolean },
     emits: ['change'],
     setup(_, { expose }) {
       expose({
@@ -149,6 +154,23 @@ describe('UploadDropzone preflight limits', () => {
     await wrapper.findAll('button').find((button) => button.text() === '上传并解析')?.trigger('click')
 
     expect(warningMessage).toHaveBeenCalledWith('单个批次最多上传 500 MB，请拆分后再上传')
+    expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+
+  it('locks upload inputs and submit while upload request is running', async () => {
+    selectedFiles = [new File(['demo'], 'demo.txt')]
+
+    const wrapper = await mountAndSelectFiles()
+    await wrapper.setProps({ loading: true })
+
+    expect(wrapper.getComponent({ name: 'UploadFilePicker' }).props('disabled')).toBe(true)
+    expect(wrapper.getComponent({ name: 'UploadFileList' }).props('disabled')).toBe(true)
+    expect(wrapper.getComponent({ name: 'UploadAdvancedOptions' }).props('disabled')).toBe(true)
+    expect(wrapper.getComponent({ name: 'UploadChunkStrategySelector' }).props('disabled')).toBe(true)
+    expect(wrapper.getComponent({ name: 'OcrRoutingSelector' }).props('disabled')).toBe(true)
+
+    await wrapper.findAll('button').find((button) => button.text() === '上传并解析')?.trigger('click')
+
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
 })

@@ -6,11 +6,18 @@ import type { UploadAdvancedOptionsValue } from '@/types/upload'
 import { callbackContractHints, createUploadAdvancedOptionsRules } from '@/utils/uploadFormRules'
 
 const model = defineModel<UploadAdvancedOptionsValue>({ required: true })
+const props = withDefaults(defineProps<{
+  /** 上传请求进行中时禁用高级参数输入。 */
+  disabled?: boolean
+}>(), {
+  disabled: false
+})
 const callbackHints = callbackContractHints()
 const formRules = computed(createUploadAdvancedOptionsRules)
 </script>
 
 <template>
+  <!-- 上传中禁用所有可编辑字段，防止请求 payload 与屏幕内容不一致。 -->
   <NForm class="upload-advanced-options" label-placement="top" :model="model" :rules="formRules">
     <NFormItem label="元数据 JSON" path="metadata">
       <NInput
@@ -20,6 +27,7 @@ const formRules = computed(createUploadAdvancedOptionsRules)
         :autosize="{ minRows: 3, maxRows: 5 }"
         placeholder="metadata JSON，例如 {}"
         class="upload-advanced-options__json-editor"
+        :disabled="props.disabled"
       />
     </NFormItem>
     <div class="upload-advanced-options__callback">
@@ -33,10 +41,10 @@ const formRules = computed(createUploadAdvancedOptionsRules)
     </div>
     <div class="upload-advanced-options__grid">
       <NFormItem label="回调地址" path="callbackUrl">
-        <NInput v-model:value="model.callbackUrl" placeholder="callback_url，可选" />
+        <NInput v-model:value="model.callbackUrl" placeholder="callback_url，可选" :disabled="props.disabled" />
       </NFormItem>
       <NFormItem label="第三方透传键" path="idempotencyKey">
-        <NInput v-model:value="model.idempotencyKey" placeholder="idempotency_key，可选，原样进入回调" />
+        <NInput v-model:value="model.idempotencyKey" placeholder="idempotency_key，可选，原样进入回调" :disabled="props.disabled" />
       </NFormItem>
     </div>
   </NForm>

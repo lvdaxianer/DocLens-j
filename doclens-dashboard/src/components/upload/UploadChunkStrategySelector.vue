@@ -8,6 +8,12 @@ import { createDefaultUploadChunkStrategy } from '@/utils/uploadFormRules'
 const model = defineModel<UploadChunkStrategyOptions>({
   default: () => createDefaultUploadChunkStrategy()
 })
+const props = withDefaults(defineProps<{
+  /** 上传请求进行中时禁用分块策略选择。 */
+  disabled?: boolean
+}>(), {
+  disabled: false
+})
 const defaultChunkStrategy = createDefaultUploadChunkStrategy()
 const strategies = computed(() => [
   { label: '通用', value: 'GENERAL' },
@@ -24,8 +30,8 @@ if (!model.value || !model.value.chunkStrategy) {
 <template>
   <NForm class="upload-chunk-strategy" label-placement="top">
     <NFormItem label="文章分块策略">
-      <NRadioGroup v-model:value="model.chunkStrategy">
-        <NRadio v-for="item in strategies" :key="item.value" :value="item.value">
+      <NRadioGroup v-model:value="model.chunkStrategy" :disabled="props.disabled">
+        <NRadio v-for="item in strategies" :key="item.value" :value="item.value" :disabled="props.disabled">
           {{ item.label }}
         </NRadio>
       </NRadioGroup>

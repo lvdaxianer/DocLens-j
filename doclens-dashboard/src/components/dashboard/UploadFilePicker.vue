@@ -41,14 +41,21 @@ import { NButton, NIcon } from 'naive-ui'
 // - NButton 只负责打开文件选择器，不绑定其它副作用。
 // - reset 不清空父级 selectedFiles，父级会先清自己的状态。
 // - change 事件允许 null，父级可以统一处理空列表。
-// - 这里没有 loading 入参，文件选择不依赖上传请求状态。
-// - 如果父级 loading 时要禁用选择，应新增明确 prop。
-// - 当前保持拆分前行为，上传中仍不额外锁定选择区。
+// - disabled 由父级上传状态控制，用于请求中锁定选择入口。
+// - disabled 时 click/change/drop 都不会上抛新文件列表。
+// - disabled 时原生 input 也禁用，避免键盘或脚本路径绕过。
 // - 不在模板里内联 accept 字符串，避免超长属性降低可读性。
 // - 不在样式里使用全局选择器，避免影响其它上传组件。
 // - 不改变原有支持格式集合，保证拆分不改变用户能力。
 // - 不改变原有选择按钮文案，保证用户路径稳定。
 const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,.md,.markdown,.png,.jpg,.jpeg,.webp,.tif,.tiff,.txt'
+
+const props = withDefaults(defineProps<{
+  /** 上传请求进行中时禁用文件入口。 */
+  disabled?: boolean
+}>(), {
+  disabled: false
+})
 
 const emit = defineEmits<{
   /** 原生 input 或拖拽区域产生新的文件列表。 */
@@ -66,7 +73,9 @@ const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
  * @date 2026-06-11
  */
 function openFilePicker(): void {
-  if (fileInput.value) {
+  if (props.disabled) {
+    // 上传中锁定文件入口，不打开系统选择器。
+  } else if (fileInput.value) {
     // 文件输入框已经挂载时打开系统选择器。
     fileInput.value.click()
   } else {
@@ -83,10 +92,14 @@ function openFilePicker(): void {
  * @date 2026-06-11
  */
 function handleFileChange(event: Event): void {
-  // input change 的 target 在这里明确收窄为 HTMLInputElement。
-  const target = event.target as HTMLInputElement
-  // 保持 FileList 原样上抛，父级统一转换为数组。
-  emit('change', target.files)
+  if (props.disabled) {
+    // 上传中忽略 input change，避免请求中的 payload 被替换。
+  } else {
+    // input change 的 target 在这里明确收窄为 HTMLInputElement。
+    const target = event.target as HTMLInputElement
+    // 保持 FileList 原样上抛，父级统一转换为数组。
+    emit('change', target.files)
+  }
 }
 
 /**
@@ -99,8 +112,12 @@ function handleFileChange(event: Event): void {
  */
 function handleDrop(event: DragEvent): void {
   event.preventDefault()
-  // dataTransfer 可能为空，空值交给父级转换为空文件列表。
-  emit('change', event.dataTransfer?.files ?? null)
+  if (props.disabled) {
+    // 上传中忽略拖入文件，保持当前提交内容稳定。
+  } else {
+    // dataTransfer 可能为空，空值交给父级转换为空文件列表。
+    emit('change', event.dataTransfer?.files ?? null)
+  }
 }
 
 /**
@@ -125,7 +142,13 @@ defineExpose({ reset })
 <template>
   <!-- 选择区同时承载点击选择和拖拽投放两个入口。 -->
   <!-- div 不使用 button 语义，因为内部已经包含真正按钮和 input。 -->
-  <div class="upload-dropzone__target" @drop="handleDrop" @dragover.prevent>
+  <div
+    class="upload-dropzone__target"
+    :class="{ 'upload-dropzone__target--disabled': disabled }"
+    :aria-disabled="disabled"
+    @drop="handleDrop"
+    @dragover.prevent
+  >
     <!-- 原生 input 隐藏，由按钮点击间接触发。 -->
     <input
       ref="fileInput"
@@ -133,6 +156,7 @@ defineExpose({ reset })
       type="file"
       multiple
       :accept="ACCEPTED_FILE_TYPES"
+      :disabled="disabled"
       @change="handleFileChange"
     >
     <!-- 图标强化“上传/拖入”的入口感。 -->
@@ -145,7 +169,7 @@ defineExpose({ reset })
       <span>PDF、Word、Markdown、图片、TXT</span>
     </div>
     <!-- 按钮保留显式选择入口，兼容不习惯拖拽的用户。 -->
-    <NButton size="small" @click="openFilePicker">
+    <NButton size="small" :disabled="disabled" @click="openFilePicker">
       选择文件
     </NButton>
   </div>
@@ -185,6 +209,16 @@ defineExpose({ reset })
 .upload-dropzone__target:hover {
   border-color: var(--active);
   box-shadow: var(--focus-ring);
+}
+
+.upload-dropzone__target--disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.upload-dropzone__target--disabled:hover {
+  border-color: rgba(249, 115, 22, 0.48);
+  box-shadow: none;
 }
 
 .upload-dropzone__input {

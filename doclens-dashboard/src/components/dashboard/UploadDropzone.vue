@@ -42,6 +42,8 @@ import { validateUploadBatchFiles } from '@/utils/uploadBatchRules'
 // - DEFAULT_ADVANCED_OPTIONS 来自规则工具，保持默认值可测试。
 // - DEFAULT_OCR_ROUTING 来自规则工具，保持上传路由默认值一致。
 // - loading 是父级传入状态，只控制按钮交互。
+// - loading 时会锁定所有输入区，避免请求中修改 payload。
+// - loading 时 submitUpload 会直接返回，阻断重复 click。
 // - hasFiles 派生上传按钮可用状态，不额外维护布尔状态。
 // - removeFile 按文件名移除，延续原有交互行为。
 // - updateFiles 接受 FileList|null，兼容 input 和 drop 两种来源。
@@ -85,9 +87,11 @@ const emit = defineEmits<{
   submit: [options: UploadBatchOptions]
 }>()
 
-defineProps<{
+const props = withDefaults(defineProps<{
   loading?: boolean
-}>()
+}>(), {
+  loading: false
+})
 
 const filePicker = useTemplateRef<InstanceType<typeof UploadFilePicker>>('filePicker')
 const ocrRoutingSelector = useTemplateRef<InstanceType<typeof OcrRoutingSelector>>('ocrRoutingSelector')
@@ -100,6 +104,8 @@ let form = reactive<UploadAdvancedOptionsValue>({
 })
 
 const hasFiles = computed(() => selectedFiles.value.length > 0)
+// isLocked 统一表达上传进行中的表单锁定状态。
+const isLocked = computed(() => props.loading)
 let chunkStrategy = reactive<UploadChunkStrategyOptions>({
   chunkStrategy: EMPTY_UPLOAD_OPTIONS.chunkStrategy
 })
@@ -205,34 +211,38 @@ function updateChunkStrategy(value: UploadChunkStrategyOptions): void {
  * @date 2026-06-09
  */
 function submitUpload(): void {
-  // OCR 路由校验先执行，让选择器有机会更新自己的错误展示。
-  const validationMessage = ocrRoutingSelector.value?.validateRouting() ?? ''
-  // metadata 是文本域输入，必须在提交前单独验证 JSON。
-  const metadataValidationMessage = validateMetadataJson(form.metadata)
-  // 文件数量和总体积必须在发起 multipart 请求前预检。
-  const batchFileValidationMessage = validateUploadBatchFiles(selectedFiles.value)
-  if (batchFileValidationMessage) {
-    // 上传批次超出前端限制时阻止 submit 事件发出。
-    message.warning(batchFileValidationMessage)
-  } else if (metadataValidationMessage) {
-    // 元数据 JSON 不合法时阻止提交并提示用户。
-    message.warning(metadataValidationMessage)
-  } else if (validationMessage) {
-    // OCR 路由字段不完整时保持表单不提交，由选择器展示校验信息。
+  if (isLocked.value) {
+    // 上传请求进行中不再发出 submit，避免重复创建批次。
   } else {
-    // 所有上传字段合法时向父组件发出提交事件。
-    // payload 使用当前响应式状态即时组装，避免缓存旧值。
-    emit('submit', {
-      files: selectedFiles.value,
-      metadata: form.metadata,
-      callbackUrl: form.callbackUrl,
-      idempotencyKey: form.idempotencyKey,
-      chunkStrategy: chunkStrategy.chunkStrategy,
-      ocrRoutingMode: ocrRouting.ocrRoutingMode,
-      ocrModelKey: ocrRouting.ocrModelKey,
-      ocrNodeId: ocrRouting.ocrNodeId,
-      ocrLoadBalanceStrategy: ocrRouting.ocrLoadBalanceStrategy
-    })
+    // OCR 路由校验先执行，让选择器有机会更新自己的错误展示。
+    const validationMessage = ocrRoutingSelector.value?.validateRouting() ?? ''
+    // metadata 是文本域输入，必须在提交前单独验证 JSON。
+    const metadataValidationMessage = validateMetadataJson(form.metadata)
+    // 文件数量和总体积必须在发起 multipart 请求前预检。
+    const batchFileValidationMessage = validateUploadBatchFiles(selectedFiles.value)
+    if (batchFileValidationMessage) {
+      // 上传批次超出前端限制时阻止 submit 事件发出。
+      message.warning(batchFileValidationMessage)
+    } else if (metadataValidationMessage) {
+      // 元数据 JSON 不合法时阻止提交并提示用户。
+      message.warning(metadataValidationMessage)
+    } else if (validationMessage) {
+      // OCR 路由字段不完整时保持表单不提交，由选择器展示校验信息。
+    } else {
+      // 所有上传字段合法时向父组件发出提交事件。
+      // payload 使用当前响应式状态即时组装，避免缓存旧值。
+      emit('submit', {
+        files: selectedFiles.value,
+        metadata: form.metadata,
+        callbackUrl: form.callbackUrl,
+        idempotencyKey: form.idempotencyKey,
+        chunkStrategy: chunkStrategy.chunkStrategy,
+        ocrRoutingMode: ocrRouting.ocrRoutingMode,
+        ocrModelKey: ocrRouting.ocrModelKey,
+        ocrNodeId: ocrRouting.ocrNodeId,
+        ocrLoadBalanceStrategy: ocrRouting.ocrLoadBalanceStrategy
+      })
+    }
   }
 }
 
@@ -243,26 +253,26 @@ defineExpose({ resetForm })
   <!-- 上传表单保持纵向编排，具体 UI 段落由子组件负责。 -->
   <section class="upload-dropzone">
     <!-- 文件选择器负责 input/drop 事件，并把 FileList 上抛给父组件。 -->
-    <UploadFilePicker ref="filePicker" @change="updateFiles" />
+    <UploadFilePicker ref="filePicker" :disabled="isLocked" @change="updateFiles" />
 
     <!-- 文件列表只展示当前内存文件数组，并上抛移除意图。 -->
-    <UploadFileList :files="selectedFiles" @remove="removeFile" />
+    <UploadFileList :files="selectedFiles" :disabled="isLocked" @remove="removeFile" />
 
     <!-- 高级参数通过 v-model 直接同步到 form。 -->
-    <UploadAdvancedOptions v-model="form" />
+    <UploadAdvancedOptions v-model="form" :disabled="isLocked" />
 
     <!-- 分块策略和高级参数同级展示，避免用户把它误认为内部技术字段。 -->
-    <UploadChunkStrategySelector v-model="chunkStrategy" />
+    <UploadChunkStrategySelector v-model="chunkStrategy" :disabled="isLocked" />
 
     <!-- OCR 路由选择器负责展示和校验路由相关字段。 -->
-    <OcrRoutingSelector ref="ocrRoutingSelector" @change="updateOcrRouting" />
+    <OcrRoutingSelector ref="ocrRoutingSelector" :disabled="isLocked" @change="updateOcrRouting" />
 
     <!-- 底部动作区由父组件 loading 控制，避免重复提交。 -->
     <div class="upload-dropzone__actions">
-      <NButton quaternary :disabled="loading" @click="resetForm">
+      <NButton quaternary :disabled="isLocked" @click="resetForm">
         清空
       </NButton>
-      <NButton type="primary" :loading="loading" :disabled="!hasFiles" @click="submitUpload">
+      <NButton type="primary" :loading="isLocked" :disabled="isLocked || !hasFiles" @click="submitUpload">
         上传并解析
       </NButton>
     </div>

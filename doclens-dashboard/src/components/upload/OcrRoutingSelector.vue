@@ -14,6 +14,13 @@ const emit = defineEmits<{
   change: [value: UploadOcrRoutingOptions]
 }>()
 
+const props = withDefaults(defineProps<{
+  /** 上传请求进行中时禁用 OCR 路由输入。 */
+  disabled?: boolean
+}>(), {
+  disabled: false
+})
+
 const models = shallowRef<OcrModel[]>([])
 const nodes = shallowRef<OcrNode[]>([])
 const loadingModels = shallowRef(false)
@@ -140,21 +147,25 @@ function createValue(): UploadOcrRoutingOptions {
  * @date 2026-06-09
  */
 function updateMode(mode: OcrRoutingMode): void {
-  form.ocrRoutingMode = mode
-  if (hasStrategySelect.value) {
-    form.ocrLoadBalanceStrategy = DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY
+  if (props.disabled) {
+    // 上传中不允许切换路由模式，避免提交中的 payload 被替换。
   } else {
-    form.ocrLoadBalanceStrategy = ''
-  }
-  if (!hasModelSelect.value) {
-    form.ocrModelKey = ''
-  } else {
-    // 需要模型时保留当前选择，方便用户在模式之间切换。
-  }
-  if (!hasNodeSelect.value) {
-    form.ocrNodeId = ''
-  } else {
-    // 指定节点模式下等待节点列表加载后选择。
+    form.ocrRoutingMode = mode
+    if (hasStrategySelect.value) {
+      form.ocrLoadBalanceStrategy = DEFAULT_UPLOAD_LOAD_BALANCE_STRATEGY
+    } else {
+      form.ocrLoadBalanceStrategy = ''
+    }
+    if (!hasModelSelect.value) {
+      form.ocrModelKey = ''
+    } else {
+      // 需要模型时保留当前选择，方便用户在模式之间切换。
+    }
+    if (!hasNodeSelect.value) {
+      form.ocrNodeId = ''
+    } else {
+      // 指定节点模式下等待节点列表加载后选择。
+    }
   }
 }
 
@@ -190,10 +201,10 @@ defineExpose({ reset, validateRouting })
     <NAlert v-if="validationMessage" type="warning" :title="validationMessage" />
 
     <NFormItem label="OCR 路由方式">
-      <NRadioGroup :value="form.ocrRoutingMode" class="ocr-routing-selector__modes" @update:value="updateMode">
-        <NRadio value="GLOBAL_LOAD_BALANCE">全局负载均衡</NRadio>
-        <NRadio value="MODEL_LOAD_BALANCE">指定 OCR</NRadio>
-        <NRadio value="SPECIFIC_NODE">指定节点</NRadio>
+      <NRadioGroup :value="form.ocrRoutingMode" class="ocr-routing-selector__modes" :disabled="props.disabled" @update:value="updateMode">
+        <NRadio value="GLOBAL_LOAD_BALANCE" :disabled="props.disabled">全局负载均衡</NRadio>
+        <NRadio value="MODEL_LOAD_BALANCE" :disabled="props.disabled">指定 OCR</NRadio>
+        <NRadio value="SPECIFIC_NODE" :disabled="props.disabled">指定节点</NRadio>
       </NRadioGroup>
     </NFormItem>
 
@@ -208,6 +219,7 @@ defineExpose({ reset, validateRouting })
           v-model:value="form.ocrModelKey"
           :loading="loadingModels"
           :options="modelOptions"
+          :disabled="props.disabled"
           placeholder="选择系统支持的 OCR"
         />
       </NFormItem>
@@ -221,11 +233,12 @@ defineExpose({ reset, validateRouting })
           v-model:value="form.ocrNodeId"
           :loading="loadingNodes"
           :options="nodeOptions"
+          :disabled="props.disabled"
           placeholder="选择该 OCR 下的节点"
         />
       </NFormItem>
       <NFormItem v-if="hasStrategySelect" label="负载均衡策略">
-        <NSelect v-model:value="form.ocrLoadBalanceStrategy" :options="strategyOptions" />
+        <NSelect v-model:value="form.ocrLoadBalanceStrategy" :options="strategyOptions" :disabled="props.disabled" />
       </NFormItem>
     </div>
   </section>

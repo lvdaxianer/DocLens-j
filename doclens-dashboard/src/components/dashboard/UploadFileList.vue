@@ -21,7 +21,7 @@ import { formatNumber } from '@/utils/formatters'
 // - 不做上传提交，提交按钮属于 UploadDropzone。
 // - 不校验 metadata 或 OCR 路由，避免职责扩散。
 // - 不调用 message，用户提示由父组件或页面层负责。
-// - 不接收 loading，移除本地文件不依赖远程请求状态。
+// - disabled 由父级上传状态控制，用于请求中锁定移除入口。
 // - 如果未来支持文件大小限制，应在这里展示文件级提示。
 // - 如果未来支持重复文件提示，应由父级去重后传入标记字段。
 // - 样式 scoped 到本组件，避免污染批次详情文件列表。
@@ -37,9 +37,7 @@ import { formatNumber } from '@/utils/formatters'
 // - 不把 totalSize 传给父级，父级提交不需要这个派生值。
 // - 不把单位写成 MB，当前原页面就是 KB 展示。
 // - 不在这里触发上传，列表只能表达“待上传”状态。
-// - 不读取 loading，用户可在上传前自由调整文件列表。
-// - 如果后续上传中禁止移除，应由父级传入 disabled。
-// - 当前没有 disabled，是为了保持拆分前行为不变。
+// - 上传中禁止移除，避免正在提交的 File 数组发生变化。
 // - 组件名称保留 Upload 前缀，便于和上传功能相关文件聚合。
 // - header 中的 NTag 是摘要，不承担筛选或按钮语义。
 // - 空态文案保持温和提示，不把无文件状态当错误。
@@ -73,10 +71,14 @@ import { formatNumber } from '@/utils/formatters'
 // - 不在这里做远程文件预检，上传接口负责最终校验。
 const FILE_SIZE_UNIT = 1024
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** 待上传文件数组。 */
   files: File[]
-}>()
+  /** 上传请求进行中时禁用移除入口。 */
+  disabled?: boolean
+}>(), {
+  disabled: false
+})
 
 const emit = defineEmits<{
   /** 用户点击单个文件移除按钮。 */
@@ -110,8 +112,12 @@ function formatFileSize(size: number): string {
  * @date 2026-06-11
  */
 function handleRemove(fileName: string): void {
-  // 文件移除由父级修改数组，本组件保持 props 只读。
-  emit('remove', fileName)
+  if (props.disabled) {
+    // 上传中保持待提交文件列表稳定，不上抛移除事件。
+  } else {
+    // 文件移除由父级修改数组，本组件保持 props 只读。
+    emit('remove', fileName)
+  }
 }
 </script>
 
@@ -139,7 +145,7 @@ function handleRemove(fileName: string): void {
           <span>{{ formatFileSize(file.size) }}</span>
         </div>
         <!-- 移除按钮只影响待上传队列，不代表后端删除。 -->
-        <NButton quaternary circle size="small" aria-label="移除文件" @click="handleRemove(file.name)">
+        <NButton quaternary circle size="small" aria-label="移除文件" :disabled="disabled" @click="handleRemove(file.name)">
           <!-- X 图标放在 icon slot，保持 Naive UI 按钮尺寸正确。 -->
           <template #icon>
             <NIcon :component="X" />
