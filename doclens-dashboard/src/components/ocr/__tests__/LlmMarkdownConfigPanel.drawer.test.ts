@@ -127,6 +127,7 @@ vi.mock('@/composables/useLlmMarkdownConfig', () => ({
     isLoading: ref(false),
     isSaving: ref(false),
     isTesting: ref(false),
+    isActionLocked: ref(false),
     actingId: ref(''),
     lastLoadedAt: ref('2026-06-19T10:00:00+08:00'),
     errorMessage: ref(''),

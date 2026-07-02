@@ -24,6 +24,7 @@ export function useOcrGovernanceConfig(message: MessageApi) {
   const lastLoadedAt = shallowRef('')
   const errorMessage = shallowRef('')
   const canSubmit = computed(() => isOcrGovernanceConfigFormSubmittable(form))
+  const isActionLocked = computed(() => isLoading.value || isSaving.value)
 
   /**
    * 将未知异常转换为错误消息。
@@ -45,6 +46,10 @@ export function useOcrGovernanceConfig(message: MessageApi) {
    * @date 2026-06-10
    */
   async function loadConfig(): Promise<void> {
+    if (isActionLocked.value) {
+      // 读取或保存已在执行时忽略重复读取。
+      return
+    }
     isLoading.value = true
     errorMessage.value = ''
     try {
@@ -68,6 +73,9 @@ export function useOcrGovernanceConfig(message: MessageApi) {
     if (!canSubmit.value) {
       message.warning('请填写大于 0 的治理参数')
       return
+    } else if (isActionLocked.value) {
+      // 读取或保存已在执行时忽略重复保存。
+      return
     }
     isSaving.value = true
     try {
@@ -90,6 +98,7 @@ export function useOcrGovernanceConfig(message: MessageApi) {
     lastLoadedAt,
     errorMessage,
     canSubmit,
+    isActionLocked,
     loadConfig,
     saveConfig
   }

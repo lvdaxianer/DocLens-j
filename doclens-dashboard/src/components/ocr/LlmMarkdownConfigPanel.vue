@@ -35,13 +35,24 @@ onMounted(llmConfig.loadConfig)
         <span class="panel__hint">最后刷新：{{ formatDateTime(llmConfig.lastLoadedAt.value) }}</span>
       </div>
       <div class="llm-config-panel__actions">
-        <NButton size="small" :loading="llmConfig.isLoading.value" @click="llmConfig.loadConfig">
+        <NButton
+          size="small"
+          :loading="llmConfig.isLoading.value"
+          :disabled="llmConfig.isActionLocked.value"
+          @click="llmConfig.loadConfig"
+        >
           <template #icon>
             <NIcon :component="RefreshCcw" />
           </template>
           刷新
         </NButton>
-        <NButton size="small" type="primary" secondary @click="llmConfig.openCreateDrawer">
+        <NButton
+          size="small"
+          type="primary"
+          secondary
+          :disabled="llmConfig.isLoading.value || llmConfig.isActionLocked.value"
+          @click="llmConfig.openCreateDrawer"
+        >
           <template #icon>
             <NIcon :component="Plus" />
           </template>

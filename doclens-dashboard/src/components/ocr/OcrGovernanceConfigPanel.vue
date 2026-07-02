@@ -41,7 +41,12 @@ onMounted(governanceConfig.loadConfig)
         <span class="panel__hint">最后刷新：{{ formatDateTime(governanceConfig.lastLoadedAt.value) }}</span>
       </div>
       <div class="ocr-governance-panel__actions">
-        <NButton size="small" :loading="governanceConfig.isLoading.value" @click="governanceConfig.loadConfig">
+        <NButton
+          size="small"
+          :loading="governanceConfig.isLoading.value"
+          :disabled="governanceConfig.isSaving.value"
+          @click="governanceConfig.loadConfig"
+        >
           <template #icon>
             <NIcon :component="RefreshCcw" />
           </template>
@@ -62,19 +67,19 @@ onMounted(governanceConfig.loadConfig)
 
     <NForm ref="formRef" class="ocr-governance-panel__form" label-placement="top" :model="governanceConfig.form" :rules="formRules">
       <NFormItem label="连续失败摘除阈值" path="failureThreshold">
-        <NInputNumber v-model:value="governanceConfig.form.failureThreshold" :min="1" :precision="0" />
+        <NInputNumber v-model:value="governanceConfig.form.failureThreshold" :min="1" :precision="0" :disabled="governanceConfig.isActionLocked.value" />
       </NFormItem>
       <NFormItem label="周期探测间隔（秒）" path="probeIntervalSeconds">
-        <NInputNumber v-model:value="governanceConfig.form.probeIntervalSeconds" :min="1" :precision="0" />
+        <NInputNumber v-model:value="governanceConfig.form.probeIntervalSeconds" :min="1" :precision="0" :disabled="governanceConfig.isActionLocked.value" />
       </NFormItem>
       <NFormItem label="熔断打开时长（秒）" path="circuitOpenSeconds">
-        <NInputNumber v-model:value="governanceConfig.form.circuitOpenSeconds" :min="1" :precision="0" />
+        <NInputNumber v-model:value="governanceConfig.form.circuitOpenSeconds" :min="1" :precision="0" :disabled="governanceConfig.isActionLocked.value" />
       </NFormItem>
       <NFormItem label="恢复成功阈值" path="recoverySuccessThreshold">
-        <NInputNumber v-model:value="governanceConfig.form.recoverySuccessThreshold" :min="1" :precision="0" />
+        <NInputNumber v-model:value="governanceConfig.form.recoverySuccessThreshold" :min="1" :precision="0" :disabled="governanceConfig.isActionLocked.value" />
       </NFormItem>
       <NFormItem label="手动恢复尝试次数" path="manualRecoveryAttempts">
-        <NInputNumber v-model:value="governanceConfig.form.manualRecoveryAttempts" :min="1" :precision="0" />
+        <NInputNumber v-model:value="governanceConfig.form.manualRecoveryAttempts" :min="1" :precision="0" :disabled="governanceConfig.isActionLocked.value" />
       </NFormItem>
     </NForm>
 
@@ -83,6 +88,7 @@ onMounted(governanceConfig.loadConfig)
       <NButton
         type="primary"
         :loading="governanceConfig.isSaving.value"
+        :disabled="governanceConfig.isLoading.value || !governanceConfig.canSubmit.value"
         @click="saveConfig"
       >
         <template #icon>
@@ -90,7 +96,7 @@ onMounted(governanceConfig.loadConfig)
         </template>
         保存治理配置
       </NButton>
-      <NButton secondary @click="governanceConfig.loadConfig">
+      <NButton secondary :disabled="governanceConfig.isActionLocked.value" @click="governanceConfig.loadConfig">
         <template #icon>
           <NIcon :component="ShieldCheck" />
         </template>

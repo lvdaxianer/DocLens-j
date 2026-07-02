@@ -48,7 +48,7 @@ export function useLlmMarkdownConfig(message: MessageApi) {
   const hasConfigs = computed(() => rows.value.length > 0)
   const emptyStatus = computed(() => createLlmMarkdownConfigRow(undefined).statusLabel)
   const capabilityHints = computed(() => llmConfigCapabilityHints(form))
-
+  const isActionLocked = computed(() => isSaving.value || isTesting.value || actingId.value !== '')
   function toErrorMessage(error: unknown): string {
     return sanitizeLlmMarkdownConfigErrorMessage(error instanceof Error ? error.message : String(error))
   }
@@ -131,6 +131,10 @@ export function useLlmMarkdownConfig(message: MessageApi) {
    * @date 2026-06-09
    */
   async function submitConfig(): Promise<void> {
+    if (isSaving.value || isTesting.value) {
+      // 保存或测试已在执行时忽略重复提交。
+      return
+    }
     isSaving.value = true
     try {
       const response = await saveCurrentForm()
@@ -225,6 +229,9 @@ export function useLlmMarkdownConfig(message: MessageApi) {
     if (!capabilityHints.value.canTest) {
       message.warning('请先填写有效的 LLM URL 和模型名称')
       return
+    } else if (isTesting.value || isSaving.value) {
+      // 保存或测试已在执行时忽略重复测试。
+      return
     }
     isTesting.value = true
     try {
@@ -248,6 +255,10 @@ export function useLlmMarkdownConfig(message: MessageApi) {
   }
 
   async function runRowAction(id: string, action: () => Promise<void>): Promise<void> {
+    if (actingId.value) {
+      // 已有配置行动作执行中，忽略新的行级动作。
+      return
+    }
     actingId.value = id
     try {
       await action()
@@ -266,6 +277,7 @@ export function useLlmMarkdownConfig(message: MessageApi) {
     isLoading,
     isSaving,
     isTesting,
+    isActionLocked,
     actingId,
     lastLoadedAt,
     errorMessage,

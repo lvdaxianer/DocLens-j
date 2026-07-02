@@ -144,13 +144,27 @@ function actionButton(
   actions: LlmMarkdownConfigTableActions,
   disabled = false
 ) {
+  const isDisabled = isActionDisabled(actions, disabled)
   return h(NButton, {
     size: 'tiny',
     secondary: true,
-    disabled,
+    disabled: isDisabled,
     loading: actions.actingId !== '' && !disabled,
     onClick
   }, { icon: () => h(NIcon, { component: icon }), default: () => label })
+}
+
+/**
+ * 判断配置行操作按钮是否禁用。
+ *
+ * @param actions - 行操作集合
+ * @param disabled - 按钮自身是否禁用
+ * @returns 是否禁用按钮
+ * @author lvdaxianer@yeah.net
+ * @date 2026-07-02
+ */
+function isActionDisabled(actions: LlmMarkdownConfigTableActions, disabled: boolean): boolean {
+  return disabled || actions.actingId !== ''
 }
 
 /**

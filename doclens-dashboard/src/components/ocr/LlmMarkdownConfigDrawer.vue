@@ -118,7 +118,7 @@ const credentialHelpText = credentialEnvVarHelpText()
           <NButton
             secondary
             :loading="testing"
-            :disabled="!capabilityHints.canTest"
+            :disabled="saving || testing || !capabilityHints.canTest"
             @click="emit('test')"
           >
             <template #icon>
@@ -129,7 +129,7 @@ const credentialHelpText = credentialEnvVarHelpText()
           <NButton
             type="primary"
             :loading="saving"
-            :disabled="!canSubmit"
+            :disabled="saving || testing || !canSubmit"
             @click="emit('save')"
           >
             <template #icon>
