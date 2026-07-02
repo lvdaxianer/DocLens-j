@@ -59,7 +59,25 @@ public class GlobalExceptionHandler {
             CallerCredentialException ex,
             HttpServletRequest request
     ) {
-        log.warn("[调用方分区] 分区键缺失或无效, path={}, detail={}", request.getRequestURI(), ex.getMessage());
+        log.warn("[调用方分区] 未授权, 分区键缺失或无效, path={}, detail={}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
+    }
+
+    /**
+     * 处理可信网关认证失败。
+     *
+     * @param ex 可信网关异常
+     * @param request HTTP 请求
+     * @return 错误响应
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @ExceptionHandler(TrustedGatewayException.class)
+    public ResponseEntity<Map<String, String>> handleTrustedGatewayUnauthorized(
+            TrustedGatewayException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("[可信网关] 请求未通过可信网关认证, path={}, detail={}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("detail", ex.getMessage()));
     }
 

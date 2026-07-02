@@ -14,6 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CallerPartitionWebMvcConfigurer implements WebMvcConfigurer {
 
     private final GlobalProtectionInterceptor globalProtectionInterceptor;
+    private final TrustedGatewayInterceptor trustedGatewayInterceptor;
     private final CallerPartitionInterceptor callerPartitionInterceptor;
     private final CallerTrafficInterceptor callerTrafficInterceptor;
 
@@ -21,6 +22,7 @@ public class CallerPartitionWebMvcConfigurer implements WebMvcConfigurer {
      * 创建 Web MVC 配置。
      *
      * @param globalProtectionInterceptor 全局保护拦截器
+     * @param trustedGatewayInterceptor 可信网关拦截器
      * @param callerPartitionInterceptor caller 分区拦截器
      * @param callerTrafficInterceptor caller 流量拦截器
      * @author lvdaxianer@yeah.net
@@ -28,10 +30,12 @@ public class CallerPartitionWebMvcConfigurer implements WebMvcConfigurer {
      */
     public CallerPartitionWebMvcConfigurer(
             GlobalProtectionInterceptor globalProtectionInterceptor,
+            TrustedGatewayInterceptor trustedGatewayInterceptor,
             CallerPartitionInterceptor callerPartitionInterceptor,
             CallerTrafficInterceptor callerTrafficInterceptor
     ) {
         this.globalProtectionInterceptor = globalProtectionInterceptor;
+        this.trustedGatewayInterceptor = trustedGatewayInterceptor;
         this.callerPartitionInterceptor = callerPartitionInterceptor;
         this.callerTrafficInterceptor = callerTrafficInterceptor;
     }
@@ -46,6 +50,7 @@ public class CallerPartitionWebMvcConfigurer implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(globalProtectionInterceptor).addPathPatterns("/api/v1/**");
+        registry.addInterceptor(trustedGatewayInterceptor).addPathPatterns("/api/v1/**");
         registry.addInterceptor(callerPartitionInterceptor).addPathPatterns("/api/v1/**");
         registry.addInterceptor(callerTrafficInterceptor).addPathPatterns("/api/v1/**");
     }

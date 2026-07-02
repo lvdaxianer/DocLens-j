@@ -46,6 +46,27 @@ class GlobalExceptionHandlerTest {
     }
 
     /**
+     * 可信网关认证失败应映射为 401 且不得泄露网关证明。
+     *
+     * @param output 控制台捕获输出
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @Test
+    void trustedGatewayFailureReturnsUnauthorized(CapturedOutput output) {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        MockHttpServletRequest request = request("/api/v1/batches");
+
+        ResponseEntity<Map<String, String>> response = handler.handleTrustedGatewayUnauthorized(
+                new TrustedGatewayException("trusted principal is missing"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
+        assertThat(response.getBody()).containsEntry("detail", "trusted principal is missing");
+        assertThat(output.getOut()).contains("/api/v1/batches").contains("可信网关");
+        assertThat(output.getOut()).doesNotContain(SECRET_API_KEY);
+    }
+
+    /**
      * 429 日志应输出接口组语义，但不得泄露请求凭证。
      *
      * @param output 控制台捕获输出
