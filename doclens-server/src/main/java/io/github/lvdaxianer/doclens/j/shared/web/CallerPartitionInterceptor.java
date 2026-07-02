@@ -40,6 +40,17 @@ public class CallerPartitionInterceptor implements HandlerInterceptor {
     }
 
     /**
+     * 返回 caller 分区请求头名称。
+     *
+     * @return caller 分区请求头名称
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    public static String headerName() {
+        return CALLER_PARTITION_HEADER;
+    }
+
+    /**
      * 在请求进入控制器前解析 caller 并写入 request attribute。
      *
      * @param request HTTP 请求
@@ -52,7 +63,7 @@ public class CallerPartitionInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         ResolvedCallerPartition resolvedPartition = callerPartitionResolver.resolveWithPartition(
-                request.getHeader(CALLER_PARTITION_HEADER));
+                request.getHeader(headerName()));
         CallerIdentity caller = resolvedPartition.callerIdentity();
         request.setAttribute(CALLER_IDENTITY_ATTRIBUTE, caller);
         request.setAttribute(RESOLVED_PARTITION_ATTRIBUTE, resolvedPartition);

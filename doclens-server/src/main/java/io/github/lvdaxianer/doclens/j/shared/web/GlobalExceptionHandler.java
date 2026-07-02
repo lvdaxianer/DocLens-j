@@ -82,6 +82,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理可信网关 principal 授权失败。
+     *
+     * @param ex 可信网关授权异常
+     * @param request HTTP 请求
+     * @return 错误响应
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-02
+     */
+    @ExceptionHandler(TrustedGatewayAuthorizationException.class)
+    public ResponseEntity<Map<String, String>> handleTrustedGatewayForbidden(
+            TrustedGatewayAuthorizationException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("[可信网关授权] 请求未通过 principal 分区授权, path={}, detail={}",
+                request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("detail", ex.getMessage()));
+    }
+
+    /**
      * 处理调用方接口组限流超额。
      *
      * @param ex 限流异常
