@@ -72,12 +72,16 @@ const themeOverrides = createDashboardThemeOverrides()
               <!-- 当前请求上下文状态保持只读，真实授权仍以后端校验为准。 -->
               <PrincipalPartitionStatus />
               <span class="app-shell__live">
-                <NIcon :component="Radio" />
+                <NIcon :component="Radio" class="app-shell__live-icon" />
                 实时读模型
               </span>
             </div>
           </header>
-          <RouterView />
+          <RouterView v-slot="{ Component }">
+            <Transition name="fade-slide" mode="out-in">
+              <component :is="Component" />
+            </Transition>
+          </RouterView>
         </main>
       </div>
     </NMessageProvider>
@@ -233,6 +237,40 @@ const themeOverrides = createDashboardThemeOverrides()
   font-size: 11px;
   font-weight: 650;
   background: var(--success-muted);
+}
+
+.app-shell__live-icon {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@media (max-width: 1352px) {
+  .app-shell__main {
+    padding: 14px 16px;
+  }
+
+  .app-shell__topbar {
+    margin-bottom: 10px;
+  }
+
+  .app-shell__topbar-actions {
+    max-width: 62%;
+    gap: 6px;
+  }
+
+  .app-shell__title {
+    font-size: 19px;
+  }
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 @media (max-width: 860px) {

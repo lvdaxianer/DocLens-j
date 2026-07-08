@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NEmpty, NProgress } from 'naive-ui'
+import { NProgress } from 'naive-ui'
+import { Layers3 } from '@lucide/vue'
 
+import AnimatedNumber from '@/components/dashboard/AnimatedNumber.vue'
+import EmptyState from '@/components/dashboard/EmptyState.vue'
 import type { ImageProgressSummary, StageStatusCount } from '@/types/dashboard'
 import { formatImageProgress, formatNumber, formatPercent, stageLabel } from '@/utils/formatters'
 
@@ -40,11 +43,11 @@ const imagePercent = computed(() => props.imageProgress?.progress_percent ?? 0)
       </NProgress>
     </div>
 
-    <NEmpty v-if="visibleStages.length === 0" description="暂无阶段数据" size="small" />
+    <EmptyState v-if="visibleStages.length === 0" description="暂无阶段数据" :icon="Layers3" />
     <div v-else class="stage-board__grid">
       <article v-for="stage in visibleStages" :key="stage.stage" class="stage-card">
         <span class="stage-card__label">{{ stage.label || stageLabel(stage.stage) }}</span>
-        <strong class="stage-card__value">{{ formatNumber(stage.document_count) }}</strong>
+        <strong class="stage-card__value"><AnimatedNumber :value="formatNumber(stage.document_count)" /></strong>
         <span class="stage-card__note">
           {{ formatImageProgress(stage.completed_images, stage.total_images) }}
         </span>
@@ -81,7 +84,15 @@ const imagePercent = computed(() => props.imageProgress?.progress_percent ?? 0)
   border: 1px solid var(--rail-border);
   border-radius: 8px;
   background: var(--surface-inset);
+  animation: fadeInUp 300ms ease backwards;
 }
+
+.stage-card:nth-child(1) { animation-delay: 0ms; }
+.stage-card:nth-child(2) { animation-delay: 40ms; }
+.stage-card:nth-child(3) { animation-delay: 80ms; }
+.stage-card:nth-child(4) { animation-delay: 120ms; }
+.stage-card:nth-child(5) { animation-delay: 160ms; }
+.stage-card:nth-child(6) { animation-delay: 200ms; }
 
 .stage-card__label,
 .stage-card__note {
@@ -106,7 +117,7 @@ const imagePercent = computed(() => props.imageProgress?.progress_percent ?? 0)
   line-height: 1.1;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1352px) {
   .stage-board__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

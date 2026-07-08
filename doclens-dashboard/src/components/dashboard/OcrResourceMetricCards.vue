@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Activity, CheckCircle2, Clock3, Image, ServerCrash } from '@lucide/vue'
 import { NIcon } from 'naive-ui'
 
+import AnimatedNumber from '@/components/dashboard/AnimatedNumber.vue'
 import type { DashboardOcrResources, DashboardThreadPoolMetrics } from '@/types/dashboard'
 import { formatNumber } from '@/utils/formatters'
 import { displayNodeName } from '@/utils/ocrDisplayRules'
@@ -135,7 +136,7 @@ function runtimePoolSize(metrics?: DashboardThreadPoolMetrics): number | undefin
         <NIcon :component="card.icon" />
       </span>
       <span class="ocr-resource-card__label">{{ card.label }}</span>
-      <strong class="ocr-resource-card__value">{{ card.value }}</strong>
+      <strong class="ocr-resource-card__value"><AnimatedNumber :value="card.value" /></strong>
       <span class="ocr-resource-card__note">{{ card.note }}</span>
     </article>
   </section>
@@ -158,7 +159,14 @@ function runtimePoolSize(metrics?: DashboardThreadPoolMetrics): number | undefin
   border-radius: 8px;
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
+  animation: fadeInUp 300ms ease backwards;
 }
+
+.ocr-resource-card:nth-child(1) { animation-delay: 0ms; }
+.ocr-resource-card:nth-child(2) { animation-delay: 40ms; }
+.ocr-resource-card:nth-child(3) { animation-delay: 80ms; }
+.ocr-resource-card:nth-child(4) { animation-delay: 120ms; }
+.ocr-resource-card:nth-child(5) { animation-delay: 160ms; }
 
 .ocr-resource-card__icon {
   display: grid;
@@ -210,7 +218,7 @@ function runtimePoolSize(metrics?: DashboardThreadPoolMetrics): number | undefin
   --signal-muted: var(--surface-inset);
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1352px) {
   .ocr-resource-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

@@ -61,6 +61,8 @@ const option = computed<EChartsCoreOption>(() => {
         name: '平均耗时',
         type: 'bar',
         barWidth: 18,
+        animationDuration: 800,
+        animationEasing: 'cubicOut',
         itemStyle: {
           borderRadius: [4, 4, 0, 0]
         },
@@ -138,6 +140,6 @@ onBeforeUnmount(() => {
 
 .chart-panel__canvas {
   width: 100%;
-  height: 280px;
+  height: 220px;
 }
 </style>

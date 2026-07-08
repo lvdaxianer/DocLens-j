@@ -180,5 +180,10 @@ function getDocumentRowKey(row: DocumentRow): string {
   /* 单元格压缩到 12px 字号，满足详情页“多看几行”的要求。 */
   padding: 7px 10px;
   font-size: 12px;
+  transition: background-color 120ms ease;
+}
+
+:deep(.n-data-table-tr:hover .n-data-table-td) {
+  background: var(--surface-hover);
 }
 </style>

@@ -145,7 +145,7 @@ onMounted(governanceConfig.loadConfig)
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1352px) {
   .ocr-governance-panel__form {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }

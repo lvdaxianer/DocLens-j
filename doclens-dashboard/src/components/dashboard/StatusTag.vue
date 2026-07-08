@@ -27,7 +27,24 @@ const tagType = computed(() => {
 </script>
 
 <template>
-  <NTag :type="tagType" round>
+  <NTag :type="tagType" round class="status-tag">
     {{ statusLabel(status) }}
   </NTag>
 </template>
+
+<style scoped>
+.status-tag :deep(.n-tag) {
+  position: relative;
+  overflow: hidden;
+}
+
+.status-tag :deep(.n-tag)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite linear;
+  pointer-events: none;
+}
+</style>

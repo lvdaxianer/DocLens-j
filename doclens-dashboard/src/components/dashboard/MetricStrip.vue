@@ -10,6 +10,7 @@ import {
 } from '@lucide/vue'
 import { NIcon } from 'naive-ui'
 
+import AnimatedNumber from '@/components/dashboard/AnimatedNumber.vue'
 import type { DashboardOverview } from '@/types/dashboard'
 import { formatDuration, formatNumber, formatPercent } from '@/utils/formatters'
 
@@ -80,7 +81,7 @@ const metrics = computed(() => {
       </div>
       <div class="metric-card__body">
         <span class="metric-card__label">{{ metric.label }}</span>
-        <strong class="metric-card__value">{{ metric.value }}</strong>
+        <strong class="metric-card__value"><AnimatedNumber :value="metric.value" /></strong>
         <span class="metric-card__note">{{ metric.note }}</span>
       </div>
     </article>
@@ -104,7 +105,15 @@ const metrics = computed(() => {
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  animation: fadeInUp 300ms ease backwards;
 }
+
+.metric-card:nth-child(1) { animation-delay: 0ms; }
+.metric-card:nth-child(2) { animation-delay: 40ms; }
+.metric-card:nth-child(3) { animation-delay: 80ms; }
+.metric-card:nth-child(4) { animation-delay: 120ms; }
+.metric-card:nth-child(5) { animation-delay: 160ms; }
+.metric-card:nth-child(6) { animation-delay: 200ms; }
 
 .metric-card:hover {
   border-color: var(--rail-border-strong);
@@ -175,7 +184,7 @@ const metrics = computed(() => {
   --signal-muted: var(--surface-inset);
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1352px) {
   .metric-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

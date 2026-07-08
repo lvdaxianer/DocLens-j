@@ -96,7 +96,7 @@ function openLatestBatch(): void {
 <style scoped>
 .upload-view {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.35fr);
   gap: 16px;
 }
 
@@ -170,7 +170,7 @@ function openLatestBatch(): void {
   white-space: nowrap;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   .upload-view {
     grid-template-columns: 1fr;
   }

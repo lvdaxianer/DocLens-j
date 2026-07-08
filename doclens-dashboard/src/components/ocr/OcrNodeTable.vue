@@ -248,7 +248,7 @@ function nodeActionKind(node: OcrNode): OcrNodeActionKind | undefined {
 
 .ocr-node-table__grid {
   width: 100%;
-  min-width: 1180px;
+  min-width: 980px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -262,6 +262,11 @@ function nodeActionKind(node: OcrNode): OcrNodeActionKind | undefined {
   text-align: left;
   vertical-align: middle;
   overflow-wrap: anywhere;
+  transition: background-color 120ms ease;
+}
+
+.ocr-node-table__grid tbody tr:hover td {
+  background: var(--surface-hover);
 }
 
 .ocr-node-table__grid th {
@@ -307,7 +312,7 @@ function nodeActionKind(node: OcrNode): OcrNodeActionKind | undefined {
   background: var(--surface-inset);
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1352px) {
   .ocr-node-table__grid th,
   .ocr-node-table__grid td {
     padding: 9px 6px;

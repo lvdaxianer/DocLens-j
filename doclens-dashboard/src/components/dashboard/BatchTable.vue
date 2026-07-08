@@ -165,13 +165,17 @@ const columns: DataTableColumns<BatchRow> = [
   text-align: right;
 }
 
+:deep(.n-data-table-tr .n-data-table-td) {
+  transition: background-color 120ms ease;
+}
+
 :deep(.n-data-table-tr:hover .n-data-table-td) {
   background: var(--surface-hover);
 }
 
 :deep(.batch-link) {
   display: inline-block;
-  max-width: 160px;
+  max-width: 120px;
   overflow: hidden;
   color: var(--active);
   font-weight: 650;

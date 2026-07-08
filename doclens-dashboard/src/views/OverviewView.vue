@@ -9,6 +9,7 @@ import BatchTable from '@/components/dashboard/BatchTable.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import LatencyChart from '@/components/dashboard/LatencyChart.vue'
 import MetricStrip from '@/components/dashboard/MetricStrip.vue'
+import MetricStripSkeleton from '@/components/dashboard/MetricStripSkeleton.vue'
 import OcrResourceMetricCards from '@/components/dashboard/OcrResourceMetricCards.vue'
 import StageStatusBoard from '@/components/dashboard/StageStatusBoard.vue'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -106,9 +107,8 @@ const autoRefresh = useAutoRefresh(refresh, {
       </NButton>
     </section>
 
-    <NSpin :show="summaryState.loading && !summary">
-      <MetricStrip :overview="summary?.overview ?? null" />
-    </NSpin>
+    <MetricStripSkeleton v-if="summaryState.loading && !summary" />
+    <MetricStrip v-else :overview="summary?.overview ?? null" />
 
     <StageStatusBoard
       :stages="summary?.stage_status_counts ?? []"

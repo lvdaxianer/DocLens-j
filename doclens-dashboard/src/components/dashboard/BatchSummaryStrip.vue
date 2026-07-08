@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NButton } from 'naive-ui'
 
+import AnimatedNumber from '@/components/dashboard/AnimatedNumber.vue'
 import type { BatchRow } from '@/types/dashboard'
 import { formatDuration, formatPercent } from '@/utils/formatters'
 
@@ -102,35 +103,35 @@ function handleRefresh(): void {
       <!-- 标签保持短文案，减少摘要条横向空间占用。 -->
       <span>进度</span>
       <!-- progress_percent 已经是百分制数值，不再二次格式化。 -->
-      <strong>{{ batch.progress_percent }}%</strong>
+      <strong><AnimatedNumber :value="`${batch.progress_percent}%`" /></strong>
     </article>
     <!-- 成功率统一走百分比格式化，和总览列表展示保持一致。 -->
     <article class="batch-summary__item">
       <!-- 成功率帮助用户判断批次整体健康度。 -->
       <span>成功率</span>
       <!-- formatter 负责兜底 undefined/NaN 等展示细节。 -->
-      <strong>{{ formatPercent(batch.success_rate) }}</strong>
+      <strong><AnimatedNumber :value="formatPercent(batch.success_rate)" /></strong>
     </article>
     <!-- 失败率独立展示，方便用户快速判断是否需要进入详情排查。 -->
     <article class="batch-summary__item">
       <!-- 失败率不由成功率反推，直接使用后端统计结果。 -->
       <span>失败率</span>
       <!-- 失败率单独展示能辅助判断是否需要批量重试。 -->
-      <strong>{{ formatPercent(batch.failure_rate) }}</strong>
+      <strong><AnimatedNumber :value="formatPercent(batch.failure_rate)" /></strong>
     </article>
     <!-- 平均耗时使用统一 formatter，避免空值或毫秒直出。 -->
     <article class="batch-summary__item">
       <!-- 平均耗时用于粗略判断 OCR/LLM 链路是否变慢。 -->
       <span>平均耗时</span>
       <!-- duration formatter 统一 ms、秒、分钟的展示。 -->
-      <strong>{{ formatDuration(batch.average_duration_ms) }}</strong>
+      <strong><AnimatedNumber :value="formatDuration(batch.average_duration_ms)" /></strong>
     </article>
     <!-- 刷新节奏展示来自统一常量，提示用户列表不是静态结果。 -->
     <article class="batch-summary__item batch-summary__item--refresh">
       <!-- 局部刷新指的是当前批次详情刷新，不是全站刷新。 -->
       <span>局部刷新</span>
       <!-- 秒数直接来自父级常量，方便后续改配置。 -->
-      <strong>{{ refreshIntervalSeconds }} 秒</strong>
+      <strong><AnimatedNumber :value="`${refreshIntervalSeconds} 秒`" /></strong>
     </article>
     <!-- 按钮只表达刷新意图；loading 来自父级 detailState。 -->
     <!-- small 尺寸和指标卡高度匹配，避免按钮破坏摘要条节奏。 -->
@@ -190,7 +191,14 @@ function handleRefresh(): void {
   border-radius: 8px;
   /* raised 背景让指标条从页面底色里浮出来。 */
   background: var(--surface-raised);
+  animation: fadeInUp 300ms ease backwards;
 }
+
+.batch-summary__item:nth-child(1) { animation-delay: 0ms; }
+.batch-summary__item:nth-child(2) { animation-delay: 40ms; }
+.batch-summary__item:nth-child(3) { animation-delay: 80ms; }
+.batch-summary__item:nth-child(4) { animation-delay: 120ms; }
+.batch-summary__item:nth-child(5) { animation-delay: 160ms; }
 
 /* 标签用弱化颜色，突出真正需要扫读的数值。 */
 .batch-summary__item span {
@@ -217,6 +225,13 @@ function handleRefresh(): void {
 .batch-summary__item--refresh strong {
   /* 只有刷新节奏使用强调色，避免五个数值全部抢焦点。 */
   color: var(--active-strong);
+}
+
+/* 小桌面宽度下三列展示，避免五个指标在 1132px 内容区拥挤。 */
+@media (max-width: 1352px) {
+  .batch-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
 }
 
 /* 小屏幕下两列展示，比横向滚动更容易读取。 */

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { Cpu, Gauge, Timer, TriangleAlert } from '@lucide/vue'
 import { NAlert, NButton, NIcon } from 'naive-ui'
 
+import AnimatedNumber from '@/components/dashboard/AnimatedNumber.vue'
 import AutoRefreshStaleAlert from '@/components/dashboard/AutoRefreshStaleAlert.vue'
 import FailureList from '@/components/dashboard/FailureList.vue'
 import { DEFAULT_REFRESH_INTERVAL_SECONDS, useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -89,7 +90,7 @@ const autoRefresh = useAutoRefresh(refresh, {
       <article v-for="card in cards" :key="card.key" class="health-card">
         <NIcon class="health-card__icon" :component="card.icon" />
         <span class="health-card__label">{{ card.label }}</span>
-        <strong class="health-card__value">{{ cardValue(card.key) }}</strong>
+        <strong class="health-card__value"><AnimatedNumber :value="cardValue(card.key)" /></strong>
       </article>
     </section>
 
@@ -144,6 +145,12 @@ const autoRefresh = useAutoRefresh(refresh, {
   overflow-wrap: anywhere;
   color: var(--ink-strong);
   font-size: 20px;
+}
+
+@media (max-width: 1352px) {
+  .health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {

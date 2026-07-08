@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { AlertTriangle } from '@lucide/vue'
-import { NEmpty, NIcon } from 'naive-ui'
+import { NIcon } from 'naive-ui'
 
+import EmptyState from '@/components/dashboard/EmptyState.vue'
 import StatusTag from '@/components/dashboard/StatusTag.vue'
 import type { DocumentRow } from '@/types/dashboard'
 import { fileTypeLabel, formatDateTime } from '@/utils/formatters'
@@ -17,7 +18,7 @@ defineProps<{
       <h2 class="failure-list__title">失败队列</h2>
       <NIcon class="failure-list__icon" :component="AlertTriangle" />
     </div>
-    <NEmpty v-if="failures.length === 0" description="暂无失败任务" size="small" />
+    <EmptyState v-if="failures.length === 0" description="暂无失败任务" :icon="AlertTriangle" />
     <div v-else class="failure-list__items">
       <article v-for="failure in failures" :key="failure.document_id" class="failure-item">
         <div class="failure-item__main">
