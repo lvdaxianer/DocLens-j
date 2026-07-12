@@ -112,6 +112,78 @@ In this example, `dashboard-admin` can use `X-Doclens-Key: tenant-a` or
 `tenant-b`, while `tenant-a-viewer` can only use `tenant-a`. Admin routes still
 require a configured `admin` role.
 
+### What principal roles and allowed partitions mean
+
+Read the gateway authorization block as three separate decisions:
+
+| Field | Meaning | Controls |
+| --- | --- | --- |
+| `principal` | Who the trusted gateway says is calling. | Which configured identity is used for authorization. |
+| `roles` | What operation level that principal has. | Whether admin routes can be used. |
+| `allowed-partitions` | Which data partitions that principal may request. | Which `X-Doclens-Key` values are accepted. |
+
+For example:
+
+```yaml
+principals:
+  - principal: company-a-user
+    roles:
+      - user
+    allowed-partitions:
+      - company-a
+
+  - principal: platform-admin
+    roles:
+      - admin
+    allowed-partitions:
+      - company-a
+      - company-b
+```
+
+This means:
+
+- `company-a-user` can only use `X-Doclens-Key: company-a`.
+- `platform-admin` can use `X-Doclens-Key: company-a` or
+  `X-Doclens-Key: company-b`.
+- `platform-admin` can access admin routes because its configured roles contain
+  `admin`.
+- `company-a-user` cannot access admin routes because `user` is not enough for
+  admin route policies.
+
+The following request is accepted for `platform-admin`:
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-a
+```
+
+This request is also accepted:
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-b
+```
+
+This request is rejected with `403 Forbidden` because `company-c` is not in
+`platform-admin`'s `allowed-partitions`:
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-c
+```
+
+In short:
+
+```text
+principal = who is calling
+roles = whether that identity can use admin operations
+allowed-partitions = which isolated data spaces that identity can access
+```
+
+`roles` do not decide which tenant data can be read. Data access is bounded by
+`allowed-partitions` and the requested `X-Doclens-Key`. Conversely,
+`allowed-partitions` does not grant admin operations by itself.
+
 ### Admin Routes
 
 The default admin route policies include:

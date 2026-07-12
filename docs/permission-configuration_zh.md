@@ -102,6 +102,76 @@ doclens:
 而 `tenant-a-viewer` 只能访问 `tenant-a`。admin 路由仍然要求 principal 具备
 `admin` 角色。
 
+### roles 和 allowed-partitions 到底是什么意思
+
+可以把网关授权配置拆成三个问题来看：
+
+| 字段 | 含义 | 控制什么 |
+| --- | --- | --- |
+| `principal` | 可信网关告诉服务端“谁在访问”。 | 使用哪一个已配置身份做授权判断。 |
+| `roles` | 这个身份有什么操作级别。 | 能不能访问 admin 路由。 |
+| `allowed-partitions` | 这个身份允许请求哪些数据分区。 | 哪些 `X-Doclens-Key` 会被接受。 |
+
+例如：
+
+```yaml
+principals:
+  - principal: company-a-user
+    roles:
+      - user
+    allowed-partitions:
+      - company-a
+
+  - principal: platform-admin
+    roles:
+      - admin
+    allowed-partitions:
+      - company-a
+      - company-b
+```
+
+这段配置表示：
+
+- `company-a-user` 只能使用 `X-Doclens-Key: company-a`。
+- `platform-admin` 可以使用 `X-Doclens-Key: company-a` 或
+  `X-Doclens-Key: company-b`。
+- `platform-admin` 可以访问 admin 路由，因为它配置了 `admin` 角色。
+- `company-a-user` 不能访问 admin 路由，因为 `user` 不满足 admin 路由策略。
+
+下面这个请求对 `platform-admin` 是允许的：
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-a
+```
+
+这个请求也允许：
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-b
+```
+
+但这个请求会返回 `403 Forbidden`，因为 `company-c` 不在
+`platform-admin` 的 `allowed-partitions` 中：
+
+```http
+X-Doclens-Principal: platform-admin
+X-Doclens-Key: company-c
+```
+
+一句话理解：
+
+```text
+principal = 谁在访问
+roles = 这个身份能不能做管理操作
+allowed-partitions = 这个身份能访问哪些隔离数据空间
+```
+
+`roles` 不决定能读哪个租户或分区的数据；数据访问范围由
+`allowed-partitions` 和请求里的 `X-Doclens-Key` 决定。反过来，
+`allowed-partitions` 也不会自动授予 admin 操作权限。
+
 ### admin 路由
 
 默认的 admin 路由包括：
