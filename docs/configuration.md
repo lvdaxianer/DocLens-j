@@ -118,5 +118,6 @@ Spring Boot maps environment variables to properties, so
 
 - [HTTP API Reference](api.md)
 - [Permission Configuration](permission-configuration.md)
+- [权限配置](permission-configuration_zh.md)
 - [Local Development](development.md)
 - [OpenWebUI OCR Contract](integrations/open-webui-ocr-contract.md)
