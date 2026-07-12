@@ -69,16 +69,18 @@ and technical delivery.
 - **WHEN** a reader needs to configure API access for production or development
   in English
 - **THEN** they can find trusted gateway authentication, principal allowlist,
-  caller partition key, admin route, local development, curl, and failure
-  response examples in the English permission configuration document
+  caller partition key, role meaning, allowed-partition examples, admin route,
+  local development, curl, and failure response examples in the English
+  permission configuration document
 
 #### Scenario: Reader wants permission setup in Chinese
 
 - **WHEN** a reader needs to configure API access for production or development
   in Chinese
 - **THEN** they can find trusted gateway authentication, principal allowlist,
-  caller partition key, admin route, local development, curl, and failure
-  response examples in the Chinese permission configuration document
+  caller partition key, role meaning, allowed-partition examples, admin route,
+  local development, curl, and failure response examples in the Chinese
+  permission configuration document
 
 #### Scenario: Reader wants local development commands
 
