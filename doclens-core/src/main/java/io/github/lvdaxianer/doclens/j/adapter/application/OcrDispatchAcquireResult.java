@@ -1,7 +1,12 @@
 package io.github.lvdaxianer.doclens.j.adapter.application;
 
-import java.util.concurrent.CompletableFuture;
+import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * OCR 派发占槽结果。
@@ -17,6 +22,11 @@ public record OcrDispatchAcquireResult(
         boolean queued,
         CompletableFuture<OcrRuntimeNodeView> dispatchFuture
 ) {
+
+    private static final String QUEUE_FULL_MESSAGE = "ocr dispatch queue is full";
+    private static final String DISPATCH_FAILED_MESSAGE = "ocr dispatch failed";
+    private static final String DISPATCH_INTERRUPTED_MESSAGE = "ocr dispatch wait interrupted";
+    private static final String DISPATCH_TIMEOUT_MESSAGE = "ocr dispatch wait timed out";
 
     /**
      * 创建已派发结果。
@@ -55,6 +65,40 @@ public record OcrDispatchAcquireResult(
     }
 
     /**
+     * 创建待派发队列已满的失败结果。
+     *
+     * @return 待派发队列已满结果
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    public static OcrDispatchAcquireResult queueFull() {
+        return failedResult(queueFullException());
+    }
+
+    /**
+     * 创建待派发队列已满异常。
+     *
+     * @return 待派发队列已满异常
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    static OcrRouteExecutionException queueFullException() {
+        return new OcrRouteExecutionException(QUEUE_FULL_MESSAGE);
+    }
+
+    /**
+     * 创建派发失败结果。
+     *
+     * @param cause 派发失败原因
+     * @return 派发失败结果
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    public static OcrDispatchAcquireResult failedResult(Throwable cause) {
+        return new OcrDispatchAcquireResult(Optional.empty(), false, CompletableFuture.failedFuture(cause));
+    }
+
+    /**
      * 同步等待派发完成并返回最终命中的节点。
      *
      * @return 最终命中的节点
@@ -62,6 +106,47 @@ public record OcrDispatchAcquireResult(
      * @date 2026-06-10
      */
     public OcrRuntimeNodeView awaitDispatch() {
-        return dispatchFuture.join();
+        try {
+            return dispatchFuture.join();
+        } catch (CompletionException exception) {
+            throw routeException(exception.getCause());
+        }
+    }
+
+    /**
+     * 在指定超时时间内等待派发完成。
+     *
+     * @param timeout 派发等待超时时间
+     * @return 最终命中的节点
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    public OcrRuntimeNodeView awaitDispatch(Duration timeout) {
+        try {
+            return dispatchFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException exception) {
+            throw new OcrRouteExecutionException(DISPATCH_TIMEOUT_MESSAGE, exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new OcrRouteExecutionException(DISPATCH_INTERRUPTED_MESSAGE, exception);
+        } catch (ExecutionException exception) {
+            throw routeException(exception.getCause());
+        }
+    }
+
+    /**
+     * 将异步派发失败统一转换为路由执行异常。
+     *
+     * @param cause 派发失败原因
+     * @return 路由执行异常
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private OcrRouteExecutionException routeException(Throwable cause) {
+        if (cause instanceof OcrRouteExecutionException routeException) {
+            return routeException;
+        } else {
+            return new OcrRouteExecutionException(DISPATCH_FAILED_MESSAGE, cause);
+        }
     }
 }

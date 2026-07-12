@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.adapter.application;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
+import java.time.Duration;
 
 /**
  * OCR 路由服务配置。
@@ -13,6 +14,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
  * @param requestRetryTimes OCR 请求重试次数
  * @param healthGovernance OCR 节点健康治理配置
  * @param specificNodeFallbackEnabled 指定节点失败后是否允许回退
+ * @param dispatchWaitTimeout 派发等待超时时间
  * @author lvdaxianerplus
  * @date 2026-06-08
  */
@@ -23,13 +25,30 @@ public record OcrRoutingServiceProperties(
         double topBucketThreshold,
         int requestRetryTimes,
         OcrHealthGovernance healthGovernance,
-        boolean specificNodeFallbackEnabled
+        boolean specificNodeFallbackEnabled,
+        Duration dispatchWaitTimeout
 ) {
+    private static final int DEFAULT_DISPATCH_WAIT_TIMEOUT_SECONDS = 30;
+
     public static final String DEFAULT_LOAD_BALANCE_STRATEGY = "weighted-idle";
     public static final double DEFAULT_IDLE_FACTOR = 0.7D;
     public static final double DEFAULT_WEIGHT_FACTOR = 0.3D;
     public static final double DEFAULT_TOP_BUCKET_THRESHOLD = 0.15D;
     public static final int DEFAULT_REQUEST_RETRY_TIMES = 3;
+    public static final Duration DEFAULT_DISPATCH_WAIT_TIMEOUT =
+            Duration.ofSeconds(DEFAULT_DISPATCH_WAIT_TIMEOUT_SECONDS);
+
+    /**
+     * 创建 OCR 路由服务配置并补齐派发等待超时默认值。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    public OcrRoutingServiceProperties {
+        if (dispatchWaitTimeout == null) {
+            dispatchWaitTimeout = DEFAULT_DISPATCH_WAIT_TIMEOUT;
+        }
+    }
 
     /**
      * 创建兼容旧调用方式的 OCR 路由服务配置。
@@ -46,6 +65,7 @@ public record OcrRoutingServiceProperties(
             boolean specificNodeFallbackEnabled
     ) {
         this(defaultPolicy, DEFAULT_IDLE_FACTOR, DEFAULT_WEIGHT_FACTOR, DEFAULT_TOP_BUCKET_THRESHOLD,
-                requestRetryTimes, OcrHealthGovernance.defaults(), specificNodeFallbackEnabled);
+                requestRetryTimes, OcrHealthGovernance.defaults(), specificNodeFallbackEnabled,
+                DEFAULT_DISPATCH_WAIT_TIMEOUT);
     }
 }

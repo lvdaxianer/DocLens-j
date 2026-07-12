@@ -81,8 +81,12 @@ public final class OcrDispatchCoordinator {
             // 当前没有可用节点或候选节点在竞争中全部失去槽位，转入等待队列。
         }
         CompletableFuture<OcrRuntimeNodeView> dispatchFuture = new CompletableFuture<>();
-        queue.enqueue(OcrPendingRequest.from(request, policy, excludedNodeIds, dispatchFuture));
-        return OcrDispatchAcquireResult.queuedResult(dispatchFuture);
+        OcrPendingRequest pendingRequest = OcrPendingRequest.from(request, policy, excludedNodeIds, dispatchFuture);
+        if (queue.enqueue(pendingRequest)) {
+            return OcrDispatchAcquireResult.queuedResult(dispatchFuture);
+        } else {
+            return OcrDispatchAcquireResult.queueFull();
+        }
     }
 
     /**
@@ -114,9 +118,23 @@ public final class OcrDispatchCoordinator {
             } else {
                 // 当前仍无可派发节点或候选节点在竞争中全部失去槽位，请求重新入队等待下一次机会。
             }
-            queue.enqueue(request);
+            requeue(request);
         } else {
             // 当前没有排队请求，无需继续派发。
+        }
+    }
+
+    /**
+     * 重新入队暂时无法派发的请求。
+     *
+     * @param request 待派发请求
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private void requeue(OcrPendingRequest request) {
+        // 重新入队失败说明队列已满，应唤醒等待方并返回稳定失败。
+        if (!queue.enqueue(request)) {
+            request.dispatchFuture().completeExceptionally(OcrDispatchAcquireResult.queueFullException());
         }
     }
 

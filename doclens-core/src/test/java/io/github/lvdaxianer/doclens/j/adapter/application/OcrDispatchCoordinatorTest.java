@@ -1,6 +1,7 @@
 package io.github.lvdaxianer.doclens.j.adapter.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lvdaxianer.doclens.j.adapter.domain.ImageOcrRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
@@ -37,6 +38,29 @@ class OcrDispatchCoordinatorTest {
 
         assertThat(result.queued()).isTrue();
         assertThat(queue.size()).isEqualTo(1);
+    }
+
+    /**
+     * 等待队列满载时请求应稳定失败而不是继续留存。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    @Test
+    void acquireFailsWithStableErrorWhenPendingQueueIsFull() {
+        FakePendingQueue queue = new FakePendingQueue(1);
+        FakeRuntimeNodeProvider nodeProvider = fullNodes("node-a", "node-b");
+        OcrDispatchCoordinator coordinator = coordinator(nodeProvider, queue);
+
+        coordinator.acquire(sampleRequest(), OcrRoutePolicy.globalLoadBalance("weighted-idle"));
+        OcrDispatchAcquireResult result = coordinator.acquire(sampleRequest("doc-2"),
+                OcrRoutePolicy.globalLoadBalance("weighted-idle"));
+
+        assertThat(result.queued()).isFalse();
+        assertThat(queue.size()).isEqualTo(1);
+        assertThatThrownBy(result::awaitDispatch)
+                .isInstanceOf(OcrRouteExecutionException.class)
+                .hasMessageContaining("ocr dispatch queue is full");
     }
 
     /**
@@ -292,10 +316,19 @@ class OcrDispatchCoordinatorTest {
     private static final class FakePendingQueue implements OcrPendingRequestQueue {
 
         private final ArrayDeque<OcrPendingRequest> requests = new ArrayDeque<>();
+        private final int capacity;
+
+        private FakePendingQueue() { this(Integer.MAX_VALUE); }
+        private FakePendingQueue(int capacity) { this.capacity = capacity; }
 
         @Override
-        public void enqueue(OcrPendingRequest request) {
-            requests.addLast(request);
+        public boolean enqueue(OcrPendingRequest request) {
+            if (requests.size() < capacity) {
+                requests.addLast(request);
+                return true;
+            } else {
+                return false;
+            }
         }
 
         @Override

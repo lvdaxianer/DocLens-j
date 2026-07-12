@@ -3,6 +3,8 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 import io.github.lvdaxianer.doclens.j.adapter.application.OcrRoutingServiceProperties;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrHealthGovernance;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrPendingRequestQueue;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -115,7 +117,9 @@ public record DocLensSpringProperties(
                 OcrHealthGovernance.DEFAULT_PROBE_INTERVAL_SECONDS, DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS,
                 OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD, OcrHealthGovernance.DEFAULT_CIRCUIT_OPEN_SECONDS,
                 OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD,
-                OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS, false);
+                OcrHealthGovernance.DEFAULT_MANUAL_RECOVERY_ATTEMPTS, false,
+                OcrRoutingServiceProperties.DEFAULT_DISPATCH_WAIT_TIMEOUT,
+                InMemoryOcrPendingRequestQueue.DEFAULT_CAPACITY);
     }
 
     /**
@@ -316,6 +320,8 @@ public record DocLensSpringProperties(
      * @param recoverySuccessThreshold 恢复成功阈值
      * @param manualRecoveryAttempts 手动恢复尝试次数
      * @param specificNodeFallbackEnabled 指定节点是否允许回退
+     * @param dispatchWaitTimeout 派发等待超时时间
+     * @param dispatchQueueCapacity 派发等待队列容量
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
@@ -332,8 +338,53 @@ public record DocLensSpringProperties(
             int circuitOpenSeconds,
             int recoverySuccessThreshold,
             int manualRecoveryAttempts,
-            boolean specificNodeFallbackEnabled
+            boolean specificNodeFallbackEnabled,
+            Duration dispatchWaitTimeout,
+            int dispatchQueueCapacity
     ) {
+
+        /**
+         * 创建 OCR 路由配置并补齐新增派发保护默认值。
+         *
+         * @author lvdaxianer@yeah.net
+         * @date 2026-07-12
+         */
+        public OcrProperties {
+            dispatchWaitTimeout = normalizedDispatchWaitTimeout(dispatchWaitTimeout);
+            dispatchQueueCapacity = normalizedDispatchQueueCapacity(dispatchQueueCapacity);
+        }
+
+        /**
+         * 归一化派发等待超时时间。
+         *
+         * @param dispatchWaitTimeout 派发等待超时时间
+         * @return 可用的派发等待超时时间
+         * @author lvdaxianer@yeah.net
+         * @date 2026-07-12
+         */
+        private static Duration normalizedDispatchWaitTimeout(Duration dispatchWaitTimeout) {
+            if (dispatchWaitTimeout == null || dispatchWaitTimeout.isZero() || dispatchWaitTimeout.isNegative()) {
+                return OcrRoutingServiceProperties.DEFAULT_DISPATCH_WAIT_TIMEOUT;
+            } else {
+                return dispatchWaitTimeout;
+            }
+        }
+
+        /**
+         * 归一化派发等待队列容量。
+         *
+         * @param dispatchQueueCapacity 派发等待队列容量
+         * @return 可用的派发等待队列容量
+         * @author lvdaxianer@yeah.net
+         * @date 2026-07-12
+         */
+        private static int normalizedDispatchQueueCapacity(int dispatchQueueCapacity) {
+            if (dispatchQueueCapacity > 0) {
+                return dispatchQueueCapacity;
+            } else {
+                return InMemoryOcrPendingRequestQueue.DEFAULT_CAPACITY;
+            }
+        }
     }
 
     /**

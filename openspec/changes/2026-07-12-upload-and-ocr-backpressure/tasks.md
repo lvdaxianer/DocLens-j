@@ -9,9 +9,9 @@
 
 ## 2. Bounded OCR dispatch waiting
 
-- [ ] 2.1 Add failing tests proving the OCR pending queue rejects overflow and
+- [x] 2.1 Add failing tests proving the OCR pending queue rejects overflow and
   routed requests fail with a stable timeout when dispatch cannot complete.
-- [ ] 2.2 Implement bounded pending queue capacity and dispatch wait timeout
+- [x] 2.2 Implement bounded pending queue capacity and dispatch wait timeout
   wiring through OCR routing configuration.
-- [ ] 2.3 Run focused OCR routing/auto-configuration tests and broader backend
+- [x] 2.3 Run focused OCR routing/auto-configuration tests and broader backend
   verification for the touched modules.

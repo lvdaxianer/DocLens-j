@@ -163,8 +163,9 @@ class OcrRoutingDocumentAffinityTest {
         private final ArrayDeque<OcrPendingRequest> requests = new ArrayDeque<>(1);
 
         @Override
-        public void enqueue(OcrPendingRequest request) {
+        public boolean enqueue(OcrPendingRequest request) {
             requests.addLast(request);
+            return true;
         }
 
         @Override

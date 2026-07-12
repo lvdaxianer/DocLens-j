@@ -288,8 +288,9 @@ class OcrRoutingSameNodeConcurrencyTest {
          * @date 2026-06-21
          */
         @Override
-        public void enqueue(OcrPendingRequest request) {
+        public boolean enqueue(OcrPendingRequest request) {
             requests.addLast(request);
+            return true;
         }
 
         /**

@@ -291,7 +291,7 @@ public class OcrRoutingService {
      */
     private OcrRuntimeNodeView dispatchedNode(OcrDispatchAcquireResult acquireResult) {
         if (acquireResult.queued()) {
-            return acquireResult.awaitDispatch();
+            return acquireResult.awaitDispatch(properties.dispatchWaitTimeout());
         } else {
             return acquireResult.node().orElseThrow(() -> new OcrRouteExecutionException("no healthy ocr candidates"));
         }

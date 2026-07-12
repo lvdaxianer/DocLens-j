@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -126,6 +127,26 @@ class DocLensSpringPropertiesBindingTest {
                             .containsExactly(0.5D, 2);
                     assertThat(properties.traffic().globalProtection().enabled()).isTrue();
                     assertThat(properties.traffic().globalProtection().maxInFlight()).isEqualTo(100);
+                });
+    }
+
+    /**
+     * 绑定 OCR 派发背压与等待超时配置。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    @Test
+    void bindsOcrDispatchBackpressureConfiguration() {
+        contextRunner
+                .withPropertyValues(
+                        "doclens.ocr.dispatch-wait-timeout=250ms",
+                        "doclens.ocr.dispatch-queue-capacity=7")
+                .run(context -> {
+                    DocLensSpringProperties.OcrProperties ocr = context.getBean(DocLensSpringProperties.class).ocr();
+
+                    assertThat(ocr.dispatchWaitTimeout()).isEqualTo(Duration.ofMillis(250));
+                    assertThat(ocr.dispatchQueueCapacity()).isEqualTo(7);
                 });
     }
 

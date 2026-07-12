@@ -22,6 +22,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutePolicy;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.DashScopeOnlineOcrClient;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrBatchHitTracker;
+import io.github.lvdaxianer.doclens.j.adapter.infrastructure.InMemoryOcrPendingRequestQueue;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckProperties;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthCheckScheduler;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthChecker;
@@ -51,6 +52,19 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration(after = DocLensPaddleOcrAutoConfiguration.class)
 public class DocLensOcrResourceAutoConfiguration {
+    /**
+     * 创建进程内 OCR 待派发请求队列。
+     *
+     * @param properties DocLens 配置
+     * @return OCR 待派发请求队列
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    OcrPendingRequestQueue ocrPendingRequestQueue(DocLensSpringProperties properties) {
+        return new InMemoryOcrPendingRequestQueue(properties.ocr().dispatchQueueCapacity());
+    }
 
     /**
      * 创建 OCR 路由自动配置依赖。
@@ -289,7 +303,7 @@ public class DocLensOcrResourceAutoConfiguration {
                 new OcrHealthGovernance(properties.failureThreshold(), properties.probeIntervalSeconds(),
                         properties.circuitOpenSeconds(), properties.recoverySuccessThreshold(),
                         properties.manualRecoveryAttempts()),
-                properties.specificNodeFallbackEnabled());
+                properties.specificNodeFallbackEnabled(), properties.dispatchWaitTimeout());
     }
 
     /**

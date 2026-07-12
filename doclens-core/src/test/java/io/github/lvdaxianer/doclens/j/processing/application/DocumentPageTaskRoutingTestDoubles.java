@@ -85,7 +85,8 @@ final class DocumentPageTaskRoutingTestDoubles {
          * @date 2026-06-11
          */
         @Override
-        public void enqueue(OcrPendingRequest request) {
+        public boolean enqueue(OcrPendingRequest request) {
+            return true;
         }
 
         /**

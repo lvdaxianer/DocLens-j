@@ -14,10 +14,11 @@ public interface OcrPendingRequestQueue {
      * 将待派发请求加入队列。
      *
      * @param request 待派发请求
+     * @return 是否成功入队
      * @author lvdaxianerplus
      * @date 2026-06-10
      */
-    void enqueue(OcrPendingRequest request);
+    boolean enqueue(OcrPendingRequest request);
 
     /**
      * 从队列头部取出一个待派发请求。
