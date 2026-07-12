@@ -8,7 +8,10 @@ import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +41,10 @@ public class CreateBatchRequestMapper {
     private static final String LLM_ORCHESTRATED_PARAM = "llmOrchestrated";
     private static final String LLM_ORCHESTRATED_SNAKE_PARAM = "llm_orchestrated";
     private static final String CALLER_PARTITION_HEADER = "X-Doclens-Key";
+    private static final String HTTP_SCHEME = "http";
+    private static final String HTTPS_SCHEME = "https";
     private static final String DEFAULT_FILE_NAME = "uploaded.bin";
+    private static final int MAX_UPLOAD_FILE_COUNT = 30;
 
     private final JsonCodec jsonCodec;
     private final CallerPartitionResolver callerPartitionResolver;
@@ -79,6 +85,15 @@ public class CreateBatchRequestMapper {
                 caller.sourceApp(), caller.tenantKey().orElse(""));
     }
 
+    /**
+     * 从 multipart 请求读取创建批次表单。
+     *
+     * @param files 已上传文件集合
+     * @param request HTTP 请求
+     * @return 创建批次表单
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private CreateBatchForm toForm(List<MultipartFile> files, HttpServletRequest request) {
         return new CreateBatchForm(files, request.getParameter(METADATA_PARAM),
                 request.getParameter(CALLBACK_URL_PARAM), request.getParameter(IDEMPOTENCY_KEY_PARAM),
@@ -110,16 +125,118 @@ public class CreateBatchRequestMapper {
         }
     }
 
+    /**
+     * 校验创建批次表单。
+     *
+     * @param form 创建批次表单
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
     private void validateForm(CreateBatchForm form) {
         if (form.files() == null || form.files().isEmpty()) {
+            // 上传文件是创建批次的必要输入。
             throw new IllegalArgumentException("files is required");
-        } else if (StringUtils.hasText(form.callbackUrl()) && !form.callbackUrl().startsWith("http")) {
-            throw new IllegalArgumentException("callback_url must be http or https URL");
         } else {
-            // 表单包含文件，且可接受可选回调地址。
+            // 文件存在时继续校验批次规模和可选回调地址。
+            validateFileCount(form.files());
+            validateCallbackUrl(form.callbackUrl());
         }
     }
 
+    /**
+     * 校验单批上传文件数量。
+     *
+     * @param files 上传文件集合
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private void validateFileCount(List<MultipartFile> files) {
+        if (files.size() > MAX_UPLOAD_FILE_COUNT) {
+            // 服务端必须兜底 Dashboard 的批次文件数量上限。
+            throw new IllegalArgumentException("单个批次最多上传 30 个文件，请拆分后再上传");
+        } else {
+            // 文件数量满足批次上限。
+        }
+    }
+
+    /**
+     * 校验回调地址协议。
+     *
+     * @param callbackUrl 回调地址
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private void validateCallbackUrl(String callbackUrl) {
+        if (!StringUtils.hasText(callbackUrl)) {
+            // 未配置回调地址时无需校验协议。
+        } else if (callbackScheme(callbackUrl).filter(this::isHttpCallbackScheme).isEmpty()) {
+            // 已配置回调地址时只允许 HTTP/HTTPS 目标。
+            throw invalidCallbackUrlException();
+        } else {
+            // 回调协议合法时继续处理。
+        }
+    }
+
+    /**
+     * 解析回调地址协议。
+     *
+     * @param callbackUrl 回调地址
+     * @return 回调地址协议
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private Optional<String> callbackScheme(String callbackUrl) {
+        try {
+            return Optional.ofNullable(new URI(callbackUrl).getScheme());
+        } catch (URISyntaxException ex) {
+            // URI 解析失败时保留异常链，交给统一 validation 响应处理。
+            throw invalidCallbackUrlException(ex);
+        }
+    }
+
+    /**
+     * 判断回调地址协议是否为 HTTP 协议。
+     *
+     * @param scheme 回调地址协议
+     * @return 是否为 HTTP/HTTPS 协议
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private boolean isHttpCallbackScheme(String scheme) {
+        return HTTP_SCHEME.equalsIgnoreCase(scheme) || HTTPS_SCHEME.equalsIgnoreCase(scheme);
+    }
+
+    /**
+     * 创建回调地址非法异常。
+     *
+     * @return 回调地址非法异常
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private IllegalArgumentException invalidCallbackUrlException() {
+        return new IllegalArgumentException("callback_url must be http or https URL");
+    }
+
+    /**
+     * 创建保留原始异常的回调地址非法异常。
+     *
+     * @param cause 原始 URI 解析异常
+     * @return 回调地址非法异常
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-12
+     */
+    private IllegalArgumentException invalidCallbackUrlException(URISyntaxException cause) {
+        return new IllegalArgumentException("callback_url must be http or https URL", cause);
+    }
+
+    /**
+     * 将 multipart 文件转换为 SDK 文档输入。
+     *
+     * @param file multipart 文件
+     * @return SDK 文档输入
+     * @author lvdaxianerplus
+     * @date 2026-06-07
+     */
     private DocumentInput toDocumentInput(MultipartFile file) {
         try {
             String fileName = file.getOriginalFilename() == null ? DEFAULT_FILE_NAME : file.getOriginalFilename();
