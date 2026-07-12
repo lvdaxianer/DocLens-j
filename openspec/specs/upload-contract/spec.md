@@ -1,5 +1,9 @@
-## MODIFIED Requirements
+# upload-contract Specification
 
+## Purpose
+Define server-side upload contract checks for batch size and callback URL
+schemes.
+## Requirements
 ### Requirement: Batch upload rejects oversized batch counts server-side
 
 The server upload API MUST reject a batch that contains more than 30 uploaded
