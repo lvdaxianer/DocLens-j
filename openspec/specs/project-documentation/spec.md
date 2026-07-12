@@ -49,8 +49,8 @@ main REST endpoint groups exposed by `doclens-server`.
 ### Requirement: Focused Operational Reference Documents
 
 The project SHALL provide focused reference documents for SDK usage,
-configuration, permission configuration, local development workflows, and
-technical delivery.
+configuration, bilingual permission configuration, local development workflows,
+and technical delivery.
 
 #### Scenario: Reader wants embedded usage
 
@@ -64,12 +64,21 @@ technical delivery.
 - **THEN** they can find key `doclens.*` settings and environment-variable
   secret conventions in the configuration document
 
-#### Scenario: Reader wants permission setup
+#### Scenario: Reader wants permission setup in English
 
 - **WHEN** a reader needs to configure API access for production or development
+  in English
 - **THEN** they can find trusted gateway authentication, principal allowlist,
   caller partition key, admin route, local development, curl, and failure
-  response examples in the permission configuration document
+  response examples in the English permission configuration document
+
+#### Scenario: Reader wants permission setup in Chinese
+
+- **WHEN** a reader needs to configure API access for production or development
+  in Chinese
+- **THEN** they can find trusted gateway authentication, principal allowlist,
+  caller partition key, admin route, local development, curl, and failure
+  response examples in the Chinese permission configuration document
 
 #### Scenario: Reader wants local development commands
 
