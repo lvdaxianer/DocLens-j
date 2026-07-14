@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -18,8 +19,8 @@ import org.springframework.test.web.servlet.MvcResult;
 class DocLensOcrBatchIdempotencyKeyContractTest extends DocLensOcrApiContractSupport {
 
     private static final String BATCH_PATH = "/api/v1/batches/by-idempotency-key/{idempotencyKey}";
-    private static final String CREATED_AT = "2026-06-14T12:00:00+08:00";
-    private static final String UPDATED_AT = "2026-06-14T12:01:00+08:00";
+    private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-06-14T12:00:00+08:00");
+    private static final OffsetDateTime UPDATED_AT = OffsetDateTime.parse("2026-06-14T12:01:00+08:00");
 
     /**
      * 验证 queued 批次可以按 idempotency key 回查。

@@ -46,6 +46,20 @@ public final class PostgreSqlTestContainerSupport {
     }
 
     /**
+     * 创建并启动 PostgreSQL 测试容器。
+     *
+     * @param databaseName 数据库名称
+     * @return 已启动的 PostgreSQL 测试容器
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-14
+     */
+    public static PostgreSQLContainer<?> createStartedContainer(String databaseName) {
+        PostgreSQLContainer<?> container = createContainer(databaseName);
+        container.start();
+        return container;
+    }
+
+    /**
      * 注册 Spring 数据源属性。
      *
      * @param registry 动态属性注册器

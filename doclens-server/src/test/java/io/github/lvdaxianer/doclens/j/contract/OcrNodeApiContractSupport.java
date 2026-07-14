@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCallStatus;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrRoutingMode;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrRuntimeNodePool;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -25,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * OCR 节点 API 契约测试共享支持。
@@ -38,6 +40,9 @@ abstract class OcrNodeApiContractSupport implements CallerCredentialContractSupp
 
     /** 契约测试基准时间。 */
     protected static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
+    /** PostgreSQL 契约测试数据库。 */
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("ocr_node_api");
     /** 临时目录用于隔离数据库和对象存储。 */
     @TempDir
     static java.nio.file.Path tempDir;
@@ -67,8 +72,7 @@ abstract class OcrNodeApiContractSupport implements CallerCredentialContractSupp
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:file:" + tempDir.resolve("ocr-node-api") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
         registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);
