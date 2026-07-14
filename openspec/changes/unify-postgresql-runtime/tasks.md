@@ -25,5 +25,5 @@
   references from the repository.
 - [x] 4.3 Update README and docs references so PostgreSQL is documented as the
   only supported database.
-- [ ] 4.4 Run broad Maven verification plus repository scans proving no active
+- [x] 4.4 Run broad Maven verification plus repository scans proving no active
   H2 runtime or test configuration remains.
