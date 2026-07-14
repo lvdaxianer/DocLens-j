@@ -12,7 +12,7 @@
 
 ## 3. Starter repository and schema tests
 
-- [ ] 3.1 Migrate `doclens-spring-boot-starter` repository, schema, wiring, and
+- [x] 3.1 Migrate `doclens-spring-boot-starter` repository, schema, wiring, and
   embedded starter tests from H2 to PostgreSQL Testcontainers.
 - [ ] 3.2 Run focused starter verification and fix PostgreSQL SQL or migration
   issues found by that migration.

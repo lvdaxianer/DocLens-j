@@ -9,6 +9,7 @@ import io.github.lvdaxianer.doclens.j.ingestion.domain.BatchStatus;
 import io.github.lvdaxianer.doclens.j.ingestion.domain.CallerIdentity;
 import io.github.lvdaxianer.doclens.j.shared.domain.JsonPayload;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 批次仓储幂等键回查测试。
@@ -38,12 +40,14 @@ class MybatisPlusBatchRepositoryIdempotencyKeyTest {
     private static final String TEST_CLIENT_ID = "rag-flow";
     private static final String TEST_SOURCE_APP = "knowledge-base";
     private static final String TEST_TENANT_KEY = "tenant-east";
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("batch_idempotency_lookup");
 
     @Autowired
     private BatchRepository repository;
 
     /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -51,8 +55,7 @@ class MybatisPlusBatchRepositoryIdempotencyKeyTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:batch_idempotency_lookup;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**

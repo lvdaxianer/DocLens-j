@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 class OcrHealthCheckSchedulerTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-09T08:00:00+08:00");
+    private static final int HEALTH_CHECK_WAIT_ATTEMPTS = 20;
+    private static final int HEALTH_CHECK_WAIT_MILLIS = 50;
 
     /**
      * 启动调度器后应执行健康检查并刷新运行时节点池。
@@ -47,12 +49,31 @@ class OcrHealthCheckSchedulerTest {
 
         nodePool.initialize();
         scheduler.start();
-        Thread.sleep(200);
+        waitForNodeStatus(repository, OcrNodeStatus.UP);
         schedulerExecutor.shutdownNow();
         healthExecutor.shutdownNow();
 
         assertThat(repository.findById("node-1")).get().extracting(OcrNode::status).isEqualTo(OcrNodeStatus.UP);
         assertThat(nodePool.snapshot()).extracting(view -> view.status()).containsExactly(OcrNodeStatus.UP);
+    }
+
+    /**
+     * 等待健康检查线程刷新节点状态。
+     *
+     * @param repository OCR 节点仓储
+     * @param expected 期望状态
+     * @throws InterruptedException 等待被中断时抛出
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-14
+     */
+    private void waitForNodeStatus(InMemoryOcrNodeRepository repository, OcrNodeStatus expected)
+            throws InterruptedException {
+        for (int attempt = 0; attempt < HEALTH_CHECK_WAIT_ATTEMPTS; attempt++) {
+            if (repository.findById("node-1").map(OcrNode::status).filter(expected::equals).isPresent()) {
+                return;
+            }
+            Thread.sleep(HEALTH_CHECK_WAIT_MILLIS);
+        }
     }
 
     /**

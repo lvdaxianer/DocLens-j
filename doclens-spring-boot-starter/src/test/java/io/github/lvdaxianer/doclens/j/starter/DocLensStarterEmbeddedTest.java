@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.api.CreateBatchRequest;
 import io.github.lvdaxianer.doclens.j.api.DocLensEngine;
 import io.github.lvdaxianer.doclens.j.api.DocumentInput;
 import io.github.lvdaxianer.doclens.j.processing.application.ChunkStrategy;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 面向 SDK 使用方式的嵌入式 Spring Boot Starter 测试。
@@ -28,6 +30,8 @@ class DocLensStarterEmbeddedTest {
 
     private static final int PROCESSING_WAIT_ATTEMPTS = 20;
     private static final int PROCESSING_WAIT_MILLIS = 100;
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("starter_embedded");
 
     @TempDir
     static java.nio.file.Path tempDir;
@@ -44,8 +48,7 @@ class DocLensStarterEmbeddedTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:file:" + tempDir.resolve("starter-test") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.auto-process-on-upload", () -> "true");
         registry.add("doclens.worker-id", () -> "starter-test-worker");

@@ -193,7 +193,9 @@ public class OcrHealthChecker {
      * @date 2026-06-08
      */
     private List<Future<?>> submitTasks(List<Runnable> tasks) {
-        return tasks.stream().map(healthExecutor::submit).toList();
+        List<Future<?>> futures = new java.util.ArrayList<>(tasks.size());
+        tasks.forEach(task -> futures.add(healthExecutor.submit(task)));
+        return futures;
     }
 
     /**

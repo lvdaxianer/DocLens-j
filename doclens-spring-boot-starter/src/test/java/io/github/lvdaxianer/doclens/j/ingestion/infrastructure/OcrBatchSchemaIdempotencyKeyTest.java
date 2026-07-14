@@ -6,8 +6,10 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.regex.Pattern;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,10 +29,10 @@ class OcrBatchSchemaIdempotencyKeyTest {
     private static final String CALLER_CLIENT_ID_COLUMN = "CLIENT_ID";
     private static final String CALLER_SOURCE_APP_COLUMN = "SOURCE_APP";
     private static final String CALLER_TENANT_KEY_COLUMN = "TENANT_KEY";
-    private static final String FRESH_JDBC_URL = "jdbc:h2:mem:fresh_batch_idempotency_schema;"
-            + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
-    private static final String MIGRATED_JDBC_URL = "jdbc:h2:mem:migrated_batch_idempotency_schema;"
-            + "MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+    private static final PostgreSQLContainer<?> FRESH_POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("fresh_batch_idempotency_schema");
+    private static final PostgreSQLContainer<?> MIGRATED_POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("migrated_batch_idempotency_schema");
     private static final String LEGACY_BATCH_TABLE_SQL = """
             CREATE TABLE ocr_batches (
                 batch_id VARCHAR(80) PRIMARY KEY,
@@ -90,7 +92,7 @@ class OcrBatchSchemaIdempotencyKeyTest {
     @Test
     void schemaAcceptsDuplicateIdempotencyKeys() throws SQLException {
         migrateFreshSchema();
-        try (Connection connection = DriverManager.getConnection(FRESH_JDBC_URL, "sa", "")) {
+        try (Connection connection = openConnection(FRESH_POSTGRESQL)) {
             insertBatch(connection, "batch-1");
             insertBatch(connection, "batch-2");
         }
@@ -105,7 +107,7 @@ class OcrBatchSchemaIdempotencyKeyTest {
     @Test
     void schemaAddsCallerAttributionColumnsToBatches() throws SQLException {
         migrateFreshSchema();
-        try (Connection connection = DriverManager.getConnection(FRESH_JDBC_URL, "sa", "")) {
+        try (Connection connection = openConnection(FRESH_POSTGRESQL)) {
             assertThat(batchColumnNames(connection))
                     .contains(CALLER_CLIENT_ID_COLUMN, CALLER_SOURCE_APP_COLUMN, CALLER_TENANT_KEY_COLUMN);
         }
@@ -121,7 +123,7 @@ class OcrBatchSchemaIdempotencyKeyTest {
     void migrationRemovesExistingUniqueConstraint() throws SQLException {
         createLegacySchemaWithUniqueIdempotencyKey();
         migrateFromVersion15();
-        try (Connection connection = DriverManager.getConnection(MIGRATED_JDBC_URL, "sa", "")) {
+        try (Connection connection = openConnection(MIGRATED_POSTGRESQL)) {
             insertBatch(connection, "batch-1");
             insertBatch(connection, "batch-2");
         }
@@ -135,7 +137,8 @@ class OcrBatchSchemaIdempotencyKeyTest {
      */
     private void migrateFreshSchema() {
         Flyway.configure()
-                .dataSource(FRESH_JDBC_URL, "sa", "")
+                .dataSource(FRESH_POSTGRESQL.getJdbcUrl(), FRESH_POSTGRESQL.getUsername(),
+                        FRESH_POSTGRESQL.getPassword())
                 .locations("classpath:db/migration")
                 .load()
                 .migrate();
@@ -148,7 +151,7 @@ class OcrBatchSchemaIdempotencyKeyTest {
      * @date 2026-06-16
      */
     private void createLegacySchemaWithUniqueIdempotencyKey() throws SQLException {
-        try (Connection connection = DriverManager.getConnection(MIGRATED_JDBC_URL, "sa", "")) {
+        try (Connection connection = openConnection(MIGRATED_POSTGRESQL)) {
             createLegacyBatchTable(connection);
             createLegacyDocumentTable(connection);
         }
@@ -190,7 +193,8 @@ class OcrBatchSchemaIdempotencyKeyTest {
      */
     private void migrateFromVersion15() {
         Flyway.configure()
-                .dataSource(MIGRATED_JDBC_URL, "sa", "")
+                .dataSource(MIGRATED_POSTGRESQL.getJdbcUrl(), MIGRATED_POSTGRESQL.getUsername(),
+                        MIGRATED_POSTGRESQL.getPassword())
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("15")
@@ -238,6 +242,19 @@ class OcrBatchSchemaIdempotencyKeyTest {
             }
         }
         return columnNames;
+    }
+
+    /**
+     * 打开 PostgreSQL 测试连接。
+     *
+     * @param container PostgreSQL 测试容器
+     * @return 数据库连接
+     * @throws SQLException 打开连接失败时抛出
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-14
+     */
+    private Connection openConnection(PostgreSQLContainer<?> container) throws SQLException {
+        return DriverManager.getConnection(container.getJdbcUrl(), container.getUsername(), container.getPassword());
     }
 
     /**
