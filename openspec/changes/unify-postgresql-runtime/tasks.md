@@ -21,7 +21,7 @@
 
 - [x] 4.1 Update local development configuration and Docker Compose support so
   local runs use PostgreSQL by default.
-- [ ] 4.2 Remove H2 dependencies and all remaining active H2 datasource or driver
+- [x] 4.2 Remove H2 dependencies and all remaining active H2 datasource or driver
   references from the repository.
 - [ ] 4.3 Update README and docs references so PostgreSQL is documented as the
   only supported database.
