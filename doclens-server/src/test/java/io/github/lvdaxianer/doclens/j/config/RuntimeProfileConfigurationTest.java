@@ -51,10 +51,12 @@ class RuntimeProfileConfigurationTest {
      * 期望值常量：
      * - LOCAL_* 只能出现在 dev profile 中
      * - PROD_* 必须是无默认值环境变量，避免生产静默回退
-     * - TEST_* 必须隔离到内存库和 target 目录，避免污染本地数据
+     * - TEST_* 必须隔离到 target 目录，数据库由 PostgreSQL 测试容器动态注入
      */
-    private static final String LOCAL_H2_URL =
-            "jdbc:h2:file:./var/db/doclens;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH";
+    private static final String LOCAL_POSTGRESQL_URL = "${DOCLENS_DB_URL:jdbc:postgresql://localhost:5432/doclens}";
+    private static final String LOCAL_DATASOURCE_USERNAME = "${DOCLENS_DB_USERNAME:doclens}";
+    private static final String LOCAL_DATASOURCE_PASSWORD = "${DOCLENS_DB_PASSWORD:doclens}";
+    private static final String LOCAL_POSTGRESQL_DRIVER = "${DOCLENS_DB_DRIVER:org.postgresql.Driver}";
     private static final String LOCAL_STORAGE_ROOT = "./var/storage";
     private static final String LOCAL_WORKER_ID = "local-worker";
     private static final String LOCAL_PADDLE_ENDPOINT = "${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}";
@@ -70,8 +72,6 @@ class RuntimeProfileConfigurationTest {
     private static final String PROD_GATEWAY_SECRET = "${DOCLENS_GATEWAY_SECRET}";
     private static final String PROD_GATEWAY_PRINCIPAL = "${DOCLENS_GATEWAY_PRINCIPAL}";
     private static final String PROD_GATEWAY_PARTITION = "${DOCLENS_GATEWAY_PARTITION}";
-    private static final String TEST_H2_URL =
-            "jdbc:h2:mem:doclens-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH";
     private static final String TEST_STORAGE_ROOT = "./target/test-storage";
 
     /**
@@ -102,7 +102,10 @@ class RuntimeProfileConfigurationTest {
     void devProfileKeepsLocalRuntimeDefaults() throws IOException {
         PropertySource<?> devConfig = load(DEV_CONFIG);
 
-        assertThat(devConfig.getProperty(DATASOURCE_URL_PROPERTY)).isEqualTo(LOCAL_H2_URL);
+        assertThat(devConfig.getProperty(DATASOURCE_URL_PROPERTY)).isEqualTo(LOCAL_POSTGRESQL_URL);
+        assertThat(devConfig.getProperty(DATASOURCE_USERNAME_PROPERTY)).isEqualTo(LOCAL_DATASOURCE_USERNAME);
+        assertThat(devConfig.getProperty(DATASOURCE_PASSWORD_PROPERTY)).isEqualTo(LOCAL_DATASOURCE_PASSWORD);
+        assertThat(devConfig.getProperty(DATASOURCE_DRIVER_PROPERTY)).isEqualTo(LOCAL_POSTGRESQL_DRIVER);
         assertThat(devConfig.getProperty(STORAGE_ROOT_PROPERTY)).isEqualTo(LOCAL_STORAGE_ROOT);
         assertThat(devConfig.getProperty(WORKER_ID_PROPERTY)).isEqualTo(LOCAL_WORKER_ID);
         assertThat(devConfig.getProperty(PADDLE_ENDPOINT_PROPERTY)).isEqualTo(LOCAL_PADDLE_ENDPOINT);
@@ -134,7 +137,7 @@ class RuntimeProfileConfigurationTest {
     }
 
     /**
-     * 测试环境使用隔离的内存数据库和测试存储目录。
+     * 测试环境不声明静态数据源，只保留测试存储目录。
      *
      * @author lvdaxianer@yeah.net
      * @date 2026-07-02
@@ -143,7 +146,10 @@ class RuntimeProfileConfigurationTest {
     void testProfileUsesIsolatedRuntimeDefaults() throws IOException {
         PropertySource<?> testConfig = loadTest(SHARED_CONFIG);
 
-        assertThat(testConfig.getProperty(DATASOURCE_URL_PROPERTY)).isEqualTo(TEST_H2_URL);
+        assertThat(testConfig.getProperty(DATASOURCE_URL_PROPERTY)).isNull();
+        assertThat(testConfig.getProperty(DATASOURCE_USERNAME_PROPERTY)).isNull();
+        assertThat(testConfig.getProperty(DATASOURCE_PASSWORD_PROPERTY)).isNull();
+        assertThat(testConfig.getProperty(DATASOURCE_DRIVER_PROPERTY)).isNull();
         assertThat(testConfig.getProperty(STORAGE_ROOT_PROPERTY)).isEqualTo(TEST_STORAGE_ROOT);
     }
 
