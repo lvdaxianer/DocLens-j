@@ -7,7 +7,7 @@
 
 ## 2. Docker all-in-one image
 
-- [ ] 2.1 Add a Dockerfile and entrypoint that build frontend/backend artifacts
+- [x] 2.1 Add a Dockerfile and entrypoint that build frontend/backend artifacts
   and run DocLens-j with PostgreSQL in one image using common public base
   images where possible.
 - [ ] 2.2 Verify the Dockerfile is syntactically usable and the image can be
