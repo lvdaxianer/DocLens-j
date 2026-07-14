@@ -10,7 +10,7 @@
 - [x] 2.1 Add a Dockerfile and entrypoint that build frontend/backend artifacts
   and run DocLens-j with PostgreSQL in one image using common public base
   images where possible.
-- [ ] 2.2 Verify the Dockerfile is syntactically usable and the image can be
+- [x] 2.2 Verify the Dockerfile is syntactically usable and the image can be
   built or at least inspected with the available local toolchain.
 
 ## 3. Helm Kubernetes deployment
