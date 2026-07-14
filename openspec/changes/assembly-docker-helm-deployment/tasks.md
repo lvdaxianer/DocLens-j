@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add a Maven Assembly distribution for `doclens-server` that packages
   the executable server jar, config examples, and startup scripts.
-- [ ] 1.2 Verify the assembly artifact is produced and contains the expected
+- [x] 1.2 Verify the assembly artifact is produced and contains the expected
   runtime files.
 
 ## 2. Docker all-in-one image
