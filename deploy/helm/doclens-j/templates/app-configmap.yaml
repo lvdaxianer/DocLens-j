@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "doclens-j.fullname" . }}-app
+  labels:
+    {{- include "doclens-j.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  DOCLENS_DB_URL: {{ include "doclens-j.databaseUrl" . | quote }}
+  DOCLENS_DB_USERNAME: {{ include "doclens-j.databaseUsername" . | quote }}
+  DOCLENS_DB_DRIVER: {{ .Values.app.database.driver | quote }}
+  DOCLENS_STORAGE_ROOT: {{ .Values.app.storageRoot | quote }}
+  DOCLENS_WORKER_ID: {{ .Values.app.workerId | quote }}
+  DOCLENS_PADDLE_OCR_ENDPOINT: {{ .Values.app.paddleOcr.endpoint | quote }}
+  DOCLENS_PADDLE_OCR_NODE_NAME: {{ .Values.app.paddleOcr.nodeName | quote }}
+  DOCLENS_PADDLE_OCR_NODE_HOST: {{ .Values.app.paddleOcr.nodeHost | quote }}
+  DOCLENS_PADDLE_OCR_NODE_PORT: {{ .Values.app.paddleOcr.nodePort | quote }}
+  DOCLENS_WORD_CONVERSION_COMMAND: {{ .Values.app.wordConversionCommand | quote }}
+  DOCLENS_GATEWAY_PRINCIPAL: {{ .Values.app.gatewayAuth.principal | quote }}
+  DOCLENS_GATEWAY_PARTITION: {{ .Values.app.gatewayAuth.partition | quote }}

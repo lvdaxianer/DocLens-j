@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "doclens-j.fullname" . }}
+  labels:
+    {{- include "doclens-j.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "doclens-j.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "doclens-j.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "doclens-j.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "doclens-j.name" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.app.command.enabled }}
+          command:
+            {{- toYaml .Values.app.command.value | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 10003
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "doclens-j.fullname" . }}-app
+          env:
+            - name: DOCLENS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "doclens-j.appSecretName" . }}
+                  key: {{ .Values.app.database.passwordKey }}
+            - name: DOCLENS_GATEWAY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "doclens-j.appSecretName" . }}
+                  key: DOCLENS_GATEWAY_SECRET
+                  optional: true
+            {{- with .Values.app.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: doclens-storage
+              mountPath: {{ .Values.app.storageRoot }}
+      volumes:
+        - name: doclens-storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "doclens-j.fullname" . }}-storage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -15,7 +15,7 @@
 
 ## 3. Helm Kubernetes deployment
 
-- [ ] 3.1 Add a Helm chart that deploys DocLens-j and PostgreSQL for Kubernetes,
+- [x] 3.1 Add a Helm chart that deploys DocLens-j and PostgreSQL for Kubernetes,
   with external PostgreSQL override support.
 - [ ] 3.2 Verify the Helm chart renders successfully with default values.
 
