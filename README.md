@@ -155,8 +155,7 @@ LLM Markdown 是 OCR 后处理阶段，不影响 OCR 原文产出：
 - Maven 多模块
 - MyBatis-Plus
 - Flyway
-- H2 本地/测试数据库
-- PostgreSQL 运行时依赖
+- PostgreSQL 本地/测试/生产数据库
 - Vue 3、TypeScript、Vite、Naive UI、ECharts
 
 ## 验证

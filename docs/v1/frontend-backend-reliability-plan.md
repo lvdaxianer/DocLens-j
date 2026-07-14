@@ -274,8 +274,9 @@ Goal: prevent production from silently using local defaults.
 Scope:
 
 - Keep `application.yml` for safe shared defaults.
-- Move local H2, local storage root, local worker ID, and internal OCR endpoint
-  defaults into `application-dev.yml`.
+- Move the previously local-only database defaults, local storage root, local
+  worker ID, and internal OCR endpoint defaults into `application-dev.yml`;
+  the database baseline is PostgreSQL.
 - Add `application-prod.yml` with environment-variable-only database, OCR
   endpoint, gateway auth, storage, and token settings.
 
@@ -283,7 +284,7 @@ Acceptance criteria:
 
 - Production profile without required env vars fails at startup.
 - Development profile remains easy to run locally.
-- Test profile uses isolated in-memory or temp-file infrastructure.
+- Test profile uses isolated PostgreSQL infrastructure.
 
 Focused verification:
 

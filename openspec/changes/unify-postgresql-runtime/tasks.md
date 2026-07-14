@@ -23,7 +23,7 @@
   local runs use PostgreSQL by default.
 - [x] 4.2 Remove H2 dependencies and all remaining active H2 datasource or driver
   references from the repository.
-- [ ] 4.3 Update README and docs references so PostgreSQL is documented as the
+- [x] 4.3 Update README and docs references so PostgreSQL is documented as the
   only supported database.
 - [ ] 4.4 Run broad Maven verification plus repository scans proving no active
   H2 runtime or test configuration remains.

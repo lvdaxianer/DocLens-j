@@ -8,6 +8,7 @@ Vue dashboard.
 - Java 21
 - Maven
 - Node.js and npm for `doclens-dashboard`
+- Docker or Docker Compose for the local PostgreSQL service
 - Optional LibreOffice command for Word conversion
 - Optional PaddleOCR, Ollama, or online OCR service for end-to-end OCR testing
 
@@ -22,11 +23,13 @@ Recommended commands from the repository root:
 ./scripts/dev-down.sh
 ```
 
-The helper scripts start the dashboard and backend, write PID files under
-`var/dev`, and keep logs in the same directory.
+The helper scripts start PostgreSQL, the dashboard, and the backend. They write
+PID files under `var/dev`, keep logs in the same directory, and use the local
+PostgreSQL datasource by default.
 
 | Service | URL | Log |
 | --- | --- | --- |
+| PostgreSQL | `127.0.0.1:15432` | Docker Compose logs |
 | Dashboard | `http://127.0.0.1:10002/dashboard/` | `var/dev/frontend.log` |
 | Backend | `http://127.0.0.1:10003` | `var/dev/backend.log` |
 
@@ -37,6 +40,12 @@ The dashboard proxies `/api` requests to the backend at
 
 ```bash
 mvn -pl doclens-server spring-boot:run
+```
+
+If you run the backend without `./scripts/dev-up.sh`, start PostgreSQL first:
+
+```bash
+docker compose up -d postgres
 ```
 
 ## Run Dashboard Only
@@ -54,6 +63,9 @@ Run all Maven tests:
 ```bash
 mvn test -q
 ```
+
+The Java tests use PostgreSQL Testcontainers, so Docker or a compatible
+container runtime must be available.
 
 Run development-script and documentation checks:
 
