@@ -7,7 +7,7 @@
 
 - [x] 2.1 Migrate `doclens-server` contract tests and support classes from H2
   dynamic datasource overrides to PostgreSQL Testcontainers.
-- [ ] 2.2 Run focused server contract/profile verification and fix PostgreSQL SQL
+- [x] 2.2 Run focused server contract/profile verification and fix PostgreSQL SQL
   or migration issues found by that migration.
 
 ## 3. Starter repository and schema tests
