@@ -21,6 +21,6 @@
 
 ## 4. Documentation and final verification
 
-- [ ] 4.1 Update packaging documentation with assembly, Docker, and Helm usage.
+- [x] 4.1 Update packaging documentation with assembly, Docker, and Helm usage.
 - [ ] 4.2 Run broad verification covering Maven packaging, Docker/Helm checks,
   OpenSpec validation, and repository diff checks.
