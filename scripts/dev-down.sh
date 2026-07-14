@@ -14,5 +14,6 @@ stop_service "${BACKEND_PID_FILE}"
 stop_service "${FRONTEND_PID_FILE}"
 stop_service_by_port "${BACKEND_PORT}"
 stop_service_by_port "${FRONTEND_PORT}"
+stop_postgresql_service
 
-echo "stopped frontend and backend"
+echo "stopped frontend, backend and postgresql"

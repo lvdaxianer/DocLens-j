@@ -1,0 +1,20 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: doclens-postgresql
+    environment:
+      POSTGRES_DB: ${DOCLENS_POSTGRES_DB:-doclens}
+      POSTGRES_USER: ${DOCLENS_POSTGRES_USER:-doclens}
+      POSTGRES_PASSWORD: ${DOCLENS_POSTGRES_PASSWORD:-doclens}
+    ports:
+      - "${DOCLENS_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - doclens-postgresql-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  doclens-postgresql-data:

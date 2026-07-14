@@ -19,7 +19,7 @@
 
 ## 4. Runtime configuration and documentation cleanup
 
-- [ ] 4.1 Update local development configuration and Docker Compose support so
+- [x] 4.1 Update local development configuration and Docker Compose support so
   local runs use PostgreSQL by default.
 - [ ] 4.2 Remove H2 dependencies and all remaining active H2 datasource or driver
   references from the repository.
