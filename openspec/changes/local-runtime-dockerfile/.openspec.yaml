@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-07-16
+goal: Use local Ubuntu base image and local runtime archives for all-in-one
+  Docker build
