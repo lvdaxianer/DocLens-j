@@ -8,3 +8,5 @@ var/
 *.log
 .worktrees/
 docker/jdk/*.tar.gz
+docker/runtime/*
+!docker/runtime/.gitkeep

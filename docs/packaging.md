@@ -88,32 +88,48 @@ lib/doclens-server-0.1.0-SNAPSHOT.jar
 
 ### 构建单机 Docker 镜像
 
-Dockerfile 会先构建前端，再构建后端 Assembly，最终基于 PostgreSQL 镜像加入本地 JDK21 和 DocLens-j 运行包。JDK 不在 Docker build 内下载，先把已下载的 JDK21 Linux 包放进构建上下文：
+Dockerfile 会先构建前端，再构建后端 Assembly，最终使用本地已有的 Ubuntu 镜像作为 runtime 基础镜像。JDK21、Node22 和 PostgreSQL 都不在 Docker build 阶段下载，而是先准备到 `docker/runtime/`，再由 Dockerfile 直接 `COPY` 进镜像安装。
 
 ```bash
-cp /Users/lvdaxianer/Downloads/jdk-21_linux-aarch64_bin.tar.gz docker/jdk/jdk-21_linux-aarch64_bin.tar.gz
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
+DOCKER_PLATFORM=linux/amd64 \
+  scripts/prepare-container-runtimes.sh
 ```
 
-构建 aarch64 测试镜像：
+准备完成后应有以下本地构建输入：
+
+```text
+docker/runtime/jdk-21_linux-x64_bin.tar.gz
+docker/runtime/node-v22-linux-x64.tar.xz
+docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz
+```
+
+构建 x64 测试镜像：
 
 ```bash
 docker build \
-  --build-arg LOCAL_JDK_ARCHIVE=docker/jdk/jdk-21_linux-aarch64_bin.tar.gz \
+  --platform linux/amd64 \
+  --build-arg LOCAL_JDK_ARCHIVE=docker/runtime/jdk-21_linux-x64_bin.tar.gz \
+  --build-arg LOCAL_NODE_ARCHIVE=docker/runtime/node-v22-linux-x64.tar.xz \
+  --build-arg LOCAL_POSTGRES_DEB_ARCHIVE=docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz \
   -t doclens-j:all-in-one .
 ```
 
-如果使用 x64 JDK，可以把文件放到默认路径：
-
-```text
-docker/jdk/temurin-21-jdk-linux-x64.tar.gz
-```
-
-也可以用脚本下载到默认路径后再构建：
+如果要构建其他 CPU 架构，JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构。当前本机如果只有 arm64 的 `ubuntu:22.04` / `node:22-bookworm-slim`，完全本地构建时应使用 aarch64 JDK；如果使用 x64 JDK，则需要先准备 amd64 的 Ubuntu/Node 镜像，或允许准备阶段拉取对应平台镜像。`scripts/prepare-container-runtimes.sh` 支持用环境变量覆盖默认输入：
 
 ```bash
-JDK_VERSION=21 JDK_ARCH=x64 scripts/download-container-jdk.sh
-docker build -t doclens-j:all-in-one .
+RUNTIME_DIR=docker/runtime \
+DOCKER_PLATFORM=linux/arm64 \
+JDK_SOURCE=/path/to/jdk-21_linux-aarch64_bin.tar.gz \
+NODE_IMAGE=node:22-bookworm-slim \
+POSTGRES_DOWNLOAD_IMAGE=ubuntu:22.04 \
+POSTGRES_MAJOR=16 \
+scripts/prepare-container-runtimes.sh
 ```
+
+兼容入口 `scripts/download-container-jdk.sh` 仍保留，但它会转调 `scripts/prepare-container-runtimes.sh`，同时准备 JDK、Node 和 PostgreSQL artifacts。
+
+PostgreSQL 初始化 SQL 不需要单独维护在 Dockerfile 中；镜像启动 DocLens-j 后仍由应用内 Flyway migration 初始化业务表结构。
 
 单机运行时镜像内会先启动 PostgreSQL，再启动 DocLens-j：
 

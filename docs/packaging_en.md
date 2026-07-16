@@ -84,32 +84,48 @@ Before running it, prepare the PostgreSQL connection, storage directory, OCR nod
 
 ## Build Single-Node Docker Image
 
-The Dockerfile builds the dashboard first, then the backend Assembly distribution, and finally adds a local JDK21 archive and the DocLens-j runtime into a PostgreSQL-based image. The JDK is not downloaded during Docker build; copy the downloaded Linux JDK21 archive into the build context first:
+The Dockerfile builds the dashboard first, then the backend Assembly distribution, and finally uses a locally available Ubuntu image as the runtime base image. JDK21, Node22, and PostgreSQL are not downloaded during Docker build; prepare them under `docker/runtime/` first, then let the Dockerfile `COPY` and install them.
 
 ```bash
-cp /Users/lvdaxianer/Downloads/jdk-21_linux-aarch64_bin.tar.gz docker/jdk/jdk-21_linux-aarch64_bin.tar.gz
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
+DOCKER_PLATFORM=linux/amd64 \
+  scripts/prepare-container-runtimes.sh
 ```
 
-Build an aarch64 test image:
+After preparation, the local build inputs should exist:
+
+```text
+docker/runtime/jdk-21_linux-x64_bin.tar.gz
+docker/runtime/node-v22-linux-x64.tar.xz
+docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz
+```
+
+Build an x64 test image:
 
 ```bash
 docker build \
-  --build-arg LOCAL_JDK_ARCHIVE=docker/jdk/jdk-21_linux-aarch64_bin.tar.gz \
+  --platform linux/amd64 \
+  --build-arg LOCAL_JDK_ARCHIVE=docker/runtime/jdk-21_linux-x64_bin.tar.gz \
+  --build-arg LOCAL_NODE_ARCHIVE=docker/runtime/node-v22-linux-x64.tar.xz \
+  --build-arg LOCAL_POSTGRES_DEB_ARCHIVE=docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz \
   -t doclens-j:all-in-one .
 ```
 
-For x64 JDK archives, place the file at the default path:
-
-```text
-docker/jdk/temurin-21-jdk-linux-x64.tar.gz
-```
-
-You can also use the helper script to download to the default path before building:
+For other CPU architectures, the JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture. If the local `ubuntu:22.04` / `node:22-bookworm-slim` images are arm64 only, a fully local build should use an aarch64 JDK. If you use an x64 JDK, prepare amd64 Ubuntu/Node images first or allow the preparation step to pull the matching platform images. `scripts/prepare-container-runtimes.sh` supports environment variable overrides:
 
 ```bash
-JDK_VERSION=21 JDK_ARCH=x64 scripts/download-container-jdk.sh
-docker build -t doclens-j:all-in-one .
+RUNTIME_DIR=docker/runtime \
+DOCKER_PLATFORM=linux/arm64 \
+JDK_SOURCE=/path/to/jdk-21_linux-aarch64_bin.tar.gz \
+NODE_IMAGE=node:22-bookworm-slim \
+POSTGRES_DOWNLOAD_IMAGE=ubuntu:22.04 \
+POSTGRES_MAJOR=16 \
+scripts/prepare-container-runtimes.sh
 ```
+
+The compatibility entrypoint `scripts/download-container-jdk.sh` is still available, but it delegates to `scripts/prepare-container-runtimes.sh` so JDK, Node, and PostgreSQL artifacts are prepared together.
+
+No separate PostgreSQL initialization SQL is maintained in the Dockerfile. After the image starts DocLens-j, application Flyway migrations still initialize the business schema.
 
 The single-node image starts PostgreSQL first, waits for readiness, and then starts DocLens-j:
 
