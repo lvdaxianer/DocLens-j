@@ -22,6 +22,7 @@ chown -R postgres:postgres "${DOCLENS_STORAGE_ROOT}" "${PGDATA}" /var/run/postgr
 create_password_file() {
   password_file="$(mktemp)"
   printf '%s\n' "${POSTGRES_PASSWORD}" >"${password_file}"
+  chown postgres:postgres "${password_file}"
   chmod 600 "${password_file}"
   printf '%s\n' "${password_file}"
 }
@@ -34,16 +35,40 @@ configure_postgres_access() {
 
 # 判断目标业务数据库是否已经存在。
 database_exists() {
-  runuser -u postgres -- psql --username "${POSTGRES_USER}" --dbname postgres --tuples-only --no-align \
-    --set "database_name=${POSTGRES_DB}" \
-    --command "SELECT 1 FROM pg_database WHERE datname = :'database_name'" | grep -q 1
+  local exists
+
+  if ! exists="$(runuser -u postgres -- psql --username "${POSTGRES_USER}" --dbname postgres --tuples-only --no-align \
+    --set "database_name=${POSTGRES_DB}" <<'SQL'
+SELECT 1 FROM pg_database WHERE datname = :'database_name';
+SQL
+  )"; then
+    printf 'Failed to check PostgreSQL database existence: %s\n' "${POSTGRES_DB}" >&2
+    return 2
+  fi
+
+  [ "${exists}" = "1" ]
 }
 
 # 在初始化集群中创建业务数据库。
 create_database_if_missing() {
+  local exists_status
+
   runuser -u postgres -- pg_ctl -D "${PGDATA}" -o "-c listen_addresses=''" -w start
-  if ! database_exists; then
+  set +e
+  database_exists
+  exists_status=$?
+  set -e
+
+  if [ "${exists_status}" -eq 0 ]; then
+    runuser -u postgres -- pg_ctl -D "${PGDATA}" -m fast -w stop
+    return
+  fi
+
+  if [ "${exists_status}" -eq 1 ]; then
     runuser -u postgres -- createdb --username "${POSTGRES_USER}" "${POSTGRES_DB}"
+  else
+    runuser -u postgres -- pg_ctl -D "${PGDATA}" -m fast -w stop
+    return "${exists_status}"
   fi
   runuser -u postgres -- pg_ctl -D "${PGDATA}" -m fast -w stop
 }

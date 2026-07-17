@@ -84,7 +84,19 @@ Before running it, prepare the PostgreSQL connection, storage directory, OCR nod
 
 ## Build Single-Node Docker Image
 
-The Dockerfile builds the dashboard first, then the backend Assembly distribution, and finally uses a locally available Ubuntu image as the runtime base image. JDK21, Node22, and PostgreSQL are not downloaded during Docker build; prepare them under `docker/runtime/` first, then let the Dockerfile `COPY` and install them.
+The single-node image uses a locally available Ubuntu image as the runtime base image. The dashboard assets, backend Maven Assembly distribution, JDK21, Node22, and PostgreSQL are not downloaded or built during Docker build; prepare them under `docker/build/` and `docker/runtime/` first, then let the Dockerfile `COPY` and install them.
+
+Prepare the dashboard assets and backend Assembly distribution on the host:
+
+```bash
+scripts/prepare-docker-build-context.sh
+```
+
+After preparation, this local build input should exist:
+
+```text
+docker/build/doclens-server-dist.tar.gz
+```
 
 Prepare x86/amd64 build inputs:
 
@@ -179,9 +191,11 @@ PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
 PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
 ```
 
-The resulting image tags are `doclens-j:all-in-one-amd64` and `doclens-j:all-in-one-arm64`. The JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture; if one platform is missing an artifact, the build script reports the missing file directly.
+The build script first creates reusable runtime base images `doclens:base-amd64` and `doclens:base-arm64`, containing Ubuntu, JDK21, Node22, and PostgreSQL. It then builds the final application images `doclens:amd64` and `doclens:arm64` from the matching base image. When only the application distribution changes, the base image layers can be reused instead of reinstalling JDK, Node, and PostgreSQL.
 
-For manual `docker build` usage, the corresponding build args are `LOCAL_JDK_ARCHIVE`, `LOCAL_NODE_ARCHIVE`, and `LOCAL_POSTGRES_DEB_ARCHIVE`; in normal release work, prefer `scripts/build-local-runtime-images.sh` so both platform tags are generated consistently.
+The JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture; if one platform is missing an artifact, the build script reports the missing file directly.
+
+For manual `docker build` usage, the corresponding build args are `LOCAL_JDK_ARCHIVE`, `LOCAL_NODE_ARCHIVE`, `LOCAL_POSTGRES_DEB_ARCHIVE`, and `LOCAL_SERVER_DIST_ARCHIVE`; in normal release work, prefer `scripts/build-local-runtime-images.sh` so both platform tags are generated consistently.
 
 The compatibility entrypoint `scripts/download-container-jdk.sh` is still available, but it delegates to `scripts/prepare-container-runtimes.sh` so JDK, Node, and PostgreSQL artifacts are prepared together.
 
@@ -199,7 +213,17 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens-j:all-in-one-amd64
+  doclens:amd64
+```
+
+For short smoke tests on small local Docker environments, you can add
+`-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'`. After startup,
+the health endpoint still requires the caller partition header:
+
+```bash
+curl -fsS \
+  -H 'X-Doclens-Key: local-dev' \
+  http://127.0.0.1:10003/api/v1/health
 ```
 
 Use the all-in-one image for trials, offline delivery, and small validation runs. For production-style Kubernetes deployments, use the Helm chart so the app and PostgreSQL run as separate workloads.
@@ -222,8 +246,8 @@ Install the chart with bundled PostgreSQL:
 
 ```bash
 helm install doclens ./deploy/helm/doclens-j \
-  --set image.repository=doclens-j \
-  --set image.tag=all-in-one-amd64 \
+  --set image.repository=doclens \
+  --set image.tag=amd64 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
@@ -234,8 +258,8 @@ To use external PostgreSQL, disable the bundled PostgreSQL workload and provide 
 
 ```bash
 helm upgrade --install doclens ./deploy/helm/doclens-j \
-  --set image.repository=doclens-j \
-  --set image.tag=all-in-one-amd64 \
+  --set image.repository=doclens \
+  --set image.tag=amd64 \
   --set postgresql.enabled=false \
   --set app.database.url='jdbc:postgresql://postgresql.example.com:5432/doclens' \
   --set app.database.username='doclens' \

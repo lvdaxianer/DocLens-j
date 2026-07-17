@@ -88,7 +88,19 @@ lib/doclens-server-0.1.0-SNAPSHOT.jar
 
 ### 构建单机 Docker 镜像
 
-Dockerfile 会先构建前端，再构建后端 Assembly，最终使用本地已有的 Ubuntu 镜像作为 runtime 基础镜像。JDK21、Node22 和 PostgreSQL 都不在 Docker build 阶段下载，而是先准备到 `docker/runtime/`，再由 Dockerfile 直接 `COPY` 进镜像安装。
+单机镜像使用本地已有的 Ubuntu 镜像作为 runtime 基础镜像。前端 dashboard、后端 Maven Assembly、JDK21、Node22 和 PostgreSQL 都不在 Docker build 阶段下载或构建，而是先准备到 `docker/build/` 与 `docker/runtime/`，再由 Dockerfile 直接 `COPY` 进镜像安装。
+
+先在宿主机准备前端静态资源和后端 Assembly 发行包：
+
+```bash
+scripts/prepare-docker-build-context.sh
+```
+
+准备完成后应有以下本地构建输入：
+
+```text
+docker/build/doclens-server-dist.tar.gz
+```
 
 准备 x86/amd64 构建输入：
 
@@ -183,9 +195,11 @@ PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
 PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
 ```
 
-构建结果会分别打 tag 为 `doclens-j:all-in-one-amd64` 和 `doclens-j:all-in-one-arm64`。JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构；缺少某个平台的 artifact 时，构建脚本会直接报出缺失文件。
+构建脚本会先生成可复用 runtime 基础镜像 `doclens:base-amd64` 和 `doclens:base-arm64`，其中包含 Ubuntu、JDK21、Node22 和 PostgreSQL；再基于对应基础镜像生成最终应用镜像 `doclens:amd64` 和 `doclens:arm64`。应用包变更时可以复用基础镜像层，避免重复安装 JDK、Node 和 PostgreSQL。
 
-如果需要手动调用 `docker build`，对应参数是 `LOCAL_JDK_ARCHIVE`、`LOCAL_NODE_ARCHIVE` 和 `LOCAL_POSTGRES_DEB_ARCHIVE`；通常建议使用 `scripts/build-local-runtime-images.sh` 统一生成两个平台的镜像 tag。
+JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构；缺少某个平台的 artifact 时，构建脚本会直接报出缺失文件。
+
+如果需要手动调用 `docker build`，对应参数是 `LOCAL_JDK_ARCHIVE`、`LOCAL_NODE_ARCHIVE`、`LOCAL_POSTGRES_DEB_ARCHIVE` 和 `LOCAL_SERVER_DIST_ARCHIVE`；通常建议使用 `scripts/build-local-runtime-images.sh` 统一生成两个平台的镜像 tag。
 
 兼容入口 `scripts/download-container-jdk.sh` 仍保留，但它会转调 `scripts/prepare-container-runtimes.sh`，同时准备 JDK、Node 和 PostgreSQL artifacts。
 
@@ -203,7 +217,17 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens-j:all-in-one-amd64
+  doclens:amd64
+```
+
+资源较小的本机 Docker 环境可以额外加
+`-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'` 做短时 smoke
+test。服务启动后，健康检查仍然需要调用方分区头：
+
+```bash
+curl -fsS \
+  -H 'X-Doclens-Key: local-dev' \
+  http://127.0.0.1:10003/api/v1/health
 ```
 
 单机镜像适合试运行、离线交付和小规模验证。生产 Kubernetes 部署应使用 Helm chart，把应用和 PostgreSQL 拆成独立工作负载。
@@ -226,8 +250,8 @@ helm template doclens ./deploy/helm/doclens-j
 
 ```bash
 helm install doclens ./deploy/helm/doclens-j \
-  --set image.repository=doclens-j \
-  --set image.tag=all-in-one-amd64 \
+  --set image.repository=doclens \
+  --set image.tag=amd64 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
@@ -238,8 +262,8 @@ chart 默认会覆盖应用容器 command，只启动 `/opt/doclens/bin/doclens-
 
 ```bash
 helm upgrade --install doclens ./deploy/helm/doclens-j \
-  --set image.repository=doclens-j \
-  --set image.tag=all-in-one-amd64 \
+  --set image.repository=doclens \
+  --set image.tag=amd64 \
   --set postgresql.enabled=false \
   --set app.database.url='jdbc:postgresql://postgresql.example.com:5432/doclens' \
   --set app.database.username='doclens' \
