@@ -29,7 +29,15 @@ frontend assets, backend runtime, and PostgreSQL runtime support.
 - **THEN** the frontend dashboard assets are included in the backend runtime
 - **AND** the server distribution is included in the final image
 - **AND** PostgreSQL can be started inside the image for single-node use
-- **AND** the Dockerfile uses common public base images where possible
+- **AND** the Dockerfile uses local Docker images where possible
+- **AND** the final runtime stage uses an Ubuntu base image
+- **AND** the final runtime stage installs JDK21, Node22, and PostgreSQL from
+  local build-context artifacts rather than downloading them during Docker
+  build
+- **AND** maintainers can build separate x86 and arm image tags from matching
+  local runtime artifacts
+- **AND** the local PostgreSQL Debian artifact preparation rejects duplicate
+  packages and incomplete Debian dependency bundles before Docker build starts
 
 ### Requirement: Helm chart MUST support Kubernetes deployment
 
