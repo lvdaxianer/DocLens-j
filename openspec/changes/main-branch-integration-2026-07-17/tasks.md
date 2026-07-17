@@ -65,5 +65,5 @@
   local non-`main` branches.
 - [x] 2. Merge the effective pending feature branch chain into
   `feat/main_整合非main分支` and verify the integrated result.
-- [ ] 3. Update `main` from the verified integration branch and capture final
+- [x] 3. Update `main` from the verified integration branch and capture final
   branch-status evidence.
