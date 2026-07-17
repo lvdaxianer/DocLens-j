@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -17,8 +18,8 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 class DocLensCallerScopeApiContractTest extends DocLensOcrApiContractSupport {
 
-    private static final String CREATED_AT = "2026-06-17T10:00:00+08:00";
-    private static final String UPDATED_AT = "2026-06-17T10:01:00+08:00";
+    private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-06-17T10:00:00+08:00");
+    private static final OffsetDateTime UPDATED_AT = OffsetDateTime.parse("2026-06-17T10:01:00+08:00");
 
     /**
      * 清理 caller 范围契约测试数据。

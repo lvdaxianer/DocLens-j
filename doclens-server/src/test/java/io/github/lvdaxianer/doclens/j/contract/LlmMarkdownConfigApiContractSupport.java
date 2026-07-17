@@ -2,6 +2,7 @@ package io.github.lvdaxianer.doclens.j.contract;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import io.github.lvdaxianer.doclens.j.processing.application.LlmMarkdownConfigTester;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * LLM Markdown 配置 API 契约测试共享支持。
@@ -37,6 +39,9 @@ abstract class LlmMarkdownConfigApiContractSupport implements CallerCredentialCo
     protected static final String OLD_TEST_CREDENTIAL_ENV_VAR = "OLD_MINIMAX_API_KEY";
     /** 测试专用新凭证环境变量名。 */
     protected static final String NEW_TEST_CREDENTIAL_ENV_VAR = "NEW_MINIMAX_API_KEY";
+    /** PostgreSQL 契约测试数据库。 */
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("llm_config_api");
     /** 临时目录用于隔离测试数据库和存储。 */
     @TempDir
     static java.nio.file.Path tempDir;
@@ -62,8 +67,7 @@ abstract class LlmMarkdownConfigApiContractSupport implements CallerCredentialCo
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:file:" + tempDir.resolve("llm-config-api") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
         registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);

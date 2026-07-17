@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResult;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageResultRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 文档页 OCR 结果 MyBatis-Plus 仓储集成测试。
@@ -31,16 +33,14 @@ import org.springframework.test.context.DynamicPropertySource;
 class MybatisPlusDocumentPageResultRepositoryTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-10T10:00:00+08:00");
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("document_page_result_repo");
 
     @Autowired
     private DocumentPageResultRepository repository;
 
     /**
-     * H2 内存库每个测试上下文独立，避免页结果 upsert 断言受其他测试影响。
-     */
-
-    /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -48,8 +48,7 @@ class MybatisPlusDocumentPageResultRepositoryTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:document_page_result_repo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**

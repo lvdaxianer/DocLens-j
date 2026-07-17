@@ -6,6 +6,7 @@
 ## 适用前提
 
 - 已安装 Java 21、Maven、Node.js 和 npm。
+- 已安装 Docker 或 Docker Compose，用于本地 PostgreSQL。
 - 本地 OCR 服务或默认 PaddleOCR endpoint 可用。
 - 如需处理 Word 文件，已安装 LibreOffice。
 
@@ -17,6 +18,9 @@
 ./scripts/dev-up.sh
 ./scripts/dev-status.sh
 ```
+
+开发脚本会同时启动本地 PostgreSQL、后端和 Dashboard。DocLens-j 的本地、
+测试和生产数据库基线均为 PostgreSQL。
 
 服务默认地址：
 

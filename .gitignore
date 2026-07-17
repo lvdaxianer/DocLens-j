@@ -7,3 +7,8 @@ node_modules/
 var/
 *.log
 .worktrees/
+docker/jdk/*.tar.gz
+docker/build/*
+!docker/build/.gitkeep
+docker/runtime/*
+!docker/runtime/.gitkeep

@@ -10,6 +10,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobFailureReques
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.CallbackJobStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 回调任务 MyBatis-Plus 仓储集成测试。
@@ -35,12 +37,14 @@ class MybatisPlusCallbackJobRepositoryTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-15T10:00:00+08:00");
     private static final int QUERY_LIMIT = 10;
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("callback_job_repo");
 
     @Autowired
     private CallbackJobRepository repository;
 
     /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -48,8 +52,7 @@ class MybatisPlusCallbackJobRepositoryTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:callback_job_repo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**

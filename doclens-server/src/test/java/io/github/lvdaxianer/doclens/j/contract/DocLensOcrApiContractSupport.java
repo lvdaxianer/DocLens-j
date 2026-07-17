@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,9 +16,11 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * DocLens OCR API 契约测试共享支持。
@@ -33,6 +36,9 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
     private static final int PROCESSING_WAIT_ATTEMPTS = 20;
     /** 后台处理单次等待毫秒数。 */
     private static final int PROCESSING_WAIT_MILLIS = 100;
+    /** PostgreSQL 契约测试数据库。 */
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("doclens_contract");
     /** 临时目录用于隔离数据库和对象存储。 */
     @TempDir
     static java.nio.file.Path tempDir;
@@ -56,8 +62,7 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:file:" + tempDir.resolve("doclens-test") + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.adapter.default-key", () -> "stub_ocr");
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
@@ -230,7 +235,7 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
      * @date 2026-06-11
      */
     protected void insertProcessingDocument(String batchId, String documentId) {
-        String now = "2026-06-10T11:00:00+08:00";
+        OffsetDateTime now = OffsetDateTime.parse("2026-06-10T11:00:00+08:00");
         insertProcessingBatch(batchId, documentId, now);
         insertProcessingDocumentRow(batchId, documentId, now);
     }
@@ -284,7 +289,7 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private void insertProcessingBatch(String batchId, String documentId, String now) {
+    private void insertProcessingBatch(String batchId, String documentId, OffsetDateTime now) {
         jdbcTemplate.update("""
                 INSERT INTO ocr_batches (
                     batch_id, status, total_files, completed_files, failed_files, current_document_id,
@@ -304,7 +309,7 @@ abstract class DocLensOcrApiContractSupport implements CallerCredentialContractS
      * @author lvdaxianerplus
      * @date 2026-06-11
      */
-    private void insertProcessingDocumentRow(String batchId, String documentId, String now) {
+    private void insertProcessingDocumentRow(String batchId, String documentId, OffsetDateTime now) {
         jdbcTemplate.update("""
                 INSERT INTO ocr_documents (
                     document_id, batch_id, file_name, file_type, file_size, page_count, storage_uri, status, stage,

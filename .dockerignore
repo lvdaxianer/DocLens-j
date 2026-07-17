@@ -1,0 +1,13 @@
+.git
+.gitignore
+.DS_Store
+**/.DS_Store
+**/target
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+var
+**/var
+doclens-dashboard/tsconfig.tsbuildinfo
+docs/superpowers/plans

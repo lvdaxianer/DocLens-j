@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskFailureR
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskRepository;
 import io.github.lvdaxianer.doclens.j.processing.domain.DocumentPageTaskStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
@@ -26,6 +27,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 文档页任务 MyBatis-Plus 仓储集成测试。
@@ -37,6 +39,8 @@ import org.springframework.test.context.DynamicPropertySource;
 class MybatisPlusDocumentPageTaskRepositoryTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-10T10:00:00+08:00");
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("document_page_task_repo");
 
     @Autowired
     private DocumentPageTaskRepository repository;
@@ -45,7 +49,7 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
     private MybatisPlusDocumentPageTaskRepository mybatisRepository;
 
     /**
-     * 每个测试开始前清空页任务，避免共享 H2 上下文造成队列顺序互相污染。
+     * 每个测试开始前清空页任务，避免共享数据库上下文造成队列顺序互相污染。
      *
      * @author lvdaxianerplus
      * @date 2026-06-20
@@ -56,12 +60,7 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
     }
 
     /**
-     * H2 内存库每个测试上下文独立，避免不同仓储测试之间共享页任务数据。
-     * 这里不复用生产配置，是为了只验证页任务持久化边界。
-     */
-
-    /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -69,8 +68,7 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:document_page_task_repo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**
@@ -198,9 +196,11 @@ class MybatisPlusDocumentPageTaskRepositoryTest {
         repository.markCompleted(completeRequest("task-7", "worker-a"));
 
         // 读取数据库状态，确认终态不会停留在 PROCESSING。
-        assertThat(repository.findByDocumentIdAndPageNo("doc-5", 1)).get()
-                .extracting(DocumentPageTask::status, task -> task.completedAt().orElseThrow())
-                .containsExactly(DocumentPageTaskStatus.COMPLETED, BASE_TIME.plusSeconds(10));
+        DocumentPageTask completed = repository.findByDocumentIdAndPageNo("doc-5", 1).orElseThrow();
+        assertThat(completed.status()).isEqualTo(DocumentPageTaskStatus.COMPLETED);
+        assertThat(completed.completedAt()).isPresent();
+        assertThat(completed.completedAt().orElseThrow().toInstant())
+                .isEqualTo(BASE_TIME.plusSeconds(10).toInstant());
     }
 
     /**

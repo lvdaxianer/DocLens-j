@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * OCR 节点健康治理字段仓储集成测试。
@@ -35,12 +37,14 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
     private static final OffsetDateTime LAST_FAILURE_AT = OffsetDateTime.parse("2026-06-09T10:00:00+08:00");
     private static final OffsetDateTime CIRCUIT_OPEN_UNTIL = OffsetDateTime.parse("2026-06-10T10:00:00+08:00");
     private static final OffsetDateTime LAST_MANUAL_RECOVERY_AT = OffsetDateTime.parse("2026-06-10T09:30:00+08:00");
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("ocr_node_repo_health");
 
     @Autowired
     private OcrNodeRepository repository;
 
     /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -48,8 +52,7 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:ocr_node_repo_health;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**
@@ -68,9 +71,9 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
 
         assertThat(reloaded.failureCount()).isEqualTo(2L);
         assertThat(reloaded.successCount()).isEqualTo(1L);
-        assertThat(reloaded.lastFailureAt()).contains(LAST_FAILURE_AT);
-        assertThat(reloaded.circuitOpenUntil()).contains(CIRCUIT_OPEN_UNTIL);
-        assertThat(reloaded.lastManualRecoveryAt()).contains(LAST_MANUAL_RECOVERY_AT);
+        assertSameInstant(reloaded.lastFailureAt(), LAST_FAILURE_AT);
+        assertSameInstant(reloaded.circuitOpenUntil(), CIRCUIT_OPEN_UNTIL);
+        assertSameInstant(reloaded.lastManualRecoveryAt(), LAST_MANUAL_RECOVERY_AT);
         assertThat(reloaded.lastError()).contains("timeout");
     }
 
@@ -93,7 +96,20 @@ class MybatisPlusOcrNodeRepositoryHealthGovernanceTest {
         OcrNode reloaded = repository.findById(node.id()).orElseThrow();
         assertThat(reloaded.circuitOpenUntil()).isEmpty();
         assertThat(reloaded.lastError()).isEmpty();
-        assertThat(reloaded.lastManualRecoveryAt()).contains(BASE_TIME.plusMinutes(10));
+        assertSameInstant(reloaded.lastManualRecoveryAt(), BASE_TIME.plusMinutes(10));
+    }
+
+    /**
+     * 断言 PostgreSQL 归一化后的时间点一致。
+     *
+     * @param actual 实际时间
+     * @param expected 期望时间
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-14
+     */
+    private void assertSameInstant(Optional<OffsetDateTime> actual, OffsetDateTime expected) {
+        assertThat(actual).isPresent();
+        assertThat(actual.orElseThrow().toInstant()).isEqualTo(expected.toInstant());
     }
 
     /**

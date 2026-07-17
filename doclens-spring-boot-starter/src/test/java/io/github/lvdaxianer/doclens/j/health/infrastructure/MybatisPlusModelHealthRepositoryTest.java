@@ -12,6 +12,7 @@ import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTargetId;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTargetType;
 import io.github.lvdaxianer.doclens.j.health.domain.ModelHealthTimeline;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 模型健康 MyBatis-Plus 仓储集成测试。
@@ -43,12 +45,14 @@ class MybatisPlusModelHealthRepositoryTest {
     private static final long ONE_SUCCESS_COUNT = 1L;
     private static final long ONE_FAILURE_COUNT = 1L;
     private static final String TIMEOUT_ERROR = "timeout";
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("model_health_repo");
 
     @Autowired
     private ModelHealthRepository repository;
 
     /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -56,8 +60,7 @@ class MybatisPlusModelHealthRepositoryTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url",
-                () -> "jdbc:h2:mem:model_health_repo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**

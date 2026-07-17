@@ -12,6 +12,21 @@ DocLens Server uses Spring Boot configuration binding. Local defaults live in
 | `doclens.auto-process-on-upload` | `true` | Schedule uploaded batches on the in-process worker |
 | `doclens.worker-id` | `local-worker` | Local worker identifier |
 
+## Database Runtime
+
+DocLens supports PostgreSQL for local development, automated tests, and
+production. Local development uses the PostgreSQL service started by the dev
+scripts. Automated tests use PostgreSQL Testcontainers.
+
+Production datasource values are supplied through environment variables:
+
+| Environment Variable | Example | Description |
+| --- | --- | --- |
+| `DOCLENS_DB_URL` | `jdbc:postgresql://127.0.0.1:15432/doclens` | PostgreSQL JDBC URL |
+| `DOCLENS_DB_USERNAME` | `doclens` | PostgreSQL user |
+| `DOCLENS_DB_PASSWORD` | `doclens` | PostgreSQL password |
+| `DOCLENS_DB_DRIVER` | `org.postgresql.Driver` | JDBC driver class |
+
 ## OCR Routing And Health
 
 | Property | Default | Description |

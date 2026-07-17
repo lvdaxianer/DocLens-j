@@ -7,6 +7,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.adapter.infrastructure.OcrHealthClient;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * OCR 节点手动重连 API 契约测试。
@@ -36,6 +38,9 @@ import org.springframework.test.web.servlet.MockMvc;
 class OcrNodeManualReconnectApiContractTest implements CallerCredentialContractSupport {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-10T10:00:00+08:00");
+    /** PostgreSQL 契约测试数据库。 */
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("ocr_node_reconnect");
 
     @TempDir
     static java.nio.file.Path tempDir;
@@ -61,8 +66,7 @@ class OcrNodeManualReconnectApiContractTest implements CallerCredentialContractS
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("ocr-node-reconnect")
-                + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
         registry.add("doclens.clients.credentials[0].client-id", () -> TEST_CLIENT_ID);

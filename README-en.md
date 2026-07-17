@@ -182,8 +182,7 @@ usable:
 - Maven multi-module build
 - MyBatis-Plus
 - Flyway
-- H2 for local/test runtime
-- PostgreSQL runtime dependency
+- PostgreSQL for local, test, and production runtime
 - Vue 3, TypeScript, Vite, Naive UI, and ECharts
 
 ## Verification

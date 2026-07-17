@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -185,7 +186,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @date 2026-06-12
      */
     protected void insertFailedOpenwebuiDocument(String batchId, String documentId) throws IOException {
-        String now = "2026-06-10T11:00:00+08:00";
+        OffsetDateTime now = OffsetDateTime.parse("2026-06-10T11:00:00+08:00");
         writeOpenwebuiRetrySourceFile();
         insertFailedOpenwebuiBatch(batchId, documentId, now);
         insertFailedOpenwebuiDocumentRow(batchId, documentId, now);
@@ -213,7 +214,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    private void insertFailedOpenwebuiBatch(String batchId, String documentId, String now) {
+    private void insertFailedOpenwebuiBatch(String batchId, String documentId, OffsetDateTime now) {
         jdbcTemplate.update("""
                 INSERT INTO ocr_batches (
                     batch_id, status, total_files, completed_files, failed_files, current_document_id,
@@ -233,7 +234,7 @@ abstract class OpenWebuiOcrIntegrationContractSupport extends DocLensOcrApiContr
      * @author lvdaxianerplus
      * @date 2026-06-12
      */
-    private void insertFailedOpenwebuiDocumentRow(String batchId, String documentId, String now) {
+    private void insertFailedOpenwebuiDocumentRow(String batchId, String documentId, OffsetDateTime now) {
         jdbcTemplate.update("""
                 INSERT INTO ocr_documents (
                     document_id, batch_id, file_name, file_type, file_size, page_count, storage_uri, status, stage,

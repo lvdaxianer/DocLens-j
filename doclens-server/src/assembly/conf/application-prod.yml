@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${DOCLENS_DB_URL}
+    username: ${DOCLENS_DB_USERNAME}
+    password: ${DOCLENS_DB_PASSWORD}
+    driver-class-name: ${DOCLENS_DB_DRIVER:org.postgresql.Driver}
+
+doclens:
+  storage-root: ${DOCLENS_STORAGE_ROOT:/var/lib/doclens/storage}
+  worker-id: ${DOCLENS_WORKER_ID:doclens-worker-1}

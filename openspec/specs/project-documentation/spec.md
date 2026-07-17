@@ -50,7 +50,7 @@ main REST endpoint groups exposed by `doclens-server`.
 
 The project SHALL provide focused reference documents for SDK usage,
 configuration, bilingual permission configuration, local development workflows,
-and technical delivery.
+packaging and deployment workflows, and technical delivery.
 
 #### Scenario: Reader wants embedded usage
 
@@ -61,8 +61,9 @@ and technical delivery.
 #### Scenario: Reader wants runtime settings
 
 - **WHEN** a reader needs to configure DocLens
-- **THEN** they can find key `doclens.*` settings and environment-variable
-  secret conventions in the configuration document
+- **THEN** they can find key `doclens.*` settings, PostgreSQL datasource
+  environment variables, and environment-variable secret conventions in the
+  configuration document
 
 #### Scenario: Reader wants permission setup in English
 
@@ -85,8 +86,15 @@ and technical delivery.
 #### Scenario: Reader wants local development commands
 
 - **WHEN** a reader needs to run the project locally
-- **THEN** they can find dev scripts, service ports, logs, and verification
-  commands in the development document
+- **THEN** they can find dev scripts, service ports, logs, verification
+  commands, and PostgreSQL startup/configuration steps in the development
+  document
+
+#### Scenario: Reader wants packaging and deployment commands
+
+- **WHEN** a reader needs to package or deploy DocLens-j
+- **THEN** they can find Maven Assembly distribution, all-in-one Docker image,
+  and Helm chart commands in the packaging document
 
 #### Scenario: Reader wants delivery architecture and high availability
 

@@ -10,24 +10,29 @@ if [[ "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-require_commands bash curl lsof mvn node npm nodemon
+require_commands bash curl lsof mvn node npm nodemon docker
 export DOCLENS_LOCAL_CREDENTIAL_KEY="${DOCLENS_LOCAL_CREDENTIAL_KEY:-dlk_EUhMBpKkk6UGX3smR-8DkMmF-nlBtzAniXQLAGkutKc}"
 
-echo "stopping old frontend and backend processes..."
+echo "stopping old frontend, backend and postgresql processes..."
 stop_service "${BACKEND_PID_FILE}"
 stop_service "${FRONTEND_PID_FILE}"
 stop_service_by_port "${BACKEND_PORT}"
 stop_service_by_port "${FRONTEND_PORT}"
+stop_postgresql_service
 cleanup_pid_file "${BACKEND_PID_FILE}"
 cleanup_pid_file "${FRONTEND_PID_FILE}"
 
 ensure_port_available "${FRONTEND_PORT}" "frontend"
 ensure_port_available "${BACKEND_PORT}" "backend"
 
+echo "starting postgresql..."
+start_postgresql_service
+
 echo "starting frontend..."
 start_frontend_service
 if ! wait_for_http "${FRONTEND_URL}" 20 1; then
   stop_service "${FRONTEND_PID_FILE}"
+  stop_postgresql_service
   echo "frontend failed to start, check ${FRONTEND_LOG_FILE}" >&2
   exit 1
 fi
@@ -37,10 +42,12 @@ start_backend_service
 if ! wait_for_http "${BACKEND_HEALTH_URL}" 60 1; then
   stop_service "${BACKEND_PID_FILE}"
   stop_service "${FRONTEND_PID_FILE}"
+  stop_postgresql_service
   echo "backend failed to start, check ${BACKEND_LOG_FILE}" >&2
   exit 1
 fi
 
+echo "postgresql: localhost:${POSTGRESQL_PORT}/${POSTGRESQL_DB}"
 echo "frontend: ${FRONTEND_URL}"
 echo "backend: ${BACKEND_HEALTH_URL}"
 echo "logs: ${RUN_DIR}"

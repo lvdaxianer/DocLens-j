@@ -1,0 +1,97 @@
+replicaCount: 1
+
+image:
+  repository: doclens-j
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 10003
+
+app:
+  command:
+    enabled: true
+    value:
+      - /opt/doclens/bin/doclens-server.sh
+  storageRoot: /var/lib/doclens/storage
+  workerId: doclens-worker-1
+  database:
+    url: ""
+    username: doclens
+    password: ""
+    driver: org.postgresql.Driver
+    existingSecret: ""
+    passwordKey: DOCLENS_DB_PASSWORD
+  paddleOcr:
+    endpoint: http://paddle-ocr:8080/ocr
+    nodeName: paddle-primary
+    nodeHost: paddle-ocr
+    nodePort: "8080"
+  wordConversionCommand: /usr/bin/soffice
+  gatewayAuth:
+    secret: ""
+    principal: dashboard-admin
+    partition: default
+  extraEnv: []
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 16-bookworm
+    pullPolicy: IfNotPresent
+  database: doclens
+  username: doclens
+  password: ""
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+  resources: {}

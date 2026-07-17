@@ -8,6 +8,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeCreateRequest;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeDeploymentType;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.shared.infrastructure.JsonCodec;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import org.apache.ibatis.annotations.Mapper;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * OCR 节点 MyBatis-Plus 仓储集成测试。
@@ -31,12 +33,14 @@ import org.springframework.test.context.DynamicPropertySource;
 class MybatisPlusOcrNodeRepositoryTest {
 
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-08T12:00:00+08:00");
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("ocr_node_repo");
 
     @Autowired
     private OcrNodeRepository repository;
 
     /**
-     * 配置 H2 与 Flyway 测试数据库。
+     * 配置 PostgreSQL 与 Flyway 测试数据库。
      *
      * @param registry 动态属性注册表
      * @author lvdaxianerplus
@@ -44,7 +48,7 @@ class MybatisPlusOcrNodeRepositoryTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:mem:ocr_node_repo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
     }
 
     /**
@@ -59,9 +63,11 @@ class MybatisPlusOcrNodeRepositoryTest {
 
         repository.save(node);
 
-        assertThat(repository.findById("node_1")).contains(node);
-        assertThat(repository.listByModelKey("paddle_repo_save")).containsExactly(node);
-        assertThat(repository.listEnabled()).contains(node);
+        assertThat(repository.findById("node_1")).get().satisfies(saved -> assertPersistedNode(saved, node));
+        assertThat(repository.listByModelKey("paddle_repo_save"))
+                .singleElement()
+                .satisfies(saved -> assertPersistedNode(saved, node));
+        assertThat(repository.listEnabled()).anySatisfy(saved -> assertPersistedNode(saved, node));
     }
 
     /**
@@ -100,6 +106,23 @@ class MybatisPlusOcrNodeRepositoryTest {
     private OcrNode node(String id, String modelKey, String host, int port) {
         return OcrNode.create(new OcrNodeCreateRequest(id, modelKey, id, host, port,
                 true, true, 100, 4, BASE_TIME));
+    }
+
+    /**
+     * 断言 PostgreSQL 持久化后的节点业务字段与时间点一致。
+     *
+     * @param saved 已保存节点
+     * @param expected 期望节点
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-14
+     */
+    private void assertPersistedNode(OcrNode saved, OcrNode expected) {
+        assertThat(saved)
+                .usingRecursiveComparison()
+                .ignoringFields("createdAt", "updatedAt")
+                .isEqualTo(expected);
+        assertThat(saved.createdAt().toInstant()).isEqualTo(expected.createdAt().toInstant());
+        assertThat(saved.updatedAt().toInstant()).isEqualTo(expected.updatedAt().toInstant());
     }
 
     /**

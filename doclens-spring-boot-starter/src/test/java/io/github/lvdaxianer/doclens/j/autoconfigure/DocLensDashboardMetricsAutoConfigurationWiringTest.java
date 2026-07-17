@@ -6,6 +6,7 @@ import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNode;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeRepository;
 import io.github.lvdaxianer.doclens.j.adapter.domain.OcrNodeStatus;
 import io.github.lvdaxianer.doclens.j.query.application.DashboardQueryService;
+import io.github.lvdaxianer.doclens.j.testsupport.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Dashboard OCR 指标自动配置装配测试。
@@ -35,6 +37,8 @@ class DocLensDashboardMetricsAutoConfigurationWiringTest {
     private static final int NODE_WEIGHT = 100;
     private static final int NODE_MAX_CONCURRENCY = 10;
     private static final OffsetDateTime BASE_TIME = OffsetDateTime.parse("2026-06-21T09:30:00+08:00");
+    private static final PostgreSQLContainer<?> POSTGRESQL =
+            PostgreSqlTestContainerSupport.createStartedContainer("dashboard_metrics_wiring");
 
     @TempDir
     static java.nio.file.Path tempDir;
@@ -53,8 +57,7 @@ class DocLensDashboardMetricsAutoConfigurationWiringTest {
      */
     @DynamicPropertySource
     static void testProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("dashboard-metrics-wiring")
-                + ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        PostgreSqlTestContainerSupport.registerDatasource(registry, POSTGRESQL);
         registry.add("doclens.storage-root", () -> tempDir.resolve("storage").toString());
         registry.add("doclens.paddle-ocr.enabled", () -> "false");
     }
