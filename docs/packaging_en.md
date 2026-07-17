@@ -86,42 +86,102 @@ Before running it, prepare the PostgreSQL connection, storage directory, OCR nod
 
 The Dockerfile builds the dashboard first, then the backend Assembly distribution, and finally uses a locally available Ubuntu image as the runtime base image. JDK21, Node22, and PostgreSQL are not downloaded during Docker build; prepare them under `docker/runtime/` first, then let the Dockerfile `COPY` and install them.
 
+Prepare x86/amd64 build inputs:
+
 ```bash
-JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
 DOCKER_PLATFORM=linux/amd64 \
-  scripts/prepare-container-runtimes.sh
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
+NODE_SOURCE=/Users/lvdaxianer/Downloads/node-v22.23.1-linux-x64.tar.xz \
+POSTGRES_DEB_SOURCE_DIR=/Users/lvdaxianer/Downloads/postgresql-amd64-debs \
+scripts/prepare-container-runtimes.sh
 ```
 
-After preparation, the local build inputs should exist:
+`POSTGRES_DEB_SOURCE_DIR` cannot contain only the `postgresql-16` and `postgresql-client-16` packages. It must contain the complete dependency closure needed to install PostgreSQL on Ubuntu 22.04, and only one `.deb` may exist for each package name. At minimum, include:
+
+```text
+postgresql-16
+postgresql-client-16
+postgresql-common
+postgresql-client-common
+libpq5
+libicu70
+libldap-2.5-0
+libllvm15
+libxml2
+libxslt1.1
+libreadline8
+locales or locales-all
+openssl
+ssl-cert
+tzdata
+```
+
+Generate that directory from a same-architecture Ubuntu 22.04 environment. For x86/amd64:
+
+```bash
+mkdir -p /Users/lvdaxianer/Downloads/postgresql-amd64-debs
+docker run --rm --platform linux/amd64 \
+  -v /Users/lvdaxianer/Downloads/postgresql-amd64-debs:/out \
+  ubuntu:22.04 \
+  bash -lc "set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg
+    install -d /usr/share/postgresql-common/pgdg
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg
+    printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main\n' \
+      >/etc/apt/sources.list.d/pgdg.list
+    apt-get update
+    apt-get install -y --download-only --no-install-recommends postgresql-16 postgresql-client-16
+    apt-get install -y --download-only --reinstall libldap-2.5-0 libreadline8 openssl
+    cp /var/cache/apt/archives/*.deb /out/"
+```
+
+For arm64, use the same command with `--platform linux/arm64` and `/Users/lvdaxianer/Downloads/postgresql-arm64-debs` as the output directory.
+
+After preparation, the x86 local build inputs should exist:
 
 ```text
 docker/runtime/jdk-21_linux-x64_bin.tar.gz
-docker/runtime/node-v22-linux-x64.tar.xz
+docker/runtime/node-v22-linux-x64.tar.gz
 docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz
 ```
 
-Build an x64 test image:
+Prepare arm64 build inputs with arm64/aarch64 JDK, Node, and PostgreSQL Debian packages:
 
 ```bash
-docker build \
-  --platform linux/amd64 \
-  --build-arg LOCAL_JDK_ARCHIVE=docker/runtime/jdk-21_linux-x64_bin.tar.gz \
-  --build-arg LOCAL_NODE_ARCHIVE=docker/runtime/node-v22-linux-x64.tar.xz \
-  --build-arg LOCAL_POSTGRES_DEB_ARCHIVE=docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz \
-  -t doclens-j:all-in-one .
-```
-
-For other CPU architectures, the JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture. If the local `ubuntu:22.04` / `node:22-bookworm-slim` images are arm64 only, a fully local build should use an aarch64 JDK. If you use an x64 JDK, prepare amd64 Ubuntu/Node images first or allow the preparation step to pull the matching platform images. `scripts/prepare-container-runtimes.sh` supports environment variable overrides:
-
-```bash
-RUNTIME_DIR=docker/runtime \
 DOCKER_PLATFORM=linux/arm64 \
-JDK_SOURCE=/path/to/jdk-21_linux-aarch64_bin.tar.gz \
-NODE_IMAGE=node:22-bookworm-slim \
-POSTGRES_DOWNLOAD_IMAGE=ubuntu:22.04 \
-POSTGRES_MAJOR=16 \
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-aarch64_bin.tar.gz \
+NODE_SOURCE=/Users/lvdaxianer/Downloads/node-v22.23.1-linux-arm64.tar.xz \
+POSTGRES_DEB_SOURCE_DIR=/Users/lvdaxianer/Downloads/postgresql-arm64-debs \
 scripts/prepare-container-runtimes.sh
 ```
+
+After preparation, the arm64 local build inputs should exist:
+
+```text
+docker/runtime/jdk-21_linux-aarch64_bin.tar.gz
+docker/runtime/node-v22-linux-arm64.tar.gz
+docker/runtime/postgresql-16-ubuntu22.04-arm64-debs.tar.gz
+```
+
+Build the two image tags separately:
+
+```bash
+PLATFORMS='linux/amd64 linux/arm64' scripts/build-local-runtime-images.sh
+```
+
+You can also build only one platform:
+
+```bash
+PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
+PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
+```
+
+The resulting image tags are `doclens-j:all-in-one-amd64` and `doclens-j:all-in-one-arm64`. The JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture; if one platform is missing an artifact, the build script reports the missing file directly.
+
+For manual `docker build` usage, the corresponding build args are `LOCAL_JDK_ARCHIVE`, `LOCAL_NODE_ARCHIVE`, and `LOCAL_POSTGRES_DEB_ARCHIVE`; in normal release work, prefer `scripts/build-local-runtime-images.sh` so both platform tags are generated consistently.
 
 The compatibility entrypoint `scripts/download-container-jdk.sh` is still available, but it delegates to `scripts/prepare-container-runtimes.sh` so JDK, Node, and PostgreSQL artifacts are prepared together.
 
@@ -139,7 +199,7 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens-j:all-in-one
+  doclens-j:all-in-one-amd64
 ```
 
 Use the all-in-one image for trials, offline delivery, and small validation runs. For production-style Kubernetes deployments, use the Helm chart so the app and PostgreSQL run as separate workloads.
@@ -163,7 +223,7 @@ Install the chart with bundled PostgreSQL:
 ```bash
 helm install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens-j \
-  --set image.tag=all-in-one \
+  --set image.tag=all-in-one-amd64 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
@@ -175,7 +235,7 @@ To use external PostgreSQL, disable the bundled PostgreSQL workload and provide 
 ```bash
 helm upgrade --install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens-j \
-  --set image.tag=all-in-one \
+  --set image.tag=all-in-one-amd64 \
   --set postgresql.enabled=false \
   --set app.database.url='jdbc:postgresql://postgresql.example.com:5432/doclens' \
   --set app.database.username='doclens' \

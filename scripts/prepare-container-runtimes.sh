@@ -4,8 +4,13 @@ set -Eeuo pipefail
 RUNTIME_DIR="${RUNTIME_DIR:-docker/runtime}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 NODE_IMAGE="${NODE_IMAGE:-node:22-bookworm-slim}"
+NODE_VERSION="${NODE_VERSION:-22.23.1}"
 POSTGRES_DOWNLOAD_IMAGE="${POSTGRES_DOWNLOAD_IMAGE:-ubuntu:22.04}"
 POSTGRES_MAJOR="${POSTGRES_MAJOR:-16}"
+POSTGRES_DEB_SOURCE_DIR="${POSTGRES_DEB_SOURCE_DIR:-${HOME}/Downloads}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source "${SCRIPT_DIR}/postgres-deb-bundle.sh"
 
 case "${DOCKER_PLATFORM}" in
   linux/amd64)
@@ -25,8 +30,9 @@ case "${DOCKER_PLATFORM}" in
 esac
 
 JDK_SOURCE="${JDK_SOURCE:-${HOME}/Downloads/jdk-21_linux-${JDK_ARCH}_bin.tar.gz}"
+NODE_SOURCE="${NODE_SOURCE:-${HOME}/Downloads/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz}"
 LOCAL_JDK_ARCHIVE="${LOCAL_JDK_ARCHIVE:-${RUNTIME_DIR}/jdk-21_linux-${JDK_ARCH}_bin.tar.gz}"
-LOCAL_NODE_ARCHIVE="${LOCAL_NODE_ARCHIVE:-${RUNTIME_DIR}/node-v22-linux-${NODE_ARCH}.tar.xz}"
+LOCAL_NODE_ARCHIVE="${LOCAL_NODE_ARCHIVE:-${RUNTIME_DIR}/node-v22-linux-${NODE_ARCH}.tar.gz}"
 LOCAL_POSTGRES_DEB_ARCHIVE="${LOCAL_POSTGRES_DEB_ARCHIVE:-${RUNTIME_DIR}/postgresql-${POSTGRES_MAJOR}-ubuntu22.04-${POSTGRES_ARCH}-debs.tar.gz}"
 
 POSTGRES_DEB_DOWNLOAD_SCRIPT="$(cat <<'CONTAINER_SCRIPT'
@@ -44,6 +50,10 @@ apt-get update
 apt-get install -y --download-only --no-install-recommends \
   "postgresql-${POSTGRES_MAJOR}" \
   "postgresql-client-${POSTGRES_MAJOR}"
+apt-get install -y --download-only --reinstall \
+  libldap-2.5-0 \
+  libreadline8 \
+  openssl
 mkdir -p /tmp/postgres-debs
 cp /var/cache/apt/archives/*.deb /tmp/postgres-debs/
 tar -czf "/runtime/${POSTGRES_ARCHIVE_NAME}" -C /tmp/postgres-debs .
@@ -69,7 +79,24 @@ archive_node_from_image() {
 
   docker cp "${container_id}:/usr/local" "${temp_dir}/node-v22-linux-${NODE_ARCH}"
   docker rm "${container_id}" >/dev/null
-  tar -cJf "${LOCAL_NODE_ARCHIVE}" -C "${temp_dir}" "node-v22-linux-${NODE_ARCH}"
+  tar -czf "${LOCAL_NODE_ARCHIVE}" -C "${temp_dir}" "node-v22-linux-${NODE_ARCH}"
+  rm -rf "${temp_dir}"
+}
+
+# 将用户已下载的 Node22 归档重打成 gzip，避免 Ubuntu runtime 依赖 xz。
+copy_node_archive() {
+  if [ ! -f "${NODE_SOURCE}" ]; then
+    return 1
+  fi
+
+  temp_dir="$(mktemp -d)"
+  tar -xf "${NODE_SOURCE}" -C "${temp_dir}"
+  node_root="$(find "${temp_dir}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  if [ -z "${node_root}" ]; then
+    printf 'Node archive has no top-level directory: %s\n' "${NODE_SOURCE}" >&2
+    exit 1
+  fi
+  COPYFILE_DISABLE=1 tar -czf "${LOCAL_NODE_ARCHIVE}" -C "${temp_dir}" "$(basename "${node_root}")"
   rm -rf "${temp_dir}"
 }
 
@@ -87,9 +114,27 @@ archive_postgres_debs() {
     bash -c "${POSTGRES_DEB_DOWNLOAD_SCRIPT}"
 }
 
+# 打包用户已下载的 PostgreSQL Debian 包。
+archive_postgres_debs_from_local_dir() {
+  if ! find "${POSTGRES_DEB_SOURCE_DIR}" -maxdepth 1 -type f -name '*.deb' | grep -q .; then
+    return 1
+  fi
+
+  temp_dir="$(mktemp -d)"
+  find "${POSTGRES_DEB_SOURCE_DIR}" -maxdepth 1 -type f -name '*.deb' -exec cp {} "${temp_dir}/" \;
+  if ! validate_postgres_deb_bundle "${temp_dir}" "${POSTGRES_DEB_SOURCE_DIR}"; then
+    printf 'POSTGRES_DEB_SOURCE_DIR must contain the full PostgreSQL %s Debian dependency closure for %s.\n' \
+      "${POSTGRES_MAJOR}" "${DOCKER_PLATFORM}" >&2
+    printf 'Create it from an Ubuntu 22.04 environment with apt download/install --download-only, then rerun this script.\n' >&2
+    exit 1
+  fi
+  tar -czf "${LOCAL_POSTGRES_DEB_ARCHIVE}" -C "${temp_dir}" .
+  rm -rf "${temp_dir}"
+}
+
 copy_jdk_archive
-archive_node_from_image
-archive_postgres_debs
+copy_node_archive || archive_node_from_image
+archive_postgres_debs_from_local_dir || archive_postgres_debs
 
 printf 'Prepared runtime artifacts:\n'
 printf '  %s\n' "${LOCAL_JDK_ARCHIVE}"

@@ -8,5 +8,5 @@
 
 ## 2. Verification and archive
 
-- [ ] 2.1 Run focused and broader verification for the local-runtime Docker
-  packaging change.
+- [x] 2.1 Add and verify x86/arm local-runtime packaging commands, then run
+  focused and broader verification for the Docker packaging change.

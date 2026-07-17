@@ -90,42 +90,102 @@ lib/doclens-server-0.1.0-SNAPSHOT.jar
 
 Dockerfile 会先构建前端，再构建后端 Assembly，最终使用本地已有的 Ubuntu 镜像作为 runtime 基础镜像。JDK21、Node22 和 PostgreSQL 都不在 Docker build 阶段下载，而是先准备到 `docker/runtime/`，再由 Dockerfile 直接 `COPY` 进镜像安装。
 
+准备 x86/amd64 构建输入：
+
 ```bash
-JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
 DOCKER_PLATFORM=linux/amd64 \
-  scripts/prepare-container-runtimes.sh
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-x64_bin.tar.gz \
+NODE_SOURCE=/Users/lvdaxianer/Downloads/node-v22.23.1-linux-x64.tar.xz \
+POSTGRES_DEB_SOURCE_DIR=/Users/lvdaxianer/Downloads/postgresql-amd64-debs \
+scripts/prepare-container-runtimes.sh
 ```
 
-准备完成后应有以下本地构建输入：
+`POSTGRES_DEB_SOURCE_DIR` 不能只放 `postgresql-16` 和 `postgresql-client-16` 两个包，必须放 PostgreSQL 在 Ubuntu 22.04 上安装所需的完整依赖闭包，并且同一个包名只能保留一个 `.deb`。至少应包含：
+
+```text
+postgresql-16
+postgresql-client-16
+postgresql-common
+postgresql-client-common
+libpq5
+libicu70
+libldap-2.5-0
+libllvm15
+libxml2
+libxslt1.1
+libreadline8
+locales 或 locales-all
+openssl
+ssl-cert
+tzdata
+```
+
+建议在 Ubuntu 22.04 同架构环境里生成这个目录，例如 x86/amd64：
+
+```bash
+mkdir -p /Users/lvdaxianer/Downloads/postgresql-amd64-debs
+docker run --rm --platform linux/amd64 \
+  -v /Users/lvdaxianer/Downloads/postgresql-amd64-debs:/out \
+  ubuntu:22.04 \
+  bash -lc "set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg
+    install -d /usr/share/postgresql-common/pgdg
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg
+    printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main\n' \
+      >/etc/apt/sources.list.d/pgdg.list
+    apt-get update
+    apt-get install -y --download-only --no-install-recommends postgresql-16 postgresql-client-16
+    apt-get install -y --download-only --reinstall libldap-2.5-0 libreadline8 openssl
+    cp /var/cache/apt/archives/*.deb /out/"
+```
+
+arm64 使用同样方式，把 `--platform linux/amd64` 和输出目录换成 `linux/arm64`、`/Users/lvdaxianer/Downloads/postgresql-arm64-debs`。
+
+准备完成后应有以下 x86 本地构建输入：
 
 ```text
 docker/runtime/jdk-21_linux-x64_bin.tar.gz
-docker/runtime/node-v22-linux-x64.tar.xz
+docker/runtime/node-v22-linux-x64.tar.gz
 docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz
 ```
 
-构建 x64 测试镜像：
+准备 arm64 构建输入时，必须使用 arm64/aarch64 的 JDK、Node 和 PostgreSQL Debian 包：
 
 ```bash
-docker build \
-  --platform linux/amd64 \
-  --build-arg LOCAL_JDK_ARCHIVE=docker/runtime/jdk-21_linux-x64_bin.tar.gz \
-  --build-arg LOCAL_NODE_ARCHIVE=docker/runtime/node-v22-linux-x64.tar.xz \
-  --build-arg LOCAL_POSTGRES_DEB_ARCHIVE=docker/runtime/postgresql-16-ubuntu22.04-x64-debs.tar.gz \
-  -t doclens-j:all-in-one .
-```
-
-如果要构建其他 CPU 架构，JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构。当前本机如果只有 arm64 的 `ubuntu:22.04` / `node:22-bookworm-slim`，完全本地构建时应使用 aarch64 JDK；如果使用 x64 JDK，则需要先准备 amd64 的 Ubuntu/Node 镜像，或允许准备阶段拉取对应平台镜像。`scripts/prepare-container-runtimes.sh` 支持用环境变量覆盖默认输入：
-
-```bash
-RUNTIME_DIR=docker/runtime \
 DOCKER_PLATFORM=linux/arm64 \
-JDK_SOURCE=/path/to/jdk-21_linux-aarch64_bin.tar.gz \
-NODE_IMAGE=node:22-bookworm-slim \
-POSTGRES_DOWNLOAD_IMAGE=ubuntu:22.04 \
-POSTGRES_MAJOR=16 \
+JDK_SOURCE=/Users/lvdaxianer/Downloads/jdk-21_linux-aarch64_bin.tar.gz \
+NODE_SOURCE=/Users/lvdaxianer/Downloads/node-v22.23.1-linux-arm64.tar.xz \
+POSTGRES_DEB_SOURCE_DIR=/Users/lvdaxianer/Downloads/postgresql-arm64-debs \
 scripts/prepare-container-runtimes.sh
 ```
+
+准备完成后应有以下 arm64 本地构建输入：
+
+```text
+docker/runtime/jdk-21_linux-aarch64_bin.tar.gz
+docker/runtime/node-v22-linux-arm64.tar.gz
+docker/runtime/postgresql-16-ubuntu22.04-arm64-debs.tar.gz
+```
+
+分别构建两个镜像 tag：
+
+```bash
+PLATFORMS='linux/amd64 linux/arm64' scripts/build-local-runtime-images.sh
+```
+
+也可以只构建其中一个平台：
+
+```bash
+PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
+PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
+```
+
+构建结果会分别打 tag 为 `doclens-j:all-in-one-amd64` 和 `doclens-j:all-in-one-arm64`。JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构；缺少某个平台的 artifact 时，构建脚本会直接报出缺失文件。
+
+如果需要手动调用 `docker build`，对应参数是 `LOCAL_JDK_ARCHIVE`、`LOCAL_NODE_ARCHIVE` 和 `LOCAL_POSTGRES_DEB_ARCHIVE`；通常建议使用 `scripts/build-local-runtime-images.sh` 统一生成两个平台的镜像 tag。
 
 兼容入口 `scripts/download-container-jdk.sh` 仍保留，但它会转调 `scripts/prepare-container-runtimes.sh`，同时准备 JDK、Node 和 PostgreSQL artifacts。
 
@@ -143,7 +203,7 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens-j:all-in-one
+  doclens-j:all-in-one-amd64
 ```
 
 单机镜像适合试运行、离线交付和小规模验证。生产 Kubernetes 部署应使用 Helm chart，把应用和 PostgreSQL 拆成独立工作负载。
@@ -167,7 +227,7 @@ helm template doclens ./deploy/helm/doclens-j
 ```bash
 helm install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens-j \
-  --set image.tag=all-in-one \
+  --set image.tag=all-in-one-amd64 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
@@ -179,7 +239,7 @@ chart 默认会覆盖应用容器 command，只启动 `/opt/doclens/bin/doclens-
 ```bash
 helm upgrade --install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens-j \
-  --set image.tag=all-in-one \
+  --set image.tag=all-in-one-amd64 \
   --set postgresql.enabled=false \
   --set app.database.url='jdbc:postgresql://postgresql.example.com:5432/doclens' \
   --set app.database.username='doclens' \
