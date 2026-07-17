@@ -44,4 +44,3 @@ trial or offline delivery.
   backend and PostgreSQL while still using common public base images.
 - Maven Assembly packaging should not replace the Spring Boot jar; it should
   wrap it with scripts and example configuration.
-

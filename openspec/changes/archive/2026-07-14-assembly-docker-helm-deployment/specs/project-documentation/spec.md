@@ -11,4 +11,3 @@ packaging and deployment workflows, and technical delivery.
 - **WHEN** a reader needs to package or deploy DocLens-j
 - **THEN** they can find Maven Assembly distribution, all-in-one Docker image,
   and Helm chart commands in the packaging document
-

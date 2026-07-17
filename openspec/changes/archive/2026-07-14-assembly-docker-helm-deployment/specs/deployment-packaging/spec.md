@@ -45,4 +45,3 @@ DocLens-j MUST provide a Helm chart for Kubernetes deployment.
 - **THEN** the chart renders without the PostgreSQL StatefulSet
 - **AND** the application still receives PostgreSQL datasource environment
   variables for the external database
-

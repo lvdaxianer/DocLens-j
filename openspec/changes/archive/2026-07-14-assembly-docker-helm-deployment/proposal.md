@@ -38,4 +38,3 @@ Update packaging documentation with the new assembly, Docker, and Helm commands.
   paths.
 - Helm chart files under a chart/deployment directory.
 - Packaging documentation and OpenSpec packaging requirements.
-
