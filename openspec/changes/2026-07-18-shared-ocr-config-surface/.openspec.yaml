@@ -1,0 +1,7 @@
+change:
+  id: 2026-07-18-shared-ocr-config-surface
+  title: Restrict OCR config surface to shared controls
+  status: proposed
+  owner: codex
+  created: 2026-07-18
+  tier: S

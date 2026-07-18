@@ -23,8 +23,6 @@ management:
 
 doclens:
   auto-process-on-upload: true
-  adapter:
-    default-key: paddle_ocr
   ocr:
     default-routing-mode: GLOBAL_LOAD_BALANCE
     load-balance-strategy: weighted-idle
@@ -39,10 +37,6 @@ doclens:
     recovery-success-threshold: 3
     manual-recovery-attempts: 3
     specific-node-fallback-enabled: false
-  paddle-ocr:
-    enabled: true
-    timeout-seconds: 600
-    visualize: false
   page-task-worker:
     lock-seconds: 630
     queue-capacity: 200

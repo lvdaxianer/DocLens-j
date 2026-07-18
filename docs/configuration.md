@@ -31,7 +31,6 @@ Production datasource values are supplied through environment variables:
 
 | Property | Default | Description |
 | --- | --- | --- |
-| `doclens.adapter.default-key` | `paddle_ocr` | Default OCR adapter key |
 | `doclens.ocr.default-routing-mode` | `GLOBAL_LOAD_BALANCE` | Default OCR routing mode |
 | `doclens.ocr.load-balance-strategy` | `weighted-idle` | OCR node selection strategy |
 | `doclens.ocr.idle-factor` | `0.7` | Idle-score weight for weighted routing |
@@ -50,10 +49,7 @@ Production datasource values are supplied through environment variables:
 
 | Property | Default | Description |
 | --- | --- | --- |
-| `doclens.paddle-ocr.enabled` | `true` | Enable PaddleOCR native adapter |
 | `doclens.paddle-ocr.endpoint` | `${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}` | PaddleOCR native API endpoint |
-| `doclens.paddle-ocr.timeout-seconds` | `600` | PaddleOCR request timeout |
-| `doclens.paddle-ocr.visualize` | `false` | Ask PaddleOCR to return visualization output |
 
 The default bootstrap node is `paddle-215` on `10.100.30.215:8080`. Override the
 endpoint or node configuration for your local environment.
