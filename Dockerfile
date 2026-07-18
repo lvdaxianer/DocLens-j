@@ -16,6 +16,6 @@ RUN mkdir -p "${APP_HOME}" \
     && chown -R postgres:postgres "${APP_HOME}"
 
 EXPOSE 10003 5432
-VOLUME ["/var/lib/postgresql/data", "/var/lib/doclens/storage"]
+VOLUME ["/var/lib/postgresql/data", "/var/lib/doclens/storage", "/opt/doclens/config"]
 
 ENTRYPOINT ["doclens-all-in-one-entrypoint.sh"]

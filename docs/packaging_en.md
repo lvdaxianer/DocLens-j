@@ -205,8 +205,9 @@ The single-node image starts PostgreSQL first, waits for readiness, and then sta
 
 ```bash
 docker run --rm \
-  -p 10003:10003 \
+  -p 18080:18080 \
   -p 15432:5432 \
+  -e DOCLENS_SERVER_PORT=18080 \
   -e POSTGRES_DB=doclens \
   -e POSTGRES_USER=doclens \
   -e POSTGRES_PASSWORD=replace-with-strong-password \
@@ -216,6 +217,52 @@ docker run --rm \
   doclens:amd64
 ```
 
+Common runtime settings can be overridden directly through container
+environment variables without rebuilding the image, for example:
+
+```bash
+-e DOCLENS_SERVER_PORT=18080 \
+-e DOCLENS_OCR_DEFAULT_ROUTING_MODE=GLOBAL_LOAD_BALANCE \
+-e DOCLENS_OCR_LOAD_BALANCE_STRATEGY=weighted-idle \
+-e DOCLENS_PAGE_TASK_WORKER_LOCK_SECONDS=630
+```
+
+If you only want a different host mapping for PostgreSQL, you can keep the
+container's internal PostgreSQL port at the default and continue using:
+
+```bash
+-p 15433:5432
+```
+
+Only when you need to change the container's internal PostgreSQL port should
+you also pass:
+
+```bash
+-e POSTGRES_PORT=15433 \
+-p 15433:15433
+```
+
+For larger runtime changes, prefer mounting an external Spring config
+directory instead of encoding everything as a long env list:
+
+```bash
+docker run --rm \
+  -p 18080:18080 \
+  -e DOCLENS_SERVER_PORT=18080 \
+  -e DOCLENS_CONFIG_DIR=/opt/doclens/config \
+  -v "$(pwd)/config:/opt/doclens/config:ro" \
+  doclens:amd64
+```
+
+The image entrypoint defaults `SPRING_CONFIG_ADDITIONAL_LOCATION` to:
+
+```text
+optional:file:/opt/doclens/conf/,optional:file:/opt/doclens/config/
+```
+
+That keeps the packaged baseline config available while the mounted directory
+provides larger runtime overrides.
+
 For short smoke tests on small local Docker environments, you can add
 `-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'`. After startup,
 the health endpoint still requires the caller partition header:
@@ -223,7 +270,7 @@ the health endpoint still requires the caller partition header:
 ```bash
 curl -fsS \
   -H 'X-Doclens-Key: local-dev' \
-  http://127.0.0.1:10003/api/v1/health
+  http://127.0.0.1:18080/api/v1/health
 ```
 
 Use the all-in-one image for trials, offline delivery, and small validation runs. For production-style Kubernetes deployments, use the Helm chart so the app and PostgreSQL run as separate workloads.
@@ -248,11 +295,30 @@ Install the chart with bundled PostgreSQL:
 helm install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens \
   --set image.tag=amd64 \
+  --set app.serverPort=10003 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
 
 The chart overrides the app container command by default and only starts `/opt/doclens/bin/doclens-server.sh`, so the application Pod does not start the image's embedded PostgreSQL process. PostgreSQL lifecycle is handled by the `StatefulSet`.
+
+If you need to mount extra Spring config, inject extra volumes and mounts
+through chart values:
+
+```bash
+helm upgrade --install doclens ./deploy/helm/doclens-j \
+  --set app.serverPort=18080 \
+  --set service.port=18080 \
+  --set app.extraVolumes[0].name=extra-config \
+  --set app.extraVolumes[0].configMap.name=doclens-extra-config \
+  --set app.extraVolumeMounts[0].name=extra-config \
+  --set app.extraVolumeMounts[0].mountPath=/opt/doclens/config
+```
+
+The chart now injects `SERVER_PORT`, `DOCLENS_CONFIG_DIR`, and
+`SPRING_CONFIG_ADDITIONAL_LOCATION` into the application container, so small
+runtime changes can stay in env vars while larger changes move to mounted
+config files.
 
 To use external PostgreSQL, disable the bundled PostgreSQL workload and provide the external JDBC URL:
 

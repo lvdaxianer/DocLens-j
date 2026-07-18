@@ -1,0 +1,7 @@
+change:
+  id: 2026-07-18-container-runtime-config-overrides
+  title: Add container runtime config override hooks
+  status: proposed
+  owner: codex
+  created: 2026-07-18
+  tier: S

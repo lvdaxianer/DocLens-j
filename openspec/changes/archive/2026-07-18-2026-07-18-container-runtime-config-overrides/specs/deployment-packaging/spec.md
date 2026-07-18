@@ -1,22 +1,4 @@
-# deployment-packaging Specification
-
-## Purpose
-Define DocLens-j release packaging and deployment expectations for Maven
-Assembly distributions, single-node Docker delivery, and Kubernetes Helm
-deployments with PostgreSQL.
-## Requirements
-### Requirement: Assembly distribution MUST package the server runtime
-
-DocLens-j MUST provide a Maven Assembly based distribution for the HTTP server.
-
-#### Scenario: Maintainer builds the server distribution
-
-- **WHEN** a maintainer runs the documented Maven distribution command
-- **THEN** a compressed server distribution archive is produced
-- **AND** the archive includes the executable server jar
-- **AND** the archive includes startup scripts
-- **AND** the archive includes configuration examples for PostgreSQL-backed
-  runtime
+## MODIFIED Requirements
 
 ### Requirement: Docker image MUST support single-node all-in-one delivery
 
@@ -85,20 +67,6 @@ DocLens-j MUST provide a Helm chart for Kubernetes deployment.
 - **THEN** the chart renders without the PostgreSQL StatefulSet
 - **AND** the application still receives PostgreSQL datasource environment
   variables for the external database
-
-### Requirement: Main branch ships PostgreSQL-based packaging assets
-The `main` branch SHALL include packaging assets that run the frontend,
-backend, and PostgreSQL together for local deployment and Kubernetes delivery.
-
-#### Scenario: Local packaged runtime is available
-- **WHEN** an operator prepares the local packaged runtime from `main`
-- **THEN** they can build or run images and supporting assets that include the
-  frontend, backend, and PostgreSQL components required by DocLens
-
-#### Scenario: Kubernetes delivery assets are available
-- **WHEN** an operator deploys DocLens from `main` to Kubernetes
-- **THEN** the repository provides Helm chart assets that describe the
-  PostgreSQL-based runtime topology
 
 #### Scenario: Operator customizes application runtime surface
 

@@ -40,7 +40,11 @@ class RuntimeProfileConfigurationTest {
     private static final String DATASOURCE_DRIVER_PROPERTY = "spring.datasource.driver-class-name";
     private static final String STORAGE_ROOT_PROPERTY = "doclens.storage-root";
     private static final String WORKER_ID_PROPERTY = "doclens.worker-id";
+    private static final String DEFAULT_ADAPTER_KEY_PROPERTY = "doclens.adapter.default-key";
+    private static final String PADDLE_ENABLED_PROPERTY = "doclens.paddle-ocr.enabled";
     private static final String PADDLE_ENDPOINT_PROPERTY = "doclens.paddle-ocr.endpoint";
+    private static final String PADDLE_TIMEOUT_PROPERTY = "doclens.paddle-ocr.timeout-seconds";
+    private static final String PADDLE_VISUALIZE_PROPERTY = "doclens.paddle-ocr.visualize";
     private static final String PADDLE_BOOTSTRAP_HOST_PROPERTY = "doclens.paddle-ocr.bootstrap-nodes[0].host";
     private static final String WORD_CONVERSION_COMMAND_PROPERTY = "doclens.word-conversion.command";
     private static final String GATEWAY_AUTH_ENABLED_PROPERTY = "doclens.gateway-auth.enabled";
@@ -87,7 +91,11 @@ class RuntimeProfileConfigurationTest {
         assertThat(sharedConfig.getProperty(DATASOURCE_URL_PROPERTY)).isNull();
         assertThat(sharedConfig.getProperty(STORAGE_ROOT_PROPERTY)).isNull();
         assertThat(sharedConfig.getProperty(WORKER_ID_PROPERTY)).isNull();
+        assertThat(sharedConfig.getProperty(DEFAULT_ADAPTER_KEY_PROPERTY)).isNull();
+        assertThat(sharedConfig.getProperty(PADDLE_ENABLED_PROPERTY)).isNull();
         assertThat(sharedConfig.getProperty(PADDLE_ENDPOINT_PROPERTY)).isNull();
+        assertThat(sharedConfig.getProperty(PADDLE_TIMEOUT_PROPERTY)).isNull();
+        assertThat(sharedConfig.getProperty(PADDLE_VISUALIZE_PROPERTY)).isNull();
         assertThat(sharedConfig.getProperty(PADDLE_BOOTSTRAP_HOST_PROPERTY)).isNull();
         assertThat(sharedConfig.getProperty(WORD_CONVERSION_COMMAND_PROPERTY)).isNull();
     }

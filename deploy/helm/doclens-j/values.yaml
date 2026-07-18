@@ -29,8 +29,11 @@ app:
     enabled: true
     value:
       - /opt/doclens/bin/doclens-server.sh
+  serverPort: 10003
   storageRoot: /var/lib/doclens/storage
   workerId: doclens-worker-1
+  configDir: /opt/doclens/config
+  springConfigAdditionalLocation: ""
   database:
     url: ""
     username: doclens
@@ -49,6 +52,8 @@ app:
     principal: dashboard-admin
     partition: default
   extraEnv: []
+  extraVolumeMounts: []
+  extraVolumes: []
 
 persistence:
   enabled: true

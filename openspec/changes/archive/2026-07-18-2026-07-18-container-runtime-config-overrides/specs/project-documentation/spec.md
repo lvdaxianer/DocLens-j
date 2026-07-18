@@ -1,50 +1,4 @@
-# project-documentation Specification
-
-## Purpose
-Define the expected shape of DocLens Java project documentation so the root
-READMEs remain concise entry points and detailed API, SDK, configuration,
-development, packaging, and integration references stay discoverable.
-## Requirements
-### Requirement: Bilingual README Overview
-
-The project SHALL provide Chinese and English README entry points that describe
-DocLens Java at a project overview level and link to focused reference
-documents for details. The canonical English README path SHALL be
-`README-en.md`.
-
-#### Scenario: Reader starts from the Chinese README
-
-- **WHEN** a reader opens `README.md`
-- **THEN** they can understand the project purpose, deployment modes, modules,
-  quick start path, dashboard entry, supported document pipeline, OCR
-  concurrency model, global load balancing preference, restart recovery model,
-  LLM Markdown checkpoint behavior, upload guardrails, observability surface,
-  and where to find API, SDK, configuration, development, packaging,
-  integration, and technical delivery details
-
-#### Scenario: Reader starts from the English README
-
-- **WHEN** a reader opens `README-en.md`
-- **THEN** they can access equivalent overview, current capability summary, and
-  reference links in English
-
-### Requirement: Focused HTTP API Reference
-
-The project SHALL provide a focused HTTP API reference document that lists the
-main REST endpoint groups exposed by `doclens-server`.
-
-#### Scenario: Reader needs native DocLens endpoints
-
-- **WHEN** a reader opens the API reference
-- **THEN** they can find batch upload/query, document query/result/retry/delete,
-  adapter, health, dashboard, OCR model/node, governance, and LLM Markdown
-  configuration endpoint groups
-
-#### Scenario: Reader needs integration endpoints
-
-- **WHEN** a reader opens the API reference
-- **THEN** they can find the OpenWebUI OCR integration endpoint prefix and a
-  link to the detailed OpenWebUI contract
+## MODIFIED Requirements
 
 ### Requirement: Focused Operational Reference Documents
 The project SHALL provide focused reference documents for SDK usage,
@@ -115,4 +69,3 @@ packaging and deployment workflows, and technical delivery.
   through document executor queueing, page-task persistence, OCR slot
   scheduling, retry or failure handling, aggregation, optional LLM processing,
   and final batch completion
-
