@@ -28,6 +28,32 @@ DocLens-j 的 `/api/v1/**` 权限不是 Spring Security、登录会话或 JWT，
 
 HTTP 请求头大小写不敏感，但示例统一使用上面的名字，便于和实现对齐。
 
+### 请求头和配置项对照
+
+生产配置里的 `doclens.gateway-auth` 参数和请求头是一一配合使用的。先对照
+看清楚每个值从哪里来、控制什么：
+
+| 请求头或行为 | 对应配置项 | 作用 | 生产建议 |
+| --- | --- | --- | --- |
+| 是否要求网关认证 | `doclens.gateway-auth.enabled` | 开启后 `/api/v1/**` 请求必须带可信网关证明和 principal。 | 生产环境设为 `true`；本地开发可保持 `false`。 |
+| `X-Doclens-Gateway-Secret` | `trusted-gateway.header-value` | 证明请求确实来自可信网关，头里的值必须和配置值一致。 | 使用长随机值，通过环境变量或密钥系统注入，不写死到仓库。 |
+| `X-Doclens-Principal` | `principals[].principal` | 网关注入“谁在访问”，服务端只接受已配置的 principal。 | 每个调用方、网关应用或管理后台配置独立 principal，便于审计和收敛权限。 |
+| admin 路由授权 | `principals[].roles` | 决定该 principal 能不能访问管理类接口；当前最重要的是 `admin`。 | 只有需要管理 OCR 节点、模型、治理配置或重试回调任务的 principal 才配置 `admin`。 |
+| `X-Doclens-Key` | `principals[].allowed-partitions` | `X-Doclens-Key` 是请求的数据分区键，必须落在该 principal 的允许分区内。 | 按租户、环境或业务空间最小授权；不要用一个全局分区覆盖所有数据。 |
+
+这几个值的关系可以理解成：
+
+```text
+trusted-gateway.header-value = 请求确实来自可信网关
+principal = 网关注入的调用身份
+roles = 这个身份能不能访问管理类接口
+allowed-partitions = 这个身份能访问哪些 X-Doclens-Key 数据分区
+```
+
+`X-Doclens-Key` 仍然只是数据分区键，不是认证密钥。生产认证要同时依赖
+`X-Doclens-Gateway-Secret` 和 `X-Doclens-Principal`，再用
+`allowed-partitions` 限制这个 principal 能访问哪些分区。
+
 ## 生产环境配置
 
 生产环境应该在边缘网关完成外部用户或系统认证后，再把身份转发到
@@ -57,7 +83,7 @@ export DOCLENS_GATEWAY_PRINCIPAL='dashboard-admin'
 export DOCLENS_GATEWAY_PARTITION='tenant-a'
 ```
 
-网关转发请求示例：
+网关转发成功请求示例：
 
 ```bash
 curl -sS http://localhost:10003/api/v1/dashboard/summary \
@@ -73,6 +99,59 @@ curl -sS http://localhost:10003/api/v1/dashboard/summary \
 - `X-Doclens-Principal` 是 `dashboard-admin`。
 - `X-Doclens-Key` 属于 `dashboard-admin` 允许访问的分区。
 - 目标路由不需要 `admin`，或者该 principal 的配置角色包含 `admin`。
+
+### 生产环境怎么验证
+
+生产验证建议至少覆盖一个成功请求和三个失败请求。下面示例假设服务运行在
+`http://localhost:10003`，生产配置里的环境变量与上文一致。
+
+成功场景：可信网关密钥、principal、角色和分区都正确，应返回业务响应：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary \
+  -H 'X-Doclens-Gateway-Secret: replace-with-long-random-secret' \
+  -H 'X-Doclens-Principal: dashboard-admin' \
+  -H 'X-Doclens-Roles: admin' \
+  -H 'X-Doclens-Key: tenant-a'
+```
+
+失败场景 1：缺少或填错网关密钥，应返回 `401 Unauthorized`：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary \
+  -H 'X-Doclens-Gateway-Secret: wrong-secret' \
+  -H 'X-Doclens-Principal: dashboard-admin' \
+  -H 'X-Doclens-Key: tenant-a'
+```
+
+失败场景 2：principal 未配置或与请求头不一致，应返回 `403 Forbidden`：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary \
+  -H 'X-Doclens-Gateway-Secret: replace-with-long-random-secret' \
+  -H 'X-Doclens-Principal: unknown-principal' \
+  -H 'X-Doclens-Key: tenant-a'
+```
+
+失败场景 3：分区不在 allowlist 中，应返回 `403 Forbidden`：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary \
+  -H 'X-Doclens-Gateway-Secret: replace-with-long-random-secret' \
+  -H 'X-Doclens-Principal: dashboard-admin' \
+  -H 'X-Doclens-Key: tenant-b'
+```
+
+如果要验证 admin 路由，再调用一个 admin 接口。principal 配置了 `admin` 时应
+通过；把 `roles` 改成只包含 `user` 后，同一个请求应返回 `403 Forbidden`：
+
+```bash
+curl -i http://localhost:10003/api/v1/ocr-nodes \
+  -H 'X-Doclens-Gateway-Secret: replace-with-long-random-secret' \
+  -H 'X-Doclens-Principal: dashboard-admin' \
+  -H 'X-Doclens-Roles: admin' \
+  -H 'X-Doclens-Key: tenant-a'
+```
 
 ### 多分区生产配置
 
@@ -216,6 +295,28 @@ curl -sS http://localhost:10003/api/v1/dashboard/summary \
 
 `tenant-a` 创建的数据不会出现在 `tenant-b` 下。
 
+## 测试环境怎么验证
+
+测试环境分两类：一种是默认开发/单元测试模式，另一种是临时模拟生产网关
+模式。
+
+默认测试模式只验证分区键，适合本地开发和不关心网关认证的接口测试：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary \
+  -H 'X-Doclens-Key: local-dev'
+```
+
+这个模式下不需要 `X-Doclens-Gateway-Secret` 和 `X-Doclens-Principal`。如果
+缺少 `X-Doclens-Key`，请求仍然会被拒绝：
+
+```bash
+curl -i http://localhost:10003/api/v1/dashboard/summary
+```
+
+如果测试目标是“生产网关认证是否生效”，不要只用默认开发模式，应临时启用
+`doclens.gateway-auth.enabled=true`，并按下面的小节跑成功和失败用例。
+
 ## 本地启用网关认证
 
 如果想在本地验证生产模式，可以临时开启网关认证：
@@ -245,6 +346,21 @@ curl -sS http://localhost:10003/api/v1/ocr-nodes \
 ```
 
 这个模式适合提前验证网关联动、admin 路由和分区 allowlist。
+
+还可以追加两个反向用例确认测试环境没有误放行：
+
+```bash
+# principal 正确，但分区不在 allowed-partitions 中，应返回 403
+curl -i http://localhost:10003/api/v1/ocr-nodes \
+  -H 'X-Doclens-Gateway-Secret: gateway-secret-local' \
+  -H 'X-Doclens-Principal: local-admin' \
+  -H 'X-Doclens-Key: other-partition'
+
+# 分区正确，但缺少可信网关密钥，应返回 401
+curl -i http://localhost:10003/api/v1/ocr-nodes \
+  -H 'X-Doclens-Principal: local-admin' \
+  -H 'X-Doclens-Key: local-dev'
+```
 
 ## 流量限制
 
