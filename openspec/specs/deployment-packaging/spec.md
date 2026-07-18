@@ -108,3 +108,14 @@ backend, and PostgreSQL together for local deployment and Kubernetes delivery.
 - **AND** the rendered Service routes to the same application port
 - **AND** the rendered Deployment includes the requested extra volume and
   volumeMount entries for external runtime config
+
+#### Scenario: Operator uses dedicated all-in-one Compose examples
+
+- **WHEN** an operator wants a concrete all-in-one Docker Compose entry point
+- **THEN** the repository provides a dedicated Compose example that is separate
+  from the local development PostgreSQL compose file
+- **AND** the example includes an env file template for image, port, and
+  database defaults
+- **AND** the example mounts an external Spring configuration directory for
+  larger `doclens.*` runtime overrides
+
