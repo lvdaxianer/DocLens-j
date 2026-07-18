@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+export APP_HOME="${APP_HOME:-/opt/doclens}"
 export POSTGRES_DB="${POSTGRES_DB:-doclens}"
 export POSTGRES_USER="${POSTGRES_USER:-doclens}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-${DOCLENS_DB_PASSWORD:-doclens}}"
 export PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 export PG_MAJOR="${PG_MAJOR:-16}"
+export POSTGRES_PORT="${POSTGRES_PORT:-${DOCLENS_POSTGRES_PORT:-5432}}"
+export DOCLENS_SERVER_PORT="${DOCLENS_SERVER_PORT:-${SERVER_PORT:-10003}}"
+export SERVER_PORT="${SERVER_PORT:-${DOCLENS_SERVER_PORT}}"
+export DOCLENS_CONFIG_DIR="${DOCLENS_CONFIG_DIR:-/opt/doclens/config}"
+export SPRING_CONFIG_ADDITIONAL_LOCATION="${SPRING_CONFIG_ADDITIONAL_LOCATION:-optional:file:${APP_HOME}/conf/,optional:file:${DOCLENS_CONFIG_DIR}/}"
 
-export DOCLENS_DB_URL="${DOCLENS_DB_URL:-jdbc:postgresql://127.0.0.1:5432/${POSTGRES_DB}}"
+export DOCLENS_DB_URL="${DOCLENS_DB_URL:-jdbc:postgresql://127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}}"
 export DOCLENS_DB_USERNAME="${DOCLENS_DB_USERNAME:-${POSTGRES_USER}}"
 export DOCLENS_DB_PASSWORD="${DOCLENS_DB_PASSWORD:-${POSTGRES_PASSWORD}}"
 export DOCLENS_DB_DRIVER="${DOCLENS_DB_DRIVER:-org.postgresql.Driver}"
@@ -93,10 +99,10 @@ if [ ! -s "${PGDATA}/PG_VERSION" ]; then
   initialize_postgres
 fi
 
-runuser -u postgres -- postgres -D "${PGDATA}" &
+runuser -u postgres -- postgres -D "${PGDATA}" -p "${POSTGRES_PORT}" &
 postgres_pid=$!
 
-until pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; do
+until pg_isready -h 127.0.0.1 -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; do
   sleep 1
 done
 

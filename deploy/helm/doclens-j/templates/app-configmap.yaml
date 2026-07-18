@@ -6,9 +6,12 @@ metadata:
     {{- include "doclens-j.labels" . | nindent 4 }}
 data:
   SPRING_PROFILES_ACTIVE: prod
+  SERVER_PORT: {{ .Values.app.serverPort | quote }}
   DOCLENS_DB_URL: {{ include "doclens-j.databaseUrl" . | quote }}
   DOCLENS_DB_USERNAME: {{ include "doclens-j.databaseUsername" . | quote }}
   DOCLENS_DB_DRIVER: {{ .Values.app.database.driver | quote }}
+  DOCLENS_CONFIG_DIR: {{ .Values.app.configDir | quote }}
+  SPRING_CONFIG_ADDITIONAL_LOCATION: {{ default (printf "optional:file:/opt/doclens/conf/,optional:file:%s/" .Values.app.configDir) .Values.app.springConfigAdditionalLocation | quote }}
   DOCLENS_STORAGE_ROOT: {{ .Values.app.storageRoot | quote }}
   DOCLENS_WORKER_ID: {{ .Values.app.workerId | quote }}
   DOCLENS_PADDLE_OCR_ENDPOINT: {{ .Values.app.paddleOcr.endpoint | quote }}

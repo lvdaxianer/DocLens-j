@@ -209,8 +209,9 @@ PostgreSQL 初始化 SQL 不需要单独维护在 Dockerfile 中；镜像启动 
 
 ```bash
 docker run --rm \
-  -p 10003:10003 \
+  -p 18080:18080 \
   -p 15432:5432 \
+  -e DOCLENS_SERVER_PORT=18080 \
   -e POSTGRES_DB=doclens \
   -e POSTGRES_USER=doclens \
   -e POSTGRES_PASSWORD=replace-with-strong-password \
@@ -220,6 +221,47 @@ docker run --rm \
   doclens:amd64
 ```
 
+常见运行参数都可以直接通过容器环境变量覆盖，不需要重新打镜像，例如：
+
+```bash
+-e DOCLENS_SERVER_PORT=18080 \
+-e DOCLENS_OCR_DEFAULT_ROUTING_MODE=GLOBAL_LOAD_BALANCE \
+-e DOCLENS_OCR_LOAD_BALANCE_STRATEGY=weighted-idle \
+-e DOCLENS_PAGE_TASK_WORKER_LOCK_SECONDS=630
+```
+
+如果只是想改宿主机映射端口，而不改容器内 PostgreSQL 监听端口，仍然可以继续用：
+
+```bash
+-p 15433:5432
+```
+
+只有当你确实需要调整容器内 PostgreSQL 监听端口时，才额外传：
+
+```bash
+-e POSTGRES_PORT=15433 \
+-p 15433:15433
+```
+
+如果运行时改动很多，建议把覆盖项放到外挂 Spring 配置目录，而不是堆成很长一串环境变量：
+
+```bash
+docker run --rm \
+  -p 18080:18080 \
+  -e DOCLENS_SERVER_PORT=18080 \
+  -e DOCLENS_CONFIG_DIR=/opt/doclens/config \
+  -v "$(pwd)/config:/opt/doclens/config:ro" \
+  doclens:amd64
+```
+
+镜像入口会默认把 `SPRING_CONFIG_ADDITIONAL_LOCATION` 设为：
+
+```text
+optional:file:/opt/doclens/conf/,optional:file:/opt/doclens/config/
+```
+
+这意味着镜像内自带的基线配置仍然保留，而外挂目录可以承载更大的运行时覆盖。
+
 资源较小的本机 Docker 环境可以额外加
 `-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'` 做短时 smoke
 test。服务启动后，健康检查仍然需要调用方分区头：
@@ -227,7 +269,7 @@ test。服务启动后，健康检查仍然需要调用方分区头：
 ```bash
 curl -fsS \
   -H 'X-Doclens-Key: local-dev' \
-  http://127.0.0.1:10003/api/v1/health
+  http://127.0.0.1:18080/api/v1/health
 ```
 
 单机镜像适合试运行、离线交付和小规模验证。生产 Kubernetes 部署应使用 Helm chart，把应用和 PostgreSQL 拆成独立工作负载。
@@ -252,11 +294,27 @@ helm template doclens ./deploy/helm/doclens-j
 helm install doclens ./deploy/helm/doclens-j \
   --set image.repository=doclens \
   --set image.tag=amd64 \
+  --set app.serverPort=10003 \
   --set postgresql.password='replace-with-strong-password' \
   --set app.gatewayAuth.secret='replace-with-gateway-secret'
 ```
 
 chart 默认会覆盖应用容器 command，只启动 `/opt/doclens/bin/doclens-server.sh`，避免 Kubernetes 中的应用 Pod 再启动镜像内置 PostgreSQL。PostgreSQL 生命周期由 `StatefulSet` 管理。
+
+如果需要挂载额外 Spring 配置，可以直接通过 values 注入额外卷和挂载点：
+
+```bash
+helm upgrade --install doclens ./deploy/helm/doclens-j \
+  --set app.serverPort=18080 \
+  --set service.port=18080 \
+  --set app.extraVolumes[0].name=extra-config \
+  --set app.extraVolumes[0].configMap.name=doclens-extra-config \
+  --set app.extraVolumeMounts[0].name=extra-config \
+  --set app.extraVolumeMounts[0].mountPath=/opt/doclens/config
+```
+
+chart 默认会把 `SERVER_PORT`、`DOCLENS_CONFIG_DIR` 和
+`SPRING_CONFIG_ADDITIONAL_LOCATION` 注入应用容器，因此小改动可以直接走 env，复杂改动可以走外挂配置目录。
 
 使用外部 PostgreSQL 时关闭内置 PostgreSQL，并提供外部 JDBC URL：
 
