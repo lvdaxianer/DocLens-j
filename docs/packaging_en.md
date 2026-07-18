@@ -263,6 +263,39 @@ optional:file:/opt/doclens/conf/,optional:file:/opt/doclens/config/
 That keeps the packaged baseline config available while the mounted directory
 provides larger runtime overrides.
 
+If you want a reusable delivery example instead of a long `docker run`
+command, the repository also provides a dedicated all-in-one Compose example
+that is separate from the development `docker-compose.yml`:
+
+```text
+docker-compose.all-in-one.yml
+docker/examples/all-in-one/.env.example
+docker/examples/all-in-one/application.yml
+```
+
+The recommended flow is to copy the env example into your own runtime file,
+then adjust ports, database values, and image tags there:
+
+```bash
+cp docker/examples/all-in-one/.env.example ./doclens-all-in-one.env
+docker compose \
+  --env-file ./doclens-all-in-one.env \
+  -f docker-compose.all-in-one.yml \
+  up -d
+```
+
+Those three files have different roles:
+
+- `docker-compose.all-in-one.yml`: the all-in-one image, ports, persistent
+  volumes, and external config mount
+- `docker/examples/all-in-one/.env.example`: image, port, database, gateway,
+  and other shell-level runtime values
+- `docker/examples/all-in-one/application.yml`: larger `doclens.*` runtime
+  settings that are awkward to maintain as many environment variables
+
+In practice, small overrides can stay in env vars, while OCR, worker, and
+traffic tuning are usually easier to manage in the mounted `application.yml`.
+
 For short smoke tests on small local Docker environments, you can add
 `-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'`. After startup,
 the health endpoint still requires the caller partition header:

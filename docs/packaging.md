@@ -262,6 +262,35 @@ optional:file:/opt/doclens/conf/,optional:file:/opt/doclens/config/
 
 这意味着镜像内自带的基线配置仍然保留，而外挂目录可以承载更大的运行时覆盖。
 
+如果你希望把这套运行方式固化成可复用的交付样例，仓库里还提供了一套独立
+于开发用 `docker-compose.yml` 的单机 Compose 示例：
+
+```text
+docker-compose.all-in-one.yml
+docker/examples/all-in-one/.env.example
+docker/examples/all-in-one/application.yml
+```
+
+推荐做法是把 env 示例复制成你自己的运行时文件，再按需调整端口、数据库和
+镜像 tag：
+
+```bash
+cp docker/examples/all-in-one/.env.example ./doclens-all-in-one.env
+docker compose \
+  --env-file ./doclens-all-in-one.env \
+  -f docker-compose.all-in-one.yml \
+  up -d
+```
+
+这三个文件的分工是：
+
+- `docker-compose.all-in-one.yml`：定义一体化镜像、端口、持久卷和外挂配置挂载
+- `docker/examples/all-in-one/.env.example`：适合放镜像、端口、数据库、网关等少量运行时外壳参数
+- `docker/examples/all-in-one/application.yml`：适合放一整批 `doclens.*` 业务配置
+
+也就是说，少量改动继续走 env；如果像 OCR、worker、traffic 这种配置很多，
+直接改外挂的 `application.yml` 会更清楚。
+
 资源较小的本机 Docker 环境可以额外加
 `-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'` 做短时 smoke
 test。服务启动后，健康检查仍然需要调用方分区头：

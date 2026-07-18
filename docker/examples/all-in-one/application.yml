@@ -1,0 +1,56 @@
+doclens:
+  auto-process-on-upload: true
+  ocr:
+    default-routing-mode: GLOBAL_LOAD_BALANCE
+    load-balance-strategy: weighted-idle
+    idle-factor: 0.7
+    weight-factor: 0.3
+    top-bucket-threshold: 0.15
+    request-retry-times: 3
+    probe-interval-seconds: 5
+    health-check-timeout-seconds: 5
+    failure-threshold: 3
+    circuit-open-seconds: 86400
+    recovery-success-threshold: 3
+    manual-recovery-attempts: 3
+    specific-node-fallback-enabled: false
+  page-task-worker:
+    lock-seconds: 630
+    queue-capacity: 200
+    recovery-limit: 32
+    interval-millis: 500
+  extraction:
+    ocr-concurrency: 4
+  pdf-render:
+    dpi: 36
+    image-format: png
+  word-conversion:
+    timeout-seconds: 60
+  callback:
+    max-retries: 3
+    timeout-seconds: 10
+  traffic:
+    enabled: true
+    anonymous-enabled: false
+    default-limits:
+      dashboard-read:
+        qps: 10
+        burst: 20
+      detail-read:
+        qps: 5
+        burst: 10
+      upload-write:
+        qps: 0.5
+        burst: 2
+      ocr-mutation:
+        qps: 0.2
+        burst: 1
+      config-mutation:
+        qps: 0.1
+        burst: 1
+      admin-health:
+        qps: 2
+        burst: 5
+    global-protection:
+      enabled: true
+      max-in-flight: 100
