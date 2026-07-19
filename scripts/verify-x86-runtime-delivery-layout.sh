@@ -11,6 +11,7 @@ packaging_doc="${7:-docs/packaging.md}"
 packaging_doc_en="${8:-docs/packaging_en.md}"
 legacy_compose="${9:-docker-compose.all-in-one.yml}"
 legacy_examples_dir="${10:-docker/examples/all-in-one}"
+server_launcher="${11:-doclens-server/src/assembly/bin/doclens-server.sh}"
 
 failures=0
 
@@ -78,6 +79,8 @@ require_literal "${application_yml}" 'doclens:' \
 
 require_literal "${entrypoint}" 'runtime.env' \
   'Entrypoint must load mounted runtime.env before startup.'
+require_literal "${server_launcher}" 'runtime.env' \
+  'Packaged server launcher must preserve the mounted runtime.env hook.'
 require_literal "${dockerfile}" 'static/dashboard' \
   'Dockerfile must explain where frontend assets come from.'
 require_literal "${dockerfile}" 'doclens-server-dist.tar.gz' \
