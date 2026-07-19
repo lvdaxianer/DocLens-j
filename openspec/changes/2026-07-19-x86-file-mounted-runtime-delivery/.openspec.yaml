@@ -1,0 +1,7 @@
+change:
+  id: 2026-07-19-x86-file-mounted-runtime-delivery
+  title: Add x86 file-mounted runtime delivery layout
+  status: proposed
+  owner: codex
+  created: 2026-07-19
+  tier: S

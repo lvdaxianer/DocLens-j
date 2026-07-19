@@ -2,6 +2,25 @@
 set -Eeuo pipefail
 
 export APP_HOME="${APP_HOME:-/opt/doclens}"
+export DOCLENS_CONFIG_DIR="${DOCLENS_CONFIG_DIR:-/opt/doclens/config}"
+
+# 优先加载挂载进来的启动配置文件，便于交付时通过文件而不是命令行参数改配置。
+load_runtime_env() {
+  local runtime_env_file
+
+  runtime_env_file="${DOCLENS_CONFIG_DIR}/runtime.env"
+  if [ ! -f "${runtime_env_file}" ]; then
+    return
+  fi
+
+  set -a
+  # shellcheck disable=SC1090
+  . "${runtime_env_file}"
+  set +a
+}
+
+load_runtime_env
+
 export POSTGRES_DB="${POSTGRES_DB:-doclens}"
 export POSTGRES_USER="${POSTGRES_USER:-doclens}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-${DOCLENS_DB_PASSWORD:-doclens}}"
@@ -10,7 +29,6 @@ export PG_MAJOR="${PG_MAJOR:-16}"
 export POSTGRES_PORT="${POSTGRES_PORT:-${DOCLENS_POSTGRES_PORT:-5432}}"
 export DOCLENS_SERVER_PORT="${DOCLENS_SERVER_PORT:-${SERVER_PORT:-10003}}"
 export SERVER_PORT="${SERVER_PORT:-${DOCLENS_SERVER_PORT}}"
-export DOCLENS_CONFIG_DIR="${DOCLENS_CONFIG_DIR:-/opt/doclens/config}"
 export SPRING_CONFIG_ADDITIONAL_LOCATION="${SPRING_CONFIG_ADDITIONAL_LOCATION:-optional:file:${APP_HOME}/conf/,optional:file:${DOCLENS_CONFIG_DIR}/}"
 
 export DOCLENS_DB_URL="${DOCLENS_DB_URL:-jdbc:postgresql://127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}}"

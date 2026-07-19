@@ -1,0 +1,16 @@
+services:
+  doclens:
+    image: doclens:amd64
+    container_name: doclens-x86-all-in-one
+    restart: unless-stopped
+    ports:
+      - "10003:10003"
+      - "5432:5432"
+    volumes:
+      - doclens-x86-postgresql-data:/var/lib/postgresql/data
+      - doclens-x86-storage:/var/lib/doclens/storage
+      - ./config:/opt/doclens/config:ro
+
+volumes:
+  doclens-x86-postgresql-data:
+  doclens-x86-storage:

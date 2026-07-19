@@ -263,38 +263,46 @@ optional:file:/opt/doclens/conf/,optional:file:/opt/doclens/config/
 That keeps the packaged baseline config available while the mounted directory
 provides larger runtime overrides.
 
-If you want a reusable delivery example instead of a long `docker run`
-command, the repository also provides a dedicated all-in-one Compose example
-that is separate from the development `docker-compose.yml`:
+If you want to see exactly how the frontend enters the image, how the backend
+archive is copied into the image, which process starts first, and how backend
+config files are mounted, use the x86 single-node delivery directory instead of
+the previous generic Compose example:
 
 ```text
-docker-compose.all-in-one.yml
-docker/examples/all-in-one/.env.example
-docker/examples/all-in-one/application.yml
+docker/x86/docker-compose.yml
+docker/x86/README.md
+docker/x86/config/runtime.env
+docker/x86/config/application.yml
 ```
 
-The recommended flow is to copy the env example into your own runtime file,
-then adjust ports, database values, and image tags there:
+That directory makes the packaging chain visible:
+
+- `doclens-dashboard` builds into `doclens-server/src/main/resources/static/dashboard`
+- Maven Assembly packages the backend jar, startup scripts, config examples,
+  and the already bundled frontend assets into `docker/build/doclens-server-dist.tar.gz`
+- [Dockerfile](/Users/lvdaxianer/workspace/my/project/DocLens-j/Dockerfile) copies that
+  archive into the image and extracts it into `/opt/doclens`
+- the container entrypoint starts PostgreSQL first and then the backend, which
+  serves the bundled frontend at `/dashboard/`
+
+Recommended startup command:
 
 ```bash
-cp docker/examples/all-in-one/.env.example ./doclens-all-in-one.env
-docker compose \
-  --env-file ./doclens-all-in-one.env \
-  -f docker-compose.all-in-one.yml \
-  up -d
+docker-compose -f docker/x86/docker-compose.yml up -d
 ```
 
-Those three files have different roles:
+Those four files have different roles:
 
-- `docker-compose.all-in-one.yml`: the all-in-one image, ports, persistent
-  volumes, and external config mount
-- `docker/examples/all-in-one/.env.example`: image, port, database, gateway,
-  and other shell-level runtime values
-- `docker/examples/all-in-one/application.yml`: larger `doclens.*` runtime
-  settings that are awkward to maintain as many environment variables
+- `docker/x86/docker-compose.yml`: x86 image, host port mappings, data volumes,
+  and config directory mount
+- `docker/x86/README.md`: the visible packaging and startup explanation
+- `docker/x86/config/runtime.env`: startup shell values such as ports, database,
+  and gateway settings
+- `docker/x86/config/application.yml`: larger `doclens.*` runtime settings
 
-In practice, small overrides can stay in env vars, while OCR, worker, and
-traffic tuning are usually easier to manage in the mounted `application.yml`.
+In practice, startup-layer values and backend business settings are now split
+into two mounted files. If you change ports in `runtime.env`, remember to keep
+the host port mappings in `docker-compose.yml` in sync.
 
 For short smoke tests on small local Docker environments, you can add
 `-e JAVA_OPTS='-Xms96m -Xmx256m -XX:MaxMetaspaceSize=256m'`. After startup,
