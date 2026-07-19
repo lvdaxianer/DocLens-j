@@ -98,8 +98,9 @@ packaging and deployment workflows, and technical delivery.
   runtime settings through environment variables
 - **AND** the packaging document explains how to mount an external Spring
   configuration directory for larger runtime overrides
-- **AND** the packaging document includes a dedicated all-in-one Docker Compose
-  example workflow with env and mounted config example files
+- **AND** the packaging document includes an x86 runtime directory that shows
+  frontend packaging, backend archive copying, startup order, and mounted file
+  mapping
 
 #### Scenario: Reader wants delivery architecture and high availability
 - **WHEN** a reader needs to evaluate DocLens-j as a delivered technical system

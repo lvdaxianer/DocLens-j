@@ -111,11 +111,12 @@ backend, and PostgreSQL together for local deployment and Kubernetes delivery.
 
 #### Scenario: Operator uses dedicated all-in-one Compose examples
 
-- **WHEN** an operator wants a concrete all-in-one Docker Compose entry point
-- **THEN** the repository provides a dedicated Compose example that is separate
-  from the local development PostgreSQL compose file
-- **AND** the example includes an env file template for image, port, and
-  database defaults
-- **AND** the example mounts an external Spring configuration directory for
-  larger `doclens.*` runtime overrides
+- **WHEN** an operator wants a visible x86 single-node delivery layout
+- **THEN** the repository provides a dedicated x86 runtime directory with a
+  Compose file, mounted runtime env file, mounted backend `application.yml`,
+  and operator README
+- **AND** the entrypoint can load startup settings from the mounted runtime env
+  file before PostgreSQL and backend startup
+- **AND** the delivery documentation explains how frontend assets, backend
+  archive contents, and startup order map into the image
 

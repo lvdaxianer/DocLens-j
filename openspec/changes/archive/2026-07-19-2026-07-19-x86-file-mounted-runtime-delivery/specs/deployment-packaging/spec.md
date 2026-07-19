@@ -23,12 +23,12 @@ backend, and PostgreSQL together for local deployment and Kubernetes delivery.
 - **AND** the rendered Deployment includes the requested extra volume and
   volumeMount entries for external runtime config
 
-#### Scenario: Operator uses x86 file-mounted runtime delivery
+#### Scenario: Operator uses dedicated all-in-one Compose examples
 
 - **WHEN** an operator wants a visible x86 single-node delivery layout
-- **THEN** the repository provides an x86 runtime directory with a Compose
-  file, mounted runtime env file, mounted backend `application.yml`, and
-  operator README
+- **THEN** the repository provides a dedicated x86 runtime directory with a
+  Compose file, mounted runtime env file, mounted backend `application.yml`,
+  and operator README
 - **AND** the entrypoint can load startup settings from the mounted runtime env
   file before PostgreSQL and backend startup
 - **AND** the delivery documentation explains how frontend assets, backend
