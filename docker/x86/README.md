@@ -83,7 +83,8 @@ ${DOCLENS_DATA_ROOT}/postgresql -> /var/lib/postgresql/data
 ${DOCLENS_DATA_ROOT}/storage    -> /var/lib/doclens/storage
 ```
 
-未设置 `DOCLENS_DATA_ROOT` 时，默认使用当前仓库下的：
+未设置 `DOCLENS_DATA_ROOT` 时，`./data` 会按 `docker-compose.yml` 所在目录解析，
+因此无论从仓库根目录还是从 `docker/x86` 执行命令，都会使用：
 
 ```text
 docker/x86/data/postgresql

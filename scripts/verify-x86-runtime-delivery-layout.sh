@@ -61,9 +61,9 @@ require_literal "${x86_compose}" 'driver: local' \
   'x86 delivery compose file must create local data volumes.'
 require_literal "${x86_compose}" 'o: bind' \
   'x86 delivery compose file must bind local data volumes to host directories.'
-require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/postgresql' \
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-./data}/postgresql' \
   'PostgreSQL volume must use the configurable data root.'
-require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/storage' \
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-./data}/storage' \
   'DocLens storage volume must use the configurable data root.'
 
 require_file "${x86_readme}" \

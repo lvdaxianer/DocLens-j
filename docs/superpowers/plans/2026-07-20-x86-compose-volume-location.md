@@ -26,7 +26,7 @@ Add literal assertions for `DOCLENS_DATA_ROOT`, `driver: local`, `o: bind`, and 
 
 - [x] **Step 2: Run the focused check and verify RED**
 
-Run: `scripts/verify-x86-runtime-delivery-layout.sh`
+Run: `bash scripts/verify-x86-runtime-delivery-layout.sh`
 
 Expected: FAIL because `docker/x86/docker-compose.yml` does not yet declare configurable
 local bind volume options.
@@ -40,7 +40,7 @@ driver: local
 driver_opts:
   type: none
   o: bind
-  device: "${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/postgresql"
+  device: "${DOCLENS_DATA_ROOT:-./data}/postgresql"
 ```
 
 Track an empty default directory using a `.gitignore` containing:
@@ -66,6 +66,10 @@ Run: `docker-compose -f docker/x86/docker-compose.yml config`
 
 Expected: both volume devices expand below the default repository data directory.
 
+Run the same config command from both the repository root and `docker/x86`.
+
+Expected: both execution directories resolve to the same `docker/x86/data` paths.
+
 Run with a temporary absolute `DOCLENS_DATA_ROOT` under a Docker-accessible shared path
 and a temporary Compose project name, then inspect the created volumes.
 
@@ -75,3 +79,33 @@ Expected: both volume driver devices point to the selected temporary root.
 
 Review the complete diff against the approved design and canonical code-review rules,
 then commit the configuration, verification, documentation, design, and plan atomically.
+
+### Task 2: Working-directory-independent default path
+
+**Files:**
+- Modify: `scripts/verify-x86-runtime-delivery-layout.sh`
+- Modify: `docker/x86/docker-compose.yml`
+- Modify: `docker/x86/README.md`
+- Modify: `docs/superpowers/specs/2026-07-20-x86-compose-volume-location-design.md`
+
+- [x] **Step 1: Reproduce the duplicated path and verify RED**
+
+Run Compose from `docker/x86` and confirm `${PWD}/docker/x86/data` expands to a
+duplicated `docker/x86/docker/x86/data` path. Change the layout assertion to require
+`${DOCLENS_DATA_ROOT:-./data}` and confirm it fails against the existing Compose file.
+
+- [x] **Step 2: Use a Compose-relative default path**
+
+Replace the `PWD`-based defaults with `${DOCLENS_DATA_ROOT:-./data}` for both volumes.
+Document that Compose resolves `./data` relative to `docker/x86/docker-compose.yml`.
+
+- [x] **Step 3: Verify all supported invocation paths**
+
+Run the layout check and resolve Compose from both the repository root and `docker/x86`.
+Create a temporary Compose project and verify both real volume devices point below
+`docker/x86/data`, then remove all temporary Docker resources.
+
+- [x] **Step 4: Review and commit the fix**
+
+Review the complete fix diff against the approved design and canonical code-review rules,
+run fresh verification, and create one atomic bug-fix commit.

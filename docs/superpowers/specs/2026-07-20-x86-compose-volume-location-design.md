@@ -11,12 +11,14 @@
 选项。数据库卷绑定到 `${DOCLENS_DATA_ROOT}/postgresql`，文件存储卷绑定到
 `${DOCLENS_DATA_ROOT}/storage`。
 
-未设置 `DOCLENS_DATA_ROOT` 时，Compose 使用 `${PWD}/docker/x86/data`。仓库提供
-默认子目录并忽略其中运行时数据，使首次启动具备有效的绑定源目录且不会误提交数据。
+未设置 `DOCLENS_DATA_ROOT` 时，Compose 使用相对于 Compose 文件目录的 `./data`。
+仓库提供默认子目录并忽略其中运行时数据，使首次启动具备有效的绑定源目录且不会
+因命令执行目录不同而改变路径。
 
 ## 运行约束
 
 - `DOCLENS_DATA_ROOT` 必须是绝对路径。
+- 默认相对路径必须由 Compose 按 `docker/x86/docker-compose.yml` 所在目录解析。
 - 自定义根目录下的 `postgresql` 和 `storage` 子目录必须在启动前创建。
 - macOS 使用 Colima 时，自定义目录必须位于 Colima 可共享的宿主机路径中。
 - 已经创建的 Docker 卷不会因修改 Compose 驱动参数而原地迁移；已有数据需要先备份或迁移。

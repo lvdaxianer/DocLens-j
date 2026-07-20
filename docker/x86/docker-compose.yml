@@ -17,10 +17,10 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: "${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/postgresql"
+      device: "${DOCLENS_DATA_ROOT:-./data}/postgresql"
   doclens-x86-storage:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: "${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/storage"
+      device: "${DOCLENS_DATA_ROOT:-./data}/storage"
