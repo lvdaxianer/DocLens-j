@@ -55,6 +55,16 @@ require_literal "${x86_compose}" 'doclens:amd64' \
   'x86 delivery compose file must target the amd64 image.'
 require_literal "${x86_compose}" './config:/opt/doclens/config:ro' \
   'x86 delivery compose file must mount the backend config directory.'
+require_literal "${x86_compose}" 'DOCLENS_DATA_ROOT' \
+  'x86 delivery compose file must expose a configurable data root.'
+require_literal "${x86_compose}" 'driver: local' \
+  'x86 delivery compose file must create local data volumes.'
+require_literal "${x86_compose}" 'o: bind' \
+  'x86 delivery compose file must bind local data volumes to host directories.'
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/postgresql' \
+  'PostgreSQL volume must use the configurable data root.'
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/storage' \
+  'DocLens storage volume must use the configurable data root.'
 
 require_file "${x86_readme}" \
   'x86 delivery README must exist.'

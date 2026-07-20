@@ -13,4 +13,14 @@ services:
 
 volumes:
   doclens-x86-postgresql-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/postgresql"
   doclens-x86-storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${DOCLENS_DATA_ROOT:-${PWD}/docker/x86/data}/storage"
