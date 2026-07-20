@@ -8,8 +8,6 @@
 - `docker-compose.yml`：x86 单机运行入口
 - `config/runtime.env`：启动外壳参数，主要给容器入口脚本读取
 - `config/application.yml`：后端业务配置，挂载后由 Spring Boot 读取
-- `data/postgresql`：默认 PostgreSQL 数据目录
-- `data/storage`：默认上传文件和处理结果目录
 
 ## 前端和后端是怎么进镜像的
 
@@ -75,36 +73,33 @@ docker/build/doclens-server-dist.tar.gz
 
 ## 怎么指定数据卷位置
 
-`docker-compose.yml` 会显式创建两个使用 `local` 驱动的命名卷，并把它们绑定到
-宿主机目录：
+`docker-compose.yml` 会显式创建两个宿主机绑定目录：
 
 ```text
 ${DOCLENS_DATA_ROOT}/postgresql -> /var/lib/postgresql/data
 ${DOCLENS_DATA_ROOT}/storage    -> /var/lib/doclens/storage
 ```
 
-未设置 `DOCLENS_DATA_ROOT` 时，`./data` 会按 `docker-compose.yml` 所在目录解析，
-因此无论从仓库根目录还是从 `docker/x86` 执行命令，都会使用：
+未设置 `DOCLENS_DATA_ROOT` 时，默认使用 Docker 主机上的：
 
 ```text
-docker/x86/data/postgresql
-docker/x86/data/storage
+/var/lib/doclens-x86/postgresql
+/var/lib/doclens-x86/storage
 ```
 
-生产环境建议使用绝对路径。先创建目录，再把同一个变量传给 Compose：
+Compose 会自动创建不存在的目录。生产 Linux 环境可以通过绝对路径覆盖默认值：
 
 ```bash
-sudo mkdir -p /srv/doclens/data/postgresql /srv/doclens/data/storage
 DOCLENS_DATA_ROOT=/srv/doclens/data \
   docker-compose -f docker/x86/docker-compose.yml up -d
 ```
 
-macOS 使用 Colima 时，自定义目录必须位于 Colima 可访问的共享路径中，例如
-`/Users/<用户名>/doclens-data`。自定义目录也必须提前创建。
+macOS 使用 Colima 时，默认目录位于 Colima 虚拟机中，可以通过
+`colima ssh -- sudo ls /var/lib/doclens-x86` 查看。不要把 PostgreSQL 指向
+`/Users/...` 共享目录；该文件系统不支持 `initdb` 所需的权限修改。
 
-Docker 不会修改已经存在的命名卷驱动参数。如果这个 Compose 项目已经运行过，
-需要先备份或迁移旧卷数据，再重新创建卷；不要在有业务数据时直接执行
-`docker-compose down -v`。
+旧版 `x86_doclens-x86-*` 命名卷不会自动迁移到绑定目录。如果其中已有业务数据，
+必须先备份或迁移，再切换到新版 Compose。
 
 ## 怎么启动
 

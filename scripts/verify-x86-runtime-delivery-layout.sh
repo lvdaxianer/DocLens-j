@@ -57,13 +57,13 @@ require_literal "${x86_compose}" './config:/opt/doclens/config:ro' \
   'x86 delivery compose file must mount the backend config directory.'
 require_literal "${x86_compose}" 'DOCLENS_DATA_ROOT' \
   'x86 delivery compose file must expose a configurable data root.'
-require_literal "${x86_compose}" 'driver: local' \
-  'x86 delivery compose file must create local data volumes.'
-require_literal "${x86_compose}" 'o: bind' \
-  'x86 delivery compose file must bind local data volumes to host directories.'
-require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-./data}/postgresql' \
+require_literal "${x86_compose}" 'type: bind' \
+  'x86 delivery compose file must use explicit host bind mounts.'
+require_literal "${x86_compose}" 'create_host_path: true' \
+  'x86 delivery compose file must create missing host data directories.'
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-/var/lib/doclens-x86}/postgresql' \
   'PostgreSQL volume must use the configurable data root.'
-require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-./data}/storage' \
+require_literal "${x86_compose}" '${DOCLENS_DATA_ROOT:-/var/lib/doclens-x86}/storage' \
   'DocLens storage volume must use the configurable data root.'
 
 require_file "${x86_readme}" \

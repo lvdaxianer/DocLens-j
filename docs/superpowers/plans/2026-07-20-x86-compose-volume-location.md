@@ -4,7 +4,7 @@
 
 **Goal:** Make the x86 Compose file create named local bind volumes whose host root is configurable with `DOCLENS_DATA_ROOT`.
 
-**Architecture:** Keep the service-to-volume interface unchanged, but add `local` driver bind options to both top-level volume definitions. Provide tracked empty default directories and document custom-directory creation and existing-volume migration behavior.
+**Architecture:** Declare both persistent paths as service-level bind mounts with `create_host_path`. Default to Docker-host storage under `/var/lib/doclens-x86`, allow an absolute `DOCLENS_DATA_ROOT` override, and document migration from legacy named volumes.
 
 **Tech Stack:** Docker Compose, Docker local volume driver, Bash verification script, Markdown
 
@@ -15,8 +15,6 @@
 **Files:**
 - Modify: `scripts/verify-x86-runtime-delivery-layout.sh`
 - Modify: `docker/x86/docker-compose.yml`
-- Create: `docker/x86/data/postgresql/.gitignore`
-- Create: `docker/x86/data/storage/.gitignore`
 - Modify: `docker/x86/README.md`
 
 - [x] **Step 1: Write the failing delivery-layout assertions**
@@ -33,21 +31,14 @@ local bind volume options.
 
 - [x] **Step 3: Implement the Compose volume definitions and default directories**
 
-Configure each top-level volume like this, with the matching `postgresql` or `storage` suffix:
+Configure each service bind mount like this, with the matching `postgresql` or `storage` suffix:
 
 ```yaml
-driver: local
-driver_opts:
-  type: none
-  o: bind
-  device: "${DOCLENS_DATA_ROOT:-./data}/postgresql"
-```
-
-Track an empty default directory using a `.gitignore` containing:
-
-```gitignore
-*
-!.gitignore
+type: bind
+source: "${DOCLENS_DATA_ROOT:-/var/lib/doclens-x86}/postgresql"
+target: /var/lib/postgresql/data
+bind:
+  create_host_path: true
 ```
 
 - [x] **Step 4: Document configuration and migration behavior**
@@ -64,11 +55,11 @@ Expected: `x86 runtime delivery layout verified.`
 
 Run: `docker-compose -f docker/x86/docker-compose.yml config`
 
-Expected: both volume devices expand below the default repository data directory.
+Expected: both bind sources expand below `/var/lib/doclens-x86`.
 
 Run the same config command from both the repository root and `docker/x86`.
 
-Expected: both execution directories resolve to the same `docker/x86/data` paths.
+Expected: both execution directories resolve to the same Docker-host paths.
 
 Run with a temporary absolute `DOCLENS_DATA_ROOT` under a Docker-accessible shared path
 and a temporary Compose project name, then inspect the created volumes.
@@ -109,3 +100,26 @@ Create a temporary Compose project and verify both real volume devices point bel
 
 Review the complete fix diff against the approved design and canonical code-review rules,
 run fresh verification, and create one atomic bug-fix commit.
+
+### Task 3: PostgreSQL-compatible host bind mounts
+
+**Files:**
+- Modify: `scripts/verify-x86-runtime-delivery-layout.sh`
+- Modify: `docker/x86/README.md`
+- Modify: `docs/superpowers/specs/2026-07-20-x86-compose-volume-location-design.md`
+
+- [x] **Step 1: Reproduce the initdb failure and verify RED**
+
+Start the real Compose service and confirm `initdb` first rejects the tracked `.gitignore`,
+then confirm a subdirectory still fails because the macOS shared filesystem rejects `chmod`.
+Require service-level bind mounts under the Docker host and confirm the layout check fails.
+
+- [x] **Step 2: Configure Docker-host bind directories**
+
+Replace the local named volumes with service-level bind mounts using `create_host_path`,
+default to `/var/lib/doclens-x86`, and document Linux and Colima path behavior.
+
+- [x] **Step 3: Verify real startup and commit**
+
+Recreate the empty local PostgreSQL directory, start the real Compose service, verify
+PostgreSQL initialization and backend health, then review and commit the fix.

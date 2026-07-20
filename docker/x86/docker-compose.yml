@@ -7,20 +7,14 @@ services:
       - "10003:10003"
       - "5432:5432"
     volumes:
-      - doclens-x86-postgresql-data:/var/lib/postgresql/data
-      - doclens-x86-storage:/var/lib/doclens/storage
+      - type: bind
+        source: "${DOCLENS_DATA_ROOT:-/var/lib/doclens-x86}/postgresql"
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: true
+      - type: bind
+        source: "${DOCLENS_DATA_ROOT:-/var/lib/doclens-x86}/storage"
+        target: /var/lib/doclens/storage
+        bind:
+          create_host_path: true
       - ./config:/opt/doclens/config:ro
-
-volumes:
-  doclens-x86-postgresql-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: "${DOCLENS_DATA_ROOT:-./data}/postgresql"
-  doclens-x86-storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: "${DOCLENS_DATA_ROOT:-./data}/storage"
