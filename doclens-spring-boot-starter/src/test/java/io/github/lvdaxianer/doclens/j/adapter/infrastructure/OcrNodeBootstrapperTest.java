@@ -24,13 +24,13 @@ class OcrNodeBootstrapperTest {
     private static final int TEST_NODE_CAPACITY = 4;
 
     /**
-     * PaddleOCR 未配置节点时应插入启动节点。
+     * 显式配置 PaddleOCR 启动节点且数据库为空时应插入节点。
      *
      * @author lvdaxianerplus
      * @date 2026-06-09
      */
     @Test
-    void bootstrapInsertsPaddleNodesWhenModelHasNoNodes() {
+    void bootstrapInsertsExplicitPaddleNodesWhenModelHasNoNodes() {
         InMemoryOcrNodeRepository repository = new InMemoryOcrNodeRepository();
         OcrNodeBootstrapper bootstrapper = new OcrNodeBootstrapper(repository,
                 List.of(bootstrapNode("paddle-215", "10.100.30.215", 8080)));
@@ -43,6 +43,22 @@ class OcrNodeBootstrapperTest {
             assertThat(node.port()).isEqualTo(8080);
             assertThat(node.status()).isEqualTo(OcrNodeStatus.RECOVERING);
         });
+    }
+
+    /**
+     * 未配置 PaddleOCR 启动节点时不应写入任何节点。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-21
+     */
+    @Test
+    void bootstrapSkipsWhenNoPaddleNodesAreConfigured() {
+        InMemoryOcrNodeRepository repository = new InMemoryOcrNodeRepository();
+        OcrNodeBootstrapper bootstrapper = new OcrNodeBootstrapper(repository, List.of());
+
+        bootstrapper.bootstrap(BASE_TIME);
+
+        assertThat(repository.listByModelKey("paddle_ocr")).isEmpty();
     }
 
     /**

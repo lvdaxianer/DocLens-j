@@ -100,6 +100,21 @@ class PaddleOcrNativeClientTest {
     }
 
     /**
+     * 未配置 legacy endpoint 时应立即提示配置缺失。
+     *
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-21
+     */
+    @Test
+    void rejectsLegacyRecognitionWhenEndpointIsBlank() {
+        PaddleOcrNativeClient client = new PaddleOcrNativeClient(propertiesWithEndpoint(""), objectMapper);
+
+        assertThatThrownBy(() -> client.recognizeImage("image".getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("PaddleOCR legacy endpoint is not configured");
+    }
+
+    /**
      * 零秒超时配置应降级为最小 HTTP 超时，避免禁用 PaddleOCR 时客户端构造失败。
      *
      * @author lvdaxianerplus
@@ -147,19 +162,7 @@ class PaddleOcrNativeClientTest {
      * @date 2026-06-08
      */
     private DocLensProperties propertiesFor(HttpServer server) {
-        return new DocLensProperties(
-                "target/test-storage",
-                true,
-                "worker-test",
-                new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
-                new DocLensProperties.AdapterProperties("paddle_ocr"),
-                new DocLensProperties.PaddleOcrProperties(true, endpointFor(server), TEST_TIMEOUT_SECONDS, false),
-                new DocLensProperties.OcrHealthProperties(3, 2),
-                new DocLensProperties.ExtractionProperties(1),
-                new DocLensProperties.PdfRenderProperties(144, "png"),
-                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
-                threadPools()
-        );
+        return properties(endpointFor(server), TEST_TIMEOUT_SECONDS);
     }
 
     /**
@@ -174,6 +177,43 @@ class PaddleOcrNativeClientTest {
     }
 
     /**
+     * 生成指定 PaddleOCR endpoint 的测试配置。
+     *
+     * @param endpoint PaddleOCR 接口地址
+     * @return DocLens 测试配置
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-21
+     */
+    private DocLensProperties propertiesWithEndpoint(String endpoint) {
+        return properties(endpoint, TEST_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 生成指定 PaddleOCR endpoint 和超时时间的测试配置。
+     *
+     * @param endpoint PaddleOCR 接口地址
+     * @param timeoutSeconds PaddleOCR 超时秒数
+     * @return DocLens 测试配置
+     * @author lvdaxianer@yeah.net
+     * @date 2026-07-21
+     */
+    private DocLensProperties properties(String endpoint, int timeoutSeconds) {
+        return new DocLensProperties(
+                "target/test-storage",
+                true,
+                "worker-test",
+                new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
+                new DocLensProperties.AdapterProperties("paddle_ocr"),
+                new DocLensProperties.PaddleOcrProperties(true, endpoint, timeoutSeconds, false),
+                new DocLensProperties.OcrHealthProperties(3, 2),
+                new DocLensProperties.ExtractionProperties(1),
+                new DocLensProperties.PdfRenderProperties(144, "png"),
+                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
+                threadPools()
+        );
+    }
+
+    /**
      * 生成指定 PaddleOCR 超时时间的配置。
      *
      * @param timeoutSeconds PaddleOCR 超时秒数
@@ -182,19 +222,7 @@ class PaddleOcrNativeClientTest {
      * @date 2026-06-12
      */
     private DocLensProperties propertiesWithTimeout(int timeoutSeconds) {
-        return new DocLensProperties(
-                "target/test-storage",
-                true,
-                "worker-test",
-                new DocLensProperties.CallbackProperties(1, TEST_TIMEOUT_SECONDS),
-                new DocLensProperties.AdapterProperties("paddle_ocr"),
-                new DocLensProperties.PaddleOcrProperties(true, "http://127.0.0.1:1/ocr", timeoutSeconds, false),
-                new DocLensProperties.OcrHealthProperties(3, 2),
-                new DocLensProperties.ExtractionProperties(1),
-                new DocLensProperties.PdfRenderProperties(144, "png"),
-                new DocLensProperties.WordConversionProperties("soffice", TEST_TIMEOUT_SECONDS),
-                threadPools()
-        );
+        return properties("http://127.0.0.1:1/ocr", timeoutSeconds);
     }
 
     /**

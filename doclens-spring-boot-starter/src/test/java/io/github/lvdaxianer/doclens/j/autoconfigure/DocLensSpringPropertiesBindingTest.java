@@ -83,6 +83,7 @@ class DocLensSpringPropertiesBindingTest {
             assertThat(context).hasSingleBean(DocLensSpringProperties.class);
             assertThat(context.getBean(DocLensSpringProperties.class).clients().credentials()).isEmpty();
             assertThat(context.getBean(DocLensSpringProperties.class).gatewayAuth().enabled()).isFalse();
+            assertThat(context.getBean(DocLensSpringProperties.class).paddleOcr().bootstrapNodes()).isEmpty();
         });
     }
 

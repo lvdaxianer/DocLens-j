@@ -42,10 +42,7 @@ app:
     existingSecret: ""
     passwordKey: DOCLENS_DB_PASSWORD
   paddleOcr:
-    endpoint: http://paddle-ocr:8080/ocr
-    nodeName: paddle-primary
-    nodeHost: paddle-ocr
-    nodePort: "8080"
+    endpoint: ""
   wordConversionCommand: /usr/bin/soffice
   gatewayAuth:
     secret: ""

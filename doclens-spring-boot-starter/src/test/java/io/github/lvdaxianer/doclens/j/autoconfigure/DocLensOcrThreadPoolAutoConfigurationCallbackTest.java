@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
 
     private static final int EXPECTED_CALLBACK_CORE_SIZE = 3;
+    private static final int EXPECTED_NO_NODE_CONCURRENCY = 8;
     private static final int DASHBOARD_TOTAL_CONCURRENCY = 24;
     private static final int DASHBOARD_DEFAULT_NODE_CONCURRENCY = 10;
     private static final int DASHBOARD_SMALL_NODE_CONCURRENCY = 4;
@@ -47,20 +48,20 @@ class DocLensOcrThreadPoolAutoConfigurationCallbackTest {
     }
 
     /**
-     * 默认 OCR 请求线程池应按启用节点最大并发扩容。
+     * 没有 OCR 节点时请求线程池应使用安全回退并发。
      *
      * @author lvdaxianerplus
      * @date 2026-06-19
      */
     @Test
-    void ocrRequestExecutorDefaultsToBootstrapNodeConcurrency() {
+    void ocrRequestExecutorFallsBackWhenNoNodeIsConfigured() {
         ExecutorService executor = new DocLensOcrThreadPoolAutoConfiguration()
                 .doclensOcrRequestExecutor(defaultProperties());
 
         try {
             ThreadPoolExecutor threadPool = (ThreadPoolExecutor) executor;
-            assertThat(threadPool.getCorePoolSize()).isEqualTo(DASHBOARD_DEFAULT_NODE_CONCURRENCY);
-            assertThat(threadPool.getMaximumPoolSize()).isEqualTo(DASHBOARD_DEFAULT_NODE_CONCURRENCY);
+            assertThat(threadPool.getCorePoolSize()).isEqualTo(EXPECTED_NO_NODE_CONCURRENCY);
+            assertThat(threadPool.getMaximumPoolSize()).isEqualTo(EXPECTED_NO_NODE_CONCURRENCY);
         } finally {
             executor.shutdownNow();
         }

@@ -243,8 +243,14 @@ public class PaddleOcrNativeClient {
      * @date 2026-06-08
      */
     private RequestTarget targetForConfiguredEndpoint() {
+        String endpoint = properties.paddleOcr().endpoint();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("PaddleOCR legacy endpoint is not configured");
+        } else {
+            // 已配置 legacy endpoint，继续构建兼容请求目标。
+        }
         return new RequestTarget(PADDLE_OCR_MODEL_KEY, LEGACY_ENDPOINT_NODE_ID, LEGACY_ENDPOINT_HOST,
-                LEGACY_ENDPOINT_PORT, URI.create(properties.paddleOcr().endpoint()));
+                LEGACY_ENDPOINT_PORT, URI.create(endpoint));
     }
 
     /**

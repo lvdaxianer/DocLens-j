@@ -84,7 +84,7 @@ conf/doclens.env.example
 lib/doclens-server-0.1.0-SNAPSHOT.jar
 ```
 
-运行前需要按 `conf/doclens.env.example` 准备 PostgreSQL 连接、对象存储目录、OCR 节点和可信网关密钥等环境变量。
+运行前需要按 `conf/doclens.env.example` 准备 PostgreSQL 连接、对象存储目录和可信网关密钥等环境变量。服务不会预置具体 OCR 节点，启动后应在 Dashboard 的 **OCR 资源** 页面新增实际节点。
 
 ### 构建单机 Docker 镜像
 

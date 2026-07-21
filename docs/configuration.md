@@ -49,10 +49,11 @@ Production datasource values are supplied through environment variables:
 
 | Property | Default | Description |
 | --- | --- | --- |
-| `doclens.paddle-ocr.endpoint` | `${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}` | PaddleOCR native API endpoint |
+| `doclens.paddle-ocr.endpoint` | empty | Optional legacy PaddleOCR native API endpoint |
 
-The default bootstrap node is `paddle-215` on `10.100.30.215:8080`. Override the
-endpoint or node configuration for your local environment.
+DocLens does not bootstrap a concrete OCR node by default. Add the actual node
+from **OCR Resources** in the Dashboard or through
+`POST /api/v1/ocr-models/{modelKey}/nodes`; the node is then stored in PostgreSQL.
 
 ## Document Processing
 
@@ -122,8 +123,9 @@ OpenWebUI integration uses:
 export DOCLENS_INTEGRATIONS_OPEN_WEBUI_INTERNAL_TOKEN=replace-with-real-token
 ```
 
-Spring Boot maps environment variables to properties, so
-`DOCLENS_PADDLE_OCR_ENDPOINT` overrides `doclens.paddle-ocr.endpoint`.
+Spring Boot maps environment variables to properties, so an explicitly set
+`DOCLENS_PADDLE_OCR_ENDPOINT` overrides `doclens.paddle-ocr.endpoint` for the
+legacy direct-endpoint path. It does not create an OCR resource node.
 
 ## Related Docs
 

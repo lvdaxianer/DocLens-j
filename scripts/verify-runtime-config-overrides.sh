@@ -23,6 +23,17 @@ require_pattern() {
   fi
 }
 
+require_absent_pattern() {
+  local file="$1"
+  local pattern="$2"
+  local message="$3"
+
+  if grep -Eq -- "${pattern}" "${file}"; then
+    printf 'FAIL: %s\n' "${message}" >&2
+    failures=$((failures + 1))
+  fi
+}
+
 require_pattern "${entrypoint}" 'DOCLENS_SERVER_PORT' \
   'Entrypoint must expose an explicit DocLens server port environment variable.'
 require_pattern "${entrypoint}" 'SERVER_PORT' \
@@ -49,6 +60,10 @@ require_pattern "${helm_values}" 'extraVolumes:' \
   'Helm values must expose extra volumes for runtime config.'
 require_pattern "${helm_configmap}" 'SERVER_PORT:' \
   'Helm app ConfigMap must publish the application server port env.'
+require_absent_pattern "${helm_values}" 'nodeName:|nodeHost:|nodePort:' \
+  'Helm values must not define a concrete default OCR node.'
+require_absent_pattern "${helm_configmap}" 'DOCLENS_PADDLE_OCR_NODE_' \
+  'Helm app ConfigMap must not inject a concrete default OCR node.'
 require_pattern "${helm_deployment}" 'containerPort: \{\{ \.Values\.app\.serverPort \}\}' \
   'Helm Deployment must use the configurable application container port.'
 require_pattern "${helm_deployment}" '\.Values\.app\.extraVolumeMounts' \

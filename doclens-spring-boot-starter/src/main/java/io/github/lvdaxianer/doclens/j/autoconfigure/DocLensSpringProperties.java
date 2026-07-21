@@ -55,7 +55,7 @@ public record DocLensSpringProperties(
         ThreadPoolsProperties threadPools,
         TrafficProperties traffic
 ) {
-    private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "http://10.100.30.215:8080/ocr";
+    private static final String DEFAULT_PADDLE_OCR_ENDPOINT = "";
     private static final int DEFAULT_HEALTH_CHECK_TIMEOUT_SECONDS = 5;
     private static final int DEFAULT_EXTRACTION_OCR_CONCURRENCY = 4;
     private static final int DEFAULT_DOCUMENT_PROCESSING_CONCURRENCY = 6;
@@ -65,8 +65,6 @@ public record DocLensSpringProperties(
     private static final int DEFAULT_THREAD_POOL_QUEUE_CAPACITY = 100;
     private static final int DEFAULT_THREAD_POOL_KEEP_ALIVE_SECONDS = 60;
     private static final String DEFAULT_OCR_REQUEST_THREAD_PREFIX = "doclens-ocr-request-";
-    private static final int DEFAULT_NODE_WEIGHT = 50;
-    private static final int DEFAULT_NODE_MAX_CONCURRENCY = 10;
     private static final int DEFAULT_PAGE_TASK_WORKER_INTERVAL_MILLIS = 500;
     private static final int DEFAULT_PAGE_TASK_WORKER_BATCH_SIZE = 0;
     private static final int DEFAULT_PAGE_TASK_LOCK_SECONDS = 0;
@@ -99,7 +97,7 @@ public record DocLensSpringProperties(
      * @date 2026-06-09
      */
     private static PaddleOcrProperties defaultPaddleOcr() {
-        return new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false, List.of(defaultPaddleNode()));
+        return new PaddleOcrProperties(true, DEFAULT_PADDLE_OCR_ENDPOINT, 600, false, List.of());
     }
 
     /**
@@ -132,18 +130,6 @@ public record DocLensSpringProperties(
     private static OcrHealthProperties defaultOcrHealth() {
         return new OcrHealthProperties(OcrHealthGovernance.DEFAULT_FAILURE_THRESHOLD,
                 OcrHealthGovernance.DEFAULT_RECOVERY_SUCCESS_THRESHOLD);
-    }
-
-    /**
-     * 创建默认 PaddleOCR 启动节点。
-     *
-     * @return PaddleOCR 启动节点
-     * @author lvdaxianerplus
-     * @date 2026-06-09
-     */
-    static PaddleOcrNodeProperties defaultPaddleNode() {
-        return new PaddleOcrNodeProperties("paddle-215", "10.100.30.215", 8080, true, true, DEFAULT_NODE_WEIGHT,
-                DEFAULT_NODE_MAX_CONCURRENCY);
     }
 
     /**

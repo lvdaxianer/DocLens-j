@@ -63,15 +63,14 @@ class RuntimeProfileConfigurationTest {
     private static final String LOCAL_POSTGRESQL_DRIVER = "${DOCLENS_DB_DRIVER:org.postgresql.Driver}";
     private static final String LOCAL_STORAGE_ROOT = "./var/storage";
     private static final String LOCAL_WORKER_ID = "local-worker";
-    private static final String LOCAL_PADDLE_ENDPOINT = "${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}";
-    private static final String LOCAL_PADDLE_HOST = "10.100.30.215";
+    private static final String LOCAL_PADDLE_ENDPOINT = "${DOCLENS_PADDLE_OCR_ENDPOINT:}";
     private static final String LOCAL_WORD_CONVERSION_COMMAND = "/opt/homebrew/bin/soffice";
     private static final String PROD_DATASOURCE_URL = "${DOCLENS_DB_URL}";
     private static final String PROD_DATASOURCE_USERNAME = "${DOCLENS_DB_USERNAME}";
     private static final String PROD_DATASOURCE_PASSWORD = "${DOCLENS_DB_PASSWORD}";
     private static final String PROD_DATASOURCE_DRIVER = "${DOCLENS_DB_DRIVER}";
     private static final String PROD_STORAGE_ROOT = "${DOCLENS_STORAGE_ROOT}";
-    private static final String PROD_PADDLE_ENDPOINT = "${DOCLENS_PADDLE_OCR_ENDPOINT}";
+    private static final String PROD_PADDLE_ENDPOINT = "${DOCLENS_PADDLE_OCR_ENDPOINT:}";
     private static final String PROD_WORD_CONVERSION_COMMAND = "${DOCLENS_WORD_CONVERSION_COMMAND}";
     private static final String PROD_GATEWAY_SECRET = "${DOCLENS_GATEWAY_SECRET}";
     private static final String PROD_GATEWAY_PRINCIPAL = "${DOCLENS_GATEWAY_PRINCIPAL}";
@@ -117,7 +116,7 @@ class RuntimeProfileConfigurationTest {
         assertThat(devConfig.getProperty(STORAGE_ROOT_PROPERTY)).isEqualTo(LOCAL_STORAGE_ROOT);
         assertThat(devConfig.getProperty(WORKER_ID_PROPERTY)).isEqualTo(LOCAL_WORKER_ID);
         assertThat(devConfig.getProperty(PADDLE_ENDPOINT_PROPERTY)).isEqualTo(LOCAL_PADDLE_ENDPOINT);
-        assertThat(devConfig.getProperty(PADDLE_BOOTSTRAP_HOST_PROPERTY)).isEqualTo(LOCAL_PADDLE_HOST);
+        assertThat(devConfig.getProperty(PADDLE_BOOTSTRAP_HOST_PROPERTY)).isNull();
         assertThat(devConfig.getProperty(WORD_CONVERSION_COMMAND_PROPERTY)).isEqualTo(LOCAL_WORD_CONVERSION_COMMAND);
     }
 
@@ -137,6 +136,7 @@ class RuntimeProfileConfigurationTest {
         assertThat(prodConfig.getProperty(DATASOURCE_DRIVER_PROPERTY)).isEqualTo(PROD_DATASOURCE_DRIVER);
         assertThat(prodConfig.getProperty(STORAGE_ROOT_PROPERTY)).isEqualTo(PROD_STORAGE_ROOT);
         assertThat(prodConfig.getProperty(PADDLE_ENDPOINT_PROPERTY)).isEqualTo(PROD_PADDLE_ENDPOINT);
+        assertThat(prodConfig.getProperty(PADDLE_BOOTSTRAP_HOST_PROPERTY)).isNull();
         assertThat(prodConfig.getProperty(WORD_CONVERSION_COMMAND_PROPERTY)).isEqualTo(PROD_WORD_CONVERSION_COMMAND);
         assertThat(prodConfig.getProperty(GATEWAY_AUTH_ENABLED_PROPERTY)).isEqualTo(Boolean.TRUE);
         assertThat(prodConfig.getProperty(GATEWAY_SECRET_PROPERTY)).isEqualTo(PROD_GATEWAY_SECRET);

@@ -171,7 +171,8 @@ class DocLensPageTaskWorkerAutoConfigurationTest {
     private DocLensSpringProperties defaultPropertiesWithPaddleTimeout(int timeoutSeconds) {
         return new DocLensSpringProperties(null, true, LOCAL_WORKER_ID, null, null, null, null, null,
                 new DocLensSpringProperties.PaddleOcrProperties(true, TEST_PADDLE_ENDPOINT,
-                        timeoutSeconds, false, List.of(DocLensSpringProperties.defaultPaddleNode())),
+                        timeoutSeconds, false, List.of(new DocLensSpringProperties.PaddleOcrNodeProperties(
+                                "test-paddle", "127.0.0.1", 8080, true, true, 50, 10))),
                 null, null, null, null, null, null, null, null);
     }
 

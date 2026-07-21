@@ -9,14 +9,6 @@ doclens:
   storage-root: ./var/storage
   worker-id: local-worker
   paddle-ocr:
-    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT:http://10.100.30.215:8080/ocr}
-    bootstrap-nodes:
-      - name: paddle-215
-        host: 10.100.30.215
-        port: 8080
-        enabled: true
-        participate-global: true
-        weight: 50
-        max-concurrency: 10
+    endpoint: ${DOCLENS_PADDLE_OCR_ENDPOINT:}
   word-conversion:
     command: /opt/homebrew/bin/soffice

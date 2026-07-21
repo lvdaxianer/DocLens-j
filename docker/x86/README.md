@@ -71,6 +71,10 @@ docker/build/doclens-server-dist.tar.gz
 - `runtime.env` 负责数据库、端口、网关密钥这类启动参数
 - `application.yml` 负责 `doclens.*` 业务配置
 
+镜像不会预置具体 OCR 节点。首次启动后应在 Dashboard 的 **OCR 资源** 页面新增
+实际可访问的节点；节点会保存到 PostgreSQL。旧数据卷中已有的示例节点不会被
+自动删除，需要在页面中手动删除一次。
+
 ## 怎么指定数据卷位置
 
 `docker-compose.yml` 会显式创建两个宿主机绑定目录：

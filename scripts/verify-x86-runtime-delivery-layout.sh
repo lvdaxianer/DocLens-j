@@ -38,6 +38,18 @@ require_literal() {
   fi
 }
 
+# 校验目标文件不包含会注入具体 OCR 节点的配置。
+require_absent_literal() {
+  local file="$1"
+  local text="$2"
+  local message="$3"
+
+  if [ -f "${file}" ] && grep -Fq -- "${text}" "${file}"; then
+    printf 'FAIL: %s\n' "${message}" >&2
+    failures=$((failures + 1))
+  fi
+}
+
 # 校验旧示例已经从最终交付面移除。
 require_missing() {
   local path="$1"
@@ -81,6 +93,8 @@ require_literal "${runtime_env}" 'POSTGRES_DB=' \
   'Mounted runtime env file must document PostgreSQL startup values.'
 require_literal "${runtime_env}" 'DOCLENS_GATEWAY_SECRET=' \
   'Mounted runtime env file must document gateway startup values.'
+require_absent_literal "${runtime_env}" 'DOCLENS_PADDLE_OCR_NODE_' \
+  'Mounted runtime env file must not auto-register a concrete OCR node.'
 
 require_file "${application_yml}" \
   'Mounted backend application.yml must exist.'

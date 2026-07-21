@@ -80,7 +80,7 @@ conf/doclens.env.example
 lib/doclens-server-0.1.0-SNAPSHOT.jar
 ```
 
-Before running it, prepare the PostgreSQL connection, storage directory, OCR node, and trusted gateway secret environment variables from `conf/doclens.env.example`.
+Before running it, prepare the PostgreSQL connection, storage directory, and trusted gateway secret environment variables from `conf/doclens.env.example`. The service does not preconfigure a concrete OCR node; add the actual node from **OCR Resources** in the Dashboard after startup.
 
 ## Build Single-Node Docker Image
 

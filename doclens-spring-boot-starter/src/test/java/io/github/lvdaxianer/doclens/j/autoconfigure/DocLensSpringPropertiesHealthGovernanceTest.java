@@ -49,7 +49,6 @@ class DocLensSpringPropertiesHealthGovernanceTest {
         assertThat(properties.ocr().recoverySuccessThreshold()).isEqualTo(3);
         assertThat(properties.ocr().manualRecoveryAttempts()).isEqualTo(3);
         assertThat(properties.extraction().ocrConcurrency()).isEqualTo(4);
-        assertThat(DocLensSpringProperties.defaultPaddleNode().weight()).isEqualTo(50);
-        assertThat(DocLensSpringProperties.defaultPaddleNode().maxConcurrency()).isEqualTo(10);
+        assertThat(properties.paddleOcr().bootstrapNodes()).isEmpty();
     }
 }
