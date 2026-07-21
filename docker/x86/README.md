@@ -109,6 +109,15 @@ macOS 使用 Colima 时，默认目录位于 Colima 虚拟机中，可以通过
 
 下面这些命令默认都在仓库根目录执行。
 
+首个公测版的 x86 不可变镜像标签是：
+
+```text
+doclens:0.1.0-beta.1-amd64
+```
+
+构建脚本还会刷新 `doclens:amd64` 兼容别名，但 Compose 默认使用带版本标签，
+便于确认当前部署版本和回滚。
+
 先准备本地构建产物和 x86 镜像：
 
 ```bash
@@ -120,6 +129,13 @@ PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
 
 ```bash
 docker-compose -f docker/x86/docker-compose.yml up -d
+```
+
+需要切换到其他公测版本或回滚时，通过 `DOCLENS_IMAGE_TAG` 指定完整 tag 部分：
+
+```bash
+DOCLENS_IMAGE_TAG=0.1.0-beta.2-amd64 \
+  docker-compose -f docker/x86/docker-compose.yml up -d
 ```
 
 ## 修改配置时要注意

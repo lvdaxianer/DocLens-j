@@ -30,9 +30,9 @@ mvn -pl doclens-spring-boot-starter -am clean package
 产物位置：
 
 ```text
-doclens-api/target/doclens-api-0.1.0-SNAPSHOT.jar
-doclens-core/target/doclens-core-0.1.0-SNAPSHOT.jar
-doclens-spring-boot-starter/target/doclens-spring-boot-starter-0.1.0-SNAPSHOT.jar
+doclens-api/target/doclens-api-0.1.0-beta.1.jar
+doclens-core/target/doclens-core-0.1.0-beta.1.jar
+doclens-spring-boot-starter/target/doclens-spring-boot-starter-0.1.0-beta.1.jar
 ```
 
 这些包都是普通 thin jar，不是 Spring Boot 可执行 fat jar。SDK 相关模块禁止携带以下 Web 依赖：
@@ -55,7 +55,7 @@ mvn -pl doclens-server -am clean package
 产物位置：
 
 ```text
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT.jar
+doclens-server/target/doclens-server-0.1.0-beta.1.jar
 ```
 
 `doclens-server` 是唯一允许依赖 `spring-boot-starter-web` 的模块，它负责提供 REST API 和可运行服务入口。
@@ -71,8 +71,8 @@ mvn -pl doclens-server -am -Pdist -DskipTests package
 产物位置：
 
 ```text
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT-dist.tar.gz
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT-dist.zip
+doclens-server/target/doclens-server-0.1.0-beta.1-dist.tar.gz
+doclens-server/target/doclens-server-0.1.0-beta.1-dist.zip
 ```
 
 解压后主要目录：
@@ -81,7 +81,7 @@ doclens-server/target/doclens-server-0.1.0-SNAPSHOT-dist.zip
 bin/doclens-server.sh
 conf/application-prod.yml
 conf/doclens.env.example
-lib/doclens-server-0.1.0-SNAPSHOT.jar
+lib/doclens-server-0.1.0-beta.1.jar
 ```
 
 运行前需要按 `conf/doclens.env.example` 准备 PostgreSQL 连接、对象存储目录和可信网关密钥等环境变量。服务不会预置具体 OCR 节点，启动后应在 Dashboard 的 **OCR 资源** 页面新增实际节点。
@@ -195,11 +195,11 @@ PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
 PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
 ```
 
-构建脚本会先生成可复用 runtime 基础镜像 `doclens:base-amd64` 和 `doclens:base-arm64`，其中包含 Ubuntu、JDK21、Node22 和 PostgreSQL；再基于对应基础镜像生成最终应用镜像 `doclens:amd64` 和 `doclens:arm64`。应用包变更时可以复用基础镜像层，避免重复安装 JDK、Node 和 PostgreSQL。
+构建脚本会先生成可复用 runtime 基础镜像 `doclens:base-amd64` 和 `doclens:base-arm64`，其中包含 Ubuntu、JDK21、Node22 和 PostgreSQL；再基于对应基础镜像生成不可变公测镜像 `doclens:0.1.0-beta.1-amd64` 和 `doclens:0.1.0-beta.1-arm64`。构建成功后还会刷新 `doclens:amd64` 和 `doclens:arm64` 兼容别名。部署和回滚应使用带版本的不可变标签，架构别名只用于兼容现有本地流程。应用包变更时可以复用基础镜像层，避免重复安装 JDK、Node 和 PostgreSQL。
 
 JDK、Node、PostgreSQL Debian 包和 Ubuntu 基础镜像必须使用同一架构；缺少某个平台的 artifact 时，构建脚本会直接报出缺失文件。
 
-如果需要手动调用 `docker build`，对应参数是 `LOCAL_JDK_ARCHIVE`、`LOCAL_NODE_ARCHIVE`、`LOCAL_POSTGRES_DEB_ARCHIVE` 和 `LOCAL_SERVER_DIST_ARCHIVE`；通常建议使用 `scripts/build-local-runtime-images.sh` 统一生成两个平台的镜像 tag。
+如果需要手动调用 `docker build`，对应参数是 `LOCAL_JDK_ARCHIVE`、`LOCAL_NODE_ARCHIVE`、`LOCAL_POSTGRES_DEB_ARCHIVE` 和 `LOCAL_SERVER_DIST_ARCHIVE`；通常建议使用 `scripts/build-local-runtime-images.sh` 统一生成两个平台的镜像 tag。后续公测版必须先同步 Maven、Dashboard 和 Helm 版本并重新生成 Assembly，再通过 `RELEASE_VERSION` 覆盖构建版本，例如 `RELEASE_VERSION=0.1.0-beta.2`。构建脚本会拒绝 Assembly 内部 JAR 版本与镜像版本不一致的输入。
 
 兼容入口 `scripts/download-container-jdk.sh` 仍保留，但它会转调 `scripts/prepare-container-runtimes.sh`，同时准备 JDK、Node 和 PostgreSQL artifacts。
 
@@ -218,7 +218,7 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens:amd64
+  doclens:0.1.0-beta.1-amd64
 ```
 
 常见运行参数都可以直接通过容器环境变量覆盖，不需要重新打镜像，例如：
@@ -251,7 +251,7 @@ docker run --rm \
   -e DOCLENS_SERVER_PORT=18080 \
   -e DOCLENS_CONFIG_DIR=/opt/doclens/config \
   -v "$(pwd)/config:/opt/doclens/config:ro" \
-  doclens:amd64
+  doclens:0.1.0-beta.1-amd64
 ```
 
 镜像入口会默认把 `SPRING_CONFIG_ADDITIONAL_LOCATION` 设为：
@@ -398,6 +398,6 @@ mvn -pl doclens-spring-boot-starter -am clean install
 <dependency>
     <groupId>io.github.lvdaxianer</groupId>
     <artifactId>doclens-spring-boot-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0-beta.1</version>
 </dependency>
 ```

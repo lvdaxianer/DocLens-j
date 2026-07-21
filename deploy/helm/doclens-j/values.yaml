@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: doclens-j
-  tag: latest
+  repository: doclens
+  tag: 0.1.0-beta.1-amd64
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

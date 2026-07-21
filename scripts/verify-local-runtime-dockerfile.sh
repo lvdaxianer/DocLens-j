@@ -127,10 +127,16 @@ require_pattern "${build_script}" 'linux/arm64' \
   'Build script must support a linux/arm64 image.'
 require_pattern "${build_script}" 'IMAGE_REPOSITORY="\$\{IMAGE_REPOSITORY:-doclens\}"' \
   'Build script must default to the requested doclens image repository.'
-require_pattern "${build_script}" 'IMAGE_TAG_AMD64="\$\{IMAGE_TAG_AMD64:-amd64\}"' \
-  'Build script must default the x86 image tag to amd64.'
-require_pattern "${build_script}" 'IMAGE_TAG_ARM64="\$\{IMAGE_TAG_ARM64:-arm64\}"' \
-  'Build script must default the arm image tag to arm64.'
+require_pattern "${build_script}" 'RELEASE_VERSION="\$\{RELEASE_VERSION:-0\.1\.0-beta\.1\}"' \
+  'Build script must default to the first public beta release version.'
+require_pattern "${build_script}" 'IMAGE_TAG_AMD64="\$\{IMAGE_TAG_AMD64:-\$\{RELEASE_VERSION\}-amd64\}"' \
+  'Build script must default the x86 image tag to the immutable beta version.'
+require_pattern "${build_script}" 'IMAGE_TAG_ARM64="\$\{IMAGE_TAG_ARM64:-\$\{RELEASE_VERSION\}-arm64\}"' \
+  'Build script must default the arm image tag to the immutable beta version.'
+require_pattern "${build_script}" 'COMPATIBILITY_TAG_AMD64="\$\{COMPATIBILITY_TAG_AMD64:-amd64\}"' \
+  'Build script must retain the x86 architecture compatibility alias.'
+require_pattern "${build_script}" 'COMPATIBILITY_TAG_ARM64="\$\{COMPATIBILITY_TAG_ARM64:-arm64\}"' \
+  'Build script must retain the arm architecture compatibility alias.'
 require_pattern "${build_script}" 'BASE_IMAGE_TAG_AMD64="\$\{BASE_IMAGE_TAG_AMD64:-base-amd64\}"' \
   'Build script must default the x86 runtime base image tag to base-amd64.'
 require_pattern "${build_script}" 'BASE_IMAGE_TAG_ARM64="\$\{BASE_IMAGE_TAG_ARM64:-base-arm64\}"' \
@@ -143,6 +149,8 @@ require_pattern "${build_script}" 'validate_postgres_archive' \
   'Build script must validate PostgreSQL package archives before docker build.'
 require_pattern "${build_script}" 'LOCAL_SERVER_DIST_ARCHIVE' \
   'Build script must pass the local server distribution archive to docker build.'
+require_pattern "${build_script}" 'docker tag' \
+  'Build script must refresh the architecture compatibility alias.'
 require_pattern "${postgres_lib}" 'postgresql-common' \
   'PostgreSQL bundle library must require PostgreSQL common Debian dependencies.'
 require_pattern "${postgres_lib}" 'duplicate PostgreSQL Debian package' \

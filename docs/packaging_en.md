@@ -30,9 +30,9 @@ mvn -pl doclens-spring-boot-starter -am clean package
 Artifacts:
 
 ```text
-doclens-api/target/doclens-api-0.1.0-SNAPSHOT.jar
-doclens-core/target/doclens-core-0.1.0-SNAPSHOT.jar
-doclens-spring-boot-starter/target/doclens-spring-boot-starter-0.1.0-SNAPSHOT.jar
+doclens-api/target/doclens-api-0.1.0-beta.1.jar
+doclens-core/target/doclens-core-0.1.0-beta.1.jar
+doclens-spring-boot-starter/target/doclens-spring-boot-starter-0.1.0-beta.1.jar
 ```
 
 These are regular thin jars, not Spring Boot executable fat jars. SDK modules are guarded by Maven Enforcer and must not include:
@@ -51,7 +51,7 @@ mvn -pl doclens-server -am clean package
 Artifact:
 
 ```text
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT.jar
+doclens-server/target/doclens-server-0.1.0-beta.1.jar
 ```
 
 `doclens-server` is the only module that is allowed to depend on `spring-boot-starter-web`.
@@ -67,8 +67,8 @@ mvn -pl doclens-server -am -Pdist -DskipTests package
 Artifacts:
 
 ```text
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT-dist.tar.gz
-doclens-server/target/doclens-server-0.1.0-SNAPSHOT-dist.zip
+doclens-server/target/doclens-server-0.1.0-beta.1-dist.tar.gz
+doclens-server/target/doclens-server-0.1.0-beta.1-dist.zip
 ```
 
 Main files after extraction:
@@ -77,7 +77,7 @@ Main files after extraction:
 bin/doclens-server.sh
 conf/application-prod.yml
 conf/doclens.env.example
-lib/doclens-server-0.1.0-SNAPSHOT.jar
+lib/doclens-server-0.1.0-beta.1.jar
 ```
 
 Before running it, prepare the PostgreSQL connection, storage directory, and trusted gateway secret environment variables from `conf/doclens.env.example`. The service does not preconfigure a concrete OCR node; add the actual node from **OCR Resources** in the Dashboard after startup.
@@ -191,11 +191,11 @@ PLATFORMS='linux/amd64' scripts/build-local-runtime-images.sh
 PLATFORMS='linux/arm64' scripts/build-local-runtime-images.sh
 ```
 
-The build script first creates reusable runtime base images `doclens:base-amd64` and `doclens:base-arm64`, containing Ubuntu, JDK21, Node22, and PostgreSQL. It then builds the final application images `doclens:amd64` and `doclens:arm64` from the matching base image. When only the application distribution changes, the base image layers can be reused instead of reinstalling JDK, Node, and PostgreSQL.
+The build script first creates reusable runtime base images `doclens:base-amd64` and `doclens:base-arm64`, containing Ubuntu, JDK21, Node22, and PostgreSQL. It then builds immutable public beta images `doclens:0.1.0-beta.1-amd64` and `doclens:0.1.0-beta.1-arm64` from the matching base image. Successful builds also refresh the `doclens:amd64` and `doclens:arm64` compatibility aliases. Deployments and rollbacks should use immutable versioned tags; architecture-only aliases remain for existing local workflows. When only the application distribution changes, the base image layers can be reused instead of reinstalling JDK, Node, and PostgreSQL.
 
 The JDK, Node, PostgreSQL Debian package bundle, and Ubuntu base image must use the same architecture; if one platform is missing an artifact, the build script reports the missing file directly.
 
-For manual `docker build` usage, the corresponding build args are `LOCAL_JDK_ARCHIVE`, `LOCAL_NODE_ARCHIVE`, `LOCAL_POSTGRES_DEB_ARCHIVE`, and `LOCAL_SERVER_DIST_ARCHIVE`; in normal release work, prefer `scripts/build-local-runtime-images.sh` so both platform tags are generated consistently.
+For manual `docker build` usage, the corresponding build args are `LOCAL_JDK_ARCHIVE`, `LOCAL_NODE_ARCHIVE`, `LOCAL_POSTGRES_DEB_ARCHIVE`, and `LOCAL_SERVER_DIST_ARCHIVE`; in normal release work, prefer `scripts/build-local-runtime-images.sh` so both platform tags are generated consistently. For a later beta, first synchronize Maven, Dashboard, and Helm metadata and rebuild the Assembly, then override `RELEASE_VERSION`, for example `RELEASE_VERSION=0.1.0-beta.2`. The build script rejects an Assembly whose internal JAR version does not match the image release version.
 
 The compatibility entrypoint `scripts/download-container-jdk.sh` is still available, but it delegates to `scripts/prepare-container-runtimes.sh` so JDK, Node, and PostgreSQL artifacts are prepared together.
 
@@ -214,7 +214,7 @@ docker run --rm \
   -e DOCLENS_GATEWAY_SECRET=replace-with-gateway-secret \
   -v doclens-postgresql:/var/lib/postgresql/data \
   -v doclens-storage:/var/lib/doclens/storage \
-  doclens:amd64
+  doclens:0.1.0-beta.1-amd64
 ```
 
 Common runtime settings can be overridden directly through container
@@ -251,7 +251,7 @@ docker run --rm \
   -e DOCLENS_SERVER_PORT=18080 \
   -e DOCLENS_CONFIG_DIR=/opt/doclens/config \
   -v "$(pwd)/config:/opt/doclens/config:ro" \
-  doclens:amd64
+  doclens:0.1.0-beta.1-amd64
 ```
 
 The image entrypoint defaults `SPRING_CONFIG_ADDITIONAL_LOCATION` to:

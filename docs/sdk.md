@@ -20,7 +20,7 @@ Add the starter in the host application:
 <dependency>
     <groupId>io.github.lvdaxianer</groupId>
     <artifactId>doclens-spring-boot-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0-beta.1</version>
 </dependency>
 ```
 
@@ -67,12 +67,12 @@ desired:
 <dependency>
     <groupId>io.github.lvdaxianer</groupId>
     <artifactId>doclens-api</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0-beta.1</version>
 </dependency>
 <dependency>
     <groupId>io.github.lvdaxianer</groupId>
     <artifactId>doclens-core</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0-beta.1</version>
 </dependency>
 ```
 

@@ -1,6 +1,6 @@
 services:
   doclens:
-    image: doclens:amd64
+    image: doclens:${DOCLENS_IMAGE_TAG:-0.1.0-beta.1-amd64}
     container_name: doclens-x86-all-in-one
     restart: unless-stopped
     ports:

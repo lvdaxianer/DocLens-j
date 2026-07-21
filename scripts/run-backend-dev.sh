@@ -22,4 +22,4 @@ exec nodemon \
   --ext java,yml,xml \
   --delay 1.5 \
   --signal SIGTERM \
-  --exec "sh -c 'cd ${ROOT_DIR} && mvn -pl doclens-server -am package -DskipTests && java -jar ${ROOT_DIR}/doclens-server/target/doclens-server-0.1.0-SNAPSHOT.jar'"
+  --exec "sh -c 'cd ${ROOT_DIR} && mvn -pl doclens-server -am package -DskipTests && java -jar ${ROOT_DIR}/doclens-server/target/doclens-server-0.1.0-beta.1.jar'"

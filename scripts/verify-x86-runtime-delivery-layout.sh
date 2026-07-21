@@ -63,8 +63,8 @@ require_missing() {
 
 require_file "${x86_compose}" \
   'x86 delivery compose file must exist.'
-require_literal "${x86_compose}" 'doclens:amd64' \
-  'x86 delivery compose file must target the amd64 image.'
+require_literal "${x86_compose}" 'doclens:${DOCLENS_IMAGE_TAG:-0.1.0-beta.1-amd64}' \
+  'x86 delivery compose file must default to the immutable amd64 beta image.'
 require_literal "${x86_compose}" './config:/opt/doclens/config:ro' \
   'x86 delivery compose file must mount the backend config directory.'
 require_literal "${x86_compose}" 'DOCLENS_DATA_ROOT' \
