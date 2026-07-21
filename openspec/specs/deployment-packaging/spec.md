@@ -41,7 +41,10 @@ frontend assets, backend runtime, and PostgreSQL runtime support.
   and PostgreSQL
 - **AND** maintainers can build separate x86 and arm image tags from matching
   local runtime artifacts
-- **AND** those default tags are `doclens:amd64` and `doclens:arm64`
+- **AND** the immutable public beta tags are
+  `doclens:0.1.0-beta.1-amd64` and `doclens:0.1.0-beta.1-arm64`
+- **AND** successful builds refresh `doclens:amd64` and `doclens:arm64` as
+  compatibility aliases
 - **AND** the local PostgreSQL Debian artifact preparation rejects duplicate
   packages and incomplete Debian dependency bundles before Docker build starts
 - **AND** first startup initializes PostgreSQL without exposing the database
@@ -75,6 +78,37 @@ frontend assets, backend runtime, and PostgreSQL runtime support.
 - **THEN** the server returns the bundled dashboard index page
 - **AND** the dashboard assets continue to load from the packaged
   `static/dashboard` bundle
+
+### Requirement: Public beta release metadata MUST be consistent
+
+DocLens-j public beta packaging SHALL use `0.1.0-beta.1` consistently across
+Maven artifacts, Dashboard package metadata, Docker image tags, and Helm chart
+application metadata.
+
+#### Scenario: Maintainer inspects public beta artifacts
+
+- **WHEN** a maintainer inspects Maven, Dashboard, Docker, Compose, and Helm
+  release metadata
+- **THEN** every immutable release reference identifies `0.1.0-beta.1`
+- **AND** architecture-specific Docker references include either `amd64` or
+  `arm64`
+
+### Requirement: Compose deployment MUST default to an immutable beta image
+
+The x86 Compose delivery SHALL default to
+`doclens:0.1.0-beta.1-amd64` and SHALL allow operators to override the image
+tag without editing the Compose file.
+
+#### Scenario: Operator starts the default x86 beta
+
+- **WHEN** an operator starts the x86 Compose delivery without setting an image
+  tag override
+- **THEN** Compose selects `doclens:0.1.0-beta.1-amd64`
+
+#### Scenario: Operator selects another immutable release
+
+- **WHEN** an operator sets `DOCLENS_IMAGE_TAG` before starting Compose
+- **THEN** Compose uses that tag from the `doclens` repository
 
 ### Requirement: Helm chart MUST support Kubernetes deployment
 
@@ -129,4 +163,3 @@ backend, and PostgreSQL together for local deployment and Kubernetes delivery.
   file before PostgreSQL and backend startup
 - **AND** the delivery documentation explains how frontend assets, backend
   archive contents, and startup order map into the image
-
